@@ -526,7 +526,10 @@ collection_config = {
 
 ### Ingestion Service API
 
-#### POST /ingestion/documents
+> **Base URL:** `http://localhost:8001`
+> **API Version:** v1
+
+#### POST /api/v1/ingest
 
 Ingest a new document.
 
@@ -556,7 +559,7 @@ Ingest a new document.
 }
 ```
 
-#### POST /ingestion/sync
+#### POST /api/v1/ingest/sync
 
 Trigger incremental sync for a source.
 
@@ -573,7 +576,7 @@ Trigger incremental sync for a source.
 }
 ```
 
-#### POST /ingestion/reembed
+#### POST /api/v1/ingest/reembed
 
 Start re-embedding job with new model.
 
@@ -590,7 +593,10 @@ Start re-embedding job with new model.
 
 ### Retrieval Service API
 
-#### POST /retrieval/search
+> **Base URL:** `http://localhost:8002`
+> **API Version:** v1
+
+#### POST /api/v1/retrieve
 
 Search for relevant chunks.
 
@@ -656,7 +662,10 @@ Search for relevant chunks.
 
 ### Orchestrator Service API
 
-#### POST /chat
+> **Base URL:** `http://localhost:8003`
+> **API Version:** v1
+
+#### POST /api/v1/query
 
 Main chat endpoint with RAG.
 
@@ -717,7 +726,7 @@ Main chat endpoint with RAG.
 }
 ```
 
-#### POST /chat (Streaming)
+#### POST /api/v1/query/stream (Streaming)
 
 **Request:** Same as above with `"stream": true`
 

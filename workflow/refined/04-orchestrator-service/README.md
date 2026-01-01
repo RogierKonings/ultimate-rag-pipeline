@@ -46,6 +46,7 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-4.6](US-4.6-streaming.md) | Streaming Support | Critical | 2 days | US-4.4 |
 | [US-4.7](US-4.7-conversation-memory.md) | Conversation Memory | High | 2 days | - |
 | [US-4.8](US-4.8-orchestrator-api.md) | Orchestrator API | Critical | 2-3 days | US-4.1-4.7 |
+| [US-4.9](US-4.9-graceful-degradation.md) | Graceful Degradation | Medium | 2-3 days | US-4.4, US-4.1 |
 
 ## Dependency Graph
 
@@ -64,6 +65,8 @@ flowchart TD
     US45 --> US48
     US46 --> US48
     US47 --> US48
+    US44 --> US49[US-4.9<br/>Graceful Degradation]
+    US41 --> US49
 ```
 
 ## Implementation Order
@@ -78,6 +81,7 @@ flowchart TD
 6. **US-4.5: Guardrails** - Safety checks
 7. **US-4.6: Streaming Support** - SSE streaming
 8. **US-4.8: Orchestrator API** - FastAPI endpoints
+9. **US-4.9: Graceful Degradation** - Circuit breakers and fallbacks
 
 ## Service Structure
 

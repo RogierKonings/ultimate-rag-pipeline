@@ -141,28 +141,35 @@ spec:
   - host: api.rag-pipeline.example.com
     http:
       paths:
-      - path: /ingest
+      - path: /api/v1/ingest
         pathType: Prefix
         backend:
           service:
             name: ingestion-service
             port:
               number: 8001
-      - path: /retrieve
+      - path: /api/v1/retrieve
         pathType: Prefix
         backend:
           service:
             name: retrieval-service
             port:
               number: 8002
-      - path: /query
+      - path: /api/v1/query
         pathType: Prefix
         backend:
           service:
             name: orchestrator-service
             port:
               number: 8003
-      - path: /
+      - path: /api/v1/sessions
+        pathType: Prefix
+        backend:
+          service:
+            name: orchestrator-service
+            port:
+              number: 8003
+      - path: /health
         pathType: Prefix
         backend:
           service:

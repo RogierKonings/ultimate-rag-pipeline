@@ -189,6 +189,99 @@ class RedisCache:
         await self.redis.close()
 ```
 
+### Redis Namespace Strategy
+
+All services MUST use the following key namespace convention to prevent collisions:
+
+```
+{service}:{type}:{tenant}:{identifier}
+```
+
+**Namespace Components:**
+| Component | Values | Description |
+|-----------|--------|-------------|
+| `service` | `ing`, `ret`, `orc`, `cel` | Service prefix (ingestion, retrieval, orchestrator, celery) |
+| `type` | `emb`, `query`, `sess`, `job`, `lock` | Data type being cached |
+| `tenant` | UUID or `*` | Tenant ID for isolation |
+| `identifier` | hash or UUID | Unique key for the cached item |
+
+**Key Examples:**
+```
+ing:emb:tenant-123:abc123def456      # Embeddings cached during ingestion
+ret:query:tenant-123:hash789...      # Cached query results
+ret:emb:tenant-123:queryhash...      # Query embedding cache
+orc:sess:tenant-123:session-uuid     # Session data
+cel:job:*:job-uuid                   # Celery job metadata (global)
+cel:lock:*:task-name                 # Distributed locks
+```
+
+**Python Implementation:**
+
+```python
+from enum import Enum
+
+class ServicePrefix(str, Enum):
+    INGESTION = "ing"
+    RETRIEVAL = "ret"
+    ORCHESTRATOR = "orc"
+    CELERY = "cel"
+
+class KeyType(str, Enum):
+    EMBEDDING = "emb"
+    QUERY = "query"
+    SESSION = "sess"
+    JOB = "job"
+    LOCK = "lock"
+
+class KeyBuilder:
+    """Build namespaced Redis keys to prevent collisions."""
+    
+    def __init__(self, service: ServicePrefix):
+        self.service = service
+    
+    def build(
+        self,
+        key_type: KeyType,
+        tenant_id: str,
+        identifier: str
+    ) -> str:
+        """Build a fully namespaced Redis key."""
+        return f"{self.service}:{key_type}:{tenant_id}:{identifier}"
+    
+    def build_global(self, key_type: KeyType, identifier: str) -> str:
+        """Build a global key (no tenant)."""
+        return f"{self.service}:{key_type}:*:{identifier}"
+    
+    def pattern(self, key_type: KeyType, tenant_id: str = "*") -> str:
+        """Build a pattern for scanning keys."""
+        return f"{self.service}:{key_type}:{tenant_id}:*"
+```
+
+**Usage in Services:**
+
+```python
+# In ingestion service
+key_builder = KeyBuilder(ServicePrefix.INGESTION)
+key = key_builder.build(KeyType.EMBEDDING, tenant_id, text_hash)
+await redis.set(key, embedding_data)
+
+# In retrieval service
+key_builder = KeyBuilder(ServicePrefix.RETRIEVAL)
+key = key_builder.build(KeyType.QUERY, tenant_id, query_hash)
+cached = await redis.get(key)
+```
+
+**Database Separation:**
+Additionally, use separate Redis database numbers for isolation:
+
+| Database | Purpose |
+|----------|---------|
+| 0 | Celery broker (task queue) |
+| 1 | Celery results backend |
+| 2 | Application caches (embeddings, queries) |
+| 3 | Sessions and conversation state |
+| 4 | Distributed locks |
+
 ### 4. Create Embedding Cache
 
 Create `services/shared/cache/embedding_cache.py`:

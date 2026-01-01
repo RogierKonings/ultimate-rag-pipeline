@@ -599,18 +599,32 @@ async def get_document(
 )
 async def delete_document(
     document_id: UUID,
+    hard_delete: bool = Query(default=True, description="If False, marks as deleted instead of removing"),
     document_service = Depends(get_document_service),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Delete a document and all associated chunks.
+    Delete a document and all associated chunks (cascade delete).
     
     This removes the document from:
-    - PostgreSQL (metadata)
-    - Qdrant (vectors)
+    - PostgreSQL (metadata and chunk records)
+    - Qdrant (vector embeddings)
     - OpenSearch (keyword index)
+    - MinIO/S3 (original document file, if stored)
     
-    This operation cannot be undone.
+    **Deletion Strategy:**
+    - `hard_delete=True`: Permanently removes all data (default)
+    - `hard_delete=False`: Soft delete - marks as deleted but retains data
+    
+    **Cascade Order:**
+    1. Mark document as "deleting" in PostgreSQL (prevents queries)
+    2. Delete vectors from Qdrant by document_id filter
+    3. Delete keyword index entries from OpenSearch
+    4. Delete chunk records from PostgreSQL
+    5. Delete document record from PostgreSQL
+    6. Delete raw file from object storage (if applicable)
+    
+    This operation cannot be undone for hard deletes.
     """
     tenant_id = current_user.get("tenant_id")
     
@@ -623,15 +637,233 @@ async def delete_document(
             detail=f"Document {document_id} not found"
         )
     
-    # Delete from all stores
-    result = await document_service.delete_document(document_id)
+    # Execute cascade delete
+    result = await document_service.delete_document(
+        document_id, 
+        hard_delete=hard_delete
+    )
     
     return DocumentDeleteResponse(
         document_id=document_id,
         deleted=result.success,
         chunks_deleted=result.chunks_deleted,
-        message="Document deleted successfully" if result.success else "Deletion failed"
+        message="Document deleted successfully" if result.success else f"Deletion failed: {result.error}"
     )
+```
+
+### Document Deletion Cascade Implementation
+
+The `DocumentService.delete_document()` method implements a transactional cascade delete:
+
+```python
+# services/documents.py
+from dataclasses import dataclass
+from uuid import UUID
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class DeleteResult:
+    success: bool
+    chunks_deleted: int
+    vectors_deleted: int
+    keyword_entries_deleted: int
+    error: Optional[str] = None
+
+class DocumentService:
+    """Service for managing documents with cascade operations."""
+    
+    def __init__(
+        self,
+        db: AsyncSession,
+        qdrant_client: QdrantClient,
+        opensearch_client: OpenSearchClient,
+        storage_client: StorageClient
+    ):
+        self.db = db
+        self.qdrant = qdrant_client
+        self.opensearch = opensearch_client
+        self.storage = storage_client
+    
+    async def delete_document(
+        self,
+        document_id: UUID,
+        hard_delete: bool = True
+    ) -> DeleteResult:
+        """
+        Delete document with cascade to all data stores.
+        
+        Uses a transactional approach:
+        1. If any step fails, attempt rollback where possible
+        2. Log all operations for audit trail
+        3. Return detailed result for observability
+        """
+        chunks_deleted = 0
+        vectors_deleted = 0
+        keyword_entries_deleted = 0
+        
+        try:
+            # Step 1: Mark document as deleting (prevents new queries)
+            await self._mark_document_deleting(document_id)
+            logger.info(f"Document {document_id} marked as deleting")
+            
+            # Step 2: Get all chunk IDs for this document
+            chunk_ids = await self._get_chunk_ids(document_id)
+            logger.info(f"Found {len(chunk_ids)} chunks for document {document_id}")
+            
+            # Step 3: Delete vectors from Qdrant
+            try:
+                vectors_deleted = await self._delete_vectors(document_id, chunk_ids)
+                logger.info(f"Deleted {vectors_deleted} vectors from Qdrant")
+            except Exception as e:
+                logger.error(f"Failed to delete vectors: {e}")
+                # Continue with other deletions - vectors can be orphaned
+            
+            # Step 4: Delete keyword entries from OpenSearch
+            try:
+                keyword_entries_deleted = await self._delete_keyword_entries(
+                    document_id, chunk_ids
+                )
+                logger.info(f"Deleted {keyword_entries_deleted} entries from OpenSearch")
+            except Exception as e:
+                logger.error(f"Failed to delete keyword entries: {e}")
+                # Continue with other deletions
+            
+            # Step 5: Delete chunks from PostgreSQL
+            if hard_delete:
+                chunks_deleted = await self._hard_delete_chunks(document_id)
+            else:
+                chunks_deleted = await self._soft_delete_chunks(document_id)
+            logger.info(f"Deleted {chunks_deleted} chunks from PostgreSQL")
+            
+            # Step 6: Delete document record from PostgreSQL
+            if hard_delete:
+                await self._hard_delete_document(document_id)
+            else:
+                await self._soft_delete_document(document_id)
+            logger.info(f"Deleted document record {document_id}")
+            
+            # Step 7: Delete raw file from object storage (if exists)
+            try:
+                await self._delete_raw_file(document_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete raw file (may not exist): {e}")
+            
+            # Commit transaction
+            await self.db.commit()
+            
+            return DeleteResult(
+                success=True,
+                chunks_deleted=chunks_deleted,
+                vectors_deleted=vectors_deleted,
+                keyword_entries_deleted=keyword_entries_deleted
+            )
+            
+        except Exception as e:
+            logger.error(f"Document deletion failed: {e}")
+            await self.db.rollback()
+            
+            # Attempt to restore document status
+            try:
+                await self._restore_document_status(document_id)
+            except:
+                pass
+            
+            return DeleteResult(
+                success=False,
+                chunks_deleted=0,
+                vectors_deleted=0,
+                keyword_entries_deleted=0,
+                error=str(e)
+            )
+    
+    async def _delete_vectors(
+        self,
+        document_id: UUID,
+        chunk_ids: list[UUID]
+    ) -> int:
+        """Delete vectors from Qdrant using document_id filter."""
+        from qdrant_client.models import Filter, FieldCondition, MatchValue
+        
+        # Delete by document_id filter (more efficient than individual deletes)
+        result = await self.qdrant.delete(
+            collection_name="rag_chunks",
+            points_selector=Filter(
+                must=[
+                    FieldCondition(
+                        key="document_id",
+                        match=MatchValue(value=str(document_id))
+                    )
+                ]
+            )
+        )
+        
+        return len(chunk_ids)  # Qdrant doesn't return count
+    
+    async def _delete_keyword_entries(
+        self,
+        document_id: UUID,
+        chunk_ids: list[UUID]
+    ) -> int:
+        """Delete entries from OpenSearch index."""
+        # Delete by query matching document_id
+        response = await self.opensearch.delete_by_query(
+            index="rag_chunks",
+            body={
+                "query": {
+                    "term": {
+                        "document_id": str(document_id)
+                    }
+                }
+            }
+        )
+        
+        return response.get("deleted", 0)
+    
+    async def _delete_raw_file(self, document_id: UUID):
+        """Delete original document from object storage."""
+        # Get document to find raw_storage_path
+        doc = await self.db.execute(
+            select(SourceDocument.raw_storage_path)
+            .where(SourceDocument.id == document_id)
+        )
+        result = doc.scalar_one_or_none()
+        
+        if result:
+            await self.storage.delete(result)
+```
+
+### Soft Delete Support
+
+For compliance and audit requirements, soft delete preserves data:
+
+```python
+async def _soft_delete_document(self, document_id: UUID):
+    """Mark document as deleted without removing data."""
+    await self.db.execute(
+        update(SourceDocument)
+        .where(SourceDocument.id == document_id)
+        .values(
+            status="deleted",
+            deleted_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    )
+
+async def _soft_delete_chunks(self, document_id: UUID) -> int:
+    """Mark chunks as deleted without removing data."""
+    result = await self.db.execute(
+        update(Chunk)
+        .where(Chunk.document_id == document_id)
+        .values(
+            status="deleted",
+            deleted_at=datetime.utcnow()
+        )
+    )
+    return result.rowcount
+```
 
 
 @router.post(

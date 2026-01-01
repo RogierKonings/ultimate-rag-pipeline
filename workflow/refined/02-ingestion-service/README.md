@@ -19,7 +19,7 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 - **Keyword Store:** OpenSearch (port 9200)
 - **Metadata Store:** PostgreSQL (port 5432)
 - **Embedding Model:** BAAI/bge-large-en-v1.5 (1024 dimensions)
-- **Chunking:** 512 tokens, 50 token overlap
+- **Chunking:** Target 300 tokens (max 512), 50 token overlap
 - **LLM Gateway:** Port 8004
 - **Ingestion API:** Port 8001
 
@@ -35,6 +35,7 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-2.6](US-2.6-metadata-enrichment.md) | Metadata Enrichment | High | 2 days | US-2.2 |
 | [US-2.7](US-2.7-async-processing.md) | Async Processing | Critical | 2-3 days | US-2.1-2.6 |
 | [US-2.8](US-2.8-ingestion-api.md) | Ingestion API | Critical | 2 days | US-2.1-2.7 |
+| [US-2.9](US-2.9-embedding-model-migration.md) | Embedding Model Migration | Medium | 2-3 days | US-2.4, US-2.5 |
 
 ## Dependency Graph
 
@@ -52,6 +53,8 @@ flowchart TD
     US25 --> US27
     US26 --> US27
     US27 --> US28[US-2.8<br/>Ingestion API]
+    US24 --> US29[US-2.9<br/>Embedding Migration]
+    US25 --> US29
 ```
 
 ## Implementation Order
@@ -66,6 +69,7 @@ flowchart TD
 6. **US-2.5: Index Writers** - Store in Qdrant/OpenSearch/PostgreSQL
 7. **US-2.7: Async Processing** - Celery tasks for background processing
 8. **US-2.8: Ingestion API** - FastAPI endpoints
+9. **US-2.9: Embedding Model Migration** - Optional, for model upgrades
 
 ## Service Structure
 

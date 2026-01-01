@@ -70,12 +70,18 @@ from typing import Optional
 import tiktoken
 
 class ChunkingConfig(BaseModel):
-    chunk_size: int = 512  # tokens (architecture default)
+    target_tokens: int = 300  # Target chunk size (architecture default)
+    max_tokens: int = 512  # Maximum chunk size (hard limit)
     chunk_overlap: int = 50  # tokens (architecture default)
     min_chunk_size: int = 50  # Minimum tokens per chunk
     tokenizer: str = "cl100k_base"  # OpenAI tokenizer (compatible with BGE)
     preserve_sentences: bool = True
     preserve_paragraphs: bool = False
+    
+    @property
+    def chunk_size(self) -> int:
+        """Alias for target_tokens for backward compatibility."""
+        return self.target_tokens
 
 class BaseChunkingStrategy(ABC):
     """Abstract base class for chunking strategies."""
@@ -474,7 +480,7 @@ class ChunkingEngine:
 - [ ] `RecursiveCharacterSplitter` handles various separators
 - [ ] `SemanticChunker` splits at sentence boundaries using spaCy
 - [ ] `HierarchicalChunker` creates parent-child relationships
-- [ ] All strategies respect `chunk_size` (default 512 tokens)
+- [ ] All strategies respect `target_tokens` (default 300) with `max_tokens` (512) hard limit
 - [ ] All strategies implement `chunk_overlap` (default 50 tokens)
 - [ ] Token counting uses `tiktoken` with `cl100k_base` encoding
 - [ ] Metadata preserved and attached to all chunks
@@ -539,7 +545,7 @@ def test_chunk_size_respected(chunking_engine):
     result = chunking_engine.chunk(long_text, uuid4())
     
     for chunk in result.chunks:
-        assert chunk.token_count <= 512 + 10  # Small tolerance
+        assert chunk.token_count <= 512  # Must not exceed max_tokens
 ```
 
 ## Dependencies
@@ -556,7 +562,7 @@ python -m spacy download en_core_web_sm
 ## Definition of Done
 
 - [ ] All chunking strategies implemented and tested
-- [ ] Default config matches architecture (512 tokens, 50 overlap)
+- [ ] Default config matches architecture (300 target tokens, 512 max, 50 overlap)
 - [ ] Token counting accurate and tested
 - [ ] Parent-child relationships work correctly
 - [ ] >90% test coverage for chunking module
