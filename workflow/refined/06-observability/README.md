@@ -53,6 +53,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-6.6](US-6.6-ragas-evaluation.md) | Ragas Evaluation | High | 3-4 days | Epic 3, Epic 5 |
 | [US-6.7](US-6.7-arize-phoenix-integration.md) | Arize Phoenix Integration | Medium | 2-3 days | US-6.1 |
 | [US-6.8](US-6.8-alerting.md) | Alerting | High | 2-3 days | US-6.2, US-6.3 |
+| US-6.9 | Trace/Log Storage Validation (Tempo/Loki) | High | 1-2 days | US-6.1, US-6.5 |
+| US-6.10 | Evaluation Data Persistence | Medium | 1-2 days | US-6.6 |
 
 ## Dependency Graph
 
@@ -67,6 +69,8 @@ flowchart TD
     US63 --> US68
     E3[Epic 3: Retrieval] --> US66[US-6.6<br/>Ragas Evaluation]
     E5[Epic 5: LLM Serving] --> US66
+    US61 --> US69[US-6.9<br/>Trace/Log Storage Validation]
+    US66 --> US610[US-6.10<br/>Evaluation Data Persistence]
 ```
 
 ## Implementation Order
@@ -81,6 +85,8 @@ flowchart TD
 6. **US-6.8: Alerting** - Proactive notification (can parallel with US-6.4)
 7. **US-6.7: Arize Phoenix Integration** - LLM-specific observability
 8. **US-6.6: Ragas Evaluation** - RAG quality evaluation (requires retrieval/LLM services)
+9. **US-6.9: Trace/Log Storage Validation** - Confirm Loki/Tempo/Jaeger ingestion and query paths
+10. **US-6.10: Evaluation Data Persistence** - Store eval runs/datasets per architecture schema
 
 ## Service Structure
 
@@ -325,8 +331,10 @@ class ObservabilityConfig(BaseSettings):
 - [ ] Grafana dashboards for all components
 - [ ] Structured JSON logging with trace correlation
 - [ ] Logs aggregated in Loki
+- [ ] Traces stored/queryable in Tempo/Jaeger; Loki ingestion verified end-to-end
 - [ ] Ragas evaluation pipeline running weekly
 - [ ] Phoenix capturing LLM traces
+- [ ] Evaluation datasets/runs persisted per architecture Postgres schema
 - [ ] Feedback collection implemented
 - [ ] Alert rules for all critical scenarios
 - [ ] Alertmanager routing to Slack/PagerDuty

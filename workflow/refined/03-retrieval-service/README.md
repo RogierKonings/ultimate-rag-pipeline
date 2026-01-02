@@ -45,6 +45,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-3.6](US-3.6-acl-filter.md) | ACL Filter | Critical | 1-2 days | - |
 | [US-3.7](US-3.7-retrieval-api.md) | Retrieval API | Critical | 2 days | US-3.1-3.6 |
 | [US-3.8](US-3.8-retrieval-logging.md) | Retrieval Logging | High | 1-2 days | US-3.7 |
+| US-3.9 | Retrieval Cache (Redis) | High | 1-2 days | US-3.1-3.4, US-3.6 |
+| US-3.10 | API Contract & Hybrid Alignment | High | 1-2 days | US-3.1-3.7 |
 
 ## Dependency Graph
 
@@ -60,6 +62,8 @@ flowchart TD
     US35 --> US37[US-3.7<br/>Retrieval API]
     US36 --> US37
     US37 --> US38[US-3.8<br/>Retrieval Logging]
+    US34 --> US39[US-3.9<br/>Retrieval Cache]
+    US37 --> US310[US-3.10<br/>API Contract & Hybrid Alignment]
 ```
 
 ## Implementation Order
@@ -74,6 +78,8 @@ flowchart TD
 6. **US-3.5: Reranker Integration** - Cross-encoder reranking
 7. **US-3.7: Retrieval API** - FastAPI endpoints
 8. **US-3.8: Retrieval Logging** - Observability and metrics
+9. **US-3.9: Retrieval Cache (Redis)** - Cache keys/TTL per architecture caching strategy
+10. **US-3.10: API Contract & Hybrid Alignment** - Enforce RRF→rerank→ACL ordering, weights/top-k, and debug payload per architecture
 
 ## Service Structure
 
@@ -242,6 +248,8 @@ class RetrievalConfig(BaseSettings):
 - [ ] Reranker improves result ordering
 - [ ] ACL filtering enforces access control
 - [ ] API endpoints documented and tested
+- [ ] Cache hit rate target defined and measured; Redis cache used for query/response as per architecture strategy
+- [ ] Hybrid ordering, weights, and top-k validated (RRF → rerank → ACL) and reflected in API debug block
 - [ ] P95 latency < 200ms achieved
 - [ ] 80%+ test coverage across all modules
 - [ ] All type hints validated with mypy

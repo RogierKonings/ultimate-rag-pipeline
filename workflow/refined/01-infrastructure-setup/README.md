@@ -31,6 +31,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-1.5](US-1.5-object-storage.md) | Object Storage (MinIO/S3) | Critical | 1-2 days | - |
 | [US-1.6](US-1.6-kubernetes-cluster.md) | Kubernetes Cluster | Critical | 3-4 days | - |
 | [US-1.7](US-1.7-local-development-environment.md) | Local Development Environment | High | 2-3 days | US-1.1-1.5 |
+| US-1.8 | GPU Node Pool & NVIDIA Plugin | High | 2-3 days | US-1.6 |
+| US-1.9 | Ingress, TLS 1.3, Network Policies | High | 2-3 days | US-1.6 |
 
 ## Dependency Graph
 
@@ -41,7 +43,8 @@ flowchart TD
     US13[US-1.3<br/>OpenSearch] --> US17
     US14[US-1.4<br/>Redis] --> US17
     US15[US-1.5<br/>Object Storage] --> US17
-    US16[US-1.6<br/>Kubernetes Cluster]
+    US16[US-1.6<br/>Kubernetes Cluster] --> US18[US-1.8<br/>GPU Node Pool & NVIDIA Plugin]
+    US16 --> US19[US-1.9<br/>Ingress, TLS 1.3, Network Policies]
 ```
 
 ## Implementation Order
@@ -55,6 +58,8 @@ flowchart TD
 5. **US-1.5: Object Storage** - Raw document storage (can parallel with above)
 6. **US-1.6: Kubernetes Cluster** - Production orchestration
 7. **US-1.7: Local Development Environment** - Docker Compose setup (requires US-1.1-1.5)
+8. **US-1.8: GPU Node Pool & NVIDIA Plugin** - GPU scheduling, taints/tolerations, device plugin
+9. **US-1.9: Ingress, TLS 1.3, Network Policies** - cert-manager/ingress TLS, mTLS readiness, namespace/network isolation
 
 ## Infrastructure Structure
 
@@ -134,6 +139,9 @@ kubernetes>=28.0.0
 - [ ] MinIO/S3 object storage accessible
 - [ ] Kubernetes namespace and resource quotas configured
 - [ ] Local Docker Compose environment functional
+- [ ] GPU node pool available with NVIDIA device plugin, taints/tolerations, and resource classes
+- [ ] Ingress with cert-manager TLS 1.3 enabled; network policies isolating data plane services
 - [ ] All health checks passing
 - [ ] Backup procedures documented and tested
 - [ ] Infrastructure documentation complete
+- [ ] PgBouncer/connection pooling configured and validated

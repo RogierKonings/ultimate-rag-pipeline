@@ -33,6 +33,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-7.7](US-7.7-secrets-management.md) | Secrets Management | Critical | 1-2 days | Epic 1 |
 | [US-7.8](US-7.8-audit-logging.md) | Audit Logging | High | 2 days | US-7.1 |
 | [US-7.9](US-7.9-security-scanning.md) | Security Scanning | Medium | 1-2 days | - |
+| US-7.10 | TLS 1.3/mTLS & Certificate Management | High | 2 days | Epic 1 |
+| US-7.11 | Audit Log Persistence & Tamper-evidence | High | 2 days | US-7.8 |
 
 ## Dependency Graph
 
@@ -50,6 +52,8 @@ flowchart TD
     E2[Epic 2<br/>Ingestion] --> US76[US-7.6<br/>PII Detection]
     
     US79[US-7.9<br/>Security Scanning]
+    E1 --> US710[US-7.10<br/>TLS 1.3/mTLS & Certificates]
+    US78 --> US711[US-7.11<br/>Audit Persistence & Tamper-evidence]
 ```
 
 ## Implementation Order
@@ -65,6 +69,8 @@ flowchart TD
 7. **US-7.6: PII Detection** - Sensitive data handling (can parallel after US-7.1)
 8. **US-7.8: Audit Logging** - Comprehensive audit trail (requires US-7.1)
 9. **US-7.9: Security Scanning** - CI/CD security integration
+10. **US-7.10: TLS 1.3/mTLS & Certificate Management** - cert-manager/Vault issued certs, ingress/service mesh wiring
+11. **US-7.11: Audit Log Persistence & Tamper-evidence** - Persist to Loki + Postgres `audit_log` with hash chaining/WORM
 
 ## Security Architecture Structure
 
@@ -217,6 +223,8 @@ AUDIT_RETENTION_DAYS=365
 - [ ] PII detection integrated in ingestion pipeline
 - [ ] Secrets managed via Vault or K8s Secrets
 - [ ] Comprehensive audit logs with user identity
+- [ ] Ingress and service mesh enforce TLS 1.3/mTLS with managed cert rotation (cert-manager/Vault)
+- [ ] Audit logs persisted to Loki and Postgres `audit_log` table with tamper-evidence (hash chaining or WORM)
 - [ ] Security scanning integrated in CI/CD
 - [ ] Security runbooks documented
 - [ ] Penetration testing scheduled/completed

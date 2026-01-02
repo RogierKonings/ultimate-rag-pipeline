@@ -34,6 +34,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-5.4](US-5.4-model-configuration.md) | Model Configuration | High | 2 days | US-5.1, US-5.2, US-5.3 |
 | [US-5.5](US-5.5-resource-management.md) | Resource Management | High | 2-3 days | US-5.1, US-5.2, US-5.3 |
 | [US-5.6](US-5.6-model-health-monitoring.md) | Model Health & Monitoring | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
+| US-5.7 | Unified OpenAI Gateway (chat/embeddings/rerank) | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
+| US-5.8 | Auth & Rate Limiting for Gateway | High | 1-2 days | US-5.7 |
 
 ## Dependency Graph
 
@@ -51,6 +53,10 @@ flowchart TD
     US51 --> US56[US-5.6<br/>Health & Monitoring]
     US52 --> US56
     US53 --> US56
+    US51 --> US57[US-5.7<br/>Unified OpenAI Gateway]
+    US52 --> US57
+    US53 --> US57
+    US57 --> US58[US-5.8<br/>Auth & Rate Limiting]
 ```
 
 ## Implementation Order
@@ -63,6 +69,8 @@ flowchart TD
 4. **US-5.4: Model Configuration** - Configurable model settings
 5. **US-5.5: Resource Management** - GPU optimization and cost control
 6. **US-5.6: Model Health & Monitoring** - Observability and alerting
+7. **US-5.7: Unified OpenAI Gateway** - OpenAI-compatible chat/embeddings/rerank endpoints
+8. **US-5.8: Auth & Rate Limiting** - JWT validation and rate limits consistent with Security epic
 
 ## Service Structure
 
@@ -211,6 +219,8 @@ opentelemetry-exporter-prometheus>=0.43b0
 - [ ] OpenAI-compatible API working for chat completions
 - [ ] Embedding service generating 1024-dim vectors
 - [ ] Reranker service scoring document pairs
+- [ ] Unified OpenAI-compatible endpoints for chat, embeddings, and rerank implemented in gateway
+- [ ] Gateway enforces JWT auth and rate limiting aligned with Security epic
 - [ ] All services have health check endpoints
 - [ ] Prometheus metrics exposed and scraped
 - [ ] Grafana dashboards created

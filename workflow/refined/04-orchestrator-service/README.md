@@ -47,6 +47,8 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-4.7](US-4.7-conversation-memory.md) | Conversation Memory | High | 2 days | - |
 | [US-4.8](US-4.8-orchestrator-api.md) | Orchestrator API | Critical | 2-3 days | US-4.1-4.7 |
 | [US-4.9](US-4.9-graceful-degradation.md) | Graceful Degradation | Medium | 2-3 days | US-4.4, US-4.1 |
+| US-4.10 | Conversation Persistence (Postgres) | High | 2-3 days | US-4.7 |
+| US-4.11 | Streaming Contract Validation | High | 1 day | US-4.6, US-4.8 |
 
 ## Dependency Graph
 
@@ -67,6 +69,9 @@ flowchart TD
     US47 --> US48
     US44 --> US49[US-4.9<br/>Graceful Degradation]
     US41 --> US49
+    US47 --> US410[US-4.10<br/>Conversation Persistence]
+    US46 --> US411[US-4.11<br/>Streaming Contract Validation]
+    US48 --> US411
 ```
 
 ## Implementation Order
@@ -82,6 +87,8 @@ flowchart TD
 7. **US-4.6: Streaming Support** - SSE streaming
 8. **US-4.8: Orchestrator API** - FastAPI endpoints
 9. **US-4.9: Graceful Degradation** - Circuit breakers and fallbacks
+10. **US-4.10: Conversation Persistence (Postgres)** - Persist conversations/messages/citations per architecture schema
+11. **US-4.11: Streaming Contract Validation** - SSE events match `/api/v1/query/stream` contract
 
 ## Service Structure
 
@@ -298,6 +305,8 @@ stateDiagram-v2
 - [ ] Guardrails block harmful input/output
 - [ ] Streaming works end-to-end with SSE
 - [ ] Conversation history persists in Redis
+- [ ] Conversation history and citations persisted to Postgres `conversations`/`messages` tables with migrations
+- [ ] Streaming SSE contract validated (start/delta/citations/done events)
 - [ ] API endpoints documented and tested
 - [ ] P95 TTFT < 500ms achieved
 - [ ] 80%+ test coverage across all modules

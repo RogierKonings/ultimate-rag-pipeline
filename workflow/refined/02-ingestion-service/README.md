@@ -36,6 +36,9 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-2.7](US-2.7-async-processing.md) | Async Processing | Critical | 2-3 days | US-2.1-2.6 |
 | [US-2.8](US-2.8-ingestion-api.md) | Ingestion API | Critical | 2 days | US-2.1-2.7 |
 | [US-2.9](US-2.9-embedding-model-migration.md) | Embedding Model Migration | Medium | 2-3 days | US-2.4, US-2.5 |
+| US-2.10 | Incremental Sync & Re-embed APIs | Critical | 2 days | US-2.1-2.5, US-2.7 |
+| US-2.11 | Deduplication & Versioning (content hash) | High | 2 days | US-2.2, US-2.5 |
+| US-2.12 | Schema Alignment & Logging Persistence | High | 2 days | US-2.5, US-2.8 |
 
 ## Dependency Graph
 
@@ -55,6 +58,13 @@ flowchart TD
     US27 --> US28[US-2.8<br/>Ingestion API]
     US24 --> US29[US-2.9<br/>Embedding Migration]
     US25 --> US29
+    US24 --> US210[US-2.10<br/>Incremental Sync & Re-embed APIs]
+    US25 --> US210
+    US27 --> US210
+    US22 --> US211[US-2.11<br/>Dedup & Versioning]
+    US25 --> US211
+    US25 --> US212[US-2.12<br/>Schema Alignment & Logging Persistence]
+    US28 --> US212
 ```
 
 ## Implementation Order
@@ -70,6 +80,9 @@ flowchart TD
 7. **US-2.7: Async Processing** - Celery tasks for background processing
 8. **US-2.8: Ingestion API** - FastAPI endpoints
 9. **US-2.9: Embedding Model Migration** - Optional, for model upgrades
+10. **US-2.10: Incremental Sync & Re-embed APIs** - `/ingest/sync` and `/ingest/reembed` per architecture contracts
+11. **US-2.11: Deduplication & Versioning** - Content-hash dedup/versioning, consistent with `source_documents` and `chunks`
+12. **US-2.12: Schema Alignment & Logging Persistence** - Persist to architecture schemas and capture ingestion/retrieval/eval logs
 
 ## Service Structure
 
@@ -170,6 +183,9 @@ python-magic>=0.4.27
 - [ ] Documents searchable in Qdrant and OpenSearch
 - [ ] Async jobs complete successfully with progress tracking
 - [ ] API endpoints documented and tested
+- [ ] `/ingest/sync` and `/ingest/reembed` APIs implemented per architecture contract
+- [ ] Content hash dedup/versioning enforced; embeddings use 1024-dim model; chunking defaults 300/512/50 overlap
+- [ ] Postgres schema alignment validated for `source_documents`, `chunks`, `embedding_jobs`; ingestion/retrieval/eval logs persisted as defined
 - [ ] 80%+ test coverage across all modules
 - [ ] All type hints validated with mypy
 - [ ] Performance requirements met (1000+ docs/hour)
