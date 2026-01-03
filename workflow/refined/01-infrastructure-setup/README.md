@@ -22,17 +22,17 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 
 ## User Stories
 
-| Story | Title | Priority | Effort | Dependencies |
-|-------|-------|----------|--------|--------------|
-| [US-1.1](US-1.1-postgresql-setup.md) | PostgreSQL Setup | Critical | 2-3 days | - |
-| [US-1.2](US-1.2-qdrant-vector-database.md) | Qdrant Vector Database | Critical | 2-3 days | - |
-| [US-1.3](US-1.3-opensearch-cluster.md) | OpenSearch Cluster | Critical | 2-3 days | - |
-| [US-1.4](US-1.4-redis-cache.md) | Redis Cache | Critical | 1-2 days | - |
-| [US-1.5](US-1.5-object-storage.md) | Object Storage (MinIO/S3) | Critical | 1-2 days | - |
-| [US-1.6](US-1.6-kubernetes-cluster.md) | Kubernetes Cluster | Critical | 3-4 days | - |
-| [US-1.7](US-1.7-local-development-environment.md) | Local Development Environment | High | 2-3 days | US-1.1-1.5 |
-| US-1.8 | GPU Node Pool & NVIDIA Plugin | High | 2-3 days | US-1.6 |
-| US-1.9 | Ingress, TLS 1.3, Network Policies | High | 2-3 days | US-1.6 |
+| Story                                             | Title                              | Priority | Effort   | Dependencies |
+| ------------------------------------------------- | ---------------------------------- | -------- | -------- | ------------ |
+| [US-1.1](US-1.1-postgresql-setup.md)              | PostgreSQL Setup                   | Critical | 2-3 days | -            |
+| [US-1.2](US-1.2-qdrant-vector-database.md)        | Qdrant Vector Database             | Critical | 2-3 days | -            |
+| [US-1.3](US-1.3-opensearch-cluster.md)            | OpenSearch Cluster                 | Critical | 2-3 days | -            |
+| [US-1.4](US-1.4-redis-cache.md)                   | Redis Cache                        | Critical | 1-2 days | -            |
+| [US-1.5](US-1.5-object-storage.md)                | Object Storage (MinIO/S3)          | Critical | 1-2 days | -            |
+| [US-1.6](US-1.6-kubernetes-cluster.md)            | Kubernetes Cluster                 | Critical | 3-4 days | -            |
+| [US-1.7](US-1.7-local-development-environment.md) | Local Development Environment      | High     | 2-3 days | US-1.1-1.5   |
+| (US-1.8)(US-1.8-gpu-node-pool.md)                 | GPU Node Pool & NVIDIA Plugin      | High     | 2-3 days | US-1.6       |
+| (US-1.9)(US-1.9-ingress-tls-network-policies.md)  | Ingress, TLS 1.3, Network Policies | High     | 2-3 days | US-1.6       |
 
 ## Dependency Graph
 
