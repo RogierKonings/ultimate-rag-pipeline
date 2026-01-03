@@ -1,0 +1,59 @@
+# Ultimate RAG Pipeline - Non-Commercial License
+
+Copyright (c) 2024-present Rogier Konings
+
+## License Grant
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, merge, publish, and distribute the Software, subject to the
+following conditions:
+
+### Non-Commercial Use Only
+
+The Software may only be used for **non-commercial purposes**. Non-commercial
+purposes include, but are not limited to:
+
+- Personal learning and education
+- Academic research
+- Non-profit organizational use
+- Open source projects that are themselves non-commercial
+
+### Commercial Use Restriction
+
+**Commercial use of this Software is strictly prohibited** without explicit
+written permission from the copyright holder. Commercial use includes, but is
+not limited to:
+
+- Using the Software in a product or service that generates revenue
+- Using the Software in a commercial organization's internal operations
+- Selling, licensing, or sublicensing the Software or derivative works
+- Using the Software to provide paid consulting or services
+
+### Exception for Copyright Holder
+
+The copyright holder (Rogier Konings) retains all rights to use, modify,
+distribute, and commercialize this Software without restriction.
+
+### Commercial Licensing
+
+For commercial licensing inquiries, please contact the copyright holder.
+
+## Conditions
+
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+2. Any derivative works must be distributed under the same license terms.
+
+3. Attribution must be given to the original author in any derivative works.
+
+## Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
