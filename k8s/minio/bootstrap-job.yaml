@@ -1,0 +1,308 @@
+# MinIO Bootstrap Job
+# ====================
+# Creates buckets, lifecycle policies, and IAM policies.
+# Run after MinIO is ready but before ingesting documents.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-bootstrap
+  namespace: rag-pipeline
+  labels:
+    app: minio
+    component: bootstrap
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: minio-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-minio
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for MinIO to be ready..."
+              until wget -q -O- http://minio:9000/minio/health/live 2>/dev/null; do
+                echo "MinIO not ready, waiting..."
+                sleep 5
+              done
+              echo "MinIO is ready!"
+      containers:
+        - name: bootstrap
+          image: minio/mc:RELEASE.2024-01-11T05-49-32Z
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: root-user
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secrets
+                  key: root-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              echo "=== MinIO Bootstrap Script ==="
+              echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              
+              # Configure MinIO client alias
+              echo "Configuring MinIO client..."
+              mc alias set rag http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              
+              # Verify connection
+              mc admin info rag
+              
+              # ========================================
+              # Create Buckets
+              # ========================================
+              echo ""
+              echo ">>> Creating buckets..."
+              
+              mc mb --ignore-existing rag/raw-documents
+              echo "Created bucket: raw-documents"
+              
+              mc mb --ignore-existing rag/processed-chunks
+              echo "Created bucket: processed-chunks"
+              
+              mc mb --ignore-existing rag/backups
+              echo "Created bucket: backups"
+              
+              mc mb --ignore-existing rag/temp-uploads
+              echo "Created bucket: temp-uploads"
+              
+              # ========================================
+              # Set Bucket Policies (Anonymous Access)
+              # ========================================
+              echo ""
+              echo ">>> Setting bucket policies (private)..."
+              
+              mc anonymous set none rag/raw-documents
+              mc anonymous set none rag/processed-chunks
+              mc anonymous set none rag/backups
+              mc anonymous set none rag/temp-uploads
+              
+              # ========================================
+              # Enable Versioning
+              # ========================================
+              echo ""
+              echo ">>> Enabling versioning on critical buckets..."
+              
+              mc version enable rag/raw-documents
+              echo "Versioning enabled: raw-documents"
+              
+              # ========================================
+              # Configure Lifecycle Rules
+              # ========================================
+              echo ""
+              echo ">>> Configuring lifecycle rules..."
+              
+              # Temp uploads: expire after 24 hours
+              cat > /tmp/temp-lifecycle.json << 'EOF'
+              {
+                "Rules": [
+                  {
+                    "ID": "expire-temp-uploads",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": ""
+                    },
+                    "Expiration": {
+                      "Days": 1
+                    }
+                  }
+                ]
+              }
+              EOF
+              mc ilm import rag/temp-uploads < /tmp/temp-lifecycle.json
+              echo "Lifecycle: temp-uploads expire after 24 hours"
+              
+              # Raw documents: expire noncurrent versions after 30 days
+              cat > /tmp/raw-lifecycle.json << 'EOF'
+              {
+                "Rules": [
+                  {
+                    "ID": "cleanup-noncurrent-versions",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": ""
+                    },
+                    "NoncurrentVersionExpiration": {
+                      "NoncurrentDays": 30
+                    }
+                  },
+                  {
+                    "ID": "abort-incomplete-multipart",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": ""
+                    },
+                    "AbortIncompleteMultipartUpload": {
+                      "DaysAfterInitiation": 7
+                    }
+                  }
+                ]
+              }
+              EOF
+              mc ilm import rag/raw-documents < /tmp/raw-lifecycle.json
+              echo "Lifecycle: raw-documents noncurrent expire 30 days, abort multipart 7 days"
+              
+              # Backups: tiered retention
+              cat > /tmp/backup-lifecycle.json << 'EOF'
+              {
+                "Rules": [
+                  {
+                    "ID": "daily-backup-retention",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": "daily/"
+                    },
+                    "Expiration": {
+                      "Days": 30
+                    }
+                  },
+                  {
+                    "ID": "weekly-backup-retention",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": "weekly/"
+                    },
+                    "Expiration": {
+                      "Days": 90
+                    }
+                  },
+                  {
+                    "ID": "monthly-backup-retention",
+                    "Status": "Enabled",
+                    "Filter": {
+                      "Prefix": "monthly/"
+                    },
+                    "Expiration": {
+                      "Days": 365
+                    }
+                  }
+                ]
+              }
+              EOF
+              mc ilm import rag/backups < /tmp/backup-lifecycle.json
+              echo "Lifecycle: backups - daily/30d, weekly/90d, monthly/365d"
+              
+              # ========================================
+              # Create IAM Policies
+              # ========================================
+              echo ""
+              echo ">>> Creating IAM policies..."
+              
+              # RAG Service Policy (read-write on documents)
+              cat > /tmp/rag-policy.json << 'EOF'
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "s3:GetObject",
+                      "s3:PutObject",
+                      "s3:DeleteObject",
+                      "s3:ListBucket",
+                      "s3:GetBucketLocation"
+                    ],
+                    "Resource": [
+                      "arn:aws:s3:::raw-documents",
+                      "arn:aws:s3:::raw-documents/*",
+                      "arn:aws:s3:::processed-chunks",
+                      "arn:aws:s3:::processed-chunks/*",
+                      "arn:aws:s3:::temp-uploads",
+                      "arn:aws:s3:::temp-uploads/*"
+                    ]
+                  }
+                ]
+              }
+              EOF
+              mc admin policy create rag rag-readwrite /tmp/rag-policy.json 2>/dev/null || \
+                mc admin policy info rag rag-readwrite
+              echo "Created policy: rag-readwrite"
+              
+              # Read-only Policy (for monitoring/dashboards)
+              cat > /tmp/readonly-policy.json << 'EOF'
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "s3:GetObject",
+                      "s3:ListBucket",
+                      "s3:GetBucketLocation"
+                    ],
+                    "Resource": [
+                      "arn:aws:s3:::*",
+                      "arn:aws:s3:::*/*"
+                    ]
+                  }
+                ]
+              }
+              EOF
+              mc admin policy create rag readonly /tmp/readonly-policy.json 2>/dev/null || \
+                mc admin policy info rag readonly
+              echo "Created policy: readonly"
+              
+              # Backup Policy (read-write on backups only)
+              cat > /tmp/backup-policy.json << 'EOF'
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "s3:GetObject",
+                      "s3:PutObject",
+                      "s3:ListBucket",
+                      "s3:GetBucketLocation"
+                    ],
+                    "Resource": [
+                      "arn:aws:s3:::backups",
+                      "arn:aws:s3:::backups/*"
+                    ]
+                  }
+                ]
+              }
+              EOF
+              mc admin policy create rag backup-write /tmp/backup-policy.json 2>/dev/null || \
+                mc admin policy info rag backup-write
+              echo "Created policy: backup-write"
+              
+              # ========================================
+              # Verification
+              # ========================================
+              echo ""
+              echo ">>> Verification..."
+              
+              echo ""
+              echo "Buckets:"
+              mc ls rag
+              
+              echo ""
+              echo "Policies:"
+              mc admin policy list rag
+              
+              echo ""
+              echo "Lifecycle rules (raw-documents):"
+              mc ilm ls rag/raw-documents
+              
+              echo ""
+              echo "Lifecycle rules (backups):"
+              mc ilm ls rag/backups
+              
+              echo ""
+              echo "=== MinIO Bootstrap Complete ==="

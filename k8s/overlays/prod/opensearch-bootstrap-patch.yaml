@@ -1,0 +1,57 @@
+# OpenSearch Bootstrap Production Patch
+# ======================================
+# Patches the bootstrap job for production with security enabled.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opensearch-bootstrap
+  namespace: rag-pipeline
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-opensearch
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for OpenSearch to be ready (with auth)..."
+              until wget -q -O- \
+                --header="Authorization: Basic $(echo -n $OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD | base64)" \
+                --no-check-certificate \
+                https://opensearch:9200/_cluster/health 2>/dev/null | \
+                grep -q '"status":"green"\|"status":"yellow"'; do
+                echo "OpenSearch not ready, waiting..."
+                sleep 5
+              done
+              echo "OpenSearch is ready!"
+          env:
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-security-secrets
+                  key: admin-username
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-security-secrets
+                  key: admin-password
+      containers:
+        - name: bootstrap
+          env:
+            - name: OPENSEARCH_URL
+              value: "https://opensearch:9200"
+            - name: OPENSEARCH_SECURITY_ENABLED
+              value: "true"
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-security-secrets
+                  key: admin-username
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-security-secrets
+                  key: admin-password

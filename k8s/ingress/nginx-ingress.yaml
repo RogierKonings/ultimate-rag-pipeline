@@ -1,0 +1,252 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+---
+# Ingress Controller Installation
+# ================================
+# Option 1: Install using kubectl (recommended):
+#
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+# kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+#
+# Then apply this file to configure TLS 1.3:
+# kubectl apply -f k8s/ingress/nginx-ingress.yaml
+#
+# Option 2: Install using Helm (alternative):
+#
+# helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx && helm repo update
+# helm install ingress-nginx ingress-nginx/ingress-nginx \
+#   --namespace ingress-nginx --create-namespace \
+#   --set controller.service.type=LoadBalancer \
+#   --set controller.config.ssl-protocols="TLSv1.3" \
+#   --set controller.config.ssl-ciphers="TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256" \
+#   --set controller.config.hsts="true"
+
+---
+# Nginx Ingress Controller ConfigMap for TLS 1.3 Enforcement
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+data:
+  # TLS 1.3 only - disables TLS 1.2 and below
+  ssl-protocols: "TLSv1.3"
+  
+  # Strong TLS 1.3 cipher suites only
+  # These are the only cipher suites allowed in TLS 1.3
+  ssl-ciphers: "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
+  
+  # Server cipher preference
+  ssl-prefer-server-ciphers: "true"
+  
+  # Enable HSTS (HTTP Strict Transport Security)
+  hsts: "true"
+  hsts-max-age: "31536000"
+  hsts-include-subdomains: "true"
+  hsts-preload: "true"
+  
+  # Security headers
+  use-forwarded-headers: "true"
+  compute-full-forwarded-for: "true"
+  
+  # Enable OCSP stapling for certificate validation
+  enable-ocsp: "true"
+  
+  # Proxy settings for performance
+  proxy-body-size: "100m"
+  proxy-read-timeout: "300"
+  proxy-send-timeout: "300"
+  proxy-connect-timeout: "60"
+  
+  # Logging format with TLS version info
+  log-format-upstream: '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" $request_length $request_time [$proxy_upstream_name] [$proxy_alternative_upstream_name] $upstream_addr $upstream_response_length $upstream_response_time $upstream_status $req_id $ssl_protocol $ssl_cipher'
+  
+  # Enable real IP detection
+  use-proxy-protocol: "false"
+  
+  # Rate limiting defaults
+  limit-req-status-code: "429"
+  limit-conn-status-code: "429"
+
+---
+# RAG Pipeline Ingress Resource with TLS 1.3 and cert-manager Integration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-pipeline-ingress
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline-ingress
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: ingress
+  annotations:
+    # cert-manager integration - use production issuer
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # For staging/testing, use this instead:
+    # cert-manager.io/cluster-issuer: "letsencrypt-staging"
+    
+    # Nginx-specific annotations
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    
+    # Force SSL redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # TLS 1.3 enforcement at ingress level
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self';" always;
+    
+    # mTLS readiness placeholders (for future service mesh integration)
+    # When adopting Istio/Linkerd, update these annotations:
+    # rag-pipeline.io/mtls-mode: "STRICT"
+    # rag-pipeline.io/mtls-enabled: "true"
+    rag-pipeline.io/mtls-mode: "PERMISSIVE"
+    rag-pipeline.io/mtls-ready: "true"
+    
+    # Rate limiting for API endpoints
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.rag-pipeline.example.com
+      # This secret will be created/managed by cert-manager
+      secretName: rag-pipeline-tls
+  rules:
+    - host: api.rag-pipeline.example.com
+      http:
+        paths:
+          # Ingestion Service endpoints
+          - path: /api/v1/ingest
+            pathType: Prefix
+            backend:
+              service:
+                name: ingestion-service
+                port:
+                  number: 8001
+          
+          # Retrieval Service endpoints
+          - path: /api/v1/retrieve
+            pathType: Prefix
+            backend:
+              service:
+                name: retrieval-service
+                port:
+                  number: 8002
+          
+          # Orchestrator Service endpoints
+          - path: /api/v1/query
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator-service
+                port:
+                  number: 8003
+          
+          - path: /api/v1/sessions
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator-service
+                port:
+                  number: 8003
+          
+          # Health check endpoint
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator-service
+                port:
+                  number: 8003
+          
+          # OpenAPI documentation (optional)
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator-service
+                port:
+                  number: 8003
+          
+          - path: /openapi.json
+            pathType: Prefix
+            backend:
+              service:
+                name: orchestrator-service
+                port:
+                  number: 8003
+
+---
+# Ingress for internal services (optional - for observability stack access)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-pipeline-internal-ingress
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline-internal-ingress
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: ingress
+    environment: internal
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.3"
+    
+    # Basic auth for internal endpoints (configure externally)
+    # nginx.ingress.kubernetes.io/auth-type: basic
+    # nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    # nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+    
+    # Whitelist for internal access only (configure IP ranges)
+    # nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - internal.rag-pipeline.example.com
+      secretName: rag-pipeline-internal-ingress-tls
+  rules:
+    - host: internal.rag-pipeline.example.com
+      http:
+        paths:
+          # Grafana dashboard (if deployed in namespace)
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          
+          # Prometheus (if deployed in namespace)
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090

@@ -1,0 +1,31 @@
+# Production Replicas Patch
+# ==========================
+# Example patch for scaling deployments in production.
+# Apply this to your service deployments when they are created.
+
+# Example: Scale ingestion service to 2 replicas
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: ingestion-service
+#   namespace: rag-pipeline
+# spec:
+#   replicas: 2
+
+# Example: Scale retrieval service to 3 replicas
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: retrieval-service
+#   namespace: rag-pipeline
+# spec:
+#   replicas: 3
+
+# Example: Scale orchestrator service to 3 replicas
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: orchestrator-service
+#   namespace: rag-pipeline
+# spec:
+#   replicas: 3

@@ -1,0 +1,142 @@
+# Certificate Resources for RAG Pipeline Public Endpoints
+# ========================================================
+# These certificates are managed by cert-manager and auto-renewed
+#
+# Certificate Lifecycle:
+# - Duration: 90 days (Let's Encrypt default)
+# - Renewal: 30 days before expiry (automatic)
+# - Status: Check with `kubectl get certificate -n rag-pipeline`
+# ========================================================
+
+---
+# Production Certificate for API endpoints
+# Uses Let's Encrypt production issuer
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rag-pipeline-api-tls
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline-api-tls
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: tls
+spec:
+  # Secret name where the TLS certificate will be stored
+  secretName: rag-pipeline-tls
+  # Duration of the certificate (90 days)
+  duration: 2160h
+  # Renew 30 days before expiry
+  renewBefore: 720h
+  # Subject details
+  subject:
+    organizations:
+      - RAG Pipeline
+  # Use RSA for broader compatibility
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  # Enable usage for server authentication
+  usages:
+    - server auth
+    - digital signature
+    - key encipherment
+  # DNS names to include in the certificate
+  dnsNames:
+    - api.rag-pipeline.example.com
+    - "*.rag-pipeline.example.com"
+  # Reference to the ClusterIssuer
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# Staging Certificate for testing
+# Uses Let's Encrypt staging issuer (for testing without rate limits)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rag-pipeline-api-tls-staging
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline-api-tls-staging
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: tls
+    environment: staging
+spec:
+  # Secret name for staging certificate
+  secretName: rag-pipeline-tls-staging
+  duration: 2160h
+  renewBefore: 720h
+  subject:
+    organizations:
+      - RAG Pipeline
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - server auth
+    - digital signature
+    - key encipherment
+  dnsNames:
+    - api.rag-pipeline.example.com
+    - "*.rag-pipeline.example.com"
+  # Use staging issuer for testing
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# Internal mTLS Certificate Template (placeholder for service mesh adoption)
+# This can be used for internal service-to-service communication
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rag-pipeline-internal-tls
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline-internal-tls
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: mtls
+  annotations:
+    # mTLS readiness annotation
+    rag-pipeline.io/mtls-ready: "true"
+    # Service mesh integration placeholder
+    rag-pipeline.io/service-mesh: "pending"
+spec:
+  # Secret name for internal TLS
+  secretName: rag-pipeline-internal-tls
+  # Shorter duration for internal certs (30 days)
+  duration: 720h
+  # Renew 7 days before expiry
+  renewBefore: 168h
+  commonName: "*.rag-pipeline.svc.cluster.local"
+  # Use internal CA issuer
+  issuerRef:
+    name: rag-pipeline-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  # Include all internal service DNS names
+  dnsNames:
+    - "*.rag-pipeline.svc.cluster.local"
+    - "*.rag-pipeline.svc"
+    - "ingestion-service.rag-pipeline.svc.cluster.local"
+    - "retrieval-service.rag-pipeline.svc.cluster.local"
+    - "orchestrator-service.rag-pipeline.svc.cluster.local"
+    - "postgres.rag-pipeline.svc.cluster.local"
+    - "qdrant.rag-pipeline.svc.cluster.local"
+    - "opensearch.rag-pipeline.svc.cluster.local"
+    - "redis.rag-pipeline.svc.cluster.local"
+    - "minio.rag-pipeline.svc.cluster.local"
+  # Use ECDSA for internal certs (faster)
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+    - client auth
+    - digital signature
+    - key encipherment

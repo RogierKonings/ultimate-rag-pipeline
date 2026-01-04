@@ -1,0 +1,68 @@
+# HashiCorp Vault Integration Configuration
+# ==========================================
+# This file provides Vault Agent Injector integration for secrets management.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rag-pipeline-sa
+  namespace: rag-pipeline
+---
+# Vault Agent Injector Configuration
+# ===================================
+# To use Vault for secrets management, add these annotations to your pod specs:
+#
+# metadata:
+#   annotations:
+#     vault.hashicorp.com/agent-inject: "true"
+#     vault.hashicorp.com/role: "rag-pipeline"
+#     vault.hashicorp.com/agent-inject-secret-database: "secret/data/rag-pipeline/database"
+#     vault.hashicorp.com/agent-inject-template-database: |
+#       {{- with secret "secret/data/rag-pipeline/database" -}}
+#       export DATABASE_URL="{{ .Data.data.url }}"
+#       {{- end }}
+#
+# Vault Policy Example (apply via Vault CLI):
+# ------------------------------------------
+# vault policy write rag-pipeline - <<EOF
+# path "secret/data/rag-pipeline/*" {
+#   capabilities = ["read"]
+# }
+# EOF
+#
+# Vault Kubernetes Auth Setup:
+# ----------------------------
+# vault auth enable kubernetes
+# vault write auth/kubernetes/config \
+#   token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+#   kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443" \
+#   kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+#
+# vault write auth/kubernetes/role/rag-pipeline \
+#   bound_service_account_names=rag-pipeline-sa \
+#   bound_service_account_namespaces=rag-pipeline \
+#   policies=rag-pipeline \
+#   ttl=24h
+
+---
+# External Secrets Operator Alternative
+# =====================================
+# If using External Secrets Operator instead of Vault Agent:
+#
+# apiVersion: external-secrets.io/v1beta1
+# kind: SecretStore
+# metadata:
+#   name: vault-backend
+#   namespace: rag-pipeline
+# spec:
+#   provider:
+#     vault:
+#       server: "https://vault.example.com"
+#       path: "secret"
+#       version: "v2"
+#       auth:
+#         kubernetes:
+#           mountPath: "kubernetes"
+#           role: "rag-pipeline"
+#           serviceAccountRef:
+#             name: "rag-pipeline-sa"

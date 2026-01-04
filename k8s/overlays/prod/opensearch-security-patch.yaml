@@ -1,0 +1,89 @@
+# OpenSearch Production Security Patch
+# Enables security plugin with authentication and TLS
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch
+  namespace: rag-pipeline
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: sysctl
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+        # Init container to set up security configuration
+        - name: security-init
+          image: opensearchproject/opensearch:2.11.1
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Copy security config files
+              cp /security-config/*.yml /usr/share/opensearch/config/opensearch-security/
+              
+              # Generate TLS certificates if not present
+              if [ ! -f /certs/node-key.pem ]; then
+                echo "TLS certificates must be provided via secrets"
+                exit 1
+              fi
+              
+              # Copy TLS certs
+              cp /certs/*.pem /usr/share/opensearch/config/
+              chmod 600 /usr/share/opensearch/config/*.pem
+          volumeMounts:
+            - name: security-config
+              mountPath: /security-config
+            - name: tls-certs
+              mountPath: /certs
+            - name: opensearch-config
+              mountPath: /usr/share/opensearch/config
+      containers:
+        - name: opensearch
+          env:
+            # Remove disable flags - enable security
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
+            - name: DISABLE_SECURITY_PLUGIN
+              value: "false"
+            # TLS Configuration
+            - name: plugins.security.ssl.transport.pemcert_filepath
+              value: "node-cert.pem"
+            - name: plugins.security.ssl.transport.pemkey_filepath
+              value: "node-key.pem"
+            - name: plugins.security.ssl.transport.pemtrustedcas_filepath
+              value: "ca-cert.pem"
+            - name: plugins.security.ssl.transport.enforce_hostname_verification
+              value: "false"
+            - name: plugins.security.ssl.http.enabled
+              value: "true"
+            - name: plugins.security.ssl.http.pemcert_filepath
+              value: "node-cert.pem"
+            - name: plugins.security.ssl.http.pemkey_filepath
+              value: "node-key.pem"
+            - name: plugins.security.ssl.http.pemtrustedcas_filepath
+              value: "ca-cert.pem"
+            # Authentication
+            - name: plugins.security.authcz.admin_dn
+              value: "CN=admin,OU=RAG,O=Pipeline,C=US"
+            - name: plugins.security.nodes_dn
+              value: "CN=opensearch-*,OU=RAG,O=Pipeline,C=US"
+            - name: plugins.security.allow_default_init_securityindex
+              value: "true"
+          volumeMounts:
+            - name: security-config
+              mountPath: /usr/share/opensearch/config/opensearch-security
+            - name: tls-certs
+              mountPath: /usr/share/opensearch/config/certs
+              readOnly: true
+      volumes:
+        - name: security-config
+          configMap:
+            name: opensearch-security-config
+        - name: tls-certs
+          secret:
+            secretName: opensearch-tls-certs
+        - name: opensearch-config
+          emptyDir: {}

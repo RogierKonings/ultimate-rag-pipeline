@@ -1,0 +1,109 @@
+# PVC Templates for RAG Pipeline
+# ================================
+# Standardized PersistentVolumeClaim templates for all stateful services.
+# Storage class is parameterized for cloud-provider overlays.
+#
+# Usage:
+#   - GKE: storageClassName will be patched to 'premium-rwo'
+#   - EKS: storageClassName will be patched to 'encrypted-gp3'
+#   - AKS: storageClassName will be patched to 'managed-csi-premium'
+
+---
+# PostgreSQL PVC - Document metadata and pipeline state
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: rag-pipeline
+  labels:
+    app: postgres
+    component: database
+    encryption: required
+    data-classification: high
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""  # Patched by overlay
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+# Qdrant PVC - Vector embeddings storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-pvc
+  namespace: rag-pipeline
+  labels:
+    app: qdrant
+    component: vector-db
+    encryption: required
+    data-classification: medium
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""  # Patched by overlay
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# OpenSearch PVC - Search indices
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opensearch-pvc
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+    encryption: required
+    data-classification: medium
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""  # Patched by overlay
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+# MinIO PVC - Raw document storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: rag-pipeline
+  labels:
+    app: minio
+    component: object-storage
+    encryption: required
+    data-classification: high
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""  # Patched by overlay
+  resources:
+    requests:
+      storage: 500Gi
+
+---
+# Redis PVC - Cache with optional persistence
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+    encryption: required
+    data-classification: medium
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""  # Patched by overlay
+  resources:
+    requests:
+      storage: 10Gi

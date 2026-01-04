@@ -1,0 +1,126 @@
+# cert-manager ClusterIssuer Resources
+# =====================================
+# Prerequisites:
+#   Install cert-manager using kubectl (recommended for non-helm environments):
+#
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.0/cert-manager.yaml
+#
+#   Wait for cert-manager pods to be ready:
+#   kubectl wait --for=condition=Available deployment --all -n cert-manager --timeout=300s
+#
+#   Verify installation:
+#   kubectl get pods -n cert-manager
+#
+#   Alternative: Install using Helm:
+#   helm repo add jetstack https://charts.jetstack.io && helm repo update
+#   helm install cert-manager jetstack/cert-manager \
+#     --namespace cert-manager --create-namespace \
+#     --set crds.enabled=true
+#
+# Documentation: https://cert-manager.io/docs/
+# =====================================
+
+---
+# Let's Encrypt Staging ClusterIssuer
+# Use this for testing to avoid rate limits
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  acme:
+    # Let's Encrypt staging server URL
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    # Email address for ACME registration and certificate notifications
+    # IMPORTANT: Replace with your actual email address
+    email: rogier_konings@hotmail.com
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    # HTTP01 challenge solver using nginx ingress
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+        selector: {}
+
+---
+# Let's Encrypt Production ClusterIssuer
+# Use this for production certificates with valid trust chain
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  acme:
+    # Let's Encrypt production server URL
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email address for ACME registration and certificate notifications
+    # IMPORTANT: Replace with your actual email address
+    email: admin@example.com
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    # HTTP01 challenge solver using nginx ingress
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
+        selector: {}
+
+---
+# Self-signed ClusterIssuer for internal/development use
+# Useful for mTLS between services when not using a service mesh
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  selfSigned: {}
+
+---
+# CA Issuer for internal certificates (mTLS readiness)
+# This creates a CA that can sign internal service certificates
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: rag-pipeline-ca
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  isCA: true
+  commonName: rag-pipeline-ca
+  secretName: rag-pipeline-ca-secret
+  duration: 87600h # 10 years
+  renewBefore: 8760h # Renew 1 year before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+---
+# ClusterIssuer using the internal CA for mTLS
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: rag-pipeline-ca-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  ca:
+    secretName: rag-pipeline-ca-secret

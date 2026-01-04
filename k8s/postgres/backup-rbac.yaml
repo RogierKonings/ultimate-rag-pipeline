@@ -1,0 +1,54 @@
+# PostgreSQL Backup RBAC
+# ======================
+# ServiceAccount and permissions for backup jobs.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-backup
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: database
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres-backup
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: database
+rules:
+  # Allow reading secrets for database credentials
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["rag-secrets", "minio-backup-credentials", "minio-secrets"]
+    verbs: ["get"]
+  # Allow reading configmaps
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  # Allow creating events for logging
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres-backup
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: database
+subjects:
+  - kind: ServiceAccount
+    name: postgres-backup
+    namespace: rag-pipeline
+roleRef:
+  kind: Role
+  name: postgres-backup
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for CPU-only inference
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for embedding service
+RUN pip install --no-cache-dir \
+    torch==2.1.0 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir \
+    transformers==4.36.0 \
+    sentence-transformers==2.2.2 \
+    fastapi==0.108.0 \
+    uvicorn==0.25.0 \
+    pydantic==2.5.0
+
+# Copy application code
+COPY . .
+
+ENV PYTHONPATH=/app
+ENV TOKENIZERS_PARALLELISM=false
+
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

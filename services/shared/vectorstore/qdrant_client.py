@@ -1,0 +1,174 @@
+"""Qdrant Vector Store client wrapper for document embeddings."""
+
+import os
+from typing import Any, Dict, List, Optional
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+)
+
+
+class QdrantVectorStore:
+    """A wrapper around Qdrant client for vector storage operations."""
+
+    def __init__(
+        self,
+        url: Optional[str] = None,
+        collection_name: Optional[str] = None,
+        timeout: int = 30,
+    ):
+        """Initialize Qdrant client.
+
+        Args:
+            url: Qdrant server URL. Defaults to QDRANT_URL env var or localhost.
+            collection_name: Collection name. Defaults to QDRANT_COLLECTION env var or 'documents'.
+            timeout: Request timeout in seconds.
+        """
+        self.client = QdrantClient(
+            url=url or os.getenv("QDRANT_URL", "http://localhost:6333"),
+            timeout=timeout,
+        )
+        self.collection_name = collection_name or os.getenv(
+            "QDRANT_COLLECTION", "documents"
+        )
+
+    async def upsert(
+        self,
+        points: List[Dict[str, Any]],
+    ) -> None:
+        """Upsert vectors with metadata.
+
+        Args:
+            points: List of dicts with 'id', 'vector', and 'payload' keys.
+        """
+        qdrant_points = [
+            PointStruct(
+                id=p["id"],
+                vector=p["vector"],
+                payload=p["payload"],
+            )
+            for p in points
+        ]
+        self.client.upsert(
+            collection_name=self.collection_name,
+            points=qdrant_points,
+        )
+
+    async def search(
+        self,
+        query_vector: List[float],
+        top_k: int = 10,
+        filter_conditions: Optional[Dict[str, Any]] = None,
+        score_threshold: Optional[float] = None,
+    ) -> List[Dict[str, Any]]:
+        """Search for similar vectors.
+
+        Args:
+            query_vector: The query embedding vector.
+            top_k: Number of results to return.
+            filter_conditions: Dict of field->value for filtering.
+            score_threshold: Minimum score threshold for results.
+
+        Returns:
+            List of dicts with 'id', 'score', and 'payload' keys.
+        """
+        qdrant_filter = (
+            self._build_filter(filter_conditions) if filter_conditions else None
+        )
+
+        results = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,
+            limit=top_k,
+            query_filter=qdrant_filter,
+            score_threshold=score_threshold,
+            with_payload=True,
+        )
+
+        return [
+            {
+                "id": str(hit.id),
+                "score": hit.score,
+                "payload": hit.payload,
+            }
+            for hit in results
+        ]
+
+    async def delete_by_document_id(self, document_id: str) -> None:
+        """Delete all vectors associated with a document.
+
+        Args:
+            document_id: The document ID to delete vectors for.
+        """
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(
+                        key="document_id", match=MatchValue(value=document_id)
+                    )
+                ]
+            ),
+        )
+
+    async def delete_by_ids(self, point_ids: List[str]) -> None:
+        """Delete vectors by their IDs.
+
+        Args:
+            point_ids: List of point IDs to delete.
+        """
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=point_ids,
+        )
+
+    def _build_filter(self, conditions: Dict[str, Any]) -> Filter:
+        """Build Qdrant filter from conditions dict.
+
+        Args:
+            conditions: Dict of field->value pairs.
+
+        Returns:
+            Qdrant Filter object.
+        """
+        must = []
+        for key, value in conditions.items():
+            if isinstance(value, list):
+                # For list values, match any value in the list
+                must.append(FieldCondition(key=key, match=MatchValue(value=value)))
+            else:
+                must.append(FieldCondition(key=key, match=MatchValue(value=value)))
+        return Filter(must=must)
+
+    def health_check(self) -> bool:
+        """Check Qdrant connectivity.
+
+        Returns:
+            True if Qdrant is reachable, False otherwise.
+        """
+        try:
+            self.client.get_collections()
+            return True
+        except Exception:
+            return False
+
+    def get_collection_info(self) -> Optional[Dict[str, Any]]:
+        """Get information about the current collection.
+
+        Returns:
+            Collection info dict or None if collection doesn't exist.
+        """
+        try:
+            info = self.client.get_collection(self.collection_name)
+            return {
+                "name": self.collection_name,
+                "vectors_count": info.vectors_count,
+                "points_count": info.points_count,
+                "status": info.status.value,
+            }
+        except Exception:
+            return None

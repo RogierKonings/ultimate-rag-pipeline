@@ -1,0 +1,299 @@
+# OpenSearch Bootstrap ConfigMap
+# ===============================
+# Contains Python bootstrap script for more complex operations.
+# Used when the shell-based bootstrap needs enhancement.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-bootstrap-scripts
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: bootstrap
+data:
+  bootstrap-opensearch.py: |
+    #!/usr/bin/env python3
+    """Bootstrap OpenSearch with index templates and custom analyzers."""
+    
+    import os
+    import json
+    import logging
+    import sys
+    from typing import Any, Dict
+    
+    try:
+        from opensearchpy import OpenSearch
+    except ImportError:
+        print("Installing opensearch-py...")
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "opensearch-py"])
+        from opensearchpy import OpenSearch
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    
+    
+    def get_client() -> OpenSearch:
+        """Create OpenSearch client."""
+        host = os.getenv("OPENSEARCH_HOST", "opensearch")
+        port = int(os.getenv("OPENSEARCH_PORT", 9200))
+        use_ssl = os.getenv("OPENSEARCH_USE_SSL", "false").lower() == "true"
+        username = os.getenv("OPENSEARCH_USERNAME")
+        password = os.getenv("OPENSEARCH_PASSWORD")
+        
+        auth = (username, password) if username and password else None
+        
+        return OpenSearch(
+            hosts=[{"host": host, "port": port}],
+            http_auth=auth,
+            use_ssl=use_ssl,
+            verify_certs=False,
+            ssl_show_warn=False,
+            timeout=30,
+        )
+    
+    
+    # Custom analyzers for text processing
+    ANALYZER_SETTINGS = {
+        "analysis": {
+            "analyzer": {
+                "rag_standard": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "asciifolding",
+                        "english_stemmer",
+                        "english_stop"
+                    ]
+                },
+                "autocomplete": {
+                    "type": "custom",
+                    "tokenizer": "autocomplete_tokenizer",
+                    "filter": ["lowercase", "asciifolding"]
+                },
+                "autocomplete_search": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": ["lowercase", "asciifolding"]
+                },
+                "code_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "code_tokenizer",
+                    "filter": ["lowercase"]
+                }
+            },
+            "tokenizer": {
+                "autocomplete_tokenizer": {
+                    "type": "edge_ngram",
+                    "min_gram": 2,
+                    "max_gram": 20,
+                    "token_chars": ["letter", "digit"]
+                },
+                "code_tokenizer": {
+                    "type": "pattern",
+                    "pattern": "[^\\w\\d]+"
+                }
+            },
+            "filter": {
+                "english_stemmer": {
+                    "type": "stemmer",
+                    "language": "english"
+                },
+                "english_stop": {
+                    "type": "stop",
+                    "stopwords": "_english_"
+                }
+            }
+        }
+    }
+    
+    
+    # Documents index template
+    DOCUMENTS_TEMPLATE = {
+        "index_patterns": ["documents-*"],
+        "priority": 100,
+        "template": {
+            "settings": {
+                "number_of_shards": 3,
+                "number_of_replicas": 1,
+                "refresh_interval": "5s",
+                **ANALYZER_SETTINGS
+            },
+            "mappings": {
+                "properties": {
+                    "document_id": {"type": "keyword"},
+                    "tenant_id": {"type": "keyword"},
+                    "title": {
+                        "type": "text",
+                        "analyzer": "rag_standard",
+                        "fields": {
+                            "keyword": {"type": "keyword"},
+                            "autocomplete": {
+                                "type": "text",
+                                "analyzer": "autocomplete",
+                                "search_analyzer": "autocomplete_search"
+                            }
+                        }
+                    },
+                    "description": {
+                        "type": "text",
+                        "analyzer": "rag_standard"
+                    },
+                    "source_type": {"type": "keyword"},
+                    "source_url": {"type": "keyword"},
+                    "visibility": {"type": "keyword"},
+                    "allowed_groups": {"type": "keyword"},
+                    "tags": {"type": "keyword"},
+                    "metadata": {"type": "object", "dynamic": True},
+                    "file_size": {"type": "long"},
+                    "file_type": {"type": "keyword"},
+                    "chunk_count": {"type": "integer"},
+                    "created_at": {"type": "date"},
+                    "updated_at": {"type": "date"},
+                    "indexed_at": {"type": "date"}
+                }
+            }
+        }
+    }
+    
+    
+    # Chunks index template  
+    CHUNKS_TEMPLATE = {
+        "index_patterns": ["chunks-*"],
+        "priority": 100,
+        "template": {
+            "settings": {
+                "number_of_shards": 3,
+                "number_of_replicas": 1,
+                "refresh_interval": "5s",
+                **ANALYZER_SETTINGS
+            },
+            "mappings": {
+                "properties": {
+                    "chunk_id": {"type": "keyword"},
+                    "document_id": {"type": "keyword"},
+                    "tenant_id": {"type": "keyword"},
+                    "chunk_index": {"type": "integer"},
+                    "content": {
+                        "type": "text",
+                        "analyzer": "rag_standard"
+                    },
+                    "content_type": {"type": "keyword"},
+                    "token_count": {"type": "integer"},
+                    "char_count": {"type": "integer"},
+                    "start_char": {"type": "integer"},
+                    "end_char": {"type": "integer"},
+                    "page_number": {"type": "integer"},
+                    "section_title": {
+                        "type": "text",
+                        "fields": {"keyword": {"type": "keyword"}}
+                    },
+                    "parent_chunk_id": {"type": "keyword"},
+                    "metadata": {"type": "object", "dynamic": True},
+                    "visibility": {"type": "keyword"},
+                    "allowed_groups": {"type": "keyword"},
+                    "created_at": {"type": "date"}
+                }
+            }
+        }
+    }
+    
+    
+    def create_index_template(
+        client: OpenSearch,
+        name: str,
+        template: Dict[str, Any]
+    ) -> None:
+        """Create or update an index template."""
+        try:
+            client.indices.put_index_template(name=name, body=template)
+            logger.info(f"Created index template: {name}")
+        except Exception as e:
+            logger.error(f"Failed to create template {name}: {e}")
+            raise
+    
+    
+    def create_index_if_not_exists(
+        client: OpenSearch,
+        index_name: str
+    ) -> None:
+        """Create an index if it doesn't exist."""
+        try:
+            if not client.indices.exists(index=index_name):
+                client.indices.create(index=index_name)
+                logger.info(f"Created index: {index_name}")
+            else:
+                logger.info(f"Index already exists: {index_name}")
+        except Exception as e:
+            logger.warning(f"Could not create index {index_name}: {e}")
+    
+    
+    def create_initial_indices(client: OpenSearch) -> None:
+        """Create initial indices using templates."""
+        indices = [
+            "documents-default",
+            "chunks-default"
+        ]
+        for index in indices:
+            create_index_if_not_exists(client, index)
+    
+    
+    def verify_templates(client: OpenSearch) -> None:
+        """Verify templates were created correctly."""
+        templates = client.indices.get_index_template()
+        template_names = [t["name"] for t in templates.get("index_templates", [])]
+        logger.info(f"Active templates: {template_names}")
+    
+    
+    def test_analyzer(client: OpenSearch) -> None:
+        """Test the autocomplete analyzer."""
+        try:
+            result = client.indices.analyze(
+                index="documents-default",
+                body={
+                    "analyzer": "autocomplete",
+                    "text": "machine learning"
+                }
+            )
+            tokens = [t["token"] for t in result.get("tokens", [])]
+            logger.info(f"Autocomplete tokens for 'machine learning': {tokens[:10]}")
+        except Exception as e:
+            logger.warning(f"Could not test analyzer: {e}")
+    
+    
+    def main():
+        logger.info("=" * 50)
+        logger.info("OpenSearch Bootstrap Starting...")
+        logger.info("=" * 50)
+        
+        client = get_client()
+        
+        # Verify connection
+        info = client.info()
+        logger.info(f"Connected to OpenSearch {info['version']['number']}")
+        
+        # Create index templates
+        logger.info("Creating index templates...")
+        create_index_template(client, "documents-template", DOCUMENTS_TEMPLATE)
+        create_index_template(client, "chunks-template", CHUNKS_TEMPLATE)
+        
+        # Create initial indices
+        logger.info("Creating initial indices...")
+        create_initial_indices(client)
+        
+        # Verify
+        verify_templates(client)
+        test_analyzer(client)
+        
+        logger.info("=" * 50)
+        logger.info("OpenSearch Bootstrap Completed Successfully!")
+        logger.info("=" * 50)
+    
+    
+    if __name__ == "__main__":
+        main()

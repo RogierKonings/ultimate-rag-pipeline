@@ -1,0 +1,3 @@
+# This directory contains PostgreSQL initialization scripts
+# Scripts are executed in alphabetical order when the container is first created
+# Supported formats: .sql, .sql.gz, .sh

@@ -1,0 +1,17 @@
+# Production Resource Limits Patch
+# ==================================
+# Full quotas for production Kubernetes environments
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rag-pipeline-quota
+  namespace: rag-pipeline
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: "64Gi"
+    limits.cpu: "40"
+    limits.memory: "128Gi"
+    persistentvolumeclaims: "20"
+    pods: "50"

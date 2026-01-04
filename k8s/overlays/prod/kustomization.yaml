@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ../../opensearch/security-config.yaml
+  - ../../redis/sentinel-statefulset.yaml
+
+namespace: rag-pipeline
+
+patches:
+  - path: resource-limits-patch.yaml
+  - path: opensearch-security-patch.yaml
+  # Note: Add replicas-patch.yaml when service deployments are created
+  # - path: replicas-patch.yaml
+
+configMapGenerator:
+  - name: rag-config
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - OPENSEARCH_SECURITY_ENABLED=true
+      - REDIS_SENTINEL_ENABLED=true

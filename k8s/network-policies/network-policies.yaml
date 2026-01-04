@@ -1,0 +1,864 @@
+# NetworkPolicies for RAG Pipeline Namespace
+# ===========================================
+# These policies implement namespace isolation and restrict
+# ingress/egress to only necessary service ports.
+#
+# Services and Ports:
+# - PostgreSQL: 5432
+# - PgBouncer: 5432 (connection pooling)
+# - Qdrant: 6333 (HTTP), 6334 (gRPC)
+# - OpenSearch: 9200 (HTTP), 9300 (transport)
+# - Redis: 6379
+# - MinIO: 9000 (API), 9001 (Console)
+# - OTEL Collector: 4317 (gRPC), 4318 (HTTP)
+# - Prometheus: 9090
+# - Application Services: 8001-8004
+#
+# Verification:
+# kubectl exec test-pod -- nc -zv <service> <port>
+# ===========================================
+
+---
+# Default deny all ingress and egress traffic
+# All pods must explicitly allow traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: default-deny-all
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# Allow DNS resolution for all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: allow-dns
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Allow ingress from nginx ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: allow-ingress-controller
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8001
+        - protocol: TCP
+          port: 8002
+        - protocol: TCP
+          port: 8003
+        - protocol: TCP
+          port: 8004
+
+---
+# PostgreSQL Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: postgres-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from PgBouncer
+    - from:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow from application services (for migrations/direct access)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # Allow responses
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# PgBouncer Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pgbouncer-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: pgbouncer-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from application services
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Qdrant Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: qdrant-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: qdrant-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: qdrant
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingestion-service (write vectors)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ingestion-service
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+    # Allow from retrieval-service (read vectors)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: retrieval-service
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+    # Allow Qdrant cluster communication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+        - protocol: TCP
+          port: 6335
+  egress:
+    # Allow Qdrant cluster communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+        - protocol: TCP
+          port: 6335
+
+---
+# OpenSearch Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opensearch-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: opensearch-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: opensearch
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingestion-service (index documents)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ingestion-service
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow from retrieval-service (search)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: retrieval-service
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Allow OpenSearch cluster communication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+        - protocol: TCP
+          port: 9300
+  egress:
+    # Allow OpenSearch cluster communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+        - protocol: TCP
+          port: 9300
+
+---
+# Redis Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: redis-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from all application services (caching, task queue)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow from Celery workers
+    - from:
+        - podSelector:
+            matchLabels:
+              app: celery-worker
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow Redis Sentinel communication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 26379
+  egress:
+    # Allow Redis Sentinel communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 26379
+
+---
+# MinIO Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: minio-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: minio-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: minio
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingestion-service (upload documents)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ingestion-service
+      ports:
+        - protocol: TCP
+          port: 9000
+    # Allow from application services for document retrieval
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 9000
+    # MinIO cluster communication
+    - from:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+  egress:
+    # MinIO cluster communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+
+---
+# Ingestion Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingestion-service-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: ingestion-service-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: ingestion-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8001
+    # Allow from Prometheus for scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8001
+  egress:
+    # PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Qdrant
+    - to:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+    # OpenSearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # OTEL Collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+
+---
+# Retrieval Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: retrieval-service-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: retrieval-service-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: retrieval-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8002
+    # Allow from orchestrator-service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: orchestrator-service
+      ports:
+        - protocol: TCP
+          port: 8002
+    # Allow from Prometheus
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8002
+  egress:
+    # PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Qdrant
+    - to:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+    # OpenSearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # OTEL Collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+
+---
+# Orchestrator Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orchestrator-service-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: orchestrator-service-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: orchestrator-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8003
+    # Allow from Prometheus
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8003
+  egress:
+    # Retrieval service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: retrieval-service
+      ports:
+        - protocol: TCP
+          port: 8002
+    # LLM Gateway
+    - to:
+        - podSelector:
+            matchLabels:
+              app: llm-gateway
+      ports:
+        - protocol: TCP
+          port: 8004
+    # vLLM
+    - to:
+        - podSelector:
+            matchLabels:
+              app: vllm
+      ports:
+        - protocol: TCP
+          port: 8000
+    # PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # OTEL Collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+
+---
+# Celery Worker Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: celery-worker-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: celery-worker-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: celery-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from Prometheus
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9100
+  egress:
+    # PostgreSQL via PgBouncer
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pgbouncer
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Qdrant
+    - to:
+        - podSelector:
+            matchLabels:
+              app: qdrant
+      ports:
+        - protocol: TCP
+          port: 6333
+        - protocol: TCP
+          port: 6334
+    # OpenSearch
+    - to:
+        - podSelector:
+            matchLabels:
+              app: opensearch
+      ports:
+        - protocol: TCP
+          port: 9200
+    # Redis (task queue)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # MinIO
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # OTEL Collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+
+---
+# vLLM/Embedding Service Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-service-policy
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: llm-service-policy
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: vllm
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from orchestrator-service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: orchestrator-service
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from LLM Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app: llm-gateway
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from ingestion-service (embedding generation)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: ingestion-service
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from retrieval-service (reranking)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: retrieval-service
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from Celery workers
+    - from:
+        - podSelector:
+            matchLabels:
+              app: celery-worker
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Allow from Prometheus
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow outbound for model downloads (HuggingFace)
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Allow Prometheus scraping from monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: allow-prometheus-scraping
+    app.kubernetes.io/part-of: rag-pipeline
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8001
+        - protocol: TCP
+          port: 8002
+        - protocol: TCP
+          port: 8003
+        - protocol: TCP
+          port: 8004
+        - protocol: TCP
+          port: 9090
+        - protocol: TCP
+          port: 9100

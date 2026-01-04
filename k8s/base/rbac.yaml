@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingestion-service
+  namespace: rag-pipeline
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: retrieval-service
+  namespace: rag-pipeline
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orchestrator-service
+  namespace: rag-pipeline
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rag-pipeline-role
+  namespace: rag-pipeline
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rag-pipeline-binding
+  namespace: rag-pipeline
+subjects:
+- kind: ServiceAccount
+  name: ingestion-service
+- kind: ServiceAccount
+  name: retrieval-service
+- kind: ServiceAccount
+  name: orchestrator-service
+roleRef:
+  kind: Role
+  name: rag-pipeline-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,73 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redis-tls
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+spec:
+  secretName: redis-tls-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days
+  subject:
+    organizations:
+      - rag-pipeline
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - redis
+    - redis.rag-pipeline.svc
+    - redis.rag-pipeline.svc.cluster.local
+    - redis-headless
+    - redis-headless.rag-pipeline.svc
+    - redis-headless.rag-pipeline.svc.cluster.local
+    - "*.redis-headless.rag-pipeline.svc.cluster.local"
+    - redis-0.redis.rag-pipeline.svc.cluster.local
+    - redis-1.redis.rag-pipeline.svc.cluster.local
+    - redis-2.redis.rag-pipeline.svc.cluster.local
+  issuerRef:
+    name: rag-ca-issuer
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redis-sentinel-tls
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+spec:
+  secretName: redis-sentinel-tls-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days
+  subject:
+    organizations:
+      - rag-pipeline
+  isCA: false
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - redis-sentinel
+    - redis-sentinel.rag-pipeline.svc
+    - redis-sentinel.rag-pipeline.svc.cluster.local
+    - redis-sentinel-svc
+    - redis-sentinel-svc.rag-pipeline.svc
+    - redis-sentinel-svc.rag-pipeline.svc.cluster.local
+    - "*.redis-sentinel.rag-pipeline.svc.cluster.local"
+    - redis-sentinel-0.redis-sentinel.rag-pipeline.svc.cluster.local
+    - redis-sentinel-1.redis-sentinel.rag-pipeline.svc.cluster.local
+    - redis-sentinel-2.redis-sentinel.rag-pipeline.svc.cluster.local
+  issuerRef:
+    name: rag-ca-issuer
+    kind: ClusterIssuer

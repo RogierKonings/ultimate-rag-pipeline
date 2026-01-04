@@ -1,0 +1,169 @@
+# OpenSearch TLS Certificates
+# ===========================
+# Uses cert-manager to generate TLS certificates for OpenSearch.
+# Requires cert-manager to be installed in the cluster.
+
+---
+# Self-signed issuer for OpenSearch certificates
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: opensearch-selfsigned-issuer
+  namespace: rag-pipeline
+spec:
+  selfSigned: {}
+
+---
+# CA Certificate for OpenSearch
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opensearch-ca
+  namespace: rag-pipeline
+spec:
+  isCA: true
+  commonName: opensearch-ca
+  secretName: opensearch-ca-secret
+  duration: 87600h  # 10 years
+  renewBefore: 8760h  # 1 year
+  privateKey:
+    algorithm: RSA
+    size: 4096
+  issuerRef:
+    name: opensearch-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+
+---
+# CA Issuer using the generated CA
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: opensearch-ca-issuer
+  namespace: rag-pipeline
+spec:
+  ca:
+    secretName: opensearch-ca-secret
+
+---
+# HTTP TLS Certificate (for client connections on port 9200)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opensearch-http-tls
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+spec:
+  secretName: opensearch-http-tls-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days
+  subject:
+    organizations:
+      - rag-pipeline
+  commonName: opensearch
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+    - digital signature
+    - key encipherment
+  dnsNames:
+    - opensearch
+    - opensearch.rag-pipeline
+    - opensearch.rag-pipeline.svc
+    - opensearch.rag-pipeline.svc.cluster.local
+    - opensearch-headless
+    - opensearch-headless.rag-pipeline
+    - opensearch-headless.rag-pipeline.svc
+    - opensearch-headless.rag-pipeline.svc.cluster.local
+    - "*.opensearch-headless.rag-pipeline.svc.cluster.local"
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    name: opensearch-ca-issuer
+    kind: Issuer
+    group: cert-manager.io
+
+---
+# Transport TLS Certificate (for inter-node communication on port 9300)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opensearch-transport-tls
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+spec:
+  secretName: opensearch-transport-tls-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days
+  subject:
+    organizations:
+      - rag-pipeline
+  commonName: opensearch-transport
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+    - digital signature
+    - key encipherment
+  dnsNames:
+    - opensearch
+    - opensearch.rag-pipeline
+    - opensearch.rag-pipeline.svc
+    - opensearch.rag-pipeline.svc.cluster.local
+    - opensearch-headless
+    - opensearch-headless.rag-pipeline
+    - opensearch-headless.rag-pipeline.svc
+    - opensearch-headless.rag-pipeline.svc.cluster.local
+    - "*.opensearch-headless.rag-pipeline.svc.cluster.local"
+    - opensearch-0.opensearch-headless.rag-pipeline.svc.cluster.local
+    - opensearch-1.opensearch-headless.rag-pipeline.svc.cluster.local
+    - opensearch-2.opensearch-headless.rag-pipeline.svc.cluster.local
+  issuerRef:
+    name: opensearch-ca-issuer
+    kind: Issuer
+    group: cert-manager.io
+
+---
+# Admin Certificate (for running securityadmin tool)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: opensearch-admin-tls
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+spec:
+  secretName: opensearch-admin-tls-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days
+  subject:
+    organizations:
+      - rag-pipeline
+    organizationalUnits:
+      - RAG
+  commonName: admin
+  isCA: false
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - client auth
+    - digital signature
+    - key encipherment
+  issuerRef:
+    name: opensearch-ca-issuer
+    kind: Issuer
+    group: cert-manager.io

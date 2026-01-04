@@ -1,0 +1,33 @@
+# AKS Overlay
+# ============
+# Kustomization for Azure Kubernetes Service deployments.
+# Uses Azure Managed Disks with encryption.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Patch all PVCs to use AKS encrypted storage class
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      - op: replace
+        path: /spec/storageClassName
+        value: managed-csi-premium
+
+# AKS-specific configurations
+configMapGenerator:
+  - name: cloud-provider-config
+    namespace: rag-pipeline
+    literals:
+      - CLOUD_PROVIDER=aks
+      - STORAGE_CLASS=managed-csi-premium
+      - ENCRYPTION_TYPE=azure-sse
+
+# Labels for AKS resources
+commonLabels:
+  cloud-provider: aks
+  environment: production

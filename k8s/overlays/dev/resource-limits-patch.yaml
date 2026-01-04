@@ -1,0 +1,17 @@
+# Development Resource Limits Patch
+# ==================================
+# Reduced quotas for local/dev Kubernetes environments
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rag-pipeline-quota
+  namespace: rag-pipeline
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: "8Gi"
+    limits.cpu: "8"
+    limits.memory: "16Gi"
+    persistentvolumeclaims: "10"
+    pods: "20"

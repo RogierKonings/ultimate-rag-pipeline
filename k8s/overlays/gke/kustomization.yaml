@@ -1,0 +1,33 @@
+# GKE Overlay
+# ============
+# Kustomization for Google Kubernetes Engine deployments.
+# Uses GKE-native encrypted storage classes.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Patch all PVCs to use GKE encrypted storage class
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      - op: replace
+        path: /spec/storageClassName
+        value: premium-rwo
+
+# GKE-specific configurations
+configMapGenerator:
+  - name: cloud-provider-config
+    namespace: rag-pipeline
+    literals:
+      - CLOUD_PROVIDER=gke
+      - STORAGE_CLASS=premium-rwo
+      - ENCRYPTION_TYPE=google-managed
+
+# Labels for GKE resources
+commonLabels:
+  cloud-provider: gke
+  environment: production

@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant
+  namespace: rag-pipeline
+  labels:
+    app: qdrant
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6333
+    targetPort: 6333
+    name: http
+  - port: 6334
+    targetPort: 6334
+    name: grpc
+  - port: 6335
+    targetPort: 6335
+    name: p2p
+  selector:
+    app: qdrant
+---
+# Headless service for StatefulSet DNS discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-headless
+  namespace: rag-pipeline
+  labels:
+    app: qdrant
+spec:
+  clusterIP: None
+  ports:
+  - port: 6333
+    targetPort: 6333
+    name: http
+  - port: 6334
+    targetPort: 6334
+    name: grpc
+  - port: 6335
+    targetPort: 6335
+    name: p2p
+  selector:
+    app: qdrant

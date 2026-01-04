@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant
+  namespace: rag-pipeline
+spec:
+  serviceName: qdrant
+  replicas: 3
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:v1.12.6
+        ports:
+        - containerPort: 6333
+          name: http
+        - containerPort: 6334
+          name: grpc
+        - containerPort: 6335
+          name: p2p
+        env:
+        - name: QDRANT__CLUSTER__ENABLED
+          value: "true"
+        - name: QDRANT__CLUSTER__P2P__PORT
+          value: "6335"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: qdrant-storage
+          mountPath: /qdrant/storage
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 6333
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 6333
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: qdrant-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi

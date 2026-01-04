@@ -1,0 +1,117 @@
+# Pod Disruption Budgets for Data Stores
+# =======================================
+# Ensures minimum availability during voluntary disruptions
+# (node drains, cluster upgrades, etc.)
+
+---
+# Qdrant PDB - maintain quorum (2 of 3 nodes)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: qdrant-pdb
+  namespace: rag-pipeline
+  labels:
+    app: qdrant
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: qdrant
+
+---
+# OpenSearch PDB - maintain quorum (2 of 3 nodes)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: opensearch-pdb
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: opensearch
+
+---
+# Redis PDB - maintain master + 1 replica (2 of 3 nodes)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+
+---
+# Redis Sentinel PDB - maintain quorum (2 of 3 sentinels)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-sentinel-pdb
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis-sentinel
+
+---
+# MinIO PDB - maintain erasure coding threshold (3 of 4 nodes)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: minio-pdb
+  namespace: rag-pipeline
+  labels:
+    app: minio
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 3
+  selector:
+    matchLabels:
+      app: minio
+
+---
+# PostgreSQL PDB - single node, allow 0 disruptions
+# Note: For HA Postgres, use minAvailable: 1 with 2+ replicas
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: rag-pipeline
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres
+
+---
+# PgBouncer PDB - maintain at least 1 connection pooler
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: rag-pipeline
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/part-of: rag-pipeline
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer

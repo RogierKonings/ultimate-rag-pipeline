@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: opensearch
+  namespace: rag-pipeline
+spec:
+  serviceName: opensearch
+  replicas: 3
+  selector:
+    matchLabels:
+      app: opensearch
+  template:
+    metadata:
+      labels:
+        app: opensearch
+    spec:
+      initContainers:
+      - name: sysctl
+        image: busybox
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      containers:
+      - name: opensearch
+        image: opensearchproject/opensearch:2.11.1
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+        env:
+        - name: cluster.name
+          value: rag-cluster
+        - name: node.name
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: discovery.seed_hosts
+          value: "opensearch-0.opensearch,opensearch-1.opensearch,opensearch-2.opensearch"
+        - name: cluster.initial_cluster_manager_nodes
+          value: "opensearch-0,opensearch-1,opensearch-2"
+        - name: OPENSEARCH_JAVA_OPTS
+          value: "-Xms2g -Xmx2g"
+        - name: DISABLE_INSTALL_DEMO_CONFIG
+          value: "true"
+        - name: DISABLE_SECURITY_PLUGIN
+          value: "true"
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1000m"
+          limits:
+            memory: "8Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: opensearch-storage
+          mountPath: /usr/share/opensearch/data
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: opensearch-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 100Gi

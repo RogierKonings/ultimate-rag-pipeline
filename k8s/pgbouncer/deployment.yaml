@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: rag-pipeline
+  labels:
+    app: pgbouncer
+    component: database
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+        component: database
+    spec:
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.21.0
+          ports:
+            - containerPort: 5432
+              name: pgbouncer
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: database-url
+            - name: POOL_MODE
+              value: "transaction"
+            - name: MAX_CLIENT_CONN
+              value: "100"
+            - name: DEFAULT_POOL_SIZE
+              value: "20"
+            - name: MIN_POOL_SIZE
+              value: "5"
+            - name: RESERVE_POOL_SIZE
+              value: "5"
+            - name: RESERVE_POOL_TIMEOUT
+              value: "5"
+            - name: SERVER_LIFETIME
+              value: "3600"
+            - name: SERVER_IDLE_TIMEOUT
+              value: "600"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3

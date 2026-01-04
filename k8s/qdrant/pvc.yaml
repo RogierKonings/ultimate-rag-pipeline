@@ -1,0 +1,28 @@
+# NOTE: This standalone PVC is NOT used by Qdrant StatefulSet.
+# The StatefulSet uses volumeClaimTemplates which creates PVCs named:
+#   qdrant-storage-qdrant-0, qdrant-storage-qdrant-1, qdrant-storage-qdrant-2
+#
+# This file is kept as a reference for manual PVC creation or single-node deployments.
+# For production, use the StatefulSet with volumeClaimTemplates.
+#
+# To use encrypted storage, set storageClassName to your cloud provider's encrypted class:
+#   - GKE: premium-rwo (default encrypted), or use CMEK
+#   - EKS: gp3 with KMS encryption
+#   - AKS: managed-premium with Azure Disk Encryption
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qdrant-storage-standalone
+  namespace: rag-pipeline
+  labels:
+    app: qdrant
+    usage: standalone-reference
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  # Uncomment and set storageClassName for encrypted storage
+  # storageClassName: premium-rwo

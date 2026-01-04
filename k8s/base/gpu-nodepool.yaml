@@ -1,0 +1,169 @@
+# GPU Node Pool Configuration
+# ============================
+# This file contains GPU infrastructure configurations for Kubernetes.
+# Actual GPU node pool provisioning should be done via cloud provider CLI.
+
+# Example GKE command to create GPU node pool:
+# gcloud container node-pools create gpu-pool \
+#   --cluster=rag-cluster \
+#   --machine-type=n1-standard-8 \
+#   --accelerator=type=nvidia-tesla-t4,count=1 \
+#   --num-nodes=1 \
+#   --node-labels=gpu=true \
+#   --node-taints=nvidia.com/gpu=true:NoSchedule
+
+# Example EKS command:
+# eksctl create nodegroup \
+#   --cluster=rag-cluster \
+#   --name=gpu-workers \
+#   --node-type=g4dn.xlarge \
+#   --nodes=1 \
+#   --node-labels=gpu=true
+
+---
+# NVIDIA Runtime Class
+# Required for proper GPU container runtime
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+---
+# PriorityClass for GPU Workloads
+# Ensures GPU pods are scheduled with high priority
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gpu-high-priority
+value: 1000000
+globalDefault: false
+description: "High priority class for GPU workloads (vLLM, embeddings, reranker)"
+---
+# NVIDIA Device Plugin DaemonSet
+# Exposes nvidia.com/gpu resources on GPU nodes
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: nvidia-device-plugin
+    app.kubernetes.io/component: device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvidia-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvidia-device-plugin
+    spec:
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      priorityClassName: system-node-critical
+      nodeSelector:
+        gpu: "true"
+      containers:
+        - name: nvidia-device-plugin
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.14.5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+---
+# PodDisruptionBudget for GPU Workloads
+# Ensures minimum availability during voluntary disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gpu-workloads-pdb
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/component: gpu-workloads
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      gpu-workload: "true"
+---
+# GPU Test Job
+# Use this to validate GPU scheduling and nvidia-smi access
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gpu-test-job
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: gpu-test
+    app.kubernetes.io/component: validation
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        gpu-workload: "true"
+    spec:
+      runtimeClassName: nvidia
+      priorityClassName: gpu-high-priority
+      nodeSelector:
+        gpu: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      restartPolicy: Never
+      containers:
+        - name: cuda-test
+          image: nvidia/cuda:12.2.0-base-ubuntu22.04
+          command: ["nvidia-smi"]
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+---
+# Example GPU Deployment Configuration Reference
+# Use these settings in your GPU workload deployments (vLLM, embeddings, reranker)
+#
+# spec:
+#   runtimeClassName: nvidia
+#   priorityClassName: gpu-high-priority
+#   nodeSelector:
+#     gpu: "true"
+#   tolerations:
+#   - key: "nvidia.com/gpu"
+#     operator: "Exists"
+#     effect: "NoSchedule"
+#   - key: "gpu"
+#     operator: "Equal"
+#     value: "true"
+#     effect: "NoSchedule"
+#   containers:
+#   - name: gpu-container
+#     resources:
+#       limits:
+#         nvidia.com/gpu: 1
+#       requests:
+#         nvidia.com/gpu: 1
+#     # Add label for PDB coverage:
+#     # labels:
+#     #   gpu-workload: "true"

@@ -1,0 +1,270 @@
+# PostgreSQL Backup CronJob
+# =========================
+# Automated daily backups with tiered retention (daily/weekly/monthly).
+# Backups are stored in MinIO and automatically cleaned based on retention policy.
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: database
+spec:
+  schedule: "0 2 * * *"  # Daily at 2:00 AM UTC
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: postgres-backup
+          
+          initContainers:
+            - name: wait-for-postgres
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+                    echo "Waiting for PostgreSQL..."
+                    sleep 5
+                  done
+                  echo "PostgreSQL is ready!"
+              env:
+                - name: PGHOST
+                  value: "postgres"
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-secrets
+                      key: postgres-user
+          
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              env:
+                - name: PGHOST
+                  value: "postgres"
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-secrets
+                      key: postgres-user
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: rag-secrets
+                      key: postgres-password
+                - name: PGDATABASE
+                  value: "ragpipeline"
+                - name: S3_ENDPOINT
+                  value: "http://minio:9000"
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-backup-credentials
+                      key: access-key
+                      optional: true
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-backup-credentials
+                      key: secret-key
+                      optional: true
+                - name: S3_BUCKET
+                  value: "backups"
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  
+                  echo "========================================"
+                  echo "  PostgreSQL Backup Started"
+                  echo "========================================"
+                  echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                  
+                  # Determine backup type based on day
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  DAY_OF_WEEK=$(date +%u)  # 1=Monday, 7=Sunday
+                  DAY_OF_MONTH=$(date +%d)
+                  
+                  # Determine backup tier
+                  if [ "$DAY_OF_MONTH" = "01" ]; then
+                    BACKUP_TYPE="monthly"
+                    RETENTION_DAYS=365
+                  elif [ "$DAY_OF_WEEK" = "7" ]; then
+                    BACKUP_TYPE="weekly"
+                    RETENTION_DAYS=90
+                  else
+                    BACKUP_TYPE="daily"
+                    RETENTION_DAYS=30
+                  fi
+                  
+                  BACKUP_FILE="ragpipeline_${BACKUP_TYPE}_${TIMESTAMP}.dump"
+                  LOCAL_PATH="/tmp/${BACKUP_FILE}"
+                  S3_PREFIX="postgres/${BACKUP_TYPE}"
+                  
+                  echo ""
+                  echo "Backup Configuration:"
+                  echo "  Type: ${BACKUP_TYPE}"
+                  echo "  Retention: ${RETENTION_DAYS} days"
+                  echo "  File: ${BACKUP_FILE}"
+                  
+                  # Run pg_dump with custom format (supports parallel restore)
+                  echo ""
+                  echo ">>> Running pg_dump..."
+                  pg_dump \
+                    --format=custom \
+                    --compress=9 \
+                    --verbose \
+                    --no-owner \
+                    --no-privileges \
+                    --file="${LOCAL_PATH}"
+                  
+                  # Get backup size
+                  BACKUP_SIZE=$(ls -lh "$LOCAL_PATH" | awk '{print $5}')
+                  BACKUP_BYTES=$(stat -c%s "$LOCAL_PATH" 2>/dev/null || stat -f%z "$LOCAL_PATH")
+                  echo "Backup size: ${BACKUP_SIZE} (${BACKUP_BYTES} bytes)"
+                  
+                  # Verify backup integrity
+                  echo ""
+                  echo ">>> Verifying backup integrity..."
+                  pg_restore --list "$LOCAL_PATH" > /dev/null
+                  echo "Backup verification passed"
+                  
+                  # Install MinIO client
+                  echo ""
+                  echo ">>> Installing MinIO client..."
+                  wget -q https://dl.min.io/client/mc/release/linux-amd64/mc -O /tmp/mc
+                  chmod +x /tmp/mc
+                  
+                  # Configure MinIO client
+                  # Fall back to root credentials if service account not available
+                  if [ -z "$S3_ACCESS_KEY" ]; then
+                    S3_ACCESS_KEY=$(cat /run/secrets/minio-root-user 2>/dev/null || echo "minioadmin")
+                    S3_SECRET_KEY=$(cat /run/secrets/minio-root-password 2>/dev/null || echo "minioadmin123")
+                  fi
+                  
+                  /tmp/mc alias set backup $S3_ENDPOINT $S3_ACCESS_KEY $S3_SECRET_KEY
+                  
+                  # Ensure bucket exists
+                  /tmp/mc mb --ignore-existing backup/${S3_BUCKET}
+                  
+                  # Upload to MinIO
+                  echo ""
+                  echo ">>> Uploading to MinIO..."
+                  /tmp/mc cp "$LOCAL_PATH" backup/${S3_BUCKET}/${S3_PREFIX}/${BACKUP_FILE}
+                  
+                  # Verify upload
+                  /tmp/mc stat backup/${S3_BUCKET}/${S3_PREFIX}/${BACKUP_FILE}
+                  
+                  # Create/update latest pointer
+                  /tmp/mc cp "$LOCAL_PATH" backup/${S3_BUCKET}/postgres/latest.dump
+                  
+                  # Cleanup old backups based on retention
+                  echo ""
+                  echo ">>> Cleaning up old ${BACKUP_TYPE} backups (>${RETENTION_DAYS} days)..."
+                  /tmp/mc find backup/${S3_BUCKET}/${S3_PREFIX}/ \
+                    --older-than ${RETENTION_DAYS}d \
+                    --exec "/tmp/mc rm {}" 2>/dev/null || echo "No old backups to clean"
+                  
+                  # List remaining backups
+                  echo ""
+                  echo ">>> Remaining ${BACKUP_TYPE} backups:"
+                  /tmp/mc ls backup/${S3_BUCKET}/${S3_PREFIX}/ | tail -10
+                  
+                  # Cleanup local file
+                  rm -f "$LOCAL_PATH"
+                  
+                  echo ""
+                  echo "========================================"
+                  echo "  Backup Completed Successfully"
+                  echo "========================================"
+                  echo "Type: ${BACKUP_TYPE}"
+                  echo "File: ${BACKUP_FILE}"
+                  echo "Size: ${BACKUP_SIZE}"
+                  echo "Location: s3://${S3_BUCKET}/${S3_PREFIX}/${BACKUP_FILE}"
+                  echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+
+---
+# Migration Job for running Alembic migrations
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-migrate
+  namespace: rag-pipeline
+  labels:
+    app: postgres-migrate
+    component: database
+  annotations:
+    description: "Run database migrations using Alembic"
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: postgres-migrate
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until nc -z postgres 5432; do
+                echo "PostgreSQL not ready, waiting..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+      containers:
+        - name: migrate
+          image: rag-pipeline/ingestion-service:latest
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: database-url
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "[$(date)] Running database migrations..."
+              cd /app
+              alembic upgrade head
+              echo "[$(date)] Migrations completed successfully"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

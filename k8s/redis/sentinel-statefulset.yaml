@@ -1,0 +1,204 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-sentinel-config
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+data:
+  sentinel.conf: |
+    port 26379
+    dir /tmp
+    
+    # Monitor the master (redis-0)
+    sentinel monitor mymaster redis-0.redis.rag-pipeline.svc.cluster.local 6379 2
+    
+    # Authentication
+    sentinel auth-pass mymaster ${REDIS_PASSWORD}
+    
+    # Timing configurations
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel failover-timeout mymaster 60000
+    sentinel parallel-syncs mymaster 1
+    
+    # Announce IP for proper discovery
+    sentinel announce-ip ${POD_IP}
+    sentinel announce-port 26379
+
+  sentinel-tls.conf: |
+    # TLS only (disable plaintext port)
+    port 0
+    tls-port 26379
+    dir /tmp
+    
+    # TLS Configuration
+    tls-cert-file /tls/tls.crt
+    tls-key-file /tls/tls.key
+    tls-ca-cert-file /tls/ca.crt
+    tls-auth-clients optional
+    tls-protocols "TLSv1.2 TLSv1.3"
+    tls-replication yes
+    
+    # Monitor the master (redis-0)
+    sentinel monitor mymaster redis-0.redis.rag-pipeline.svc.cluster.local 6379 2
+    
+    # Authentication
+    sentinel auth-pass mymaster ${REDIS_PASSWORD}
+    
+    # Timing configurations
+    sentinel down-after-milliseconds mymaster 5000
+    sentinel failover-timeout mymaster 60000
+    sentinel parallel-syncs mymaster 1
+    
+    # Announce IP for proper discovery
+    sentinel announce-ip ${POD_IP}
+    sentinel announce-port 26379
+
+  start-sentinel.sh: |
+    #!/bin/sh
+    set -e
+    
+    # Determine which config to use based on TLS_ENABLED
+    if [ "$TLS_ENABLED" = "true" ] && [ -f /tls/tls.crt ]; then
+      echo "Starting Sentinel with TLS enabled"
+      CONFIG_FILE=/etc/redis/sentinel-tls.conf
+    else
+      echo "Starting Sentinel without TLS"
+      CONFIG_FILE=/etc/redis/sentinel.conf
+    fi
+    
+    # Copy config to writable location
+    cp $CONFIG_FILE /tmp/sentinel.conf
+    
+    # Inject password
+    if [ -n "$REDIS_PASSWORD" ]; then
+      sed -i "s/\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" /tmp/sentinel.conf
+    fi
+    
+    # Inject pod IP
+    if [ -n "$POD_IP" ]; then
+      sed -i "s/\${POD_IP}/$POD_IP/g" /tmp/sentinel.conf
+    fi
+    
+    exec redis-sentinel /tmp/sentinel.conf
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-sentinel
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+spec:
+  serviceName: redis-sentinel
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis-sentinel
+  template:
+    metadata:
+      labels:
+        app: redis-sentinel
+        component: cache
+    spec:
+      containers:
+        - name: sentinel
+          image: redis:7-alpine
+          ports:
+            - containerPort: 26379
+              name: sentinel
+          command:
+            - /bin/sh
+            - /etc/redis/start-sentinel.sh
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: redis-password
+            - name: TLS_ENABLED
+              value: "false"  # Set to "true" for TLS
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: sentinel-config
+              mountPath: /etc/redis
+            # Uncomment for TLS
+            # - name: tls
+            #   mountPath: /tls
+            #   readOnly: true
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - -p
+                - "26379"
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: sentinel-config
+          configMap:
+            name: redis-sentinel-config
+            defaultMode: 0755
+        # Uncomment for TLS
+        # - name: tls
+        #   secret:
+        #     secretName: redis-sentinel-tls-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+spec:
+  ports:
+    - port: 26379
+      targetPort: 26379
+      name: sentinel
+  selector:
+    app: redis-sentinel
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-sentinel-svc
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+spec:
+  ports:
+    - port: 26379
+      targetPort: 26379
+      name: sentinel
+  selector:
+    app: redis-sentinel

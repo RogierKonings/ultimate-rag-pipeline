@@ -1,0 +1,60 @@
+# Headless service for StatefulSet DNS discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis
+---
+# Service pointing to master (redis-0) for write operations
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+    role: master
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis
+    statefulset.kubernetes.io/pod-name: redis-0
+---
+# Service for read replicas (load balanced across all pods)
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-read
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+    role: replica
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis

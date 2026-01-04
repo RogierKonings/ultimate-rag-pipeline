@@ -1,0 +1,147 @@
+# OpenSearch Security Configuration
+# =================================
+# This configmap provides security configuration for OpenSearch in production.
+# It enables authentication, TLS, and role-based access control.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opensearch-security-config
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+data:
+  # Internal users configuration
+  internal_users.yml: |
+    _meta:
+      type: "internalusers"
+      config_version: 2
+    
+    # Admin user for cluster management
+    admin:
+      hash: "${ADMIN_PASSWORD_HASH}"
+      reserved: true
+      backend_roles:
+        - "admin"
+      description: "OpenSearch admin user"
+    
+    # Application user for RAG pipeline services
+    rag_user:
+      hash: "${RAG_USER_PASSWORD_HASH}"
+      reserved: false
+      backend_roles:
+        - "rag_readwrite"
+      attributes:
+        attribute1: "value1"
+      description: "RAG pipeline application user"
+    
+    # Read-only user for monitoring/dashboards
+    readonly_user:
+      hash: "${READONLY_PASSWORD_HASH}"
+      reserved: false
+      backend_roles:
+        - "readall"
+      description: "Read-only user for dashboards"
+
+  # Roles configuration
+  roles.yml: |
+    _meta:
+      type: "roles"
+      config_version: 2
+    
+    rag_readwrite:
+      cluster_permissions:
+        - "cluster_composite_ops"
+        - "indices:data/read/scroll*"
+      index_permissions:
+        - index_patterns:
+            - "documents*"
+            - "chunks*"
+          allowed_actions:
+            - "crud"
+            - "create_index"
+            - "manage"
+            - "indices:admin/refresh"
+    
+    rag_readonly:
+      cluster_permissions:
+        - "cluster_composite_ops_ro"
+      index_permissions:
+        - index_patterns:
+            - "documents*"
+            - "chunks*"
+          allowed_actions:
+            - "read"
+            - "indices:admin/refresh"
+
+  # Roles mapping
+  roles_mapping.yml: |
+    _meta:
+      type: "rolesmapping"
+      config_version: 2
+    
+    all_access:
+      reserved: false
+      backend_roles:
+        - "admin"
+      description: "Maps admin to all_access"
+    
+    rag_readwrite:
+      reserved: false
+      backend_roles:
+        - "rag_readwrite"
+      description: "Maps rag_readwrite backend role"
+    
+    readall:
+      reserved: false
+      backend_roles:
+        - "readall"
+      description: "Maps readall backend role"
+
+  # Action groups
+  action_groups.yml: |
+    _meta:
+      type: "actiongroups"
+      config_version: 2
+
+  # Tenants
+  tenants.yml: |
+    _meta:
+      type: "tenants"
+      config_version: 2
+    
+    rag_tenant:
+      reserved: false
+      description: "RAG Pipeline tenant"
+
+  # Node-to-node communication (transport layer)
+  nodes_dn.yml: |
+    _meta:
+      type: "nodesdn"
+      config_version: 2
+
+  # Whitelist for remote clusters
+  whitelist.yml: |
+    _meta:
+      type: "whitelist"
+      config_version: 2
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: opensearch-security-secrets
+  namespace: rag-pipeline
+  labels:
+    app: opensearch
+    component: search
+type: Opaque
+stringData:
+  # Generate password hashes using:
+  # docker run -it opensearchproject/opensearch:2.11.1 /usr/share/opensearch/plugins/opensearch-security/tools/hash.sh
+  admin-username: "admin"
+  admin-password: "admin-password-change-me"
+  rag-user-username: "rag_user"
+  rag-user-password: "rag-user-password-change-me"
+  readonly-username: "readonly_user"
+  readonly-password: "readonly-password-change-me"

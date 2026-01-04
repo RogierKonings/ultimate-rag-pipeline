@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# NetworkPolicies for rag-pipeline namespace isolation
+# Implements default deny with explicit allow rules
+
+namespace: rag-pipeline
+
+resources:
+  - network-policies.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: rag-pipeline
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/component: network-policy

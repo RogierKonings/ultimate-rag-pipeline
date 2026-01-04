@@ -1,0 +1,93 @@
+# PostgreSQL Backup Alerting Rules
+# =================================
+# Prometheus alerting rules for backup job monitoring.
+# Requires Prometheus Operator (kube-prometheus-stack).
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postgres-backup-alerts
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: monitoring
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: postgres-backup
+      interval: 60s
+      rules:
+        # Alert when backup job fails
+        - alert: PostgresBackupFailed
+          expr: |
+            kube_job_status_failed{job_name=~"postgres-backup-.*", namespace="rag-pipeline"} > 0
+          for: 5m
+          labels:
+            severity: critical
+            service: postgres
+          annotations:
+            summary: "PostgreSQL backup job failed"
+            description: "PostgreSQL backup job {{ $labels.job_name }} has failed in namespace {{ $labels.namespace }}"
+            runbook_url: "https://docs.example.com/runbooks/postgres-backup-failed"
+        
+        # Alert when no successful backup in 25 hours
+        - alert: PostgresBackupMissing
+          expr: |
+            (time() - max(kube_job_status_completion_time{job_name=~"postgres-backup-.*", namespace="rag-pipeline"} * on(job_name) group_left kube_job_status_succeeded{job_name=~"postgres-backup-.*"} == 1)) > 90000
+          for: 5m
+          labels:
+            severity: warning
+            service: postgres
+          annotations:
+            summary: "PostgreSQL backup is overdue"
+            description: "No successful PostgreSQL backup in the last 25 hours"
+            runbook_url: "https://docs.example.com/runbooks/postgres-backup-missing"
+        
+        # Alert when backup takes too long
+        - alert: PostgresBackupSlow
+          expr: |
+            kube_job_status_active{job_name=~"postgres-backup-.*", namespace="rag-pipeline"} == 1
+            and
+            (time() - kube_job_status_start_time{job_name=~"postgres-backup-.*", namespace="rag-pipeline"}) > 1800
+          for: 1m
+          labels:
+            severity: warning
+            service: postgres
+          annotations:
+            summary: "PostgreSQL backup is taking too long"
+            description: "PostgreSQL backup job {{ $labels.job_name }} has been running for more than 30 minutes"
+        
+        # Alert when backup storage is running low
+        - alert: PostgresBackupStorageHigh
+          expr: |
+            minio_bucket_usage_total_bytes{bucket="backups"} > 50e9
+          for: 5m
+          labels:
+            severity: warning
+            service: minio
+          annotations:
+            summary: "Backup storage usage is high"
+            description: "Backup bucket usage is over 50GB. Consider adjusting retention policies."
+
+---
+# ServiceMonitor for backup job metrics (optional, if using custom metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-backup-monitor
+  namespace: rag-pipeline
+  labels:
+    app: postgres-backup
+    component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: postgres-backup
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - rag-pipeline

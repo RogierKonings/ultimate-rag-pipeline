@@ -1,0 +1,27 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: rag-pipeline
+  labels:
+    app: redis
+    component: cache
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-sentinel-pdb
+  namespace: rag-pipeline
+  labels:
+    app: redis-sentinel
+    component: cache
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: redis-sentinel
