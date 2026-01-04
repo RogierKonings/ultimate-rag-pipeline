@@ -36,9 +36,9 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 | [US-2.7](US-2.7-async-processing.md) | Async Processing | Critical | 2-3 days | US-2.1-2.6 |
 | [US-2.8](US-2.8-ingestion-api.md) | Ingestion API | Critical | 2 days | US-2.1-2.7 |
 | [US-2.9](US-2.9-embedding-model-migration.md) | Embedding Model Migration | Medium | 2-3 days | US-2.4, US-2.5 |
-| US-2.10 | Incremental Sync & Re-embed APIs | Critical | 2 days | US-2.1-2.5, US-2.7 |
-| US-2.11 | Deduplication & Versioning (content hash) | High | 2 days | US-2.2, US-2.5 |
-| US-2.12 | Schema Alignment & Logging Persistence | High | 2 days | US-2.5, US-2.8 |
+| [US-2.10](US-2.10-incremental-sync-reembed-apis.md) | Incremental Sync & Re-embed APIs | Critical | 2 days | US-2.1-2.5, US-2.7 |
+| [US-2.11](US-2.11-dedup-versioning.md) | Deduplication & Versioning (content hash) | High | 2 days | US-2.2, US-2.5 |
+| [US-2.12](US-2.12-schema-alignment-logging.md) | Schema Alignment & Logging Persistence | High | 2 days | US-2.5, US-2.8 |
 
 ## Dependency Graph
 
