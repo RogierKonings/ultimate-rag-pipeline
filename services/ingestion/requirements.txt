@@ -1,0 +1,44 @@
+# Ingestion Service Dependencies
+# ===============================
+
+# Core
+pydantic>=2.0.0
+
+# Async utilities
+aiofiles>=23.0.0
+
+# S3/MinIO storage
+aioboto3>=12.0.0
+
+# Database connectors
+asyncpg>=0.29.0
+aiomysql>=0.2.0
+
+# HTTP client
+aiohttp>=3.9.0
+
+# HTML parsing
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# MIME type detection
+python-magic>=0.4.27
+
+# JSONPath for API connector
+jsonpath-ng>=1.6.0
+
+# Testing dependencies
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.0.0
+aioresponses>=0.7.0  # Mock aiohttp requests
+
+# Integration testing
+testcontainers>=3.7.0
+psycopg2-binary>=2.9.0  # For test fixtures
+boto3>=1.34.0  # For test fixtures
+
+# Type checking
+mypy>=1.8.0
+types-aiofiles>=23.0.0
+types-beautifulsoup4>=4.12.0
