@@ -1,8 +1,8 @@
 # Ultimate RAG Pipeline Architecture
 
-> **Version:** 1.0  
-> **Status:** Production Reference Architecture  
-> **Last Updated:** December 2025
+> **Version:** 1.1
+> **Status:** Production Reference Architecture
+> **Last Updated:** January 2026
 
 ## Executive Summary
 
@@ -265,40 +265,80 @@ retrieval-service/
 ### 3. Orchestrator Service
 
 **Responsibilities:**
-- Intent classification and routing
-- RAG vs direct LLM decision
-- Prompt construction with templates
-- LLM call management
-- Response validation and guardrails
-- Citation alignment
+
+- Intent classification and routing (simple/complex/no_retrieval strategies)
+- RAG vs direct LLM decision via query router
+- Prompt construction with Jinja2 templates
+- LLM call management via Model Gateway
+- Response validation and guardrails (PII detection, injection prevention)
+- Streaming support with SSE events and TTFT tracking
+- Conversation memory with Redis + PostgreSQL persistence
+- Graceful degradation with circuit breakers
 
 **Components:**
 
 ```
 orchestrator-service/
 ├── api/
-│   ├── routes.py          # /chat, /generate endpoints
-│   └── schemas.py
-├── workflows/
-│   ├── rag_workflow.py    # LangGraph RAG flow
-│   ├── nodes/
-│   │   ├── classify.py    # Intent classification
-│   │   ├── retrieve.py    # Call retrieval service
-│   │   ├── prompt.py      # Build prompts
-│   │   ├── generate.py    # LLM calls
-│   │   └── validate.py    # Response validation
-│   └── edges.py           # Conditional routing
+│   ├── app.py                 # FastAPI application factory
+│   ├── dependencies.py        # Dependency injection
+│   ├── routes/
+│   │   ├── query.py           # /api/v1/query, /query/stream, /feedback
+│   │   ├── sessions.py        # Session CRUD endpoints
+│   │   └── health.py          # Health check endpoints
+│   └── models/
+│       ├── requests.py        # Request schemas
+│       └── responses.py       # Response schemas
+├── workflow/
+│   ├── graph.py               # LangGraph StateGraph definition
+│   ├── state.py               # RAGState TypedDict
+│   └── nodes/
+│       ├── input_validation.py
+│       ├── routing.py
+│       ├── retrieval.py
+│       ├── prompt_building.py
+│       ├── generation.py
+│       └── output_validation.py
+├── routing/
+│   ├── router.py              # QueryRouter class
+│   ├── classifiers.py         # Intent/complexity classifiers
+│   └── models.py              # RoutingResult, QueryIntent enums
 ├── prompts/
-│   ├── templates/         # Jinja2 prompt templates
-│   └── manager.py         # Template selection
+│   ├── builder.py             # PromptBuilder class
+│   ├── templates.py           # Jinja2 prompt templates
+│   └── context.py             # Context formatting utilities
+├── gateway/
+│   ├── client.py              # ModelGateway async client
+│   ├── streaming.py           # SSE stream parsing
+│   └── models.py              # ChatCompletionRequest/Response
 ├── guardrails/
-│   ├── input.py           # Input validation
-│   ├── output.py          # Output validation
-│   └── citations.py       # Citation extraction
-└── state/
-    ├── conversation.py    # Conversation storage
-    └── cache.py           # Response cache
+│   ├── pipeline.py            # GuardrailPipeline orchestrator
+│   ├── input.py               # InputGuardrail (PII, injection)
+│   ├── output.py              # OutputGuardrail (harmful content)
+│   └── detection.py           # Detection utilities
+├── memory/
+│   ├── session.py             # SessionManager
+│   ├── store.py               # RedisSessionStore
+│   ├── persistence.py         # PostgresConversationStore
+│   ├── summarizer.py          # HistorySummarizer
+│   └── models.py              # Message, ConversationSession
+├── streaming/
+│   ├── manager.py             # StreamManager
+│   ├── models.py              # StreamEvent, StreamEventType
+│   ├── validation.py          # Event sequence validation
+│   ├── metrics.py             # TTFT tracking, Prometheus
+│   └── buffer.py              # TokenBuffer for batching
+├── resilience/
+│   ├── circuit_breaker.py     # CircuitBreaker class
+│   ├── fallbacks.py           # FallbackHandlers
+│   ├── degradation.py         # DegradationManager
+│   └── config.py              # Resilience configuration
+├── config.py                  # OrchestratorConfig settings
+├── run.py                     # Application entry point
+└── tests/                     # 883 unit tests, 96% coverage
 ```
+
+> **Full Documentation:** See [docs/orchestrator-service/README.md](orchestrator-service/README.md) for detailed API reference, configuration, and usage examples.
 
 ### 4. LLM Gateway Service
 
