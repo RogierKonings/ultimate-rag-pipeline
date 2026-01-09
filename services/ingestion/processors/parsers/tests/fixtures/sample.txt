@@ -1,0 +1,11 @@
+Sample Plain Text Document
+
+This is a sample text file for testing the parser.
+It contains multiple lines of text.
+
+The text parser should:
+- Detect the encoding automatically
+- Handle various line endings
+- Return the full text content
+
+This is the end of the sample document.
