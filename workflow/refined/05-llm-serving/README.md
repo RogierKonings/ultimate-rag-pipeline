@@ -26,16 +26,16 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 
 ## User Stories
 
-| Story | Title | Priority | Effort | Dependencies |
-|-------|-------|----------|--------|--------------|
-| [US-5.1](US-5.1-vllm-deployment.md) | vLLM Deployment | Critical | 3-4 days | Epic 1 (GPU nodes) |
-| [US-5.2](US-5.2-embedding-model-service.md) | Embedding Model Service | Critical | 2-3 days | Epic 1 (GPU nodes) |
-| [US-5.3](US-5.3-reranker-model-service.md) | Reranker Model Service | Critical | 2-3 days | Epic 1 (GPU nodes) |
-| [US-5.4](US-5.4-model-configuration.md) | Model Configuration | High | 2 days | US-5.1, US-5.2, US-5.3 |
-| [US-5.5](US-5.5-resource-management.md) | Resource Management | High | 2-3 days | US-5.1, US-5.2, US-5.3 |
-| [US-5.6](US-5.6-model-health-monitoring.md) | Model Health & Monitoring | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
-| US-5.7 | Unified OpenAI Gateway (chat/embeddings/rerank) | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
-| US-5.8 | Auth & Rate Limiting for Gateway | High | 1-2 days | US-5.7 |
+| Story                                       | Title                                           | Priority | Effort   | Dependencies           |
+| ------------------------------------------- | ----------------------------------------------- | -------- | -------- | ---------------------- |
+| [US-5.1](US-5.1-vllm-deployment.md)         | vLLM Deployment                                 | Critical | 3-4 days | Epic 1 (GPU nodes)     |
+| [US-5.2](US-5.2-embedding-model-service.md) | Embedding Model Service                         | Critical | 2-3 days | Epic 1 (GPU nodes)     |
+| [US-5.3](US-5.3-reranker-model-service.md)  | Reranker Model Service                          | Critical | 2-3 days | Epic 1 (GPU nodes)     |
+| [US-5.4](US-5.4-model-configuration.md)     | Model Configuration                             | High     | 2 days   | US-5.1, US-5.2, US-5.3 |
+| [US-5.5](US-5.5-resource-management.md)     | Resource Management                             | High     | 2-3 days | US-5.1, US-5.2, US-5.3 |
+| [US-5.6](US-5.6-model-health-monitoring.md) | Model Health & Monitoring                       | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
+| [US-5.7](US-5.7-unified-openai-gateway.md)  | Unified OpenAI Gateway (chat/embeddings/rerank) | Critical | 2-3 days | US-5.1, US-5.2, US-5.3 |
+| [US-5.8](US-5.8-auth-rate-limiting.md)      | Auth & Rate Limiting for Gateway                | High     | 1-2 days | US-5.7                 |
 
 ## Dependency Graph
 
@@ -140,6 +140,7 @@ llm-serving/
 ## Key Dependencies
 
 ### vLLM Service
+
 ```txt
 # Core
 vllm>=0.4.0
@@ -154,6 +155,7 @@ fastapi>=0.104.0
 ```
 
 ### Embedding Service
+
 ```txt
 # Core
 sentence-transformers>=2.3.0
@@ -171,6 +173,7 @@ httpx>=0.25.0
 ```
 
 ### Reranker Service
+
 ```txt
 # Core
 sentence-transformers>=2.3.0
@@ -184,6 +187,7 @@ pydantic>=2.5.0
 ```
 
 ### Monitoring
+
 ```txt
 prometheus-client>=0.19.0
 opentelemetry-api>=1.22.0
@@ -193,23 +197,23 @@ opentelemetry-exporter-prometheus>=0.43b0
 
 ## Performance Targets
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| LLM Throughput | >100 tokens/sec | Per request, streaming |
-| LLM Latency (TTFT) | <500ms | Time to first token |
-| Embedding Latency | <50ms | Single embedding, batch 1 |
-| Embedding Batch Latency | <200ms | Batch of 32 texts |
-| Reranker Latency | <100ms | 20 document pairs |
-| GPU Utilization | >70% | Under normal load |
-| Memory Efficiency | >80% | KV cache utilization |
+| Metric                  | Target          | Notes                     |
+| ----------------------- | --------------- | ------------------------- |
+| LLM Throughput          | >100 tokens/sec | Per request, streaming    |
+| LLM Latency (TTFT)      | <500ms          | Time to first token       |
+| Embedding Latency       | <50ms           | Single embedding, batch 1 |
+| Embedding Batch Latency | <200ms          | Batch of 32 texts         |
+| Reranker Latency        | <100ms          | 20 document pairs         |
+| GPU Utilization         | >70%            | Under normal load         |
+| Memory Efficiency       | >80%            | KV cache utilization      |
 
 ## GPU Requirements
 
-| Model | VRAM Required | Recommended GPU |
-|-------|---------------|-----------------|
-| Llama-3.1-8B-Instruct | 16-24GB | A100 40GB, A10 24GB |
-| BGE-large-en-v1.5 | 2-4GB | A100, A10, T4 |
-| BGE-reranker-v2-m3 | 2-4GB | A100, A10, T4 |
+| Model                 | VRAM Required | Recommended GPU     |
+| --------------------- | ------------- | ------------------- |
+| Llama-3.1-8B-Instruct | 16-24GB       | A100 40GB, A10 24GB |
+| BGE-large-en-v1.5     | 2-4GB         | A100, A10, T4       |
+| BGE-reranker-v2-m3    | 2-4GB         | A100, A10, T4       |
 
 **Note:** vLLM supports tensor parallelism for larger models. For 8B model, single GPU is sufficient.
 
