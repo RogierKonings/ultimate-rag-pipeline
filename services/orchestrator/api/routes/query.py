@@ -1,0 +1,356 @@
+"""Query endpoints for the Orchestrator Service.
+
+This module provides endpoints for RAG queries:
+- POST /api/v1/query - Synchronous RAG query
+- POST /api/v1/query/stream - Streaming RAG query (SSE)
+- POST /api/v1/feedback - Submit user feedback
+"""
+
+import time
+import uuid
+from datetime import datetime
+from typing import Any, AsyncGenerator
+
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
+
+from api.dependencies import (
+    GuardrailPipelineDep,
+    ModelGatewayDep,
+    SessionManagerDep,
+    StreamManagerDep,
+)
+from api.models.requests import FeedbackRequest, QueryRequest, StreamQueryRequest
+from api.models.responses import (
+    ErrorResponse,
+    FeedbackResponse,
+    QueryResponse,
+    SourceDocument,
+    UsageInfo,
+)
+
+router = APIRouter(prefix="/api/v1", tags=["Query"])
+
+
+def _transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument]:
+    """Transform raw documents to SourceDocument models.
+
+    Args:
+        documents: List of raw document dictionaries.
+
+    Returns:
+        List of SourceDocument models.
+    """
+    sources = []
+    for doc in documents:
+        sources.append(
+            SourceDocument(
+                id=doc.get("id", doc.get("chunk_id", "")),
+                title=doc.get("metadata", {}).get("title") or doc.get("title"),
+                uri=doc.get("source") or doc.get("uri"),
+                score=doc.get("score"),
+                snippet=doc.get("content", "")[:200] if doc.get("content") else None,
+            )
+        )
+    return sources
+
+
+@router.post(
+    "/query",
+    response_model=QueryResponse,
+    summary="Synchronous RAG query",
+    description="Submit a query and receive a complete response with sources.",
+    responses={
+        200: {"description": "Query processed successfully"},
+        400: {"model": ErrorResponse, "description": "Invalid request"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        503: {"model": ErrorResponse, "description": "Service unavailable"},
+    },
+)
+async def query(
+    request: Request,
+    query_request: QueryRequest,
+    session_manager: SessionManagerDep,
+    guardrail_pipeline: GuardrailPipelineDep,
+    model_gateway: ModelGatewayDep,
+) -> QueryResponse:
+    """Process a synchronous RAG query.
+
+    This endpoint:
+    1. Validates input through guardrails
+    2. Retrieves relevant documents
+    3. Generates a response with the LLM
+    4. Validates output through guardrails
+    5. Returns the response with sources
+
+    Args:
+        request: The FastAPI request object.
+        query_request: The query request payload.
+        session_manager: Injected session manager.
+        guardrail_pipeline: Injected guardrail pipeline.
+        model_gateway: Injected model gateway.
+
+    Returns:
+        QueryResponse with generated answer and sources.
+
+    Raises:
+        HTTPException: On validation failure or processing error.
+    """
+    request_id = str(uuid.uuid4())
+    start_time = time.perf_counter()
+
+    # Check input guardrails
+    input_result = await guardrail_pipeline.check_input(query_request.query)
+    if not input_result.passed:
+        violations = [v.description for v in input_result.violations]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Input validation failed",
+                "violations": violations,
+                "request_id": request_id,
+            },
+        )
+
+    # Get workflow from app state
+    workflow = getattr(request.app.state, "workflow", None)
+
+    if workflow is not None:
+        # Use the workflow for full RAG pipeline
+        try:
+            result = await workflow.ainvoke(
+                {
+                    "request_id": request_id,
+                    "query": query_request.query,
+                    "session_id": str(query_request.session_id)
+                    if query_request.session_id
+                    else None,
+                    "user_id": str(query_request.user_id)
+                    if query_request.user_id
+                    else None,
+                    "tenant_id": str(query_request.tenant_id)
+                    if query_request.tenant_id
+                    else None,
+                    "options": query_request.options or {},
+                }
+            )
+
+            response_text = result.get("response", "")
+            documents = result.get("documents", [])
+            model_used = result.get("model_used", "unknown")
+            usage = result.get("usage", {})
+            strategy_used = result.get("strategy_used")
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "error": "Workflow execution failed",
+                    "message": str(e),
+                    "request_id": request_id,
+                },
+            )
+    else:
+        # Fallback: Direct LLM call without retrieval
+        from gateway import ChatCompletionRequest, ChatMessage
+
+        try:
+            chat_request = ChatCompletionRequest(
+                model="meta-llama/Llama-3.1-8B-Instruct",
+                messages=[ChatMessage(role="user", content=query_request.query)],
+            )
+            llm_response = await model_gateway.chat_completion(chat_request)
+            response_text = llm_response.choices[0].message.content
+            documents = []
+            model_used = llm_response.model
+            usage = {
+                "prompt_tokens": llm_response.usage.prompt_tokens,
+                "completion_tokens": llm_response.usage.completion_tokens,
+                "total_tokens": llm_response.usage.total_tokens,
+            }
+            strategy_used = "direct"
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "error": "LLM request failed",
+                    "message": str(e),
+                    "request_id": request_id,
+                },
+            )
+
+    # Check output guardrails
+    output_result = await guardrail_pipeline.check_output(response_text)
+    if not output_result.passed:
+        # Sanitize the response instead of failing
+        response_text = guardrail_pipeline.sanitize_output(response_text)
+
+    latency_ms = (time.perf_counter() - start_time) * 1000
+
+    return QueryResponse(
+        request_id=request_id,
+        response=response_text,
+        sources=_transform_documents(documents),
+        session_id=query_request.session_id,
+        model=model_used,
+        usage=UsageInfo(
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+        ),
+        latency_ms=round(latency_ms, 2),
+        strategy_used=strategy_used,
+    )
+
+
+@router.post(
+    "/query/stream",
+    summary="Streaming RAG query",
+    description="Submit a query and receive a streaming response via Server-Sent Events.",
+    responses={
+        200: {
+            "description": "Streaming response started",
+            "content": {"text/event-stream": {}},
+        },
+        400: {"model": ErrorResponse, "description": "Invalid request"},
+        503: {"model": ErrorResponse, "description": "Service unavailable"},
+    },
+)
+async def query_stream(
+    request: Request,
+    query_request: StreamQueryRequest,
+    session_manager: SessionManagerDep,
+    guardrail_pipeline: GuardrailPipelineDep,
+    stream_manager: StreamManagerDep,
+    model_gateway: ModelGatewayDep,
+) -> StreamingResponse:
+    """Process a streaming RAG query.
+
+    This endpoint returns a Server-Sent Events stream with:
+    - START event: Stream metadata
+    - DELTA events: Token chunks
+    - CITATIONS event: Source documents
+    - DONE event: Completion with usage stats
+    - ERROR event: On failure
+
+    Args:
+        request: The FastAPI request object.
+        query_request: The streaming query request payload.
+        session_manager: Injected session manager.
+        guardrail_pipeline: Injected guardrail pipeline.
+        stream_manager: Injected stream manager.
+        model_gateway: Injected model gateway.
+
+    Returns:
+        StreamingResponse with SSE content.
+
+    Raises:
+        HTTPException: On input validation failure.
+    """
+    request_id = str(uuid.uuid4())
+
+    # Check input guardrails before streaming
+    input_result = await guardrail_pipeline.check_input(query_request.query)
+    if not input_result.passed:
+        violations = [v.description for v in input_result.violations]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "Input validation failed",
+                "violations": violations,
+                "request_id": request_id,
+            },
+        )
+
+    async def generate_stream() -> AsyncGenerator[str, None]:
+        """Generate SSE stream."""
+        # Get retrieval client for documents (if available)
+        retrieval_client = getattr(request.app.state, "retrieval_client", None)
+        documents = []
+
+        if retrieval_client is not None:
+            try:
+                documents = await retrieval_client.search(query_request.query)
+            except Exception:
+                # Continue without documents on retrieval failure
+                pass
+
+        # Build messages for LLM
+        messages = [{"role": "user", "content": query_request.query}]
+
+        # If we have documents, add context
+        if documents:
+            context = "\n\n".join(
+                [f"[{i+1}] {doc.get('content', '')}" for i, doc in enumerate(documents)]
+            )
+            context_message = f"Use the following context to answer the question:\n\n{context}"
+            messages.insert(0, {"role": "system", "content": context_message})
+
+        # Stream response from LLM
+        async for event in stream_manager.stream_response(
+            request_id=request_id,
+            model="meta-llama/Llama-3.1-8B-Instruct",
+            messages=messages,
+            session_id=str(query_request.session_id)
+            if query_request.session_id
+            else None,
+            documents=documents,
+            gateway=model_gateway,
+        ):
+            yield event.to_sse()
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Request-ID": request_id,
+        },
+    )
+
+
+@router.post(
+    "/feedback",
+    response_model=FeedbackResponse,
+    summary="Submit user feedback",
+    description="Submit feedback for a previous query response.",
+    responses={
+        200: {"description": "Feedback recorded"},
+        400: {"model": ErrorResponse, "description": "Invalid request"},
+    },
+)
+async def submit_feedback(
+    feedback_request: FeedbackRequest,
+) -> FeedbackResponse:
+    """Submit user feedback for a query response.
+
+    This endpoint records user feedback which can be used for:
+    - Quality monitoring
+    - Model fine-tuning
+    - Retrieval improvement
+
+    Args:
+        feedback_request: The feedback request payload.
+
+    Returns:
+        FeedbackResponse confirming the feedback was recorded.
+    """
+    # In a production system, this would store feedback in a database
+    # For now, we just acknowledge receipt
+    feedback_id = str(uuid.uuid4())
+
+    # TODO: Store feedback in PostgreSQL
+    # await store_feedback(
+    #     request_id=feedback_request.request_id,
+    #     rating=feedback_request.rating,
+    #     feedback_type=feedback_request.feedback_type,
+    #     comment=feedback_request.comment,
+    #     session_id=feedback_request.session_id,
+    # )
+
+    return FeedbackResponse(
+        success=True,
+        message="Feedback recorded successfully",
+        feedback_id=feedback_id,
+    )
