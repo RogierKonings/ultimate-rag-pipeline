@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: llm-serving-quota
+  namespace: llm-serving
+spec:
+  hard:
+    # GPU limits
+    requests.nvidia.com/gpu: "8"
+    limits.nvidia.com/gpu: "8"
+
+    # CPU limits
+    requests.cpu: "64"
+    limits.cpu: "128"
+
+    # Memory limits
+    requests.memory: "256Gi"
+    limits.memory: "512Gi"
+
+    # Pod limits
+    pods: "20"
+
+    # Service limits
+    services: "10"
+    services.loadbalancers: "3"

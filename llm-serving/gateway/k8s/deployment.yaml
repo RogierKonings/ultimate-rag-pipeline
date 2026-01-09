@@ -1,0 +1,171 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+  labels:
+    app: llm-gateway
+    component: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-gateway
+  template:
+    metadata:
+      labels:
+        app: llm-gateway
+        component: gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8004"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: gateway
+          image: localhost:5000/llm-gateway:latest
+          ports:
+            - containerPort: 8004
+              name: http
+          env:
+            - name: VLLM_URL
+              value: "http://vllm-service:8000"
+            - name: EMBEDDING_URL
+              value: "http://embedding-service:8001"
+            - name: RERANKER_URL
+              value: "http://reranker-service:8002"
+            - name: VLLM_MODEL
+              value: "Qwen/Qwen2.5-7B-Instruct"
+            - name: EMBEDDING_MODEL
+              value: "BAAI/bge-large-en-v1.5"
+            - name: RERANKER_MODEL
+              value: "BAAI/bge-reranker-v2-m3"
+            # Auth settings
+            - name: AUTH_ENABLED
+              value: "true"
+            - name: REQUIRE_AUTH
+              value: "true"
+            - name: JWT_ALGORITHM
+              value: "RS256"
+            - name: JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-config
+                  key: jwt-issuer
+                  optional: true
+            - name: JWT_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-config
+                  key: jwt-audience
+                  optional: true
+            - name: JWKS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-config
+                  key: jwks-url
+                  optional: true
+            # Rate limiting
+            - name: RATE_LIMIT_ENABLED
+              value: "true"
+            - name: RATE_LIMIT_RPM
+              value: "60"
+            - name: RATE_LIMIT_TPM
+              value: "100000"
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: redis-url
+                  optional: true
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8004
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: gateway-config
+            optional: true
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: llm-gateway
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-gateway
+  labels:
+    app: llm-gateway
+spec:
+  selector:
+    app: llm-gateway
+  ports:
+    - port: 8004
+      targetPort: 8004
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+data:
+  jwt-issuer: "https://auth.example.com"
+  jwt-audience: "llm-gateway"
+  jwks-url: ""
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-gateway
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: llm-gateway.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: llm-gateway
+                port:
+                  number: 8004
+  tls:
+    - hosts:
+        - llm-gateway.example.com
+      secretName: llm-gateway-tls

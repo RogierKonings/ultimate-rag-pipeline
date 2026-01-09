@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vllm-config
+  namespace: llm-serving
+  labels:
+    app: vllm
+    component: llm
+data:
+  MODEL_NAME: "Qwen/Qwen2.5-7B-Instruct"
+  PORT: "8000"
+  GPU_MEMORY_UTILIZATION: "0.90"
+  MAX_MODEL_LEN: "8192"
+  MAX_NUM_SEQS: "256"
+  TENSOR_PARALLEL_SIZE: "1"
+  BLOCK_SIZE: "16"
+  SWAP_SPACE: "4"
+  DISABLE_LOG_REQUESTS: "false"
+  DISABLE_LOG_STATS: "false"

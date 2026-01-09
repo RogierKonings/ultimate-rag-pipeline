@@ -1,0 +1,1 @@
+"""Embedding service API module."""

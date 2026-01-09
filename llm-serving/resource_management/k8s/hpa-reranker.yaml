@@ -1,0 +1,54 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: reranker-hpa
+  namespace: llm-serving
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: reranker-service
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    # Scale based on queue size
+    - type: Pods
+      pods:
+        metric:
+          name: rerank_queue_size
+        target:
+          type: AverageValue
+          averageValue: "50"
+
+    # Scale based on CPU utilization
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # Scale based on request latency (p95)
+    - type: Pods
+      pods:
+        metric:
+          name: rerank_request_latency_p95_ms
+        target:
+          type: AverageValue
+          averageValue: "200"
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+      selectPolicy: Min

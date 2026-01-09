@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama
+  namespace: llm-serving
+  labels:
+    app: vllm
+    model: qwen2-5-7b
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+      model: qwen2-5-7b
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: vllm
+        model: qwen2-5-7b
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: default
+
+      # Model download init container
+      initContainers:
+        - name: model-downloader
+          image: python:3.11-slim
+          command:
+            - python3
+            - -c
+            - |
+              from huggingface_hub import snapshot_download
+              import os
+              model_name = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
+              cache_dir = "/models"
+              print(f"Downloading {model_name} to {cache_dir}")
+              snapshot_download(
+                  repo_id=model_name,
+                  cache_dir=cache_dir,
+                  token=os.environ.get("HF_TOKEN") or None
+              )
+              print("Download complete!")
+          env:
+            - name: MODEL_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vllm-config
+                  key: MODEL_NAME
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-secrets
+                  key: hf-token
+                  optional: true
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "1"
+            limits:
+              memory: "8Gi"
+              cpu: "2"
+
+      containers:
+        - name: vllm
+          image: localhost:5000/llm-serving/vllm:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          args:
+            - "--model"
+            - "$(MODEL_NAME)"
+            - "--port"
+            - "$(PORT)"
+            - "--gpu-memory-utilization"
+            - "$(GPU_MEMORY_UTILIZATION)"
+            - "--max-model-len"
+            - "$(MAX_MODEL_LEN)"
+            - "--max-num-seqs"
+            - "$(MAX_NUM_SEQS)"
+            - "--tensor-parallel-size"
+            - "$(TENSOR_PARALLEL_SIZE)"
+            - "--block-size"
+            - "$(BLOCK_SIZE)"
+            - "--swap-space"
+            - "$(SWAP_SPACE)"
+            - "--download-dir"
+            - "/models"
+
+          envFrom:
+            - configMapRef:
+                name: vllm-config
+
+          env:
+            - name: CUDA_VISIBLE_DEVICES
+              value: "0"
+            - name: TRANSFORMERS_CACHE
+              value: "/models"
+            - name: HF_HOME
+              value: "/models"
+
+          resources:
+            requests:
+              memory: "24Gi"
+              cpu: "4"
+              nvidia.com/gpu: "1"
+            limits:
+              memory: "32Gi"
+              cpu: "8"
+              nvidia.com/gpu: "1"
+
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            - name: shm
+              mountPath: /dev/shm
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30  # Allow up to 5 minutes for startup
+
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-model-cache
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "16Gi"
+
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: vllm
+                topologyKey: kubernetes.io/hostname

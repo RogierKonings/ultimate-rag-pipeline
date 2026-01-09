@@ -1,0 +1,48 @@
+# vLLM Serving Configuration
+# This file defines the default serving parameters for the vLLM service
+
+model:
+  # Model identifier from HuggingFace Hub
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  # Optional: Model revision (commit hash or tag)
+  revision: null
+  # Optional: Override model name in API responses
+  served_model_name: null
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+memory:
+  # Fraction of GPU memory to use (0.0-1.0)
+  gpu_memory_utilization: 0.90
+  # Maximum context length
+  max_model_len: 8192
+
+parallelism:
+  # Number of GPUs for tensor parallelism
+  tensor_parallel_size: 1
+  # Number of GPUs for pipeline parallelism
+  pipeline_parallel_size: 1
+
+batching:
+  # Maximum concurrent sequences
+  max_num_seqs: 256
+  # Maximum tokens in a single batch (auto-calculated if null)
+  max_num_batched_tokens: null
+
+kv_cache:
+  # Block size for paged attention
+  block_size: 16
+  # CPU swap space in GB
+  swap_space: 4
+
+quantization:
+  # Quantization method: null, awq, gptq, squeezellm
+  method: null
+
+logging:
+  # Disable logging of individual requests
+  disable_log_requests: false
+  # Disable logging of statistics
+  disable_log_stats: false

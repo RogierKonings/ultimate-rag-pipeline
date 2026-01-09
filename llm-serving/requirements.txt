@@ -1,0 +1,18 @@
+# Base requirements for LLM Serving Layer
+# Each service has its own requirements.txt with service-specific dependencies
+
+# Core dependencies
+pydantic>=2.0,<3.0
+pydantic-settings>=2.0,<3.0
+pyyaml>=6.0
+httpx>=0.25.0
+
+# Monitoring
+prometheus-client>=0.18.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Optional: GPU support (requires PyTorch)
+# torch>=2.0.0
