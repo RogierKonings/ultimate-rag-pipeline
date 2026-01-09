@@ -340,24 +340,93 @@ orchestrator-service/
 
 > **Full Documentation:** See [docs/orchestrator-service/README.md](orchestrator-service/README.md) for detailed API reference, configuration, and usage examples.
 
-### 4. LLM Gateway Service
+### 4. LLM Serving Layer
 
-**Responsibilities:**
-- Model routing (cheap vs expensive)
-- Request batching
-- Retry/backoff logic
-- Rate limiting
-- Usage tracking
+The LLM Serving Layer provides a unified, OpenAI-compatible API gateway for all language model operations including text generation, embeddings, and reranking.
 
-**Deployment:** vLLM with OpenAI-compatible API
+**Services:**
+
+| Service   | Port | Model                     | Purpose                    |
+| --------- | ---- | ------------------------- | -------------------------- |
+| Gateway   | 8004 | -                         | Unified API entry point    |
+| vLLM      | 8000 | Qwen/Qwen2.5-7B-Instruct  | Text generation            |
+| Embedding | 8001 | BAAI/bge-large-en-v1.5    | Vector embeddings (1024d)  |
+| Reranker  | 8002 | BAAI/bge-reranker-v2-m3   | Cross-encoder reranking    |
+
+**Gateway Responsibilities:**
+
+- OpenAI-compatible API contract (`/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`)
+- JWT authentication (RS256) with JWKS support
+- API key validation
+- Per-tenant/per-user rate limiting (token bucket)
+- Request routing to backend services
+- Security headers and request logging
+- Prometheus metrics and health checks
+
+**Components:**
+
+```text
+llm-serving/
+├── gateway/
+│   ├── api/              # FastAPI routes
+│   ├── clients/          # Service clients (vLLM, embedding, reranker)
+│   ├── security/         # Auth, rate limiting, middleware
+│   └── models.py         # OpenAI-compatible request/response models
+├── embedding-service/
+│   ├── api/              # FastAPI application
+│   └── core/             # Batching, embedder
+├── reranker-service/
+│   ├── api/              # FastAPI application
+│   └── core/             # Batching, reranker
+├── vllm/
+│   ├── config/           # vLLM serving configuration
+│   └── scripts/          # Warmup, healthcheck, benchmark
+├── monitoring/
+│   ├── health.py         # Health checker
+│   ├── metrics.py        # Prometheus metrics
+│   └── anomaly.py        # Anomaly detection
+├── config/
+│   ├── manager.py        # Dynamic configuration with hot reload
+│   └── router.py         # Model routing, A/B testing
+└── resource_management/
+    ├── gpu_monitor.py    # GPU utilization tracking
+    ├── cost_tracker.py   # Usage and cost tracking
+    └── batch_optimizer.py # Dynamic batch optimization
+```
+
+**Security Configuration:**
 
 ```yaml
-# vLLM deployment
-model: meta-llama/Llama-3.1-8B-Instruct
-tensor_parallel_size: 1
-max_model_len: 8192
-api_key: ${VLLM_API_KEY}
+# Gateway authentication
+auth:
+  jwt_algorithm: "RS256"
+  jwt_issuer: "https://auth.example.com"
+  jwks_url: "https://auth.example.com/.well-known/jwks.json"
+
+# Rate limiting
+rate_limiting:
+  default_rpm: 60
+  default_tpm: 100000
+  burst_multiplier: 1.5
 ```
+
+**vLLM Configuration:**
+
+```yaml
+# vllm/config/serving_config.yaml
+model:
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  tensor_parallel_size: 1
+  max_model_len: 8192
+  gpu_memory_utilization: 0.90
+
+serving:
+  host: "0.0.0.0"
+  port: 8000
+  max_num_seqs: 256
+```
+
+> **Full Documentation:** See [docs/llm-serving/README.md](llm-serving/README.md) for detailed API reference, security configuration, monitoring, and deployment guides.
 
 ---
 

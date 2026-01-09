@@ -501,6 +501,234 @@ groups:
           summary: "Health check latency high for {{ $labels.dependency }}"
 ```
 
+## LLM Serving Layer Health Checks
+
+The LLM Serving Layer has specialized health check requirements due to GPU model loading and warm-up times.
+
+### Service-Specific Health Endpoints
+
+| Service   | Port | Liveness          | Readiness         | Startup              |
+| --------- | ---- | ----------------- | ----------------- | -------------------- |
+| Gateway   | 8004 | `/health/live`    | `/health/ready`   | `/health/startup`    |
+| vLLM      | 8000 | `/health`         | `/health`         | Model loaded check   |
+| Embedding | 8001 | `/health/live`    | `/health/ready`   | Model loaded check   |
+| Reranker  | 8002 | `/health/live`    | `/health/ready`   | Model loaded check   |
+
+### Gateway Health Response
+
+The Gateway service checks all backend services:
+
+```json
+{
+  "status": "healthy",
+  "service_name": "llm-gateway",
+  "model_loaded": true,
+  "components": [
+    {
+      "name": "vllm",
+      "status": "healthy",
+      "latency_ms": 15.2,
+      "message": "Model ready"
+    },
+    {
+      "name": "embedding",
+      "status": "healthy",
+      "latency_ms": 8.5,
+      "message": "Model loaded"
+    },
+    {
+      "name": "reranker",
+      "status": "healthy",
+      "latency_ms": 12.1,
+      "message": "Model loaded"
+    }
+  ],
+  "gpu_available": true,
+  "gpu_memory_used_mb": 16384.0,
+  "gpu_memory_total_mb": 40960.0,
+  "active_requests": 5,
+  "pending_requests": 2,
+  "uptime_seconds": 3600.5
+}
+```
+
+### Model Service Health Checks
+
+Model services (vLLM, Embedding, Reranker) have additional checks:
+
+```python
+from llm_serving.monitoring.health import HealthChecker, HealthConfig
+
+config = HealthConfig(
+    service_name="embedding-service",
+    check_interval=30.0,
+    timeout=5.0,
+    healthy_threshold=2,
+    unhealthy_threshold=3,
+)
+
+checker = HealthChecker(config)
+
+# Register model-specific check
+async def check_model_loaded():
+    """Verify model is loaded and ready for inference."""
+    # Run a test inference
+    test_embedding = await embedder.embed(["health check"])
+    if len(test_embedding) != 1024:
+        raise ValueError("Invalid embedding dimension")
+
+checker.register_check("model", check_model_loaded)
+```
+
+### GPU Health Monitoring
+
+```python
+from llm_serving.resource_management import GPUMonitor
+
+monitor = GPUMonitor()
+
+async def check_gpu_health():
+    """Check GPU availability and memory."""
+    stats = monitor.get_stats()
+
+    if not stats.available:
+        raise RuntimeError("GPU not available")
+
+    if stats.memory_utilization > 0.95:
+        raise RuntimeError(f"GPU memory critical: {stats.memory_utilization:.1%}")
+
+    if stats.temperature and stats.temperature > 85:
+        raise RuntimeError(f"GPU temperature high: {stats.temperature}C")
+
+checker.register_check("gpu", check_gpu_health)
+```
+
+### Kubernetes Configuration for LLM Services
+
+```yaml
+# vllm deployment - requires longer startup for model loading
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-service
+spec:
+  template:
+    spec:
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60  # 10min max startup for large models
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+```
+
+### LLM Serving Prometheus Metrics
+
+```python
+from prometheus_client import Gauge, Counter
+
+# Model status
+llm_model_loaded = Gauge(
+    "llm_model_loaded",
+    "Whether the model is loaded (1) or not (0)",
+    ["service", "model"]
+)
+
+# GPU metrics
+llm_gpu_memory_used_bytes = Gauge(
+    "llm_gpu_memory_used_bytes",
+    "GPU memory currently in use",
+    ["service", "gpu_id"]
+)
+
+llm_gpu_utilization = Gauge(
+    "llm_gpu_utilization_percent",
+    "GPU compute utilization percentage",
+    ["service", "gpu_id"]
+)
+
+# Request queue
+llm_active_requests = Gauge(
+    "llm_active_requests",
+    "Number of requests currently being processed",
+    ["service"]
+)
+
+llm_queue_size = Gauge(
+    "llm_queue_size",
+    "Number of requests waiting in queue",
+    ["service"]
+)
+```
+
+### LLM-Specific Alerting Rules
+
+```yaml
+groups:
+  - name: llm_serving_health
+    rules:
+      - alert: LLMModelNotLoaded
+        expr: llm_model_loaded == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model not loaded on {{ $labels.service }}"
+
+      - alert: LLMGPUMemoryCritical
+        expr: llm_gpu_memory_used_bytes / llm_gpu_memory_total_bytes > 0.95
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU memory critical on {{ $labels.service }}"
+
+      - alert: LLMQueueBacklog
+        expr: llm_queue_size > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Request queue backlog on {{ $labels.service }}"
+
+      - alert: LLMHighLatency
+        expr: histogram_quantile(0.95, rate(llm_request_latency_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+```
+
+---
+
 ## Best Practices
 
 1. **Keep liveness probes simple** - Only check if the process is alive, not dependencies
@@ -510,3 +738,6 @@ groups:
 5. **Use startup probes for slow services** - GPU services need longer startup times
 6. **Expose metrics** - Make health data available for dashboards and alerts
 7. **Log health changes** - Track when services transition between health states
+8. **GPU model services need extended startup times** - Allow 5-10 minutes for large model loading
+9. **Monitor GPU memory in health checks** - Prevent OOM by failing readiness at high utilization
+10. **Test inference in readiness probes** - Ensure model can actually serve requests
