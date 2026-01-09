@@ -6,3 +6,6 @@ __pycache__/
 
 # Environment
 .env
+
+# Claude Code local settings
+.claude/settings.local.json
