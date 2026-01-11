@@ -1,0 +1,328 @@
+---
+# Prometheus Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: rag-pipeline
+  labels:
+    app: prometheus
+    component: observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: rag-pipeline
+        environment: development
+
+    # Alertmanager configuration
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - alertmanager:9093
+
+    # Rule files
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+
+    # Scrape configurations
+    scrape_configs:
+      # Prometheus self-monitoring
+      - job_name: prometheus
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Kubernetes service discovery for pods with prometheus annotations
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - rag-pipeline
+        relabel_configs:
+          # Only scrape pods with prometheus.io/scrape: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          # Use custom port if specified
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)
+            replacement: $1
+          # Use custom path if specified
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          # Add pod labels
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+      # RAG Services
+      - job_name: ingestion-service
+        static_configs:
+          - targets: ['ingestion-service:8001']
+        metrics_path: /metrics
+        relabel_configs:
+          - target_label: service
+            replacement: ingestion-service
+
+      - job_name: retrieval-service
+        static_configs:
+          - targets: ['retrieval-service:8002']
+        metrics_path: /metrics
+        relabel_configs:
+          - target_label: service
+            replacement: retrieval-service
+
+      - job_name: orchestrator-service
+        static_configs:
+          - targets: ['orchestrator-service:8003']
+        metrics_path: /metrics
+        relabel_configs:
+          - target_label: service
+            replacement: orchestrator-service
+
+      - job_name: llm-gateway
+        static_configs:
+          - targets: ['llm-gateway:8004']
+        metrics_path: /metrics
+        relabel_configs:
+          - target_label: service
+            replacement: llm-gateway
+
+      # OTEL Collector metrics
+      - job_name: otel-collector
+        static_configs:
+          - targets: ['otel-collector:8889']
+
+      # Vector database (Qdrant)
+      - job_name: qdrant
+        static_configs:
+          - targets: ['qdrant:6333']
+        metrics_path: /metrics
+
+      # Redis
+      - job_name: redis
+        static_configs:
+          - targets: ['redis:6379']
+
+  # Recording rules for common aggregations
+  recording_rules.yaml: |
+    groups:
+      - name: rag_recording_rules
+        interval: 30s
+        rules:
+          # Query rate by service
+          - record: rag:query_rate:5m
+            expr: sum(rate(rag_query_total[5m])) by (service)
+
+          # Query error rate
+          - record: rag:query_error_rate:5m
+            expr: |
+              sum(rate(rag_query_total{status="error"}[5m])) by (service)
+              / sum(rate(rag_query_total[5m])) by (service)
+
+          # Query latency percentiles
+          - record: rag:query_latency_p50:5m
+            expr: histogram_quantile(0.50, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le, service))
+
+          - record: rag:query_latency_p95:5m
+            expr: histogram_quantile(0.95, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le, service))
+
+          - record: rag:query_latency_p99:5m
+            expr: histogram_quantile(0.99, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le, service))
+
+          # Retrieval latency by search type
+          - record: rag:retrieval_latency_p95:5m
+            expr: histogram_quantile(0.95, sum(rate(rag_retrieval_duration_seconds_bucket[5m])) by (le, search_type))
+
+          # LLM token throughput
+          - record: rag:llm_tokens_per_second:5m
+            expr: sum(rate(rag_llm_tokens_total[5m])) by (model, type)
+
+          # Cache hit rate
+          - record: rag:cache_hit_rate:5m
+            expr: |
+              sum(rate(rag_cache_hits_total[5m])) by (cache_type)
+              / (sum(rate(rag_cache_hits_total[5m])) by (cache_type) + sum(rate(rag_cache_misses_total[5m])) by (cache_type))
+
+          # Zero results rate
+          - record: rag:zero_results_rate:5m
+            expr: |
+              sum(rate(rag_retrieval_zero_results_total[5m]))
+              / sum(rate(rag_query_total[5m]))
+
+---
+# Prometheus Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: rag-pipeline
+  labels:
+    app: prometheus
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: observability
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.48.1
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=15d
+            - --storage.tsdb.retention.size=10GB
+            - --web.enable-lifecycle
+            - --web.enable-admin-api
+          ports:
+            - containerPort: 9090
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: rules
+              mountPath: /etc/prometheus/rules
+            - name: storage
+              mountPath: /prometheus
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: rules
+          configMap:
+            name: prometheus-rules
+            optional: true
+        - name: storage
+          emptyDir: {}
+
+---
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: rag-pipeline
+  labels:
+    app: prometheus
+    component: observability
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+  selector:
+    app: prometheus
+
+---
+# Prometheus ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: rag-pipeline
+  labels:
+    app: prometheus
+    component: observability
+
+---
+# Prometheus ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    component: observability
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions"]
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+
+---
+# Prometheus ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app: prometheus
+    component: observability
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: rag-pipeline
+
+---
+# Prometheus Rules ConfigMap (placeholder for SLO rules)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: rag-pipeline
+  labels:
+    app: prometheus
+    component: observability
+data:
+  slo_rules.yaml: |
+    groups:
+      - name: slo_rules
+        interval: 30s
+        rules: []

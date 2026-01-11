@@ -1,0 +1,18 @@
+apiVersion: kustomize.io/v1beta1
+kind: Kustomization
+
+namespace: rag-pipeline
+
+resources:
+  - otel-collector.yaml
+  - jaeger.yaml
+  - prometheus.yaml
+  - loki.yaml
+  - promtail.yaml
+  - grafana.yaml
+  - alertmanager.yaml
+  - phoenix.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: rag-pipeline
+  app.kubernetes.io/component: observability

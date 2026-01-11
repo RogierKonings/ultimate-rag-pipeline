@@ -1,0 +1,321 @@
+---
+# Promtail ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+data:
+  promtail.yaml: |
+    server:
+      http_listen_port: 3101
+      grpc_listen_port: 0
+
+    positions:
+      filename: /run/promtail/positions.yaml
+
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+        tenant_id: rag-pipeline
+        batchwait: 1s
+        batchsize: 1048576
+        backoff_config:
+          min_period: 500ms
+          max_period: 5m
+          max_retries: 10
+
+    scrape_configs:
+      # Scrape logs from Kubernetes pods
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - rag-pipeline
+
+        pipeline_stages:
+          # Parse JSON logs
+          - json:
+              expressions:
+                level: level
+                message: message
+                timestamp: timestamp
+                service_name: service.name
+                trace_id: trace.trace_id
+                span_id: trace.span_id
+                request_id: extra.request_id
+                tenant_id: extra.tenant_id
+                user_id: extra.user_id
+                component: extra.component
+                operation: extra.operation
+
+          # Set timestamp from log
+          - timestamp:
+              source: timestamp
+              format: RFC3339Nano
+
+          # Set labels from parsed fields
+          - labels:
+              level:
+              service_name:
+              trace_id:
+              span_id:
+              component:
+
+          # Add output for non-JSON logs
+          - output:
+              source: message
+
+        relabel_configs:
+          # Keep only RAG pipeline pods
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: rag-pipeline
+
+          # Drop health check endpoints from logs
+          - source_labels: [__meta_kubernetes_pod_annotation_promtail_io_scrape]
+            action: drop
+            regex: 'false'
+
+          # Set namespace label
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+
+          # Set pod label
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+
+          # Set container label
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+
+          # Set app label from pod labels
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            target_label: app
+
+          # Set component label from pod labels
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+            target_label: component
+
+          # Set instance label
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance]
+            target_label: instance
+
+          # Set path to container log
+          - replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+
+      # Scrape logs from systemd
+      - job_name: systemd
+        journal:
+          max_age: 12h
+          labels:
+            job: systemd
+        relabel_configs:
+          - source_labels: [__journal__systemd_unit]
+            target_label: unit
+          - source_labels: [__journal__hostname]
+            target_label: hostname
+
+---
+# Promtail DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: promtail
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: promtail
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: promtail
+        app.kubernetes.io/component: logging
+      annotations:
+        checksum/config: "{{ .Values.configChecksum }}"
+    spec:
+      serviceAccountName: promtail
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: promtail
+          image: grafana/promtail:2.9.3
+          imagePullPolicy: IfNotPresent
+          args:
+            - -config.file=/etc/promtail/promtail.yaml
+          ports:
+            - name: http
+              containerPort: 3101
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          env:
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+            - name: run
+              mountPath: /run/promtail
+            - name: containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: pods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - DAC_READ_SEARCH
+            readOnlyRootFilesystem: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+      volumes:
+        - name: config
+          configMap:
+            name: promtail-config
+        - name: run
+          emptyDir: {}
+        - name: containers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: pods
+          hostPath:
+            path: /var/log/pods
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+
+---
+# Promtail ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promtail
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+
+---
+# Promtail ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: promtail
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "watch", "list"]
+
+---
+# Promtail ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: promtail
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: promtail
+subjects:
+  - kind: ServiceAccount
+    name: promtail
+    namespace: rag-pipeline
+
+---
+# Promtail Service (for metrics)
+apiVersion: v1
+kind: Service
+metadata:
+  name: promtail
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3101
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: promtail
+
+---
+# Promtail ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: promtail
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: promtail
+    app.kubernetes.io/component: logging
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: promtail
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

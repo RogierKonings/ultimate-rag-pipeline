@@ -1,0 +1,229 @@
+---
+# OpenTelemetry Collector Configuration
+# Receives traces/metrics from services and exports to backends
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: rag-pipeline
+  labels:
+    app: otel-collector
+    component: observability
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      # Batch spans for efficient export
+      batch:
+        timeout: 5s
+        send_batch_size: 512
+        send_batch_max_size: 1024
+
+      # Memory limiter to prevent OOM
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+        spike_limit_mib: 128
+
+      # Add resource attributes
+      resource:
+        attributes:
+          - key: service.namespace
+            value: rag-pipeline
+            action: upsert
+
+      # Tail-based sampling for production
+      # Keeps all error spans and samples others
+      tail_sampling:
+        decision_wait: 10s
+        num_traces: 100000
+        policies:
+          # Always keep error spans
+          - name: errors
+            type: status_code
+            status_code:
+              status_codes:
+                - ERROR
+          # Always keep slow traces (>2s)
+          - name: slow-traces
+            type: latency
+            latency:
+              threshold_ms: 2000
+          # Always keep LLM inference traces
+          - name: llm-traces
+            type: string_attribute
+            string_attribute:
+              key: rag.operation
+              values:
+                - llm.inference
+                - llm.streaming
+          # Sample 10% of remaining traces
+          - name: probabilistic-sampler
+            type: probabilistic
+            probabilistic:
+              sampling_percentage: 10
+
+    exporters:
+      # Export traces to Jaeger (development)
+      otlp/jaeger:
+        endpoint: jaeger-collector:4317
+        tls:
+          insecure: true
+
+      # Export metrics to Prometheus
+      prometheus:
+        endpoint: 0.0.0.0:8889
+        namespace: otel
+
+      # Debug logging (development only)
+      logging:
+        loglevel: info
+        sampling_initial: 5
+        sampling_thereafter: 200
+
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+      zpages:
+        endpoint: 0.0.0.0:55679
+
+    service:
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, resource]
+          exporters: [otlp/jaeger, logging]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]
+
+---
+# OpenTelemetry Collector Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: rag-pipeline
+  labels:
+    app: otel-collector
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+        component: observability
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8889"
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.92.0
+          args:
+            - --config=/conf/otel-collector-config.yaml
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 8889
+              name: prometheus
+              protocol: TCP
+            - containerPort: 13133
+              name: health
+              protocol: TCP
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+
+---
+# OpenTelemetry Collector Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: rag-pipeline
+  labels:
+    app: otel-collector
+    component: observability
+spec:
+  type: ClusterIP
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: prometheus
+      port: 8889
+      targetPort: 8889
+      protocol: TCP
+    - name: health
+      port: 13133
+      targetPort: 13133
+      protocol: TCP
+  selector:
+    app: otel-collector
+
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector
+  namespace: rag-pipeline
+  labels:
+    app: otel-collector
+    component: observability
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+  endpoints:
+    - port: prometheus
+      interval: 30s
+      path: /metrics

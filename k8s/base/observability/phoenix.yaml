@@ -1,0 +1,229 @@
+---
+# Phoenix LLM Observability
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: phoenix-config
+  labels:
+    app: phoenix
+data:
+  PHOENIX_PORT: "6006"
+  PHOENIX_HOST: "0.0.0.0"
+  PHOENIX_WORKING_DIR: "/data"
+  PHOENIX_GRPC_PORT: "4317"
+  # Enable persistence
+  PHOENIX_ENABLE_PROMETHEUS: "true"
+  PHOENIX_PROMETHEUS_PORT: "9090"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: phoenix-data
+  labels:
+    app: phoenix
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phoenix
+  labels:
+    app: phoenix
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phoenix
+  strategy:
+    type: Recreate  # Single replica with persistent storage
+  template:
+    metadata:
+      labels:
+        app: phoenix
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: phoenix
+          image: arizephoenix/phoenix:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 6006
+              protocol: TCP
+            - name: grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: phoenix-config
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: phoenix-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  labels:
+    app: phoenix
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 6006
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 4317
+      targetPort: grpc
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app: phoenix
+---
+# ServiceMonitor for Prometheus Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: phoenix
+  labels:
+    app: phoenix
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: phoenix
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+---
+# Ingress for Phoenix UI (optional, configure based on your setup)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: phoenix
+  labels:
+    app: phoenix
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  rules:
+    - host: phoenix.rag-pipeline.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: phoenix
+                port:
+                  name: http
+---
+# Network Policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: phoenix-network-policy
+  labels:
+    app: phoenix
+spec:
+  podSelector:
+    matchLabels:
+      app: phoenix
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from RAG services
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: rag-pipeline
+      ports:
+        - port: 6006
+          protocol: TCP
+        - port: 4317
+          protocol: TCP
+    # Allow from Prometheus
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - port: 9090
+          protocol: TCP
+    # Allow from Ingress
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - port: 6006
+          protocol: TCP
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+    # Allow to PostgreSQL for persistence
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgresql
+      ports:
+        - port: 5432
+          protocol: TCP
