@@ -22,19 +22,19 @@ All stories adhere to the [Architecture Document](../../../docs/architecture.md)
 
 ## User Stories
 
-| Story | Title | Priority | Effort | Dependencies |
-|-------|-------|----------|--------|--------------|
-| [US-7.1](US-7.1-jwt-authentication.md) | JWT Authentication | Critical | 2-3 days | Epic 1 |
-| [US-7.2](US-7.2-authorization-rbac.md) | Authorization & RBAC | Critical | 2-3 days | US-7.1 |
-| [US-7.3](US-7.3-document-acl.md) | Document ACL | High | 2-3 days | US-7.1, US-7.2 |
-| [US-7.4](US-7.4-encryption-at-rest.md) | Encryption at Rest | High | 1-2 days | Epic 1 |
-| [US-7.5](US-7.5-encryption-in-transit.md) | Encryption in Transit | High | 1-2 days | Epic 1 |
-| [US-7.6](US-7.6-pii-detection.md) | PII Detection & Handling | High | 2-3 days | Epic 2 (Ingestion) |
-| [US-7.7](US-7.7-secrets-management.md) | Secrets Management | Critical | 1-2 days | Epic 1 |
-| [US-7.8](US-7.8-audit-logging.md) | Audit Logging | High | 2 days | US-7.1 |
-| [US-7.9](US-7.9-security-scanning.md) | Security Scanning | Medium | 1-2 days | - |
-| US-7.10 | TLS 1.3/mTLS & Certificate Management | High | 2 days | Epic 1 |
-| US-7.11 | Audit Log Persistence & Tamper-evidence | High | 2 days | US-7.8 |
+| Story                                                   | Title                                   | Priority | Effort   | Dependencies       |
+| ------------------------------------------------------- | --------------------------------------- | -------- | -------- | ------------------ |
+| [US-7.1](US-7.1-jwt-authentication.md)                  | JWT Authentication                      | Critical | 2-3 days | Epic 1             |
+| [US-7.2](US-7.2-authorization-rbac.md)                  | Authorization & RBAC                    | Critical | 2-3 days | US-7.1             |
+| [US-7.3](US-7.3-document-acl.md)                        | Document ACL                            | High     | 2-3 days | US-7.1, US-7.2     |
+| [US-7.4](US-7.4-encryption-at-rest.md)                  | Encryption at Rest                      | High     | 1-2 days | Epic 1             |
+| [US-7.5](US-7.5-encryption-in-transit.md)               | Encryption in Transit                   | High     | 1-2 days | Epic 1             |
+| [US-7.6](US-7.6-pii-detection.md)                       | PII Detection & Handling                | High     | 2-3 days | Epic 2 (Ingestion) |
+| [US-7.7](US-7.7-secrets-management.md)                  | Secrets Management                      | Critical | 1-2 days | Epic 1             |
+| [US-7.8](US-7.8-audit-logging.md)                       | Audit Logging                           | High     | 2 days   | US-7.1             |
+| [US-7.9](US-7.9-security-scanning.md)                   | Security Scanning                       | Medium   | 1-2 days | -                  |
+| [US-7.10](US-7.10-tls-mtls-certificates.md)             | TLS 1.3/mTLS & Certificate Management   | High     | 2 days   | Epic 1             |
+| [US-7.11](US-7.11-audit-persistence-tamper-evidence.md) | Audit Log Persistence & Tamper-evidence | High     | 2 days   | US-7.8             |
 
 ## Dependency Graph
 
@@ -44,13 +44,13 @@ flowchart TD
     US71 --> US73[US-7.3<br/>Document ACL]
     US72 --> US73
     US71 --> US78[US-7.8<br/>Audit Logging]
-    
+
     E1[Epic 1<br/>Infrastructure] --> US74[US-7.4<br/>Encryption at Rest]
     E1 --> US75[US-7.5<br/>Encryption in Transit]
     E1 --> US77[US-7.7<br/>Secrets Management]
-    
+
     E2[Epic 2<br/>Ingestion] --> US76[US-7.6<br/>PII Detection]
-    
+
     US79[US-7.9<br/>Security Scanning]
     E1 --> US710[US-7.10<br/>TLS 1.3/mTLS & Certificates]
     US78 --> US711[US-7.11<br/>Audit Persistence & Tamper-evidence]
