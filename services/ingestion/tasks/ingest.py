@@ -497,7 +497,7 @@ def batch_ingest(
             try:
                 if async_result.ready():
                     results.append(async_result.get(timeout=1))
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
     # Aggregate results

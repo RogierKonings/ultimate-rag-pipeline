@@ -379,6 +379,7 @@ async def _reembed_migration_batch_async(
         for (point_id, source_point), emb_result in zip(
             point_map.items(),
             embeddings_result.results,
+            strict=False,
         ):
             try:
                 new_points.append(

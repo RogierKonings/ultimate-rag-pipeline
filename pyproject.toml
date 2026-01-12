@@ -124,6 +124,13 @@ ignore = [
     "B008",   # Function call in default argument (FastAPI Depends)
     "ARG001", # Unused function argument (often needed for API signatures)
     "ARG002", # Unused method argument (often needed for interface compliance)
+    "ARG004", # Unused static method argument (often needed for callback signatures)
+    "ARG005", # Unused lambda argument (often needed for interface compliance)
+    "PT006",  # Wrong type passed to first argument of pytest.mark.parametrize
+    "TC001",  # Move import into type-checking block (causes runtime issues)
+    "TC002",  # Move import into type-checking block (causes runtime issues)
+    "TC003",  # Move import into type-checking block (causes runtime issues)
+    "SIM105", # Use contextlib.suppress (stylistic, already using noqa)
 ]
 
 [tool.ruff.lint.per-file-ignores]

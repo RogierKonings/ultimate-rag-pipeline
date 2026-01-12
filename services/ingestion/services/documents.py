@@ -549,10 +549,9 @@ class DocumentService:
         )
         metadata = result.scalar_one_or_none()
 
-        if metadata and metadata.get("raw_storage_path"):
+        if metadata and metadata.get("raw_storage_path") and self._storage:
             # Delete from storage (implementation depends on storage client)
-            if self._storage:
-                await self._storage.delete(metadata["raw_storage_path"])
+            await self._storage.delete(metadata["raw_storage_path"])
 
     async def _restore_document_status(self, document_id: UUID) -> None:
         """Restore document status after failed deletion."""

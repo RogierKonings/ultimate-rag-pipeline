@@ -296,11 +296,8 @@ class InMemoryTokenBlocklist(TokenBlocklist):
         """Add a token JTI to the blocklist."""
         import time
 
-        if ttl and ttl > 0:
-            expiry = time.time() + ttl
-        else:
-            # Default to 24 hours
-            expiry = time.time() + 86400
+        # Default to 24 hours if no TTL provided
+        expiry = time.time() + ttl if ttl and ttl > 0 else time.time() + 86400
 
         self._blocked[jti] = expiry
         self._cleanup()

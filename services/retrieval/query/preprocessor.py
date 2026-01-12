@@ -306,7 +306,7 @@ class QueryPreprocessor:
             f"{self.config.enable_hyde}:"
             f"{self.config.embedding_model}"
         )
-        config_hash = hashlib.md5(config_str.encode()).hexdigest()[:8]
+        config_hash = hashlib.md5(config_str.encode()).hexdigest()[:8]  # noqa: S324
         query_hash = hashlib.sha256(query.encode()).hexdigest()
 
         return f"query:{config_hash}:{query_hash}"

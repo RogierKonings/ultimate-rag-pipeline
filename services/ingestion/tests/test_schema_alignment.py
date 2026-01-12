@@ -218,6 +218,7 @@ class TestArchitectureDeviations:
                 f"  ORM implements: '{actual_table_name}'\n"
                 f"  Reason: {KNOWN_DEVIATIONS['table_name']['reason']}",
                 UserWarning,
+                stacklevel=2,
             )
 
         # Verify the deviation is as expected (documents, not something else)
@@ -250,6 +251,7 @@ class TestArchitectureDeviations:
                 f"  Architecture defines these columns not in ORM: {missing_from_orm}\n"
                 f"  These columns should be added for full architecture compliance.",
                 UserWarning,
+                stacklevel=2,
             )
 
         # This test passes but reports deviations
@@ -269,6 +271,7 @@ class TestArchitectureDeviations:
             warnings.warn(
                 "ARCHITECTURE DEVIATION: Column name differences\n" + "\n".join(rename_messages),
                 UserWarning,
+                stacklevel=2,
             )
 
         assert True

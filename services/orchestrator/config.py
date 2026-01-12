@@ -39,7 +39,7 @@ class OrchestratorConfig(BaseSettings):
     stream_timeout: float = 60.0
 
     # JWT Authentication
-    jwt_secret: str = "secret"
+    jwt_secret: str = "secret"  # noqa: S105
     jwt_algorithm: str = "HS256"
 
     # Circuit Breaker

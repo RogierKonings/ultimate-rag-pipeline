@@ -254,7 +254,7 @@ class EvaluationDataset:
         """Save dataset to JSON file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w") as f:
+        with path.open("w") as f:
             f.write(self.to_json())
         logger.info(f"Saved dataset to {path}")
 
@@ -262,7 +262,7 @@ class EvaluationDataset:
     def load(cls, path: str | Path) -> "EvaluationDataset":
         """Load dataset from JSON file."""
         path = Path(path)
-        with open(path) as f:
+        with path.open() as f:
             return cls.from_json(f.read())
 
     @classmethod

@@ -67,7 +67,7 @@ class ConfigurationManager:
         logger.info(f"Loading configuration from {path}")
 
         async with self._lock:
-            with open(path) as f:
+            with Path(path).open() as f:
                 data = yaml.safe_load(f)
 
             await self._apply_config(data)
@@ -141,11 +141,10 @@ class ConfigurationManager:
                     setattr(endpoint, key, value)
 
             # Update LLM-specific config
-            if "llm_config" in updates and endpoint.type == ModelType.LLM:
-                if endpoint.llm_config:
-                    for k, v in updates["llm_config"].items():
-                        if hasattr(endpoint.llm_config, k):
-                            setattr(endpoint.llm_config, k, v)
+            if "llm_config" in updates and endpoint.type == ModelType.LLM and endpoint.llm_config:
+                for k, v in updates["llm_config"].items():
+                    if hasattr(endpoint.llm_config, k):
+                        setattr(endpoint.llm_config, k, v)
 
             logger.info(f"Updated endpoint {name}")
             await self._notify_callbacks()
@@ -307,7 +306,7 @@ class ConfigurationManager:
                 await asyncio.sleep(self.watch_interval)
 
                 if self.config_path and self.config_path.exists():
-                    with open(self.config_path) as f:
+                    with self.config_path.open() as f:
                         content = f.read()
 
                     content_hash = hashlib.md5(content.encode()).hexdigest()

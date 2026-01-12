@@ -310,7 +310,7 @@ class TestSecurityScanningConfiguration:
 
         config_path = Path(__file__).parent.parent.parent / ".gitleaks.toml"
         if config_path.exists():
-            with open(config_path, "rb") as f:
+            with config_path.open("rb") as f:
                 config = tomllib.load(f)
 
             assert "allowlist" in config
@@ -327,7 +327,7 @@ class TestSecurityScanningConfiguration:
 
         config_path = Path(__file__).parent.parent.parent / ".semgrep.yml"
         if config_path.exists():
-            with open(config_path) as f:
+            with config_path.open() as f:
                 config = yaml.safe_load(f)
 
             assert "rules" in config
@@ -344,7 +344,7 @@ class TestSecurityScanningConfiguration:
 
         config_path = Path(__file__).parent.parent.parent / ".pre-commit-config.yaml"
         if config_path.exists():
-            with open(config_path) as f:
+            with config_path.open() as f:
                 config = yaml.safe_load(f)
 
             assert "repos" in config
@@ -365,7 +365,7 @@ class TestSecurityScanningConfiguration:
 
         config_path = Path(__file__).parent.parent.parent / "pyproject.toml"
         if config_path.exists():
-            with open(config_path, "rb") as f:
+            with config_path.open("rb") as f:
                 config = tomllib.load(f)
 
             assert "tool" in config
@@ -409,7 +409,7 @@ class TestGitHubWorkflows:
             pytest.skip("Workflows directory not found")
 
         for workflow_file in workflows_dir.glob("security-*.yml"):
-            with open(workflow_file) as f:
+            with workflow_file.open() as f:
                 try:
                     workflow = yaml.safe_load(f)
                     assert "name" in workflow
@@ -586,10 +586,10 @@ class TestWave4Integration:
         precommit_path = project_root / ".pre-commit-config.yaml"
 
         if pyproject_path.exists() and precommit_path.exists():
-            with open(pyproject_path, "rb") as f:
+            with pyproject_path.open("rb") as f:
                 pyproject = tomllib.load(f)
 
-            with open(precommit_path) as f:
+            with precommit_path.open() as f:
                 precommit = yaml.safe_load(f)
 
             # Check that Bandit exclusions are consistent

@@ -253,7 +253,7 @@ class PhoenixTracer:
 
     def _should_sample(self) -> bool:
         """Determine if this trace should be sampled."""
-        return random.random() < self.config.sample_rate
+        return random.random() < self.config.sample_rate  # noqa: S311
 
     def _count_tokens(self, text: str) -> int:
         """Count tokens in text."""

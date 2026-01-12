@@ -190,12 +190,11 @@ class EventSequenceValidator:
                     "Done event missing required fields: usage, latency_ms",
                     event=event,
                 )
-        elif event.event == StreamEventType.ERROR:
-            if not validate_error_event(event):
-                raise EventValidationError(
-                    "Error event missing required fields: error, code",
-                    event=event,
-                )
+        elif event.event == StreamEventType.ERROR and not validate_error_event(event):
+            raise EventValidationError(
+                "Error event missing required fields: error, code",
+                event=event,
+            )
 
     def _validate_sequence_position(self, event: StreamEvent) -> None:
         """Validate event can be added at current position.

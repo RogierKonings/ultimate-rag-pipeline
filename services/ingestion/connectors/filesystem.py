@@ -213,7 +213,7 @@ class FilesystemConnector(BaseConnector):
         if HAS_MAGIC:
             try:
                 return magic.from_buffer(content, mime=True)
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         if filename:

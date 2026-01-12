@@ -68,7 +68,7 @@ class TracingSetup:
                 insecure=True,
             )
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-        except Exception:
+        except Exception:  # noqa: S110
             # Silently fail if OTLP endpoint not available
             pass
 
@@ -97,7 +97,7 @@ class TracingSetup:
         try:
             FastAPIInstrumentor.instrument_app(app)
             HTTPXClientInstrumentor().instrument()
-        except Exception:
+        except Exception:  # noqa: S110
             # Silently fail if instrumentation fails
             pass
 

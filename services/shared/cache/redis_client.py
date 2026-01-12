@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import ssl
+from pathlib import Path
 from typing import Any
 
 import redis.asyncio as redis
@@ -27,7 +28,7 @@ def get_ssl_context() -> ssl.SSLContext | None:
     ssl_context = ssl.create_default_context(cafile=ca_cert)
     ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-    if os.path.exists(client_cert) and os.path.exists(client_key):
+    if Path(client_cert).exists() and Path(client_key).exists():
         ssl_context.load_cert_chain(certfile=client_cert, keyfile=client_key)
 
     return ssl_context
@@ -261,7 +262,7 @@ class RedisCache:
             16-character MD5 hash.
         """
         content = ":".join(str(arg) for arg in args)
-        return hashlib.md5(content.encode()).hexdigest()[:16]
+        return hashlib.md5(content.encode()).hexdigest()[:16]  # noqa: S324
 
     async def health_check(self) -> bool:
         """Check Redis connectivity.

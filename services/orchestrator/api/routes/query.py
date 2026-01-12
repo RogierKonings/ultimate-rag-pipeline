@@ -266,7 +266,7 @@ async def query_stream(
         if retrieval_client is not None:
             try:
                 documents = await retrieval_client.search(query_request.query)
-            except Exception:
+            except Exception:  # noqa: S110
                 # Continue without documents on retrieval failure
                 pass
 

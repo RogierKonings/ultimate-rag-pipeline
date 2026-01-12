@@ -230,7 +230,7 @@ class TextFormatter(logging.Formatter):
                     if ctx and ctx.is_valid:
                         trace_id = format(ctx.trace_id, "032x")[-12:]  # Last 12 chars
                         parts.append(f"[{trace_id}]")
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         # Logger name

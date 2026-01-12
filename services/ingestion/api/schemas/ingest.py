@@ -513,11 +513,10 @@ class SyncRequest(BaseModel):
     ) -> SyncSourceConfig:
         """Validate that required fields are present for source type."""
         source_type = info.data.get("source_type")
-        if source_type == SourceType.DATABASE:
-            if not v.connection_string or not v.table:
-                raise ValueError(
-                    "DATABASE source requires connection_string and table",
-                )
+        if source_type == SourceType.DATABASE and (not v.connection_string or not v.table):
+            raise ValueError(
+                "DATABASE source requires connection_string and table",
+            )
         return v
 
 

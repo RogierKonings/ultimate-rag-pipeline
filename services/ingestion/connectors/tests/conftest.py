@@ -34,11 +34,12 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.unit)
 
         # Skip integration tests by default unless explicitly requested
-        if "integration" in item.keywords:
-            if not config.getoption("-m") or "integration" not in config.getoption("-m"):
-                item.add_marker(
-                    pytest.mark.skip(reason="Integration tests require -m integration flag"),
-                )
+        if "integration" in item.keywords and (
+            not config.getoption("-m") or "integration" not in config.getoption("-m")
+        ):
+            item.add_marker(
+                pytest.mark.skip(reason="Integration tests require -m integration flag"),
+            )
 
 
 @pytest.fixture(scope="session")

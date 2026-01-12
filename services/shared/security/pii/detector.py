@@ -140,7 +140,7 @@ class PIIDetector:
         try:
             from presidio_analyzer import Pattern, PatternRecognizer
 
-            with open(path) as f:
+            with Path(path).open() as f:
                 config = yaml.safe_load(f)
 
             for recognizer_config in config.get("recognizers", []):

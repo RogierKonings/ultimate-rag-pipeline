@@ -35,10 +35,9 @@ async def output_validation_node(state: "RAGState") -> "RAGState":
     response = state.get("response")
 
     # Check if we have a response to validate
-    if not response:
+    if not response and not error:
         # If there's no response and no error yet, set one
-        if not error:
-            error = "No response generated"
+        error = "No response generated"
 
     # Stub: Additional validation would be performed here
     # - Content safety checks

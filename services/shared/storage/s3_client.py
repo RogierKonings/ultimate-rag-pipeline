@@ -278,7 +278,7 @@ class S3Storage:
             return f"{tenant_id}/{document_id}/{filename}"
 
         # Generate hash for deduplication
-        hash_val = hashlib.md5(filename.encode()).hexdigest()[:8]
+        hash_val = hashlib.md5(filename.encode()).hexdigest()[:8]  # noqa: S324
         return f"{tenant_id}/{hash_val}_{filename}"
 
     def ensure_bucket_exists(

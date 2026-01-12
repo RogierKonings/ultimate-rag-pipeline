@@ -254,7 +254,7 @@ class WebConnector(BaseConnector):
                     else:
                         # No robots.txt - allow all
                         parser.parse([])
-            except Exception:
+            except Exception:  # noqa: S110
                 # Error fetching robots.txt - allow all
                 parser.parse([])
 
@@ -444,7 +444,7 @@ class WebConnector(BaseConnector):
                             self._visited.add(normalized_link)
                             queue.append((normalized_link, depth + 1))
 
-                except Exception:
+                except Exception:  # noqa: S110
                     # Error extracting links - continue without them
                     pass
 
@@ -587,6 +587,6 @@ class WebConnector(BaseConnector):
                             self._visited.add(normalized_link)
                             queue.append((normalized_link, depth + 1))
 
-                except Exception:
+                except Exception:  # noqa: S110
                     # Error extracting links - continue without them
                     pass

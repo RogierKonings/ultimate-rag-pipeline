@@ -232,20 +232,19 @@ class CircuitBreaker:
 
     def _check_state_transition(self) -> None:
         """Check if circuit should transition from OPEN to HALF_OPEN."""
-        if self._state == CircuitState.OPEN:
-            if self._last_failure_time is not None:
-                elapsed = time.monotonic() - self._last_failure_time
-                if elapsed >= self.config.recovery_timeout:
-                    logger.info(
-                        "Circuit '%s' entering half-open state for recovery test",
-                        self.name,
-                        extra={
-                            "circuit_name": self.name,
-                            "elapsed_seconds": elapsed,
-                        },
-                    )
-                    self._state = CircuitState.HALF_OPEN
-                    self._half_open_calls = 0
+        if self._state == CircuitState.OPEN and self._last_failure_time is not None:
+            elapsed = time.monotonic() - self._last_failure_time
+            if elapsed >= self.config.recovery_timeout:
+                logger.info(
+                    "Circuit '%s' entering half-open state for recovery test",
+                    self.name,
+                    extra={
+                        "circuit_name": self.name,
+                        "elapsed_seconds": elapsed,
+                    },
+                )
+                self._state = CircuitState.HALF_OPEN
+                self._half_open_calls = 0
 
     def _time_until_recovery(self) -> float:
         """Calculate time until circuit transitions to HALF_OPEN."""

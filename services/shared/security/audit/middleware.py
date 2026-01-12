@@ -181,7 +181,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     error_message=error_message,
                     details=details if details else None,
                 )
-            except Exception:
+            except Exception:  # noqa: S110
                 # Don't fail request if audit logging fails
                 pass
 
@@ -306,10 +306,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 resource_type = part.rstrip("s")  # documents -> document
 
             # Found an ID (UUID-like or numeric)
-            if resource_type and not resource_id:
-                if self._looks_like_id(part):
-                    resource_id = part
-                    break
+            if resource_type and not resource_id and self._looks_like_id(part):
+                resource_id = part
+                break
 
         return resource_type, resource_id
 

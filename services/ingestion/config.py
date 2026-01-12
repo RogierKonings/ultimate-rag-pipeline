@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
 
     # JWT Authentication
-    jwt_secret: str = "your-secret-key-change-in-production"
+    jwt_secret: str = "your-secret-key-change-in-production"  # noqa: S105
     jwt_algorithm: str = "HS256"
 
     # Database URLs
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # MinIO/S3 credentials
     minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"  # noqa: S105
     minio_bucket: str = "documents"
 
     # Celery

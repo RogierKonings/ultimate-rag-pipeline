@@ -95,9 +95,8 @@ class HealthChecker:
         components.append(gpu_health)
         if gpu_health.status == HealthStatus.UNHEALTHY:
             overall_status = HealthStatus.UNHEALTHY
-        elif gpu_health.status == HealthStatus.DEGRADED:
-            if overall_status == HealthStatus.HEALTHY:
-                overall_status = HealthStatus.DEGRADED
+        elif gpu_health.status == HealthStatus.DEGRADED and overall_status == HealthStatus.HEALTHY:
+            overall_status = HealthStatus.DEGRADED
 
         # Check custom components
         for name, check_fn in self._components.items():

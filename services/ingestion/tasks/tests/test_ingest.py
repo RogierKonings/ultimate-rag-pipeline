@@ -16,17 +16,21 @@ class TestGetConnector:
 
     def test_filesystem_connector(self):
         """Test getting filesystem connector."""
-        with patch("services.ingestion.tasks.ingest.FilesystemConnector") as mock_class:
-            with patch("services.ingestion.tasks.ingest.FilesystemConnectorConfig"):
-                _get_connector("filesystem", {"base_path": "/tmp"})
-                mock_class.assert_called_once()
+        with (
+            patch("services.ingestion.tasks.ingest.FilesystemConnector") as mock_class,
+            patch("services.ingestion.tasks.ingest.FilesystemConnectorConfig"),
+        ):
+            _get_connector("filesystem", {"base_path": "/tmp"})
+            mock_class.assert_called_once()
 
     def test_database_connector(self):
         """Test getting database connector."""
-        with patch("services.ingestion.tasks.ingest.DatabaseConnector") as mock_class:
-            with patch("services.ingestion.tasks.ingest.DatabaseConnectorConfig"):
-                _get_connector("database", {"connection_string": "sqlite://"})
-                mock_class.assert_called_once()
+        with (
+            patch("services.ingestion.tasks.ingest.DatabaseConnector") as mock_class,
+            patch("services.ingestion.tasks.ingest.DatabaseConnectorConfig"),
+        ):
+            _get_connector("database", {"connection_string": "sqlite://"})
+            mock_class.assert_called_once()
 
     def test_unknown_source_type(self):
         """Test error for unknown source type."""
@@ -90,9 +94,11 @@ class TestProcessDocument:
                                 mock_coordinator.__aexit__ = AsyncMock(return_value=None)
                                 mock_coord.return_value = mock_coordinator
 
-                                with patch("services.ingestion.tasks.ingest.IndexedChunk"):
-                                    with patch("services.ingestion.tasks.ingest.DocumentRecord"):
-                                        result = await _process_document_async(
+                                with (
+                                    patch("services.ingestion.tasks.ingest.IndexedChunk"),
+                                    patch("services.ingestion.tasks.ingest.DocumentRecord"),
+                                ):
+                                    result = await _process_document_async(
                                             task=mock_task,
                                             document_source_id="test-doc",
                                             source_type="filesystem",

@@ -52,7 +52,7 @@ class PromptBuilder:
                     default configuration will be used.
         """
         self.config = config or PromptConfig()
-        self._jinja_env = Environment(loader=BaseLoader())
+        self._jinja_env = Environment(loader=BaseLoader(), autoescape=True)
 
     def build(
         self,
@@ -190,12 +190,11 @@ class PromptBuilder:
             The effective strategy to use.
         """
         # If no context or documents, fall back to no_context
-        if not context and not documents:
-            if requested_strategy in (
-                PromptStrategy.RAG.value,
-                PromptStrategy.RAG_CITATIONS.value,
-            ):
-                return PromptStrategy.NO_CONTEXT.value
+        if not context and not documents and requested_strategy in (
+            PromptStrategy.RAG.value,
+            PromptStrategy.RAG_CITATIONS.value,
+        ):
+            return PromptStrategy.NO_CONTEXT.value
 
         return requested_strategy
 

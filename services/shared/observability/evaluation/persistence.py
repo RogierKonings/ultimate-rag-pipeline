@@ -199,33 +199,32 @@ class EvaluationRepository:
         content = f"{question}{''.join(sorted(contexts))}"
         content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
 
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    f"""
-                    INSERT INTO {self.table_prefix}examples
-                    (id, dataset_id, question, contexts, answer, ground_truth, metadata, content_hash)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    """,
-                    example_id,
-                    dataset_id,
-                    question,
-                    json.dumps(contexts),
-                    answer,
-                    ground_truth,
-                    json.dumps(metadata or {}),
-                    content_hash,
-                )
+        async with pool.acquire() as conn, conn.transaction():
+            await conn.execute(
+                f"""
+                INSERT INTO {self.table_prefix}examples
+                (id, dataset_id, question, contexts, answer, ground_truth, metadata, content_hash)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                """,
+                example_id,
+                dataset_id,
+                question,
+                json.dumps(contexts),
+                answer,
+                ground_truth,
+                json.dumps(metadata or {}),
+                content_hash,
+            )
 
-                # Update example count
-                await conn.execute(
-                    f"""
-                    UPDATE {self.table_prefix}datasets
-                    SET example_count = example_count + 1, updated_at = NOW()
-                    WHERE id = $1
-                    """,
-                    dataset_id,
-                )
+            # Update example count
+            await conn.execute(
+                f"""
+                UPDATE {self.table_prefix}datasets
+                SET example_count = example_count + 1, updated_at = NOW()
+                WHERE id = $1
+                """,
+                dataset_id,
+            )
 
         return example_id
 
@@ -249,42 +248,41 @@ class EvaluationRepository:
         pool = await self._get_pool()
         count = 0
 
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                for sample in examples:
-                    example_id = sample.id or str(uuid4())
-                    content = f"{sample.question}{''.join(sorted(sample.contexts))}"
-                    content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+        async with pool.acquire() as conn, conn.transaction():
+            for sample in examples:
+                example_id = sample.id or str(uuid4())
+                content = f"{sample.question}{''.join(sorted(sample.contexts))}"
+                content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
 
-                    await conn.execute(
-                        f"""
-                        INSERT INTO {self.table_prefix}examples
-                        (id, dataset_id, question, contexts, answer, ground_truth, metadata, content_hash)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                        ON CONFLICT (id) DO NOTHING
-                        """,
-                        example_id,
-                        dataset_id,
-                        sample.question,
-                        json.dumps(sample.contexts),
-                        sample.answer,
-                        sample.ground_truth,
-                        json.dumps(sample.metadata),
-                        content_hash,
-                    )
-                    count += 1
-
-                # Update example count
                 await conn.execute(
                     f"""
-                    UPDATE {self.table_prefix}datasets
-                    SET example_count = (
-                        SELECT COUNT(*) FROM {self.table_prefix}examples WHERE dataset_id = $1
-                    ), updated_at = NOW()
-                    WHERE id = $1
+                    INSERT INTO {self.table_prefix}examples
+                    (id, dataset_id, question, contexts, answer, ground_truth, metadata, content_hash)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    ON CONFLICT (id) DO NOTHING
                     """,
+                    example_id,
                     dataset_id,
+                    sample.question,
+                    json.dumps(sample.contexts),
+                    sample.answer,
+                    sample.ground_truth,
+                    json.dumps(sample.metadata),
+                    content_hash,
                 )
+                count += 1
+
+            # Update example count
+            await conn.execute(
+                f"""
+                UPDATE {self.table_prefix}datasets
+                SET example_count = (
+                    SELECT COUNT(*) FROM {self.table_prefix}examples WHERE dataset_id = $1
+                ), updated_at = NOW()
+                WHERE id = $1
+                """,
+                dataset_id,
+            )
 
         logger.info(f"Added {count} examples to dataset {dataset_id}")
         return count

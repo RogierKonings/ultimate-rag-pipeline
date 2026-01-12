@@ -106,18 +106,17 @@ class HTMLParser(BaseParser):
         # Extract code blocks
         for code in soup.find_all(["pre", "code"]):
             text = code.get_text(strip=True)
-            if text:
-                # Check if this is a standalone code block (pre) or inline
-                if code.name == "pre":
-                    blocks.append(
-                        ContentBlock(
-                            content_type=ContentType.CODE,
-                            content=text,
-                            position=position,
-                            metadata={"tag": "pre"},
-                        ),
-                    )
-                    position += 1
+            if text and code.name == "pre":
+                # This is a standalone code block
+                blocks.append(
+                    ContentBlock(
+                        content_type=ContentType.CODE,
+                        content=text,
+                        position=position,
+                        metadata={"tag": "pre"},
+                    ),
+                )
+                position += 1
 
         # Extract tables
         tables: list[TableContent] = []

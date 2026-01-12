@@ -88,10 +88,10 @@ class FallbackHandlers:
 
     @staticmethod
     async def llm_fallback(
-        *args: Any,
+        *_args: Any,
         error: Exception | None = None,
         cache_key: str | None = None,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> str:
         """Return cached or default response on LLM failure.
 
@@ -141,9 +141,9 @@ class FallbackHandlers:
 
     @staticmethod
     async def retrieval_fallback(
-        *args: Any,
+        *_args: Any,
         error: Exception | None = None,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> list[dict[str, Any]]:
         """Return empty results on retrieval failure.
 
@@ -167,10 +167,10 @@ class FallbackHandlers:
 
     @staticmethod
     async def embedding_fallback(
-        *args: Any,
+        *_args: Any,
         error: Exception | None = None,
         cache_key: str | None = None,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> list[float]:
         """Return cached embedding or raise on failure.
 
@@ -212,10 +212,10 @@ class FallbackHandlers:
 
     @staticmethod
     async def guardrails_fallback(
-        *args: Any,
+        *_args: Any,
         error: Exception | None = None,
         strict_mode: bool = False,
-        **kwargs: Any,
+        **_kwargs: Any,
     ) -> dict[str, Any]:
         """Fallback for guardrails service failure.
 

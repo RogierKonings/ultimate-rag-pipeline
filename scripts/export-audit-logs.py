@@ -474,9 +474,9 @@ async def main():
         print("Validating exported hash chain...")
         previous_hash = None
         for i, log in enumerate(logs):
-            if log.get("previous_hash") and log.get("previous_hash") != previous_hash:
-                if i > 0:  # First entry might not have previous
-                    print(f"Warning: Hash chain may be incomplete at entry {i}")
+            if log.get("previous_hash") and log.get("previous_hash") != previous_hash and i > 0:
+                # First entry might not have previous
+                print(f"Warning: Hash chain may be incomplete at entry {i}")
             previous_hash = log.get("entry_hash")
 
         print("Export complete!")

@@ -35,7 +35,7 @@ class RetrievalConfig(BaseSettings):
     rerank_top_k: int = 20
 
     # JWT
-    jwt_secret: str = "dev-secret-key"
+    jwt_secret: str = "dev-secret-key"  # noqa: S105
     jwt_algorithm: str = "HS256"
 
     # Cache

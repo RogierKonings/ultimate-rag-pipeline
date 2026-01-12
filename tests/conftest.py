@@ -18,7 +18,7 @@ except Exception:
 def pytest_configure(config):
     """Configure custom pytest markers."""
     config.addinivalue_line(
-        "markers", "requires_spacy: mark test as requiring spacy to be available"
+        "markers", "requires_spacy: mark test as requiring spacy to be available",
     )
 
 
@@ -29,11 +29,10 @@ def pytest_collection_modifyitems(config, items):
 
     skip_spacy = pytest.mark.skip(
         reason=f"spacy not available on Python {sys.version_info.major}.{sys.version_info.minor} "
-        "(pydantic v1 compatibility issue)"
+        "(pydantic v1 compatibility issue)",
     )
     for item in items:
         # Skip tests in test_pii_detection.py that require spacy
-        if "test_pii_detection" in str(item.fspath):
-            # Only skip tests that actually use the detector (not config tests)
-            if "TestPIISettings" not in item.nodeid:
-                item.add_marker(skip_spacy)
+        # Only skip tests that actually use the detector (not config tests)
+        if "test_pii_detection" in str(item.fspath) and "TestPIISettings" not in item.nodeid:
+            item.add_marker(skip_spacy)

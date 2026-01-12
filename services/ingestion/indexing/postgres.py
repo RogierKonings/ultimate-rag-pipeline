@@ -127,62 +127,61 @@ class PostgresWriter(BaseIndexWriter):
         errors: list[str] = []
         items_written = 0
 
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                for doc in documents:
-                    try:
-                        await conn.execute(
-                            f"""
-                            INSERT INTO {self.config.table_name} (
-                                document_id, source_uri, source_type, filename,
-                                mime_type, title, author, chunk_count, total_tokens,
-                                content_hash, version,
-                                tenant_id, visibility, allowed_groups, allowed_users,
-                                created_at, updated_at, indexed_at, status, error_message
-                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-                            ON CONFLICT (document_id) DO UPDATE SET
-                                source_uri = EXCLUDED.source_uri,
-                                source_type = EXCLUDED.source_type,
-                                filename = EXCLUDED.filename,
-                                mime_type = EXCLUDED.mime_type,
-                                title = EXCLUDED.title,
-                                author = EXCLUDED.author,
-                                chunk_count = EXCLUDED.chunk_count,
-                                total_tokens = EXCLUDED.total_tokens,
-                                content_hash = EXCLUDED.content_hash,
-                                version = EXCLUDED.version,
-                                visibility = EXCLUDED.visibility,
-                                allowed_groups = EXCLUDED.allowed_groups,
-                                allowed_users = EXCLUDED.allowed_users,
-                                updated_at = NOW(),
-                                indexed_at = EXCLUDED.indexed_at,
-                                status = EXCLUDED.status,
-                                error_message = EXCLUDED.error_message
-                        """,
-                            doc.document_id,
-                            doc.source_uri,
-                            doc.source_type,
-                            doc.filename,
-                            doc.mime_type,
-                            doc.title,
-                            doc.author,
-                            doc.chunk_count,
-                            doc.total_tokens,
-                            doc.content_hash,
-                            doc.version,
-                            doc.tenant_id,
-                            doc.visibility,
-                            doc.allowed_groups,
-                            doc.allowed_users,
-                            doc.created_at,
-                            doc.updated_at,
-                            doc.indexed_at,
-                            doc.status,
-                            doc.error_message,
-                        )
-                        items_written += 1
-                    except Exception as e:
-                        errors.append(f"Document {doc.document_id}: {str(e)}")
+        async with self._pool.acquire() as conn, conn.transaction():
+            for doc in documents:
+                try:
+                    await conn.execute(
+                        f"""
+                        INSERT INTO {self.config.table_name} (
+                            document_id, source_uri, source_type, filename,
+                            mime_type, title, author, chunk_count, total_tokens,
+                            content_hash, version,
+                            tenant_id, visibility, allowed_groups, allowed_users,
+                            created_at, updated_at, indexed_at, status, error_message
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                        ON CONFLICT (document_id) DO UPDATE SET
+                            source_uri = EXCLUDED.source_uri,
+                            source_type = EXCLUDED.source_type,
+                            filename = EXCLUDED.filename,
+                            mime_type = EXCLUDED.mime_type,
+                            title = EXCLUDED.title,
+                            author = EXCLUDED.author,
+                            chunk_count = EXCLUDED.chunk_count,
+                            total_tokens = EXCLUDED.total_tokens,
+                            content_hash = EXCLUDED.content_hash,
+                            version = EXCLUDED.version,
+                            visibility = EXCLUDED.visibility,
+                            allowed_groups = EXCLUDED.allowed_groups,
+                            allowed_users = EXCLUDED.allowed_users,
+                            updated_at = NOW(),
+                            indexed_at = EXCLUDED.indexed_at,
+                            status = EXCLUDED.status,
+                            error_message = EXCLUDED.error_message
+                    """,
+                        doc.document_id,
+                        doc.source_uri,
+                        doc.source_type,
+                        doc.filename,
+                        doc.mime_type,
+                        doc.title,
+                        doc.author,
+                        doc.chunk_count,
+                        doc.total_tokens,
+                        doc.content_hash,
+                        doc.version,
+                        doc.tenant_id,
+                        doc.visibility,
+                        doc.allowed_groups,
+                        doc.allowed_users,
+                        doc.created_at,
+                        doc.updated_at,
+                        doc.indexed_at,
+                        doc.status,
+                        doc.error_message,
+                    )
+                    items_written += 1
+                except Exception as e:
+                    errors.append(f"Document {doc.document_id}: {str(e)}")
 
         duration = (time.time() - start) * 1000
 

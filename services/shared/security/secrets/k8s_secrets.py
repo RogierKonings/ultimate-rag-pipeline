@@ -7,6 +7,7 @@ Kubernetes Secrets as a secrets backend.
 
 import base64
 import logging
+from pathlib import Path
 from typing import Any
 
 from .config import KubernetesSecretsSettings
@@ -106,9 +107,9 @@ class K8sSecretsClient:
         if namespace is None:
             # Try to get current namespace from service account
             try:
-                with open(
+                with Path(
                     "/var/run/secrets/kubernetes.io/serviceaccount/namespace",
-                ) as f:
+                ).open() as f:
                     namespace = f.read().strip()
             except FileNotFoundError:
                 namespace = "default"

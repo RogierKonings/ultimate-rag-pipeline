@@ -245,11 +245,10 @@ class APIConnector(BaseConnector):
             if self.config.auth_token and self.config.api_key_header:
                 headers[self.config.api_key_header] = self.config.auth_token
 
-        elif self.config.auth_type == "basic":
-            if self.config.basic_username and self.config.basic_password:
-                credentials = f"{self.config.basic_username}:{self.config.basic_password}"
-                encoded = base64.b64encode(credentials.encode()).decode()
-                headers["Authorization"] = f"Basic {encoded}"
+        elif self.config.auth_type == "basic" and self.config.basic_username and self.config.basic_password:
+            credentials = f"{self.config.basic_username}:{self.config.basic_password}"
+            encoded = base64.b64encode(credentials.encode()).decode()
+            headers["Authorization"] = f"Basic {encoded}"
 
         return headers
 
@@ -327,11 +326,11 @@ class APIConnector(BaseConnector):
                         await asyncio.sleep(retry_after)
                         continue
 
-                    if response.status >= 500:  # Server error
-                        if attempt < self.config.max_retries:
-                            delay = self.config.retry_delay * (2**attempt)
-                            await asyncio.sleep(delay)
-                            continue
+                    if response.status >= 500 and attempt < self.config.max_retries:
+                        # Server error - retry with backoff
+                        delay = self.config.retry_delay * (2**attempt)
+                        await asyncio.sleep(delay)
+                        continue
 
                     response.raise_for_status()
                     return await response.json()
@@ -595,7 +594,7 @@ class APIConnector(BaseConnector):
                 source_id = self._extract_id(item)
                 content = self._extract_content(item)
                 yield self._build_metadata(item, source_id, len(content))
-            except Exception:
+            except Exception:  # noqa: S112
                 # Skip items that can't be processed
                 continue
 
@@ -658,6 +657,6 @@ class APIConnector(BaseConnector):
                 content = self._extract_content(item)
                 metadata = self._build_metadata(item, source_id, len(content))
                 yield RawDocument(content=content, metadata=metadata)
-            except Exception:
+            except Exception:  # noqa: S112
                 # Skip items that can't be processed
                 continue

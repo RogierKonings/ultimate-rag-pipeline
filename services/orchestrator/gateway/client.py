@@ -273,9 +273,8 @@ class ModelGateway:
             except httpx.HTTPStatusError as e:
                 last_error = self._map_http_error(e)
                 # Don't retry on client errors (4xx) except rate limit (429)
-                if 400 <= e.response.status_code < 500:
-                    if e.response.status_code != 429:
-                        raise last_error from None
+                if 400 <= e.response.status_code < 500 and e.response.status_code != 429:
+                    raise last_error from None
                 # For 429 and 5xx, continue to retry logic below
 
             except httpx.TimeoutException as e:
@@ -292,7 +291,7 @@ class ModelGateway:
                     model_config.retry_max_delay,
                 )
                 # Add jitter (0.5 to 1.5 of the delay)
-                delay *= 0.5 + random.random()
+                delay *= 0.5 + random.random()  # noqa: S311
                 await asyncio.sleep(delay)
             else:
                 # All retries exhausted

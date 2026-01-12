@@ -69,7 +69,7 @@ class JSONFileReporter(BaseReporter):
         if not self.include_individual and data.get("results"):
             data["results"]["individual_results"] = []
 
-        with open(filepath, "w") as f:
+        with filepath.open("w") as f:
             json.dump(data, f, indent=2, default=str)
 
         logger.info(f"Saved evaluation results to {filepath}")
@@ -77,7 +77,7 @@ class JSONFileReporter(BaseReporter):
         # Also save a summary file
         summary_file = self.output_dir / f"{run.name}_{timestamp}_summary.json"
         summary = self._create_summary(run)
-        with open(summary_file, "w") as f:
+        with summary_file.open("w") as f:
             json.dump(summary, f, indent=2)
 
         logger.info(f"Saved evaluation summary to {summary_file}")

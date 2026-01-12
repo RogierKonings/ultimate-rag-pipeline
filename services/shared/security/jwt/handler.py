@@ -376,9 +376,8 @@ class JWTHandler:
             )
 
         # Check blocklist
-        if self.blocklist and claims.jti:
-            if self.blocklist.is_blocked(claims.jti):
-                raise TokenRevokedError("Token has been revoked")
+        if self.blocklist and claims.jti and self.blocklist.is_blocked(claims.jti):
+            raise TokenRevokedError("Token has been revoked")
 
         return claims
 
@@ -461,13 +460,11 @@ class JWTHandler:
         # Verify refresh token
         claims = self.verify_token(refresh_token, expected_type=TokenType.REFRESH)
 
-        # Revoke old refresh token
-        if self.blocklist and claims.jti:
-            # Calculate remaining TTL
-            if claims.exp:
-                ttl = int((claims.exp - datetime.now(UTC)).total_seconds())
-                if ttl > 0:
-                    self.blocklist.block(claims.jti, ttl)
+        # Revoke old refresh token - calculate remaining TTL
+        if self.blocklist and claims.jti and claims.exp:
+            ttl = int((claims.exp - datetime.now(UTC)).total_seconds())
+            if ttl > 0:
+                self.blocklist.block(claims.jti, ttl)
 
         # Create new token pair with same claims
         new_claims = TokenClaims(

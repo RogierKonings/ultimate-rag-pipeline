@@ -353,7 +353,7 @@ def _record_function_args(
         for key, value in kwargs.items():
             _set_safe_attribute(span, f"arg.{key}", value)
 
-    except Exception:
+    except Exception:  # noqa: S110
         # Don't fail if we can't record args
         pass
 
@@ -369,7 +369,7 @@ def _record_function_result(span: Span, result: Any) -> None:
             span.set_attribute("result.keys", str(list(result.keys())[:10]))
         elif hasattr(result, "__len__"):
             span.set_attribute("result.length", len(result))
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
 
@@ -395,6 +395,6 @@ def _set_safe_attribute(span: Span, key: str, value: Any) -> None:
             str_value = str(value)[:500]
             span.set_attribute(key, str_value)
 
-    except Exception:
+    except Exception:  # noqa: S110
         # Don't fail on attribute setting
         pass

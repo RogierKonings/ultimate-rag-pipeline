@@ -353,9 +353,8 @@ class RateLimiter:
             else:
                 keys_to_remove = []
                 for key in self._buckets:
-                    if tenant_id in key:
-                        if user_id is None or user_id in key:
-                            keys_to_remove.append(key)
+                    if tenant_id in key and (user_id is None or user_id in key):
+                        keys_to_remove.append(key)
                 for key in keys_to_remove:
                     del self._buckets[key]
 

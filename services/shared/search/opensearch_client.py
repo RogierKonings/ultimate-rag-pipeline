@@ -2,6 +2,7 @@
 
 import os
 import ssl
+from pathlib import Path
 from typing import Any
 
 from opensearchpy import OpenSearch, helpers
@@ -64,7 +65,7 @@ class OpenSearchClient:
 
         ssl_context = ssl.create_default_context()
 
-        if self._ca_cert_path and os.path.exists(self._ca_cert_path):
+        if self._ca_cert_path and Path(self._ca_cert_path).exists():
             ssl_context.load_verify_locations(self._ca_cert_path)
 
         if not self._verify_certs:

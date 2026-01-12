@@ -312,13 +312,16 @@ def require_tenant(tenant_id_param: str = "tenant_id") -> Callable:
         # Get tenant_id from path parameters
         path_tenant_id = request.path_params.get(tenant_id_param)
 
-        if path_tenant_id and str(claims.tenant_id) != str(path_tenant_id):
-            # Allow super_admin to access any tenant
-            if not claims.is_admin():
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Access denied: tenant mismatch",
-                )
+        if (
+            path_tenant_id
+            and str(claims.tenant_id) != str(path_tenant_id)
+            and not claims.is_admin()
+        ):
+            # Admin can access any tenant, others are denied
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: tenant mismatch",
+            )
 
         return claims
 

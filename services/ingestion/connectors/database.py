@@ -281,16 +281,15 @@ class DatabaseConnector(BaseConnector):
         Yields:
             Tuple of (row, column_names).
         """
-        async with self._pool.acquire() as conn:
+        async with self._pool.acquire() as conn, conn.transaction():
             # Use a transaction for server-side cursor
-            async with conn.transaction():
-                # Get column names from the query
-                stmt = await conn.prepare(self.config.query)
-                columns = [attr.name for attr in stmt.get_attributes()]
+            # Get column names from the query
+            stmt = await conn.prepare(self.config.query)
+            columns = [attr.name for attr in stmt.get_attributes()]
 
-                # Stream rows using cursor with prefetch
-                async for row in stmt.cursor(prefetch=self.config.batch_size):
-                    yield row, columns
+            # Stream rows using cursor with prefetch
+            async for row in stmt.cursor(prefetch=self.config.batch_size):
+                yield row, columns
 
     async def _stream_mysql(self) -> AsyncIterator[tuple[Any, list[str]]]:
         """Stream rows from MySQL.
@@ -302,18 +301,19 @@ class DatabaseConnector(BaseConnector):
         """
         import aiomysql
 
-        async with self._pool.acquire() as conn:
-            # Use SSCursor for server-side cursor (unbuffered)
-            async with conn.cursor(aiomysql.SSCursor) as cursor:
-                await cursor.execute(self.config.query)
-                columns = [col[0] for col in cursor.description]
+        async with (
+            self._pool.acquire() as conn,
+            conn.cursor(aiomysql.SSCursor) as cursor,
+        ):
+            await cursor.execute(self.config.query)
+            columns = [col[0] for col in cursor.description]
 
-                while True:
-                    rows = await cursor.fetchmany(self.config.batch_size)
-                    if not rows:
-                        break
-                    for row in rows:
-                        yield row, columns
+            while True:
+                rows = await cursor.fetchmany(self.config.batch_size)
+                if not rows:
+                    break
+                for row in rows:
+                    yield row, columns
 
     async def list_documents(
         self,

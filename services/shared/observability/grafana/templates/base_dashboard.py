@@ -7,6 +7,7 @@ Provides Python classes for programmatically generating Grafana dashboards.
 import json
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 
@@ -227,7 +228,7 @@ class Dashboard:
 
     def save(self, filepath: str) -> None:
         """Save dashboard to file."""
-        with open(filepath, "w") as f:
+        with Path(filepath).open("w") as f:
             f.write(self.to_json())
 
 

@@ -114,7 +114,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     options={"verify_exp": False},  # Just extract, don't validate here
                 )
                 request.state.tenant_id = payload.get("tenant_id")
-            except Exception:
+            except Exception:  # noqa: S110
                 # Validation will happen in the dependency
                 pass
 

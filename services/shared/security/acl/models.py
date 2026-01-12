@@ -184,14 +184,11 @@ class DocumentACL(BaseModel):
             return True
 
         # Group visibility requires matching group
-        if self.visibility == Visibility.GROUP:
-            if any(group in self.allowed_groups for group in user_groups):
-                return True
-
         # Restricted visibility requires explicit allow (already checked above)
         # Private visibility only allows owner (already checked above)
-
-        return False
+        return self.visibility == Visibility.GROUP and any(
+            group in self.allowed_groups for group in user_groups
+        )
 
     def can_write(
         self,

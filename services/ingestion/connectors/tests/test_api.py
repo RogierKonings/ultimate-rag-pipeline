@@ -212,9 +212,11 @@ class TestConnection:
         mock_session.get = MagicMock(return_value=mock_response)
         mock_session.close = AsyncMock()
 
-        with patch("aiohttp.ClientSession", return_value=mock_session):
-            with pytest.raises(ConnectionError, match="Authentication failed"):
-                await connector.connect()
+        with (
+            patch("aiohttp.ClientSession", return_value=mock_session),
+            pytest.raises(ConnectionError, match="Authentication failed"),
+        ):
+            await connector.connect()
 
     @pytest.mark.asyncio
     async def test_context_manager(self, config):
