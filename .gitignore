@@ -18,4 +18,5 @@ AGENTS.md
 .env
 .venv/
 
+# Frontend
 node_modules/
