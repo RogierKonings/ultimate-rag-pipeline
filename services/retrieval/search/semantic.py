@@ -1,7 +1,7 @@
 """Semantic search using Qdrant vector database."""
 
 import time
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from qdrant_client import AsyncQdrantClient
@@ -20,7 +20,6 @@ from search.base import BaseSearcher
 from search.exceptions import SearchConnectionError, SearchFilterError
 from search.models import (
     QdrantConfig,
-    ScoreNormalizer,
     SearchResultItem,
     SemanticSearchResponse,
 )
@@ -36,7 +35,7 @@ class SemanticSearcher(BaseSearcher):
 
     def __init__(self, config: QdrantConfig | None = None):
         self.config = config or QdrantConfig()
-        self._client: Optional[AsyncQdrantClient] = None
+        self._client: AsyncQdrantClient | None = None
 
     async def connect(self) -> None:
         """Establish connection to Qdrant."""
@@ -50,13 +49,13 @@ class SemanticSearcher(BaseSearcher):
             raise SearchConnectionError(
                 f"Failed to connect to Qdrant: {e}",
                 details={"url": self.config.url},
-            )
+            ) from e
 
     async def search(
         self,
         query_embedding: list[float],
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         score_threshold: float = 0.0,
         include_metadata: bool = True,
         include_vectors: bool = False,
@@ -92,7 +91,7 @@ class SemanticSearcher(BaseSearcher):
         # Add quantization params if enabled
         if self.config.use_quantization:
             search_params.quantization = QuantizationSearchParams(
-                rescore=self.config.quantization_rescore
+                rescore=self.config.quantization_rescore,
             )
 
         # Execute search
@@ -141,7 +140,7 @@ class SemanticSearcher(BaseSearcher):
             else:
                 # Simple key-value filter
                 conditions.append(
-                    FieldCondition(key=key, match=MatchValue(value=value))
+                    FieldCondition(key=key, match=MatchValue(value=value)),
                 )
 
         return Filter(
@@ -158,7 +157,7 @@ class SemanticSearcher(BaseSearcher):
             match_spec = condition["match"]
             if "value" in match_spec:
                 return FieldCondition(key=key, match=MatchValue(value=match_spec["value"]))
-            elif "any" in match_spec:
+            if "any" in match_spec:
                 return FieldCondition(key=key, match=MatchAny(any=match_spec["any"]))
 
         elif "range" in condition:
@@ -180,16 +179,15 @@ class SemanticSearcher(BaseSearcher):
                         lt=range_spec.get("lt"),
                     ),
                 )
-            else:
-                return FieldCondition(
-                    key=key,
-                    range=Range(
-                        gte=range_spec.get("gte"),
-                        gt=range_spec.get("gt"),
-                        lte=range_spec.get("lte"),
-                        lt=range_spec.get("lt"),
-                    ),
-                )
+            return FieldCondition(
+                key=key,
+                range=Range(
+                    gte=range_spec.get("gte"),
+                    gt=range_spec.get("gt"),
+                    lte=range_spec.get("lte"),
+                    lt=range_spec.get("lt"),
+                ),
+            )
 
         raise SearchFilterError(
             f"Unsupported condition: {condition}",
@@ -249,7 +247,7 @@ class SemanticSearcher(BaseSearcher):
         self,
         query_embeddings: list[list[float]],
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         aggregation: str = "max",  # "max", "avg", or "rrf"
     ) -> SemanticSearchResponse:
         """
@@ -334,7 +332,7 @@ class SemanticSearcher(BaseSearcher):
 
         # Sort by final score and return top_k
         sorted_chunks = sorted(
-            final_scores.items(), key=lambda x: x[1], reverse=True
+            final_scores.items(), key=lambda x: x[1], reverse=True,
         )[:top_k]
 
         result = []

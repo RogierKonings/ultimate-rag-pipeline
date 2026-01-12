@@ -1,12 +1,11 @@
 """Tests for RAGState TypedDict and helper functions."""
 
-import pytest
 from uuid import uuid4
 
 from workflow.state import (
     RAGState,
-    create_initial_state,
     add_timing,
+    create_initial_state,
     total_time_ms,
 )
 

@@ -15,14 +15,14 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from opentelemetry import trace
-from opentelemetry.trace import Status, StatusCode, SpanKind
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
-from .config import EvaluationConfig, SamplingStrategy
+from .config import EvaluationConfig
 from .datasets import EvaluationDataset, EvaluationSample
 from .ragas_evaluator import AggregatedResults, EvaluationResult, RagasEvaluator
 
@@ -49,10 +49,10 @@ class EvaluationRun:
     config: EvaluationConfig
     dataset_name: str
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    results: Optional[AggregatedResults] = None
+    completed_at: datetime | None = None
+    results: AggregatedResults | None = None
     status: str = "pending"  # pending, running, completed, failed
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -76,7 +76,7 @@ class RAGClient:
     def __init__(
         self,
         base_url: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         timeout: float = 30.0,
     ):
         """
@@ -95,7 +95,7 @@ class RAGClient:
         self,
         question: str,
         tenant_id: str = "default",
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> RAGResponse:
         """
         Send a query to the RAG pipeline.
@@ -189,9 +189,9 @@ class EvaluationPipeline:
 
     def __init__(
         self,
-        evaluator: Optional[RagasEvaluator] = None,
-        config: Optional[EvaluationConfig] = None,
-        rag_client: Optional[RAGClient] = None,
+        evaluator: RagasEvaluator | None = None,
+        config: EvaluationConfig | None = None,
+        rag_client: RAGClient | None = None,
     ):
         """
         Initialize the evaluation pipeline.
@@ -213,7 +213,7 @@ class EvaluationPipeline:
     async def evaluate(
         self,
         dataset: EvaluationDataset,
-        run_name: Optional[str] = None,
+        run_name: str | None = None,
         live_rag: bool = False,
         tenant_id: str = "default",
     ) -> AggregatedResults:
@@ -232,7 +232,7 @@ class EvaluationPipeline:
         from uuid import uuid4
 
         run_id = str(uuid4())
-        run_name = run_name or f"eval_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        run_name = run_name or f"eval_{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}"
 
         # Create the parent span for the entire evaluation run
         with tracer.start_as_current_span(
@@ -253,7 +253,7 @@ class EvaluationPipeline:
                 name=run_name,
                 config=self.config,
                 dataset_name=dataset.name,
-                started_at=datetime.utcnow(),
+                started_at=datetime.now(tz=UTC),
                 status="running",
                 metadata={
                     "sample_size": self.config.sample_size,
@@ -265,7 +265,7 @@ class EvaluationPipeline:
 
             logger.info(
                 f"Starting evaluation run {run_id}: {run_name} "
-                f"on dataset {dataset.name} ({len(dataset)} samples)"
+                f"on dataset {dataset.name} ({len(dataset)} samples)",
             )
 
             start_time = time.perf_counter()
@@ -290,7 +290,7 @@ class EvaluationPipeline:
                     ) as rag_span:
                         rag_start = time.perf_counter()
                         sampled_dataset = await self._run_live_rag(
-                            sampled_dataset, tenant_id
+                            sampled_dataset, tenant_id,
                         )
                         rag_duration_ms = (time.perf_counter() - rag_start) * 1000
                         rag_span.set_attribute("evaluation.rag_duration_ms", rag_duration_ms)
@@ -325,7 +325,7 @@ class EvaluationPipeline:
 
                 run.results = aggregated
                 run.status = "completed"
-                run.completed_at = datetime.utcnow()
+                run.completed_at = datetime.now(tz=UTC)
 
                 total_duration_ms = (time.perf_counter() - start_time) * 1000
                 span.set_attribute("evaluation.total_duration_ms", total_duration_ms)
@@ -338,7 +338,7 @@ class EvaluationPipeline:
 
                 logger.info(
                     f"Evaluation run {run_id} completed: "
-                    f"{aggregated.successful_samples}/{aggregated.total_samples} successful"
+                    f"{aggregated.successful_samples}/{aggregated.total_samples} successful",
                 )
 
                 return aggregated
@@ -347,7 +347,7 @@ class EvaluationPipeline:
                 logger.error(f"Evaluation run {run_id} failed: {e}")
                 run.status = "failed"
                 run.error = str(e)
-                run.completed_at = datetime.utcnow()
+                run.completed_at = datetime.now(tz=UTC)
 
                 total_duration_ms = (time.perf_counter() - start_time) * 1000
                 span.set_attribute("evaluation.total_duration_ms", total_duration_ms)
@@ -411,7 +411,7 @@ class EvaluationPipeline:
                 )
                 updated_samples.append(updated_sample)
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning(f"Timeout querying RAG for sample {sample.id}")
                 # Keep original sample with error metadata
                 sample.metadata["rag_error"] = "timeout"
@@ -537,7 +537,7 @@ class ScheduledEvaluationRunner:
     def __init__(
         self,
         pipeline: EvaluationPipeline,
-        dataset_path: Optional[str] = None,
+        dataset_path: str | None = None,
     ):
         """
         Initialize scheduled runner.
@@ -551,7 +551,7 @@ class ScheduledEvaluationRunner:
 
     async def run_scheduled_evaluation(
         self,
-        run_name: Optional[str] = None,
+        run_name: str | None = None,
         live_rag: bool = True,
     ) -> AggregatedResults:
         """

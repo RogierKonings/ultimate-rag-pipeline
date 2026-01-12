@@ -18,14 +18,14 @@ Usage:
     metrics.record_query(mode="hybrid", duration=0.5, result_count=10)
 """
 
+from .exporters import get_metrics_endpoint, setup_metrics_endpoint
+from .middleware import PrometheusMiddleware
 from .registry import (
     RAGMetrics,
-    setup_metrics,
     get_metrics,
     get_metrics_registry,
+    setup_metrics,
 )
-from .middleware import PrometheusMiddleware
-from .exporters import get_metrics_endpoint, setup_metrics_endpoint
 
 __all__ = [
     # Core metrics

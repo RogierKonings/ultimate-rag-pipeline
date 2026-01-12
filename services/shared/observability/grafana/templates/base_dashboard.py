@@ -7,7 +7,7 @@ Provides Python classes for programmatically generating Grafana dashboards.
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class PanelType(Enum):
@@ -44,7 +44,7 @@ class Target:
     refId: str = "A"
     instant: bool = False
     range: bool = True
-    datasource: Optional[str] = None
+    datasource: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to Grafana target dict."""
@@ -70,7 +70,7 @@ class Panel:
     id: int = 0
     description: str = ""
     unit: str = ""
-    decimals: Optional[int] = None
+    decimals: int | None = None
     thresholds: list[Threshold] = field(default_factory=list)
     options: dict[str, Any] = field(default_factory=dict)
     fieldConfig: dict[str, Any] = field(default_factory=dict)
@@ -140,7 +140,7 @@ class Variable:
     datasource: str = "Prometheus"
     type: str = "query"
     includeAll: bool = True
-    allValue: Optional[str] = ".*"
+    allValue: str | None = ".*"
     multi: bool = True
     refresh: int = 2  # On time range change
 
@@ -228,7 +228,7 @@ def create_stat_panel(
     gridPos: dict[str, int],
     unit: str = "",
     description: str = "",
-    thresholds: Optional[list[Threshold]] = None,
+    thresholds: list[Threshold] | None = None,
     color_mode: str = "value",
 ) -> Panel:
     """Create a stat panel."""
@@ -281,8 +281,8 @@ def create_timeseries_panel(
                     "fillOpacity": fill_opacity,
                     "lineWidth": line_width,
                     "spanNulls": True,
-                }
-            }
+                },
+            },
         },
     )
 
@@ -294,7 +294,7 @@ def create_gauge_panel(
     unit: str = "percentunit",
     min_val: float = 0,
     max_val: float = 1,
-    thresholds: Optional[list[Threshold]] = None,
+    thresholds: list[Threshold] | None = None,
 ) -> Panel:
     """Create a gauge panel."""
     default_thresholds = [
@@ -313,7 +313,7 @@ def create_gauge_panel(
             "defaults": {
                 "min": min_val,
                 "max": max_val,
-            }
+            },
         },
         options={
             "showThresholdLabels": False,

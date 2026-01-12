@@ -1,10 +1,11 @@
 """Data models for index writers."""
 
-from pydantic import BaseModel, Field
-from typing import Optional, Any
-from uuid import UUID
 from datetime import datetime
 from enum import Enum
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class IndexedChunk(BaseModel):
@@ -23,16 +24,16 @@ class IndexedChunk(BaseModel):
     token_count: int
 
     # Parent-child for hierarchical retrieval
-    parent_chunk_id: Optional[UUID] = None
+    parent_chunk_id: UUID | None = None
 
     # Source tracking
-    source_page: Optional[int] = None
-    source_section: Optional[str] = None
+    source_page: int | None = None
+    source_section: str | None = None
 
     # Versioning metadata (US-2.11)
     schema_version: str = "1.0"
-    embedding_model: Optional[str] = None
-    embedding_version: Optional[str] = None
+    embedding_model: str | None = None
+    embedding_version: str | None = None
 
     # Metadata for filtering
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -62,10 +63,10 @@ class DocumentRecord(BaseModel):
     document_id: UUID
     source_uri: str  # Renamed from source_id for US-2.11
     source_type: str
-    filename: Optional[str] = None
-    mime_type: Optional[str] = None
-    title: Optional[str] = None
-    author: Optional[str] = None
+    filename: str | None = None
+    mime_type: str | None = None
+    title: str | None = None
+    author: str | None = None
 
     chunk_count: int = 0
     total_tokens: int = 0
@@ -83,11 +84,11 @@ class DocumentRecord(BaseModel):
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    indexed_at: Optional[datetime] = None
+    indexed_at: datetime | None = None
 
     # Status
     status: str = "pending"  # pending, indexed, failed, superseded
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     # Additional metadata
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -70,7 +70,7 @@ INDEX_TEMPLATE = {
             "metadata": {"type": "object", "enabled": True},
             "created_at": {"type": "date"},
             "updated_at": {"type": "date"},
-        }
+        },
     },
 }
 
@@ -109,7 +109,7 @@ def get_index_info() -> None:
 
     # Get cluster health
     health = client.cluster.health()
-    print(f"\nCluster Health:")
+    print("\nCluster Health:")
     print(f"  Status: {health['status']}")
     print(f"  Number of nodes: {health['number_of_nodes']}")
     print(f"  Active shards: {health['active_shards']}")

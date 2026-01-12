@@ -3,20 +3,20 @@
 Tests that Semantic and Keyword search modules work together with ACL filters.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
-from acl.models import UserContext, Visibility
+import pytest
 from acl.filter import ACLFilter
+from acl.models import UserContext
+from search.keyword import KeywordSearcher
 from search.models import (
-    QdrantConfig,
     OpenSearchConfig,
-    SearchResultItem,
+    QdrantConfig,
     ScoreNormalizer,
+    SearchResultItem,
 )
 from search.semantic import SemanticSearcher
-from search.keyword import KeywordSearcher
 
 
 class MockQdrantResult:
@@ -50,24 +50,15 @@ class TestWave2Integration:
     def test_imports_work(self):
         """Test that all imports work correctly without circular dependencies."""
         # ACL imports
-        from acl.models import UserContext, DocumentACL, Visibility
         from acl.filter import ACLFilter
+        from acl.models import UserContext
+        from search.keyword import KeywordSearcher
 
         # Search imports
         from search.models import (
-            SearchResultItem,
-            SemanticSearchRequest,
-            SemanticSearchResponse,
-            KeywordSearchRequest,
-            KeywordSearchResponse,
-            QdrantConfig,
-            OpenSearchConfig,
             ScoreNormalizer,
         )
         from search.semantic import SemanticSearcher
-        from search.keyword import KeywordSearcher
-        from search.base import BaseSearcher
-        from search.exceptions import SearchError, SearchConnectionError
 
         # All imports should succeed
         assert UserContext is not None
@@ -114,7 +105,7 @@ class TestWave2Integration:
                     "document_id": str(uuid4()),
                     "tenant_id": str(user_context.tenant_id),
                 },
-            )
+            ),
         ]
         mock_client.search = AsyncMock(return_value=mock_results)
         searcher._client = mock_client
@@ -156,9 +147,9 @@ class TestWave2Integration:
                             "document_id": str(uuid4()),
                             "tenant_id": str(user_context.tenant_id),
                         },
-                    }
+                    },
                 ],
-            }
+            },
         }
         mock_client.search = AsyncMock(return_value=mock_response)
         searcher._client = mock_client
@@ -312,8 +303,8 @@ class TestWave2UsagePatterns:
         assert filters == {}
 
         # Empty filters should still be handleable by searchers
-        semantic_searcher = SemanticSearcher()
-        keyword_searcher = KeywordSearcher()
+        SemanticSearcher()
+        KeywordSearcher()
 
         # No filter should be built for empty dict
         # (searchers check if filters before building)

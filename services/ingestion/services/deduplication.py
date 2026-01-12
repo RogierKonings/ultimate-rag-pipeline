@@ -9,7 +9,6 @@ import hashlib
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 import asyncpg
@@ -33,8 +32,8 @@ class DeduplicationCheckResult:
     """Result of a deduplication check operation."""
 
     result: DeduplicationResult
-    document_id: Optional[UUID] = None  # Existing document ID if duplicate/new_version
-    existing_version: Optional[int] = None  # Current version if exists
+    document_id: UUID | None = None  # Existing document ID if duplicate/new_version
+    existing_version: int | None = None  # Current version if exists
     content_hash: str = ""  # Computed content hash
 
 
@@ -182,7 +181,7 @@ class DeduplicationService:
             Next version number (1 for new documents).
         """
         async with self._pool.acquire() as conn:
-            result = await conn.fetchval(
+            return await conn.fetchval(
                 """
                 SELECT COALESCE(MAX(version), 0) + 1
                 FROM documents
@@ -191,7 +190,6 @@ class DeduplicationService:
                 tenant_id,
                 source_uri,
             )
-            return result
 
     async def mark_previous_versions_superseded(
         self,

@@ -10,16 +10,16 @@ Example:
     $ celery -A services.ingestion.tasks.celery_app worker --loglevel=info --queues=ingestion,embedding,reembed
 """
 
-from .celery_app import celery_app, create_celery_app, CeleryConfig
-from .models import (
-    JobStatus,
-    JobProgress,
-    IngestJobResult,
-    IngestJobRequest,
-)
-from .ingest import process_document, batch_ingest
-from .reembed import reembed_collection
 from .callbacks import send_to_dlq
+from .celery_app import CeleryConfig, celery_app, create_celery_app
+from .ingest import batch_ingest, process_document
+from .models import (
+    IngestJobRequest,
+    IngestJobResult,
+    JobProgress,
+    JobStatus,
+)
+from .reembed import reembed_collection
 from .status import JobStatusTracker
 
 __all__ = [

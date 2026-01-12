@@ -4,8 +4,9 @@ These tests require running infrastructure (LLM Gateway, Redis).
 Mark with @pytest.mark.integration to skip in unit test runs.
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from ..cache import EmbeddingCache
 from ..models import EmbeddingCacheConfig, EmbeddingServiceConfig
@@ -35,7 +36,7 @@ async def test_embedding_service_with_real_cache():
     """Integration test with actual Redis cache."""
     config = EmbeddingServiceConfig(llm_gateway_url="http://localhost:8004")
     cache_config = EmbeddingCacheConfig(
-        redis_url="redis://localhost:6379", key_prefix="test_integration:"
+        redis_url="redis://localhost:6379", key_prefix="test_integration:",
     )
 
     cache = EmbeddingCache(cache_config)
@@ -87,7 +88,7 @@ async def test_embed_query_integration():
 async def test_batch_embedding_integration():
     """Integration test for batch embedding."""
     config = EmbeddingServiceConfig(
-        llm_gateway_url="http://localhost:8004", max_batch_size=5
+        llm_gateway_url="http://localhost:8004", max_batch_size=5,
     )
 
     texts = [
@@ -102,7 +103,7 @@ async def test_batch_embedding_integration():
 
     async with EmbeddingService(config) as service:
         result = await service.embed_texts(
-            texts=texts, chunk_ids=[uuid4() for _ in texts]
+            texts=texts, chunk_ids=[uuid4() for _ in texts],
         )
 
         assert len(result.results) == 7
@@ -118,14 +119,14 @@ async def test_factory_function_integration():
     service = await create_embedding_service(
         config=EmbeddingServiceConfig(llm_gateway_url="http://localhost:8004"),
         cache_config=EmbeddingCacheConfig(
-            redis_url="redis://localhost:6379", key_prefix="test_factory:"
+            redis_url="redis://localhost:6379", key_prefix="test_factory:",
         ),
         enable_cache=True,
     )
 
     try:
         result = await service.embed_texts(
-            texts=["Factory function test."], chunk_ids=[uuid4()]
+            texts=["Factory function test."], chunk_ids=[uuid4()],
         )
         assert len(result.results) == 1
     finally:

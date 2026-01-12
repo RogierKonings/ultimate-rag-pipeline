@@ -7,12 +7,12 @@ accessing shared services throughout the application.
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-
-from config import OrchestratorConfig, get_config
 from gateway import ModelGateway
 from guardrails import GuardrailPipeline
 from memory import SessionManager
 from streaming import StreamManager
+
+from config import OrchestratorConfig, get_config
 
 
 def get_config_dep() -> OrchestratorConfig:

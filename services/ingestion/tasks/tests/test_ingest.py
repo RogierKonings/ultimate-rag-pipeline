@@ -1,14 +1,11 @@
 """Tests for document ingestion tasks."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from celery.exceptions import Retry
+import pytest
 
 from ..ingest import (
-    process_document,
-    batch_ingest,
     _get_connector,
     _process_document_async,
 )
@@ -21,14 +18,14 @@ class TestGetConnector:
         """Test getting filesystem connector."""
         with patch("services.ingestion.tasks.ingest.FilesystemConnector") as mock_class:
             with patch("services.ingestion.tasks.ingest.FilesystemConnectorConfig"):
-                connector = _get_connector("filesystem", {"base_path": "/tmp"})
+                _get_connector("filesystem", {"base_path": "/tmp"})
                 mock_class.assert_called_once()
 
     def test_database_connector(self):
         """Test getting database connector."""
         with patch("services.ingestion.tasks.ingest.DatabaseConnector") as mock_class:
             with patch("services.ingestion.tasks.ingest.DatabaseConnectorConfig"):
-                connector = _get_connector("database", {"connection_string": "sqlite://"})
+                _get_connector("database", {"connection_string": "sqlite://"})
                 mock_class.assert_called_once()
 
     def test_unknown_source_type(self):
@@ -65,30 +62,30 @@ class TestProcessDocument:
 
                 with patch("services.ingestion.tasks.ingest.EnrichmentPipeline") as mock_enrichment:
                     mock_enrichment.return_value.enrich = AsyncMock(
-                        return_value=mock_enriched_metadata
+                        return_value=mock_enriched_metadata,
                     )
 
                     with patch("services.ingestion.tasks.ingest.ChunkingEngine") as mock_chunker:
                         mock_chunker.return_value.chunk = MagicMock(return_value=mock_chunks)
 
                         with patch(
-                            "services.ingestion.tasks.ingest.create_embedding_service"
+                            "services.ingestion.tasks.ingest.create_embedding_service",
                         ) as mock_embed_svc:
                             mock_service = AsyncMock()
                             mock_service.embed_texts = AsyncMock(
-                                return_value=mock_embedding_results
+                                return_value=mock_embedding_results,
                             )
                             mock_service.__aenter__ = AsyncMock(return_value=mock_service)
                             mock_service.__aexit__ = AsyncMock(return_value=None)
                             mock_embed_svc.return_value = mock_service
 
                             with patch(
-                                "services.ingestion.tasks.ingest.IndexCoordinator"
+                                "services.ingestion.tasks.ingest.IndexCoordinator",
                             ) as mock_coord:
                                 mock_coordinator = AsyncMock()
                                 mock_coordinator.index_document = AsyncMock(return_value={})
                                 mock_coordinator.__aenter__ = AsyncMock(
-                                    return_value=mock_coordinator
+                                    return_value=mock_coordinator,
                                 )
                                 mock_coordinator.__aexit__ = AsyncMock(return_value=None)
                                 mock_coord.return_value = mock_coordinator
@@ -129,7 +126,7 @@ class TestBatchIngest:
         mock_task.update_state = MagicMock()
 
         with patch(
-            "services.ingestion.tasks.ingest._list_documents", new_callable=AsyncMock
+            "services.ingestion.tasks.ingest._list_documents", new_callable=AsyncMock,
         ) as mock_list:
             mock_list.return_value = []
 

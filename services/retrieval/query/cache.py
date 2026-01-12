@@ -4,7 +4,6 @@ This module provides Redis-based caching for processed queries,
 avoiding redundant embedding generation for repeated queries.
 """
 
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -34,7 +33,7 @@ class QueryCache:
         self.redis_url = redis_url
         self.key_prefix = key_prefix
         self.default_ttl = default_ttl
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Establish Redis connection."""
@@ -51,7 +50,7 @@ class QueryCache:
             await self._redis.close()
             self._redis = None
 
-    async def get(self, key: str) -> Optional[ProcessedQuery]:
+    async def get(self, key: str) -> ProcessedQuery | None:
         """Retrieve processed query from cache.
 
         Args:
@@ -75,7 +74,7 @@ class QueryCache:
         self,
         key: str,
         query: ProcessedQuery,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Store processed query in cache.
 

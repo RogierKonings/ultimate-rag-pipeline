@@ -2,8 +2,8 @@
 
 import pytest
 
-from ..pii_detector import PIIDetector, PIIDetectorConfig, PIIAnonymizer
 from ..models import PIIType
+from ..pii_detector import PIIAnonymizer, PIIDetector, PIIDetectorConfig
 
 
 class TestPIIDetector:

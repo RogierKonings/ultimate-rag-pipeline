@@ -1,7 +1,6 @@
 """Tests for TracingSetup."""
 
 import pytest
-
 from observability.tracing import TracingSetup, traced_retrieval
 
 
@@ -24,7 +23,7 @@ class TestTracingSetup:
 
     def test_get_tracer(self, tracing):
         """Test getting tracer instance."""
-        tracer = tracing.get_tracer()
+        tracing.get_tracer()
         # Tracer may be None if OpenTelemetry not installed
         # Just verify method doesn't raise
 
@@ -118,25 +117,19 @@ class TestTracingWithSpans:
         tracer = tracing.get_tracer()
 
         if tracer is not None:
-            try:
-                from opentelemetry import trace
+            with tracer.start_as_current_span("test_span"):
+                trace_id = TracingSetup.get_current_trace_id()
+                span_id = TracingSetup.get_current_span_id()
 
-                with tracer.start_as_current_span("test_span"):
-                    trace_id = TracingSetup.get_current_trace_id()
-                    span_id = TracingSetup.get_current_span_id()
+                if trace_id:
+                    # Trace ID should be 32 hex characters (128-bit)
+                    assert len(trace_id) == 32
+                    assert all(c in "0123456789abcdef" for c in trace_id)
 
-                    if trace_id:
-                        # Trace ID should be 32 hex characters (128-bit)
-                        assert len(trace_id) == 32
-                        assert all(c in "0123456789abcdef" for c in trace_id)
-
-                    if span_id:
-                        # Span ID should be 16 hex characters (64-bit)
-                        assert len(span_id) == 16
-                        assert all(c in "0123456789abcdef" for c in span_id)
-            except ImportError:
-                # OpenTelemetry not installed, skip
-                pass
+                if span_id:
+                    # Span ID should be 16 hex characters (64-bit)
+                    assert len(span_id) == 16
+                    assert all(c in "0123456789abcdef" for c in span_id)
 
     def test_nested_spans(self):
         """Test nested spans."""
@@ -147,22 +140,16 @@ class TestTracingWithSpans:
         tracer = tracing.get_tracer()
 
         if tracer is not None:
-            try:
-                from opentelemetry import trace
+            with tracer.start_as_current_span("parent_span"):
+                parent_trace_id = TracingSetup.get_current_trace_id()
 
-                with tracer.start_as_current_span("parent_span"):
-                    parent_trace_id = TracingSetup.get_current_trace_id()
+                with tracer.start_as_current_span("child_span"):
+                    child_trace_id = TracingSetup.get_current_trace_id()
+                    TracingSetup.get_current_span_id()
 
-                    with tracer.start_as_current_span("child_span"):
-                        child_trace_id = TracingSetup.get_current_trace_id()
-                        child_span_id = TracingSetup.get_current_span_id()
-
-                        # Should have same trace ID
-                        if parent_trace_id and child_trace_id:
-                            assert parent_trace_id == child_trace_id
-            except ImportError:
-                # OpenTelemetry not installed, skip
-                pass
+                    # Should have same trace ID
+                    if parent_trace_id and child_trace_id:
+                        assert parent_trace_id == child_trace_id
 
 
 class TestTracingConfigOptions:

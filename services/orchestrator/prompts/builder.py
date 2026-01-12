@@ -5,23 +5,22 @@ formatted message lists for LLM calls based on query, context,
 conversation history, and strategy configuration.
 """
 
-from typing import Any, Optional
-from jinja2 import Environment, BaseLoader
+from typing import Any
 
-from .templates import get_template, TEMPLATES
+from jinja2 import BaseLoader, Environment
+
+from .context import (
+    count_tokens,
+    format_citations,
+    format_context,
+    truncate_context,
+)
 from .models import (
     PromptConfig,
     PromptStrategy,
-    Message,
     TokenLimits,
 )
-from .context import (
-    format_context,
-    format_citations,
-    truncate_context,
-    format_history_summary,
-    count_tokens,
-)
+from .templates import get_template
 
 
 class PromptBuilder:
@@ -45,7 +44,7 @@ class PromptBuilder:
         >>> # Returns list of message dicts with role and content
     """
 
-    def __init__(self, config: Optional[PromptConfig] = None):
+    def __init__(self, config: PromptConfig | None = None):
         """Initialize the PromptBuilder.
 
         Args:
@@ -58,10 +57,10 @@ class PromptBuilder:
     def build(
         self,
         query: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
-        strategy: Optional[str] = None,
-        documents: Optional[list[dict[str, Any]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        strategy: str | None = None,
+        documents: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, str]]:
         """Build a prompt message list for the LLM.
 
@@ -100,7 +99,7 @@ class PromptBuilder:
         # Add system prompt
         if self.config.include_system_prompt:
             system_content = self._render_system_prompt(
-                effective_strategy, context, documents
+                effective_strategy, context, documents,
             )
             if system_content:
                 messages.append({"role": "system", "content": system_content})
@@ -118,10 +117,10 @@ class PromptBuilder:
     def build_with_metadata(
         self,
         query: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
-        strategy: Optional[str] = None,
-        documents: Optional[list[dict[str, Any]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
+        strategy: str | None = None,
+        documents: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Build a prompt with additional metadata about the build process.
 
@@ -175,8 +174,8 @@ class PromptBuilder:
     def _determine_strategy(
         self,
         requested_strategy: str,
-        context: Optional[str],
-        documents: Optional[list[dict[str, Any]]],
+        context: str | None,
+        documents: list[dict[str, Any]] | None,
     ) -> str:
         """Determine the effective strategy based on inputs.
 
@@ -201,8 +200,8 @@ class PromptBuilder:
     def _render_system_prompt(
         self,
         strategy: str,
-        context: Optional[str],
-        documents: Optional[list[dict[str, Any]]],
+        context: str | None,
+        documents: list[dict[str, Any]] | None,
     ) -> str:
         """Render the system prompt for the given strategy.
 
@@ -225,7 +224,7 @@ class PromptBuilder:
 
         if documents and self.config.citation_config.enabled:
             citations = format_citations(
-                documents, self.config.citation_config.max_citations
+                documents, self.config.citation_config.max_citations,
             )
             template_vars["citations"] = citations
 
@@ -233,7 +232,7 @@ class PromptBuilder:
         return template.render(**template_vars).strip()
 
     def _format_history(
-        self, history: list[dict[str, str]]
+        self, history: list[dict[str, str]],
     ) -> list[dict[str, str]]:
         """Format conversation history for inclusion in the prompt.
 
@@ -311,8 +310,8 @@ class PromptBuilder:
     def estimate_tokens(
         self,
         query: str,
-        context: Optional[str] = None,
-        history: Optional[list[dict[str, str]]] = None,
+        context: str | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> dict[str, int]:
         """Estimate token counts for prompt components.
 

@@ -9,18 +9,16 @@ import logging
 import logging.handlers
 import queue
 import sys
-from typing import Optional
 
 from .config import LoggingConfig
+from .context import ContextInjectorFilter, LoggerAdapter, StructuredLogger
+from .filters import SensitiveDataFilter
 from .formatters import JSONFormatter, PrettyJSONFormatter, TextFormatter
-from .filters import SensitiveDataFilter, ExcludePathFilter
-from .context import LoggerAdapter, ContextInjectorFilter, StructuredLogger
-
 
 # Global state
 _logging_initialized: bool = False
-_logging_config: Optional[LoggingConfig] = None
-_queue_listener: Optional[logging.handlers.QueueListener] = None
+_logging_config: LoggingConfig | None = None
+_queue_listener: logging.handlers.QueueListener | None = None
 
 # Third-party loggers to quiet
 NOISY_LOGGERS = [
@@ -38,8 +36,8 @@ NOISY_LOGGERS = [
 
 
 def setup_logging(
-    config: Optional[LoggingConfig] = None,
-    service_name: Optional[str] = None,
+    config: LoggingConfig | None = None,
+    service_name: str | None = None,
 ) -> LoggingConfig:
     """
     Initialize logging for the application.
@@ -161,7 +159,7 @@ def _shutdown_logging() -> None:
         _queue_listener = None
 
 
-def get_logger(name: Optional[str] = None) -> LoggerAdapter:
+def get_logger(name: str | None = None) -> LoggerAdapter:
     """
     Get a logger with the given name.
 
@@ -183,7 +181,7 @@ def get_logger(name: Optional[str] = None) -> LoggerAdapter:
     return LoggerAdapter(logger)
 
 
-def get_structured_logger(name: Optional[str] = None) -> StructuredLogger:
+def get_structured_logger(name: str | None = None) -> StructuredLogger:
     """
     Get a structured logger with convenience methods.
 
@@ -199,7 +197,7 @@ def get_structured_logger(name: Optional[str] = None) -> StructuredLogger:
 
 def get_component_logger(
     component: str,
-    name: Optional[str] = None,
+    name: str | None = None,
 ) -> LoggerAdapter:
     """
     Get a logger for a specific component.
@@ -290,7 +288,7 @@ class LoggingContext:
 
     def __enter__(self) -> "LoggingContext":
         """Enter the context, setting up logging context."""
-        from .context import get_request_context, update_request_context, set_request_context
+        from .context import get_request_context, set_request_context, update_request_context
 
         self._original_context = get_request_context()
         if self._original_context:

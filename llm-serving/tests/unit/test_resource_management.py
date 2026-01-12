@@ -4,17 +4,13 @@ Unit tests for Resource Management (US-5.5).
 Tests GPU monitoring, batch optimization, and cost tracking.
 """
 
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from datetime import timedelta
 
 import pytest
-
 from resource_management.batch_optimizer import BatchOptimizer
 from resource_management.cost_tracker import CostConfig, CostTracker
 from resource_management.gpu_monitor import GPUMonitor
 from resource_management.models import (
-    BatchingMetrics,
-    CostRecord,
     GPUMetrics,
     ResourceRecommendation,
     ScalingPolicy,
@@ -113,13 +109,15 @@ class TestGPUMonitor:
 
     def test_register_callback(self, gpu_monitor):
         """Test registering a callback."""
-        callback = lambda x: None
+        def callback(x):
+            return None
         gpu_monitor.register_callback(callback)
         assert callback in gpu_monitor._callbacks
 
     def test_unregister_callback(self, gpu_monitor):
         """Test unregistering a callback."""
-        callback = lambda x: None
+        def callback(x):
+            return None
         gpu_monitor.register_callback(callback)
         gpu_monitor.unregister_callback(callback)
         assert callback not in gpu_monitor._callbacks
@@ -146,7 +144,7 @@ class TestBatchOptimizer:
     def test_record_batch(self, batch_optimizer):
         """Test recording batch events."""
         batch_optimizer.record_batch(
-            batch_size=16, processing_time_ms=50.0, wait_time_ms=25.0
+            batch_size=16, processing_time_ms=50.0, wait_time_ms=25.0,
         )
 
         metrics = batch_optimizer.get_metrics()

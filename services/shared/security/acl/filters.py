@@ -6,7 +6,7 @@ that enforce document-level access control in search queries.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 
@@ -24,7 +24,7 @@ class ACLFilterBuilder(ABC):
         tenant_id: UUID,
         groups: list[str],
         is_admin: bool = False,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ) -> Any:
         """
         Build an access filter for the backend.
@@ -39,7 +39,6 @@ class ACLFilterBuilder(ABC):
         Returns:
             Backend-specific filter object.
         """
-        pass
 
     def _build_base_filter(
         self,
@@ -58,8 +57,8 @@ class ACLFilterBuilder(ABC):
             # Admin sees everything in tenant
             return {
                 "must": [
-                    {"key": "tenant_id", "match": {"value": str(tenant_id)}}
-                ]
+                    {"key": "tenant_id", "match": {"value": str(tenant_id)}},
+                ],
             }
 
         must = [{"key": "tenant_id", "match": {"value": str(tenant_id)}}]
@@ -127,7 +126,7 @@ class QdrantACLFilter(ACLFilterBuilder):
         tenant_id: UUID,
         groups: list[str],
         is_admin: bool = False,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ):
         """
         Build Qdrant Filter object for access control.
@@ -166,10 +165,9 @@ class QdrantACLFilter(ACLFilterBuilder):
 
             if "value" in match:
                 return FieldCondition(key=key, match=MatchValue(value=match["value"]))
-            elif "any" in match:
+            if "any" in match:
                 return FieldCondition(key=key, match=MatchAny(any=match["any"]))
-            else:
-                raise ValueError(f"Unknown match type: {clause}")
+            raise ValueError(f"Unknown match type: {clause}")
 
         must = [to_condition(c) for c in base.get("must", [])]
         should = [to_condition(c) for c in base.get("should", [])]
@@ -190,8 +188,8 @@ class QdrantACLFilter(ACLFilterBuilder):
                 FieldCondition(
                     key="tenant_id",
                     match=MatchValue(value=str(tenant_id)),
-                )
-            ]
+                ),
+            ],
         )
 
 
@@ -230,7 +228,7 @@ class OpenSearchACLFilter(ACLFilterBuilder):
         tenant_id: UUID,
         groups: list[str],
         is_admin: bool = False,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Build OpenSearch filter clauses for access control.
@@ -262,10 +260,9 @@ class OpenSearchACLFilter(ACLFilterBuilder):
 
             if "value" in match:
                 return {"term": {key: match["value"]}}
-            elif "any" in match:
+            if "any" in match:
                 return {"terms": {key: match["any"]}}
-            else:
-                raise ValueError(f"Unknown match type: {condition}")
+            raise ValueError(f"Unknown match type: {condition}")
 
         filters: list[dict[str, Any]] = []
 
@@ -280,7 +277,7 @@ class OpenSearchACLFilter(ACLFilterBuilder):
                 "bool": {
                     "should": should_clauses,
                     "minimum_should_match": 1,
-                }
+                },
             })
 
         # Must not clauses (none can match)
@@ -289,7 +286,7 @@ class OpenSearchACLFilter(ACLFilterBuilder):
             filters.append({
                 "bool": {
                     "must_not": must_not_clauses,
-                }
+                },
             })
 
         return filters
@@ -303,10 +300,10 @@ def build_chunk_acl_payload(
     tenant_id: UUID,
     owner_id: UUID,
     visibility: str = "private",
-    allowed_users: Optional[list[UUID]] = None,
-    allowed_groups: Optional[list[str]] = None,
-    denied_users: Optional[list[UUID]] = None,
-    denied_groups: Optional[list[str]] = None,
+    allowed_users: list[UUID] | None = None,
+    allowed_groups: list[str] | None = None,
+    denied_users: list[UUID] | None = None,
+    denied_groups: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Build ACL payload for chunk indexing.

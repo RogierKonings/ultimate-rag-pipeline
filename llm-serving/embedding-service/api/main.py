@@ -8,13 +8,14 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from starlette.responses import Response
 
+from ..core.batching import DynamicBatcher
+from ..core.embedder import EmbeddingService
 from .models import (
     BatchEmbeddingRequest,
     BatchEmbeddingResult,
@@ -26,13 +27,11 @@ from .models import (
     ModelInfo,
     ModelsResponse,
 )
-from ..core.batching import DynamicBatcher
-from ..core.embedder import EmbeddingService
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -40,31 +39,31 @@ logger = logging.getLogger(__name__)
 REQUESTS_TOTAL = Counter(
     "embedding_requests_total",
     "Total embedding requests",
-    ["status", "model"]
+    ["status", "model"],
 )
 REQUEST_LATENCY = Histogram(
     "embedding_request_latency_seconds",
     "Embedding request latency",
     ["model"],
-    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
 )
 BATCH_SIZE = Histogram(
     "embedding_batch_size",
     "Embedding batch sizes",
-    buckets=[1, 2, 4, 8, 16, 32, 64, 128]
+    buckets=[1, 2, 4, 8, 16, 32, 64, 128],
 )
 QUEUE_SIZE = Gauge(
     "embedding_queue_size",
-    "Current queue size"
+    "Current queue size",
 )
 GPU_MEMORY = Gauge(
     "embedding_gpu_memory_mb",
-    "GPU memory usage in MB"
+    "GPU memory usage in MB",
 )
 
 # Global service instances
-embedding_service: Optional[EmbeddingService] = None
-batcher: Optional[DynamicBatcher] = None
+embedding_service: EmbeddingService | None = None
+batcher: DynamicBatcher | None = None
 
 
 @asynccontextmanager
@@ -100,7 +99,7 @@ async def lifespan(app: FastAPI):
         max_batch_size=max_batch_size,
         max_batch_tokens=max_batch_tokens,
         batch_timeout_ms=batch_timeout_ms,
-        max_queue_size=max_queue_size
+        max_queue_size=max_queue_size,
     )
     await batcher.start()
 
@@ -118,7 +117,7 @@ app = FastAPI(
     title="Embedding Service",
     description="High-throughput embedding generation with BGE models",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -173,8 +172,8 @@ async def create_embeddings(request: EmbeddingRequest):
             data=data,
             usage=EmbeddingUsage(
                 prompt_tokens=total_tokens,
-                total_tokens=total_tokens
-            )
+                total_tokens=total_tokens,
+            ),
         )
 
         # Record metrics
@@ -187,7 +186,7 @@ async def create_embeddings(request: EmbeddingRequest):
     except Exception as e:
         REQUESTS_TOTAL.labels(status="error", model=request.model).inc()
         logger.error(f"Embedding error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/embed", response_model=BatchEmbeddingResult)
@@ -204,12 +203,12 @@ async def embed_batch(request: BatchEmbeddingRequest):
             embeddings=embeddings,
             dimensions=len(embeddings[0]) if embeddings else 0,
             total_tokens=sum(len(t.split()) for t in request.texts),
-            processing_time_ms=0  # Filled by batcher
+            processing_time_ms=0,  # Filled by batcher
         )
 
     except Exception as e:
         logger.error(f"Batch embedding error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -238,7 +237,7 @@ async def metrics():
     """Prometheus metrics endpoint."""
     return Response(
         content=generate_latest(),
-        media_type="text/plain"
+        media_type="text/plain",
     )
 
 
@@ -249,7 +248,7 @@ async def list_models():
         data=[
             ModelInfo(
                 id=embedding_service.model_name,
-                owned_by="bge"
-            )
-        ]
+                owned_by="bge",
+            ),
+        ],
     )

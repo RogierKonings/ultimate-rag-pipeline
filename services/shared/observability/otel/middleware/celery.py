@@ -9,28 +9,27 @@ Provides tracing for Celery tasks with:
 """
 
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from celery import Celery, Task
 from celery.signals import (
-    before_task_publish,
     after_task_publish,
-    task_prerun,
-    task_postrun,
+    before_task_publish,
     task_failure,
+    task_postrun,
+    task_prerun,
     task_retry,
 )
-
-from opentelemetry import trace, context as otel_context
+from opentelemetry import context as otel_context
+from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
-from ..tracer import get_tracer
+from ..attributes import RAGAttributes, RAGOperation
 from ..context import (
     CeleryTracePropagator,
-    inject_trace_context,
-    get_current_trace_id,
 )
-from ..attributes import RAGAttributes, RAGOperation
+from ..tracer import get_tracer
 
 logger = logging.getLogger(__name__)
 
@@ -185,11 +184,11 @@ class CeleryTraceMiddleware:
 
 
 # Global middleware instance
-_middleware: Optional[CeleryTraceMiddleware] = None
+_middleware: CeleryTraceMiddleware | None = None
 
 
 def instrument_celery(
-    app: Optional[Celery] = None,
+    app: Celery | None = None,
     service_name: str = "celery-worker",
 ) -> CeleryTraceMiddleware:
     """
@@ -257,11 +256,10 @@ def _on_after_task_publish(
     Called after a task is published.
     """
     # Could add span event here if needed
-    pass
 
 
 def traced_task(
-    name: Optional[str] = None,
+    name: str | None = None,
     operation: RAGOperation = RAGOperation.INGEST,
 ) -> Callable:
     """

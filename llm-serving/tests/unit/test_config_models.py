@@ -4,10 +4,9 @@ Unit tests for configuration models (US-5.4).
 Tests Pydantic models for validation and serialization.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from config.models import (
     ABTestConfig,
     ConfigVersion,
@@ -224,7 +223,7 @@ class TestABTestConfig:
             name="test",
             model_a="a",
             model_b="b",
-            start_time=datetime.utcnow() + timedelta(hours=1),
+            start_time=datetime.now(tz=UTC) + timedelta(hours=1),
         )
 
         assert test.is_active() is False
@@ -235,7 +234,7 @@ class TestABTestConfig:
             name="test",
             model_a="a",
             model_b="b",
-            end_time=datetime.utcnow() - timedelta(hours=1),
+            end_time=datetime.now(tz=UTC) - timedelta(hours=1),
         )
 
         assert test.is_active() is False
@@ -246,8 +245,8 @@ class TestABTestConfig:
             name="test",
             model_a="a",
             model_b="b",
-            start_time=datetime.utcnow() - timedelta(hours=1),
-            end_time=datetime.utcnow() + timedelta(hours=1),
+            start_time=datetime.now(tz=UTC) - timedelta(hours=1),
+            end_time=datetime.now(tz=UTC) + timedelta(hours=1),
         )
 
         assert test.is_active() is True

@@ -1,11 +1,10 @@
 """Unit tests for SessionManager."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-
 from memory.models import (
     ConversationSession,
     MemoryConfig,
@@ -15,7 +14,6 @@ from memory.models import (
 from memory.session import SessionManager
 from memory.store import RedisSessionStore
 from memory.summarizer import HistorySummarizer
-
 
 # ============================================================================
 # Fixtures
@@ -415,7 +413,7 @@ async def test_delete_session(session_manager, mock_store):
 async def test_get_session_stats(session_manager, mock_store):
     """Test session statistics."""
     session_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
     session = ConversationSession(
         id=session_id,
         messages=[Message(role=MessageRole.USER, content="Hi", token_count=1)],
@@ -486,7 +484,7 @@ async def test_message_limit_enforcement(session_manager, mock_store, memory_con
 
 @pytest.mark.asyncio
 async def test_message_limit_updates_token_count(
-    session_manager, mock_store, memory_config
+    session_manager, mock_store, memory_config,
 ):
     """Test that token count is updated when messages are removed."""
     memory_config.max_messages = 2
@@ -526,7 +524,7 @@ async def test_message_limit_updates_token_count(
 
 @pytest.mark.asyncio
 async def test_should_summarize_when_threshold_reached(
-    mock_store, memory_config, mock_tokenizer
+    mock_store, memory_config, mock_tokenizer,
 ):
     """Test that summarization is triggered when threshold is reached."""
     memory_config.enable_summarization = True
@@ -599,7 +597,7 @@ async def test_no_summarization_without_summarizer(session_manager, mock_store):
 
 @pytest.mark.asyncio
 async def test_no_summarization_when_disabled(
-    mock_store, memory_config, mock_tokenizer
+    mock_store, memory_config, mock_tokenizer,
 ):
     """Test that summarization is skipped when disabled."""
     memory_config.enable_summarization = False

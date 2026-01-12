@@ -8,11 +8,8 @@ This module provides endpoints for RAG queries:
 
 import time
 import uuid
-from datetime import datetime
-from typing import Any, AsyncGenerator
-
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from api.dependencies import (
     GuardrailPipelineDep,
@@ -28,6 +25,8 @@ from api.models.responses import (
     SourceDocument,
     UsageInfo,
 )
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(prefix="/api/v1", tags=["Query"])
 
@@ -50,7 +49,7 @@ def _transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument
                 uri=doc.get("source") or doc.get("uri"),
                 score=doc.get("score"),
                 snippet=doc.get("content", "")[:200] if doc.get("content") else None,
-            )
+            ),
         )
     return sources
 
@@ -132,7 +131,7 @@ async def query(
                     if query_request.tenant_id
                     else None,
                     "options": query_request.options or {},
-                }
+                },
             )
 
             response_text = result.get("response", "")
@@ -149,7 +148,7 @@ async def query(
                     "message": str(e),
                     "request_id": request_id,
                 },
-            )
+            ) from e
     else:
         # Fallback: Direct LLM call without retrieval
         from gateway import ChatCompletionRequest, ChatMessage
@@ -177,7 +176,7 @@ async def query(
                     "message": str(e),
                     "request_id": request_id,
                 },
-            )
+            ) from e
 
     # Check output guardrails
     output_result = await guardrail_pipeline.check_output(response_text)
@@ -281,7 +280,7 @@ async def query_stream(
         # If we have documents, add context
         if documents:
             context = "\n\n".join(
-                [f"[{i+1}] {doc.get('content', '')}" for i, doc in enumerate(documents)]
+                [f"[{i+1}] {doc.get('content', '')}" for i, doc in enumerate(documents)],
             )
             context_message = f"Use the following context to answer the question:\n\n{context}"
             messages.insert(0, {"role": "system", "content": context_message})

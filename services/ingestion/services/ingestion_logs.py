@@ -30,15 +30,15 @@ Usage:
 """
 
 import asyncio
+import contextlib
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Optional
 
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from telemetry import get_current_trace_context
 
 logger = logging.getLogger(__name__)
@@ -66,14 +66,14 @@ class IngestionLogEntry:
 
     tenant_id: uuid.UUID
     event_type: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    document_id: Optional[uuid.UUID] = None
-    job_id: Optional[uuid.UUID] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    document_id: uuid.UUID | None = None
+    job_id: uuid.UUID | None = None
     chunk_count: int = 0
-    latency_ms: Optional[int] = None
-    metadata: Optional[dict[str, Any]] = None
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    latency_ms: int | None = None
+    metadata: dict[str, Any] | None = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
     def __post_init__(self):
         """Capture trace context if not provided."""
@@ -104,7 +104,7 @@ class IngestionLogWriter:
         self,
         batch_size: int = 100,
         flush_interval: float = 5.0,
-        session_factory: Optional[Any] = None,
+        session_factory: Any | None = None,
     ):
         """Initialize the ingestion log writer.
 
@@ -119,7 +119,7 @@ class IngestionLogWriter:
         self._session_factory = session_factory
         self._buffer: list[IngestionLogEntry] = []
         self._lock = asyncio.Lock()
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
         self._running = False
         self._flush_errors: int = 0
         self._total_flushed: int = 0
@@ -168,10 +168,8 @@ class IngestionLogWriter:
 
         if self._flush_task:
             self._flush_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._flush_task
-            except asyncio.CancelledError:
-                pass
             self._flush_task = None
 
         # Final flush
@@ -208,11 +206,11 @@ class IngestionLogWriter:
         self,
         tenant_id: uuid.UUID,
         event_type: str,
-        document_id: Optional[uuid.UUID] = None,
-        job_id: Optional[uuid.UUID] = None,
+        document_id: uuid.UUID | None = None,
+        job_id: uuid.UUID | None = None,
         chunk_count: int = 0,
-        latency_ms: Optional[int] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        latency_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Convenience method to log an event without creating an entry object.
 
@@ -283,7 +281,7 @@ class IngestionLogWriter:
                     self._buffer = entries + self._buffer
             else:
                 logger.error(
-                    f"Dropping {len(entries)} entries after too many flush errors"
+                    f"Dropping {len(entries)} entries after too many flush errors",
                 )
 
     async def _bulk_insert(self, entries: list[IngestionLogEntry]) -> None:
@@ -322,7 +320,7 @@ class IngestionLogWriter:
                             **(entry.metadata or {}),
                         },
                         "created_at": entry.timestamp,
-                    }
+                    },
                 )
 
             # Bulk insert

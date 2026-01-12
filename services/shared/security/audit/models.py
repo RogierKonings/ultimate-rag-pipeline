@@ -7,9 +7,9 @@ including actions, outcomes, and query models.
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -113,80 +113,80 @@ class AuditLogEntry(BaseModel):
 
     # Identity
     id: UUID = Field(default_factory=uuid4, description="Unique audit entry ID")
-    trace_id: Optional[str] = Field(
-        default=None, description="Distributed trace ID for correlation"
+    trace_id: str | None = Field(
+        default=None, description="Distributed trace ID for correlation",
     )
-    span_id: Optional[str] = Field(default=None, description="Span ID within trace")
+    span_id: str | None = Field(default=None, description="Span ID within trace")
 
     # Timing
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When the event occurred",
     )
-    duration_ms: Optional[float] = Field(
-        default=None, description="Duration of operation in milliseconds"
+    duration_ms: float | None = Field(
+        default=None, description="Duration of operation in milliseconds",
     )
 
     # Actor
-    user_id: Optional[UUID] = Field(
-        default=None, description="User who performed the action"
+    user_id: UUID | None = Field(
+        default=None, description="User who performed the action",
     )
-    username: Optional[str] = Field(default=None, description="Username for display")
-    tenant_id: Optional[UUID] = Field(default=None, description="Tenant context")
-    service_name: Optional[str] = Field(
-        default=None, description="Service that generated the event"
+    username: str | None = Field(default=None, description="Username for display")
+    tenant_id: UUID | None = Field(default=None, description="Tenant context")
+    service_name: str | None = Field(
+        default=None, description="Service that generated the event",
     )
-    api_key_id: Optional[str] = Field(
-        default=None, description="API key used (if applicable)"
+    api_key_id: str | None = Field(
+        default=None, description="API key used (if applicable)",
     )
 
     # Action
     action: AuditAction = Field(..., description="Type of action performed")
     outcome: AuditOutcome = Field(
-        default=AuditOutcome.SUCCESS, description="Outcome of the action"
+        default=AuditOutcome.SUCCESS, description="Outcome of the action",
     )
     severity: AuditSeverity = Field(
-        default=AuditSeverity.INFO, description="Severity level"
+        default=AuditSeverity.INFO, description="Severity level",
     )
 
     # Resource
-    resource_type: Optional[str] = Field(
-        default=None, description="Type of resource (document, user, etc.)"
+    resource_type: str | None = Field(
+        default=None, description="Type of resource (document, user, etc.)",
     )
-    resource_id: Optional[str] = Field(default=None, description="ID of the resource")
-    resource_name: Optional[str] = Field(
-        default=None, description="Name/title of resource"
+    resource_id: str | None = Field(default=None, description="ID of the resource")
+    resource_name: str | None = Field(
+        default=None, description="Name/title of resource",
     )
 
     # Request context
-    client_ip: Optional[str] = Field(default=None, description="Client IP address")
-    user_agent: Optional[str] = Field(default=None, description="Client user agent")
-    request_method: Optional[str] = Field(default=None, description="HTTP method")
-    request_path: Optional[str] = Field(default=None, description="Request path")
-    request_id: Optional[str] = Field(default=None, description="Request ID")
+    client_ip: str | None = Field(default=None, description="Client IP address")
+    user_agent: str | None = Field(default=None, description="Client user agent")
+    request_method: str | None = Field(default=None, description="HTTP method")
+    request_path: str | None = Field(default=None, description="Request path")
+    request_id: str | None = Field(default=None, description="Request ID")
 
     # Response
-    status_code: Optional[int] = Field(default=None, description="HTTP status code")
-    error_message: Optional[str] = Field(
-        default=None, description="Error message if failed"
+    status_code: int | None = Field(default=None, description="HTTP status code")
+    error_message: str | None = Field(
+        default=None, description="Error message if failed",
     )
-    error_code: Optional[str] = Field(default=None, description="Error code if failed")
+    error_code: str | None = Field(default=None, description="Error code if failed")
 
     # Additional context
     details: dict[str, Any] = Field(
-        default_factory=dict, description="Additional event details"
+        default_factory=dict, description="Additional event details",
     )
-    changes: Optional[dict[str, Any]] = Field(
-        default=None, description="Before/after values for updates"
+    changes: dict[str, Any] | None = Field(
+        default=None, description="Before/after values for updates",
     )
 
     # Tamper evidence
-    previous_hash: Optional[str] = Field(
-        default=None, description="Hash of previous audit entry"
+    previous_hash: str | None = Field(
+        default=None, description="Hash of previous audit entry",
     )
-    entry_hash: Optional[str] = Field(default=None, description="Hash of this entry")
+    entry_hash: str | None = Field(default=None, description="Hash of this entry")
 
-    def compute_hash(self, previous_hash: Optional[str] = None) -> str:
+    def compute_hash(self, previous_hash: str | None = None) -> str:
         """
         Compute SHA-256 hash of this entry for tamper evidence.
 
@@ -265,35 +265,35 @@ class AuditQuery(BaseModel):
     """Query parameters for searching audit logs."""
 
     # Time range
-    start_time: Optional[datetime] = Field(
-        default=None, description="Start of time range"
+    start_time: datetime | None = Field(
+        default=None, description="Start of time range",
     )
-    end_time: Optional[datetime] = Field(default=None, description="End of time range")
+    end_time: datetime | None = Field(default=None, description="End of time range")
 
     # Filters
-    user_id: Optional[UUID] = Field(default=None, description="Filter by user")
-    tenant_id: Optional[UUID] = Field(default=None, description="Filter by tenant")
-    actions: Optional[list[AuditAction]] = Field(
-        default=None, description="Filter by actions"
+    user_id: UUID | None = Field(default=None, description="Filter by user")
+    tenant_id: UUID | None = Field(default=None, description="Filter by tenant")
+    actions: list[AuditAction] | None = Field(
+        default=None, description="Filter by actions",
     )
-    outcomes: Optional[list[AuditOutcome]] = Field(
-        default=None, description="Filter by outcomes"
+    outcomes: list[AuditOutcome] | None = Field(
+        default=None, description="Filter by outcomes",
     )
-    severities: Optional[list[AuditSeverity]] = Field(
-        default=None, description="Filter by severity levels"
+    severities: list[AuditSeverity] | None = Field(
+        default=None, description="Filter by severity levels",
     )
-    resource_type: Optional[str] = Field(
-        default=None, description="Filter by resource type"
+    resource_type: str | None = Field(
+        default=None, description="Filter by resource type",
     )
-    resource_id: Optional[str] = Field(
-        default=None, description="Filter by resource ID"
+    resource_id: str | None = Field(
+        default=None, description="Filter by resource ID",
     )
-    client_ip: Optional[str] = Field(default=None, description="Filter by client IP")
-    trace_id: Optional[str] = Field(default=None, description="Filter by trace ID")
+    client_ip: str | None = Field(default=None, description="Filter by client IP")
+    trace_id: str | None = Field(default=None, description="Filter by trace ID")
 
     # Search
-    search_text: Optional[str] = Field(
-        default=None, description="Full-text search in details"
+    search_text: str | None = Field(
+        default=None, description="Full-text search in details",
     )
 
     # Pagination
@@ -310,18 +310,18 @@ class AuditStats(BaseModel):
 
     total_entries: int = Field(default=0, description="Total audit entries")
     entries_by_action: dict[str, int] = Field(
-        default_factory=dict, description="Count by action"
+        default_factory=dict, description="Count by action",
     )
     entries_by_outcome: dict[str, int] = Field(
-        default_factory=dict, description="Count by outcome"
+        default_factory=dict, description="Count by outcome",
     )
     entries_by_severity: dict[str, int] = Field(
-        default_factory=dict, description="Count by severity"
+        default_factory=dict, description="Count by severity",
     )
     unique_users: int = Field(default=0, description="Unique users")
     unique_resources: int = Field(default=0, description="Unique resources accessed")
-    time_range_start: Optional[datetime] = Field(default=None)
-    time_range_end: Optional[datetime] = Field(default=None)
+    time_range_start: datetime | None = Field(default=None)
+    time_range_end: datetime | None = Field(default=None)
 
 
 class AuditExportRequest(BaseModel):
@@ -330,10 +330,10 @@ class AuditExportRequest(BaseModel):
     query: AuditQuery = Field(default_factory=AuditQuery, description="Query filters")
     format: str = Field(default="json", description="Export format (json, csv)")
     include_details: bool = Field(
-        default=False, description="Include full details field"
+        default=False, description="Include full details field",
     )
     include_hash: bool = Field(
-        default=True, description="Include hash chain validation"
+        default=True, description="Include hash chain validation",
     )
 
 
@@ -341,10 +341,10 @@ class AuditExportResponse(BaseModel):
     """Response for audit log export."""
 
     total_entries: int = Field(description="Total entries exported")
-    file_path: Optional[str] = Field(default=None, description="Path to export file")
+    file_path: str | None = Field(default=None, description="Path to export file")
     hash_chain_valid: bool = Field(
-        default=True, description="Whether hash chain is valid"
+        default=True, description="Whether hash chain is valid",
     )
     export_timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(UTC),
     )

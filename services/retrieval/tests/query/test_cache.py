@@ -1,8 +1,8 @@
 """Tests for query cache."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import pytest
 from query.cache import QueryCache
 from query.models import ProcessedQuery, QueryType
 

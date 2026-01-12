@@ -6,8 +6,8 @@ for sensitive data storage.
 """
 
 from .encrypted import (
-    EncryptedString,
     EncryptedJSON,
+    EncryptedString,
     EncryptedText,
     configure_encryption,
     get_field_encryption,

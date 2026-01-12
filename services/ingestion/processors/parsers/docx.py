@@ -2,7 +2,6 @@
 
 import io
 import logging
-from typing import Optional
 
 from .base import BaseParser, ContentBlock, ContentType, ParsedDocument, TableContent
 
@@ -19,11 +18,11 @@ class DocxParser(BaseParser):
     def supported_mime_types(self) -> list[str]:
         """Return list of supported MIME types."""
         return [
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse Word document.
 
@@ -64,7 +63,7 @@ class DocxParser(BaseParser):
                         metadata={
                             "style": para.style.name if para.style else None,
                         },
-                    )
+                    ),
                 )
                 position += 1
 
@@ -80,7 +79,7 @@ class DocxParser(BaseParser):
                             content_type=ContentType.TABLE,
                             content=self._table_to_text(table_content),
                             position=position,
-                        )
+                        ),
                     )
                     position += 1
             except Exception as e:
@@ -107,7 +106,7 @@ class DocxParser(BaseParser):
             metadata=metadata,
         )
 
-    def _extract_table(self, table) -> Optional[TableContent]:
+    def _extract_table(self, table) -> TableContent | None:
         """Extract table content from a docx table.
 
         Args:

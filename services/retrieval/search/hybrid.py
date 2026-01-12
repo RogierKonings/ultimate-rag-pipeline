@@ -2,7 +2,6 @@
 
 import asyncio
 import time
-from typing import Optional
 from uuid import UUID
 
 from search.base import BaseSearcher
@@ -29,7 +28,7 @@ class HybridSearcher(BaseSearcher):
         self,
         semantic_searcher: SemanticSearcher,
         keyword_searcher: KeywordSearcher,
-        config: Optional[HybridSearchConfig] = None,
+        config: HybridSearchConfig | None = None,
     ):
         """
         Initialize hybrid searcher.
@@ -47,23 +46,22 @@ class HybridSearcher(BaseSearcher):
         self._fusion = self._create_fusion(self.config)
 
     def _create_fusion(
-        self, config: HybridSearchConfig
+        self, config: HybridSearchConfig,
     ) -> ReciprocalRankFusion | LinearFusion | DistributionBasedScoreFusion:
         """Create fusion algorithm based on config."""
         if config.fusion_method == FusionMethod.RRF:
             return ReciprocalRankFusion(k=config.rrf_k)
-        elif config.fusion_method in (FusionMethod.LINEAR, FusionMethod.CONVEX):
+        if config.fusion_method in (FusionMethod.LINEAR, FusionMethod.CONVEX):
             return LinearFusion(
                 semantic_weight=config.semantic_weight,
                 keyword_weight=config.keyword_weight,
             )
-        elif config.fusion_method == FusionMethod.DBSF:
+        if config.fusion_method == FusionMethod.DBSF:
             return DistributionBasedScoreFusion(
                 semantic_weight=config.semantic_weight,
                 keyword_weight=config.keyword_weight,
             )
-        else:
-            raise ValueError(f"Unknown fusion method: {config.fusion_method}")
+        raise ValueError(f"Unknown fusion method: {config.fusion_method}")
 
     async def connect(self) -> None:
         """Connect to both search backends."""
@@ -89,9 +87,9 @@ class HybridSearcher(BaseSearcher):
         self,
         query: str,
         query_embedding: list[float],
-        top_k: Optional[int] = None,
-        filters: Optional[dict] = None,
-        config: Optional[HybridSearchConfig] = None,
+        top_k: int | None = None,
+        filters: dict | None = None,
+        config: HybridSearchConfig | None = None,
     ) -> HybridSearchResponse:
         """
         Execute hybrid search combining semantic and keyword search.
@@ -170,9 +168,7 @@ class HybridSearcher(BaseSearcher):
 
         for result in results:
             doc_id = result.document_id
-            if doc_id not in seen_docs:
-                seen_docs[doc_id] = result
-            elif result.fused_score > seen_docs[doc_id].fused_score:
+            if doc_id not in seen_docs or result.fused_score > seen_docs[doc_id].fused_score:
                 seen_docs[doc_id] = result
 
         # Maintain score order
@@ -182,7 +178,7 @@ class HybridSearcher(BaseSearcher):
         self,
         query_embedding: list[float],
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> HybridSearchResponse:
         """
         Bypass hybrid fusion and use semantic search only.
@@ -227,7 +223,7 @@ class HybridSearcher(BaseSearcher):
         self,
         query: str,
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> HybridSearchResponse:
         """
         Bypass hybrid fusion and use keyword search only.

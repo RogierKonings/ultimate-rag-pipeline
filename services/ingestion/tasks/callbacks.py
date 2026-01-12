@@ -6,7 +6,7 @@ a dead letter queue for failed tasks.
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .celery_app import celery_app
@@ -30,7 +30,7 @@ def send_to_dlq(failure_info: dict[str, Any]) -> dict[str, Any]:
     from services.shared.cache.redis_client import get_redis_client
 
     task_name = failure_info.get("task_name", "unknown")
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(tz=UTC).isoformat()
 
     # Create unique DLQ key
     dlq_key = f"dlq:{task_name}:{timestamp}"
@@ -93,7 +93,7 @@ def on_task_failure(
             "kwargs": kwargs,
             "error": str(exc),
             "traceback": str(einfo) if einfo else None,
-        }
+        },
     )
 
 
@@ -129,9 +129,8 @@ def retry_dlq_entry(dlq_key: str) -> bool:
             redis_client.delete(dlq_key)
             logger.info(f"Retried task from DLQ: {dlq_key}")
             return True
-        else:
-            logger.error(f"Task not found: {task_name}")
-            return False
+        logger.error(f"Task not found: {task_name}")
+        return False
 
     except Exception as e:
         logger.error(f"Failed to retry DLQ entry: {e}")

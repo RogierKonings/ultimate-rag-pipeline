@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -39,7 +39,7 @@ class RetrieveRequest(BaseModel):
     rerank_top_k: int = Field(default=20, ge=1, le=100)
 
     # Filtering
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
 
     # Score threshold
     min_score: float = Field(default=0.0, ge=0.0, le=1.0)
@@ -56,8 +56,8 @@ class RetrieveRequest(BaseModel):
                 "top_k": 10,
                 "rerank": True,
                 "filters": {"source_type": "documentation"},
-            }
-        }
+            },
+        },
     }
 
 
@@ -72,7 +72,7 @@ class MultiQueryRequest(BaseModel):
     queries: list[str] = Field(..., min_length=1, max_length=5)
     aggregation: str = Field(default="rrf", pattern="^(max|avg|rrf)$")
     top_k: int = Field(default=10, ge=1, le=100)
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     rerank: bool = True
 
 
@@ -85,39 +85,39 @@ class RetrievedDocument(BaseModel):
     score: float = Field(ge=0.0, le=1.0)
 
     # Document metadata
-    title: Optional[str] = None
-    source: Optional[str] = None
-    source_type: Optional[str] = None
+    title: str | None = None
+    source: str | None = None
+    source_type: str | None = None
 
     # Chunk position
     chunk_index: int = 0
     total_chunks: int = 1
 
     # Timestamps
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     # Score breakdown
-    semantic_score: Optional[float] = None
-    keyword_score: Optional[float] = None
-    rerank_score: Optional[float] = None
+    semantic_score: float | None = None
+    keyword_score: float | None = None
+    rerank_score: float | None = None
 
     # Additional metadata
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Highlights (if enabled)
-    highlights: Optional[list[str]] = None
+    highlights: list[str] | None = None
 
 
 class SearchMetrics(BaseModel):
     """Metrics for the search operation."""
 
     query_preprocessing_ms: float = 0.0
-    embedding_ms: Optional[float] = None
-    semantic_search_ms: Optional[float] = None
-    keyword_search_ms: Optional[float] = None
-    fusion_ms: Optional[float] = None
-    rerank_ms: Optional[float] = None
+    embedding_ms: float | None = None
+    semantic_search_ms: float | None = None
+    keyword_search_ms: float | None = None
+    fusion_ms: float | None = None
+    rerank_ms: float | None = None
     total_ms: float
 
     semantic_results_count: int = 0
@@ -154,8 +154,8 @@ class DebugInfo(BaseModel):
     total_latency_ms: float = 0.0
 
     # Models used
-    embedding_model: Optional[str] = None
-    rerank_model: Optional[str] = None
+    embedding_model: str | None = None
+    rerank_model: str | None = None
 
     # Pipeline configuration
     fusion_method: str = "rrf"
@@ -181,7 +181,7 @@ class RetrieveResponse(BaseModel):
     processed_at: datetime
 
     # Debug info (US-3.10)
-    debug: Optional[DebugInfo] = None
+    debug: DebugInfo | None = None
 
     model_config = {
         "json_schema_extra": {
@@ -194,13 +194,13 @@ class RetrieveResponse(BaseModel):
                         "score": 0.92,
                         "title": "ML Guide",
                         "source": "docs/ml-intro.md",
-                    }
+                    },
                 ],
                 "total_results": 1,
                 "query": "How does machine learning work?",
                 "mode": "hybrid",
-            }
-        }
+            },
+        },
     }
 
 

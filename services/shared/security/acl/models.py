@@ -5,9 +5,9 @@ This module defines the data structures for Access Control Lists,
 including visibility levels, ACL entries, and request models.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -49,16 +49,16 @@ class ACLEntry(BaseModel):
         default=True,
         description="True for allow, False for deny",
     )
-    expires_at: Optional[datetime] = Field(
+    expires_at: datetime | None = Field(
         default=None,
         description="Optional expiration time for this entry",
     )
-    granted_by: Optional[UUID] = Field(
+    granted_by: UUID | None = Field(
         default=None,
         description="User who granted this access",
     )
     granted_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When this access was granted",
     )
 
@@ -66,7 +66,7 @@ class ACLEntry(BaseModel):
         """Check if this ACL entry has expired."""
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
 
 class DocumentACL(BaseModel):
@@ -119,12 +119,12 @@ class DocumentACL(BaseModel):
 
     # Metadata
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
     )
-    updated_by: Optional[UUID] = None
+    updated_by: UUID | None = None
 
     def can_access(
         self,
@@ -242,8 +242,8 @@ class DocumentACL(BaseModel):
         self,
         user_id: UUID,
         permission: str = "read",
-        granted_by: Optional[UUID] = None,
-        expires_at: Optional[datetime] = None,
+        granted_by: UUID | None = None,
+        expires_at: datetime | None = None,
     ) -> None:
         """Add a user to the allowed list."""
         if user_id not in self.allowed_users:
@@ -258,9 +258,9 @@ class DocumentACL(BaseModel):
                 granted=True,
                 granted_by=granted_by,
                 expires_at=expires_at,
-            )
+            ),
         )
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         self.updated_by = granted_by
 
     def remove_user(self, user_id: UUID) -> None:
@@ -270,14 +270,14 @@ class DocumentACL(BaseModel):
             e for e in self.entries
             if not (e.principal_type == "user" and e.principal_id == str(user_id))
         ]
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def add_group(
         self,
         group_name: str,
         permission: str = "read",
-        granted_by: Optional[UUID] = None,
-        expires_at: Optional[datetime] = None,
+        granted_by: UUID | None = None,
+        expires_at: datetime | None = None,
     ) -> None:
         """Add a group to the allowed list."""
         if group_name not in self.allowed_groups:
@@ -291,9 +291,9 @@ class DocumentACL(BaseModel):
                 granted=True,
                 granted_by=granted_by,
                 expires_at=expires_at,
-            )
+            ),
         )
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         self.updated_by = granted_by
 
     def remove_group(self, group_name: str) -> None:
@@ -303,9 +303,9 @@ class DocumentACL(BaseModel):
             e for e in self.entries
             if not (e.principal_type == "group" and e.principal_id == group_name)
         ]
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
-    def deny_user(self, user_id: UUID, denied_by: Optional[UUID] = None) -> None:
+    def deny_user(self, user_id: UUID, denied_by: UUID | None = None) -> None:
         """Explicitly deny access to a user."""
         if user_id not in self.denied_users:
             self.denied_users.append(user_id)
@@ -317,12 +317,12 @@ class DocumentACL(BaseModel):
                 permission="read",
                 granted=False,
                 granted_by=denied_by,
-            )
+            ),
         )
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         self.updated_by = denied_by
 
-    def deny_group(self, group_name: str, denied_by: Optional[UUID] = None) -> None:
+    def deny_group(self, group_name: str, denied_by: UUID | None = None) -> None:
         """Explicitly deny access to a group."""
         if group_name not in self.denied_groups:
             self.denied_groups.append(group_name)
@@ -334,20 +334,20 @@ class DocumentACL(BaseModel):
                 permission="read",
                 granted=False,
                 granted_by=denied_by,
-            )
+            ),
         )
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         self.updated_by = denied_by
 
 
 class ACLUpdateRequest(BaseModel):
     """Request model for updating document ACL."""
 
-    visibility: Optional[Visibility] = None
-    allowed_users: Optional[list[UUID]] = None
-    allowed_groups: Optional[list[str]] = None
-    denied_users: Optional[list[UUID]] = None
-    denied_groups: Optional[list[str]] = None
+    visibility: Visibility | None = None
+    allowed_users: list[UUID] | None = None
+    allowed_groups: list[str] | None = None
+    denied_users: list[UUID] | None = None
+    denied_groups: list[str] | None = None
 
 
 class ShareRequest(BaseModel):
@@ -365,7 +365,7 @@ class ShareRequest(BaseModel):
         default="read",
         description="Permission level to grant",
     )
-    expires_at: Optional[datetime] = Field(
+    expires_at: datetime | None = Field(
         default=None,
         description="Optional expiration for the share",
     )
@@ -382,7 +382,7 @@ class BulkACLUpdateRequest(BaseModel):
         ...,
         description="Documents to update",
     )
-    visibility: Optional[Visibility] = None
+    visibility: Visibility | None = None
     add_users: list[UUID] = Field(default_factory=list)
     remove_users: list[UUID] = Field(default_factory=list)
     add_groups: list[str] = Field(default_factory=list)

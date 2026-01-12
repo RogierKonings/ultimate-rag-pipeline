@@ -12,7 +12,6 @@ Contract Requirements:
     - Error event: Must have error and code fields
 """
 
-from typing import List, Optional
 
 from .models import StreamEvent, StreamEventType
 
@@ -30,9 +29,9 @@ class EventValidationError(Exception):
     def __init__(
         self,
         message: str,
-        event: Optional[StreamEvent] = None,
-        expected: Optional[str] = None,
-        actual: Optional[str] = None,
+        event: StreamEvent | None = None,
+        expected: str | None = None,
+        actual: str | None = None,
     ) -> None:
         """Initialize the validation error.
 
@@ -81,14 +80,14 @@ class EventSequenceValidator:
 
     def __init__(self) -> None:
         """Initialize the sequence validator."""
-        self._events: List[StreamEvent] = []
+        self._events: list[StreamEvent] = []
         self._has_start = False
         self._has_done = False
         self._has_error = False
         self._has_citations = False
 
     @property
-    def events(self) -> List[StreamEvent]:
+    def events(self) -> list[StreamEvent]:
         """Get the list of events in sequence order."""
         return self._events.copy()
 

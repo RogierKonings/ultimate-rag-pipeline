@@ -1,8 +1,8 @@
 """Tests for HyDE and multi-query generation."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from query.hyde import HyDEGenerator, MultiQueryGenerator
 
 
@@ -28,7 +28,7 @@ class TestHyDEGenerator:
         """Test successful HyDE generation."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "Machine learning is a subset of AI..."}]
+            "choices": [{"text": "Machine learning is a subset of AI..."}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -45,7 +45,7 @@ class TestHyDEGenerator:
         """Test that generated document is stripped."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "  Document content  \n"}]
+            "choices": [{"text": "  Document content  \n"}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -83,7 +83,7 @@ class TestMultiQueryGenerator:
         """Test that original query is always included."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "Alternative query 1\nAlternative query 2"}]
+            "choices": [{"text": "Alternative query 1\nAlternative query 2"}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -100,7 +100,7 @@ class TestMultiQueryGenerator:
         """Test that max_queries is respected."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "Alt 1\nAlt 2\nAlt 3\nAlt 4\nAlt 5"}]
+            "choices": [{"text": "Alt 1\nAlt 2\nAlt 3\nAlt 4\nAlt 5"}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -117,7 +117,7 @@ class TestMultiQueryGenerator:
         """Test that numbering is removed from generated queries."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "1. First query\n2) Second query\n3- Third query"}]
+            "choices": [{"text": "1. First query\n2) Second query\n3- Third query"}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -137,7 +137,7 @@ class TestMultiQueryGenerator:
         """Test that duplicate of original is excluded."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "choices": [{"text": "original query\nAlternative query"}]
+            "choices": [{"text": "original query\nAlternative query"}],
         }
         mock_response.raise_for_status = MagicMock()
 

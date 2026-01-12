@@ -8,7 +8,6 @@ import base64
 import logging
 import struct
 import time
-from typing import Optional
 
 import httpx
 
@@ -37,7 +36,7 @@ class EmbeddingClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.default_model = default_model
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -63,7 +62,7 @@ class EmbeddingClient:
             logger.warning(f"Embedding health check failed: {e}")
             return False
 
-    async def get_model_info(self) -> Optional[dict]:
+    async def get_model_info(self) -> dict | None:
         """Get model information."""
         try:
             client = await self._get_client()
@@ -78,7 +77,7 @@ class EmbeddingClient:
     async def create_embeddings(
         self,
         request: EmbeddingRequest,
-        context_headers: Optional[dict[str, str]] = None,
+        context_headers: dict[str, str] | None = None,
     ) -> EmbeddingResponse:
         """
         Create embeddings for the given input.
@@ -131,7 +130,7 @@ class EmbeddingClient:
                     EmbeddingData(
                         index=i,
                         embedding=embedding_value,
-                    )
+                    ),
                 )
 
             # Calculate token usage (approximate)
@@ -139,7 +138,7 @@ class EmbeddingClient:
 
             latency_ms = (time.time() - start_time) * 1000
             logger.debug(
-                f"Created {len(embeddings_data)} embeddings in {latency_ms:.1f}ms"
+                f"Created {len(embeddings_data)} embeddings in {latency_ms:.1f}ms",
             )
 
             return EmbeddingResponse(
@@ -153,7 +152,7 @@ class EmbeddingClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"Embedding request failed: {e.response.status_code} - {e.response.text}"
+                f"Embedding request failed: {e.response.status_code} - {e.response.text}",
             )
             raise
         except Exception as e:
@@ -163,8 +162,8 @@ class EmbeddingClient:
     async def create_embeddings_batch(
         self,
         texts: list[str],
-        model: Optional[str] = None,
-        context_headers: Optional[dict[str, str]] = None,
+        model: str | None = None,
+        context_headers: dict[str, str] | None = None,
     ) -> list[list[float]]:
         """
         Create embeddings for a batch of texts.

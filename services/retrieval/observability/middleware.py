@@ -1,7 +1,7 @@
 """FastAPI middleware for logging and metrics."""
 
 import time
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -85,7 +85,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 def setup_observability(
     app: FastAPI,
     config: Any,
-) -> Tuple[RetrievalLogger, RetrievalMetrics, TracingSetup]:
+) -> tuple[RetrievalLogger, RetrievalMetrics, TracingSetup]:
     """
     Set up all observability components for FastAPI app.
 

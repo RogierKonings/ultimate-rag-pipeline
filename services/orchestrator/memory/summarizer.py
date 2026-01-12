@@ -1,6 +1,6 @@
 """History summarization for conversation memory."""
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from .models import MemoryConfig, Message, MessageRole
 
@@ -34,7 +34,7 @@ Provide a brief summary (max 2-3 paragraphs):"""
     def __init__(
         self,
         config: MemoryConfig,
-        gateway: Optional[ModelGateway] = None,
+        gateway: ModelGateway | None = None,
     ):
         """Initialize the history summarizer.
 
@@ -48,7 +48,7 @@ Provide a brief summary (max 2-3 paragraphs):"""
     async def summarize(
         self,
         messages: list[Message],
-        existing_summary: Optional[str] = None,
+        existing_summary: str | None = None,
     ) -> str:
         """
         Summarize a list of messages.

@@ -5,10 +5,11 @@ This module provides centralized configuration management for all services
 in the LLM serving layer including vLLM, embedding, and reranker services.
 """
 
+from functools import lru_cache
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from typing import Optional, Literal
-from functools import lru_cache
 
 
 class VLLMSettings(BaseSettings):
@@ -17,11 +18,11 @@ class VLLMSettings(BaseSettings):
     # Model settings - using non-gated model for easier access
     model_name: str = Field(
         default="Qwen/Qwen2.5-7B-Instruct",
-        description="HuggingFace model ID"
+        description="HuggingFace model ID",
     )
-    served_model_name: Optional[str] = Field(
+    served_model_name: str | None = Field(
         default=None,
-        description="Override model name in API responses"
+        description="Override model name in API responses",
     )
 
     # Server settings
@@ -43,7 +44,7 @@ class VLLMSettings(BaseSettings):
     swap_space: int = 4  # GB
 
     # Quantization
-    quantization: Optional[Literal["awq", "gptq", "squeezellm"]] = None
+    quantization: Literal["awq", "gptq", "squeezellm"] | None = None
 
     model_config = {"env_prefix": "VLLM_"}
 
@@ -54,7 +55,7 @@ class EmbeddingSettings(BaseSettings):
     # Model settings
     model_name: str = Field(
         default="BAAI/bge-large-en-v1.5",
-        description="Sentence-transformers model ID"
+        description="Sentence-transformers model ID",
     )
     embedding_dim: int = 1024
     max_sequence_length: int = 512
@@ -86,7 +87,7 @@ class RerankerSettings(BaseSettings):
     # Model settings
     model_name: str = Field(
         default="BAAI/bge-reranker-v2-m3",
-        description="Cross-encoder model ID"
+        description="Cross-encoder model ID",
     )
     max_sequence_length: int = 512
 
@@ -133,25 +134,25 @@ class GatewaySettings(BaseSettings):
     model_config = {"env_prefix": "GATEWAY_"}
 
 
-@lru_cache()
+@lru_cache
 def get_vllm_settings() -> VLLMSettings:
     """Get cached vLLM settings."""
     return VLLMSettings()
 
 
-@lru_cache()
+@lru_cache
 def get_embedding_settings() -> EmbeddingSettings:
     """Get cached embedding settings."""
     return EmbeddingSettings()
 
 
-@lru_cache()
+@lru_cache
 def get_reranker_settings() -> RerankerSettings:
     """Get cached reranker settings."""
     return RerankerSettings()
 
 
-@lru_cache()
+@lru_cache
 def get_gateway_settings() -> GatewaySettings:
     """Get cached gateway settings."""
     return GatewaySettings()

@@ -7,12 +7,11 @@ This module provides health check endpoints for:
 """
 
 import time
-from datetime import datetime
-
-from fastapi import APIRouter, Request, status
-from fastapi.responses import JSONResponse
+from datetime import UTC, datetime
 
 from api.models.responses import ComponentHealth, HealthResponse
+from fastapi import APIRouter, Request, status
+from fastapi.responses import JSONResponse
 
 router = APIRouter(tags=["Health"])
 
@@ -46,7 +45,7 @@ async def health_check(request: Request) -> HealthResponse:
             redis_start = time.perf_counter()
             # Try to ping Redis through the session store
             if hasattr(session_manager, "store") and hasattr(
-                session_manager.store, "_redis"
+                session_manager.store, "_redis",
             ):
                 await session_manager.store._redis.ping()
             redis_latency = (time.perf_counter() - redis_start) * 1000
@@ -56,7 +55,7 @@ async def health_check(request: Request) -> HealthResponse:
                     status="healthy",
                     latency_ms=round(redis_latency, 2),
                     message="Connected",
-                )
+                ),
             )
         except Exception as e:
             overall_healthy = False
@@ -65,7 +64,7 @@ async def health_check(request: Request) -> HealthResponse:
                     name="redis",
                     status="unhealthy",
                     message=str(e),
-                )
+                ),
             )
     else:
         components.append(
@@ -73,7 +72,7 @@ async def health_check(request: Request) -> HealthResponse:
                 name="redis",
                 status="unknown",
                 message="Session manager not initialized",
-            )
+            ),
         )
 
     # Check model gateway
@@ -94,7 +93,7 @@ async def health_check(request: Request) -> HealthResponse:
                     status="healthy" if gateway_healthy else "degraded",
                     latency_ms=round(gateway_latency, 2),
                     message=f"Models: {list(health_result.keys())}",
-                )
+                ),
             )
             if not gateway_healthy:
                 overall_healthy = False
@@ -105,7 +104,7 @@ async def health_check(request: Request) -> HealthResponse:
                     name="llm_gateway",
                     status="unhealthy",
                     message=str(e),
-                )
+                ),
             )
     else:
         components.append(
@@ -113,7 +112,7 @@ async def health_check(request: Request) -> HealthResponse:
                 name="llm_gateway",
                 status="unknown",
                 message="Model gateway not initialized",
-            )
+            ),
         )
 
     # Determine overall status
@@ -130,7 +129,7 @@ async def health_check(request: Request) -> HealthResponse:
         version="1.0.0",
         uptime_seconds=round(uptime, 2),
         components=components,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(tz=UTC),
     )
 
 
@@ -189,7 +188,7 @@ async def readiness_probe(request: Request) -> JSONResponse:
         # Try to ping Redis
         try:
             if hasattr(session_manager, "store") and hasattr(
-                session_manager.store, "_redis"
+                session_manager.store, "_redis",
             ):
                 await session_manager.store._redis.ping()
         except Exception as e:
@@ -205,8 +204,7 @@ async def readiness_probe(request: Request) -> JSONResponse:
             status_code=status.HTTP_200_OK,
             content={"status": "ready"},
         )
-    else:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "reasons": reasons},
-        )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"status": "not_ready", "reasons": reasons},
+    )

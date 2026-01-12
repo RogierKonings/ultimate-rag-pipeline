@@ -8,10 +8,7 @@ This module provides CRUD endpoints for conversation sessions:
 - POST /api/v1/sessions/{id}/clear - Clear session messages
 """
 
-from datetime import datetime
 from uuid import UUID
-
-from fastapi import APIRouter, HTTPException, status
 
 from api.dependencies import SessionManagerDep
 from api.models.requests import CreateSessionRequest
@@ -24,6 +21,7 @@ from api.models.responses import (
     SessionInfo,
     SessionResponse,
 )
+from fastapi import APIRouter, HTTPException, status
 
 router = APIRouter(prefix="/api/v1/sessions", tags=["Sessions"])
 

@@ -1,16 +1,15 @@
 """Tests for context formatting utilities."""
 
 import pytest
-
 from prompts.context import (
     count_tokens,
-    get_tokenizer,
-    format_context,
+    extract_document_metadata,
     format_citations,
+    format_context,
+    format_history_summary,
+    get_tokenizer,
     truncate_context,
     truncate_documents,
-    format_history_summary,
-    extract_document_metadata,
 )
 
 
@@ -125,7 +124,7 @@ class TestFormatContext:
                 "content": "Content here",
                 "title": "Direct Title",
                 "metadata": {"title": "Metadata Title"},
-            }
+            },
         ]
         context = format_context(docs)
 

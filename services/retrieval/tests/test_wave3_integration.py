@@ -7,10 +7,11 @@ Tests the complete retrieval pipeline:
 """
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+import pytest
+from reranking import RerankerService
 from search.fusion import (
     DistributionBasedScoreFusion,
     FusedResult,
@@ -25,8 +26,6 @@ from search.models import (
     SearchResultItem,
     SemanticSearchResponse,
 )
-from reranking import RerankerService, RerankerConfig
-
 
 # ============================================================================
 # Fixtures
@@ -67,7 +66,7 @@ def semantic_results(shared_chunk_ids, semantic_only_chunk_ids):
                 score=0.95 - i * 0.1,  # 0.95, 0.85, 0.75
                 title=f"Shared {i}",
                 source="shared.md",
-            )
+            ),
         )
 
     # Semantic-only chunks
@@ -80,7 +79,7 @@ def semantic_results(shared_chunk_ids, semantic_only_chunk_ids):
                 score=0.65 - i * 0.1,  # 0.65, 0.55
                 title=f"Semantic {i}",
                 source="semantic.md",
-            )
+            ),
         )
 
     return results
@@ -103,7 +102,7 @@ def keyword_results(shared_chunk_ids, keyword_only_chunk_ids):
                 score=12.0 - i * 2.0,  # BM25-like scores: 12.0, 10.0, 8.0
                 title=f"Shared {i}",
                 source="shared.md",
-            )
+            ),
         )
 
     # Keyword-only chunks
@@ -116,7 +115,7 @@ def keyword_results(shared_chunk_ids, keyword_only_chunk_ids):
                 score=6.0 - i * 2.0,  # 6.0, 4.0
                 title=f"Keyword {i}",
                 source="keyword.md",
-            )
+            ),
         )
 
     return results
@@ -131,7 +130,7 @@ def mock_semantic_searcher(semantic_results):
             results=semantic_results,
             total_found=len(semantic_results),
             search_time_ms=50.0,
-        )
+        ),
     )
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
@@ -148,7 +147,7 @@ def mock_keyword_searcher(keyword_results):
             results=keyword_results,
             total_found=len(keyword_results),
             search_time_ms=30.0,
-        )
+        ),
     )
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
@@ -165,7 +164,7 @@ class TestRRFFusionIntegration:
     """Integration tests for RRF fusion."""
 
     def test_rrf_combines_results_from_both_sources(
-        self, semantic_results, keyword_results, shared_chunk_ids
+        self, semantic_results, keyword_results, shared_chunk_ids,
     ):
         """Test RRF properly combines results from both sources."""
         rrf = ReciprocalRankFusion(k=60)
@@ -184,7 +183,7 @@ class TestRRFFusionIntegration:
                 assert result.keyword_score is not None
 
     def test_rrf_ranks_shared_chunks_higher(
-        self, semantic_results, keyword_results, shared_chunk_ids
+        self, semantic_results, keyword_results, shared_chunk_ids,
     ):
         """Test RRF ranks chunks appearing in both lists higher."""
         rrf = ReciprocalRankFusion(k=60)
@@ -222,11 +221,11 @@ class TestDBSFIntegration:
     """Integration tests for distribution-based score fusion."""
 
     def test_dbsf_normalizes_different_scales(
-        self, semantic_results, keyword_results
+        self, semantic_results, keyword_results,
     ):
         """Test DBSF handles different score scales (cosine vs BM25)."""
         dbsf = DistributionBasedScoreFusion(
-            semantic_weight=0.7, keyword_weight=0.3
+            semantic_weight=0.7, keyword_weight=0.3,
         )
 
         fused = dbsf.fuse(semantic_results, keyword_results, top_k=10)
@@ -246,7 +245,7 @@ class TestHybridSearcherIntegration:
 
     @pytest.mark.asyncio
     async def test_hybrid_search_runs_parallel(
-        self, mock_semantic_searcher, mock_keyword_searcher
+        self, mock_semantic_searcher, mock_keyword_searcher,
     ):
         """Test hybrid search runs semantic and keyword in parallel."""
         config = HybridSearchConfig(
@@ -255,7 +254,7 @@ class TestHybridSearcherIntegration:
             keyword_weight=0.3,
         )
         searcher = HybridSearcher(
-            mock_semantic_searcher, mock_keyword_searcher, config
+            mock_semantic_searcher, mock_keyword_searcher, config,
         )
 
         response = await searcher.search(
@@ -274,7 +273,7 @@ class TestHybridSearcherIntegration:
 
     @pytest.mark.asyncio
     async def test_hybrid_search_with_all_fusion_methods(
-        self, mock_semantic_searcher, mock_keyword_searcher
+        self, mock_semantic_searcher, mock_keyword_searcher,
     ):
         """Test hybrid search works with all fusion methods."""
         for method in [FusionMethod.RRF, FusionMethod.LINEAR, FusionMethod.DBSF]:
@@ -288,7 +287,7 @@ class TestHybridSearcherIntegration:
                 config = HybridSearchConfig(fusion_method=method)
 
             searcher = HybridSearcher(
-                mock_semantic_searcher, mock_keyword_searcher, config
+                mock_semantic_searcher, mock_keyword_searcher, config,
             )
 
             # Reset mock call counts
@@ -333,12 +332,12 @@ class TestRerankerIntegration:
             "results": [
                 {"index": i, "relevance_score": 0.5 + i * 0.2}
                 for i in range(len(shared_chunk_ids))
-            ]
+            ],
         }
 
     @pytest.mark.asyncio
     async def test_reranker_reorders_fused_results(
-        self, fused_results, mock_rerank_response
+        self, fused_results, mock_rerank_response,
     ):
         """Test reranker can reorder fused results."""
         reranker = RerankerService()
@@ -377,7 +376,7 @@ class TestEndToEndPipeline:
 
     @pytest.mark.asyncio
     async def test_full_pipeline_search_fusion_rerank(
-        self, mock_semantic_searcher, mock_keyword_searcher, shared_chunk_ids
+        self, mock_semantic_searcher, mock_keyword_searcher, shared_chunk_ids,
     ):
         """Test complete pipeline: search -> fusion -> rerank."""
         # Step 1: Setup hybrid searcher
@@ -386,7 +385,7 @@ class TestEndToEndPipeline:
             top_k=10,
         )
         hybrid = HybridSearcher(
-            mock_semantic_searcher, mock_keyword_searcher, config
+            mock_semantic_searcher, mock_keyword_searcher, config,
         )
 
         # Step 2: Execute hybrid search
@@ -406,7 +405,7 @@ class TestEndToEndPipeline:
             "results": [
                 {"index": i, "relevance_score": 0.9 - i * 0.1}
                 for i in range(len(fusion_response.results))
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -435,13 +434,13 @@ class TestEndToEndPipeline:
 
     @pytest.mark.asyncio
     async def test_pipeline_with_filters(
-        self, mock_semantic_searcher, mock_keyword_searcher
+        self, mock_semantic_searcher, mock_keyword_searcher,
     ):
         """Test pipeline passes filters through correctly."""
         hybrid = HybridSearcher(mock_semantic_searcher, mock_keyword_searcher)
 
         filters = {
-            "must": [{"key": "tenant_id", "match": {"value": "test-tenant"}}]
+            "must": [{"key": "tenant_id", "match": {"value": "test-tenant"}}],
         }
 
         await hybrid.search(
@@ -459,7 +458,7 @@ class TestEndToEndPipeline:
 
     @pytest.mark.asyncio
     async def test_pipeline_deduplication(
-        self, mock_semantic_searcher, mock_keyword_searcher
+        self, mock_semantic_searcher, mock_keyword_searcher,
     ):
         """Test pipeline deduplication works correctly."""
         # Create results with duplicate document_ids
@@ -492,7 +491,7 @@ class TestEndToEndPipeline:
 
         config = HybridSearchConfig(deduplicate=True)
         hybrid = HybridSearcher(
-            mock_semantic_searcher, mock_keyword_searcher, config
+            mock_semantic_searcher, mock_keyword_searcher, config,
         )
 
         response = await hybrid.search(
@@ -515,7 +514,7 @@ class TestPipelinePerformance:
 
     @pytest.mark.asyncio
     async def test_parallel_execution_faster_than_sequential(
-        self, mock_semantic_searcher, mock_keyword_searcher
+        self, mock_semantic_searcher, mock_keyword_searcher,
     ):
         """Test that parallel execution is faster than sequential."""
         import time
@@ -524,13 +523,13 @@ class TestPipelinePerformance:
         async def slow_semantic(*args, **kwargs):
             await asyncio.sleep(0.05)
             return SemanticSearchResponse(
-                results=[], total_found=0, search_time_ms=50
+                results=[], total_found=0, search_time_ms=50,
             )
 
         async def slow_keyword(*args, **kwargs):
             await asyncio.sleep(0.05)
             return KeywordSearchResponse(
-                results=[], total_found=0, search_time_ms=50
+                results=[], total_found=0, search_time_ms=50,
             )
 
         mock_semantic_searcher.search = slow_semantic

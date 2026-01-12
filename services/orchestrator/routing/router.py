@@ -1,8 +1,7 @@
 """Query Router for determining routing strategy."""
 
-from typing import Optional
 
-from .classifiers import KeywordClassifier, ComplexityScorer
+from .classifiers import ComplexityScorer, KeywordClassifier
 from .models import QueryIntent, RoutingConfig, RoutingResult, RoutingStrategy
 
 
@@ -21,7 +20,7 @@ class QueryRouter:
     - Multi-part or analytical queries (high complexity) -> complex (multi-step retrieval)
     """
 
-    def __init__(self, config: Optional[RoutingConfig] = None):
+    def __init__(self, config: RoutingConfig | None = None):
         """
         Initialize the QueryRouter.
 
@@ -31,13 +30,13 @@ class QueryRouter:
         self.config = config or RoutingConfig()
         self._keyword_classifier = KeywordClassifier()
         self._complexity_scorer = ComplexityScorer(
-            max_query_length=self.config.max_query_length
+            max_query_length=self.config.max_query_length,
         )
 
     async def route(
         self,
         query: str,
-        history: Optional[list[dict]] = None,
+        history: list[dict] | None = None,
     ) -> RoutingResult:
         """
         Route a query to the appropriate strategy.
@@ -69,7 +68,7 @@ class QueryRouter:
 
         # Step 4: Determine strategy
         strategy, strategy_reasoning = self._determine_strategy(
-            intent, intent_confidence, complexity_score, query
+            intent, intent_confidence, complexity_score, query,
         )
 
         return RoutingResult(
@@ -91,7 +90,7 @@ class QueryRouter:
             Tuple of (QueryIntent, confidence)
         """
         question_type, confidence = self._keyword_classifier.classify_question_type(
-            query
+            query,
         )
 
         intent_mapping = {
@@ -106,7 +105,7 @@ class QueryRouter:
         return (intent, confidence)
 
     def _score_complexity(
-        self, query: str, history: Optional[list[dict]] = None
+        self, query: str, history: list[dict] | None = None,
     ) -> float:
         """
         Score query complexity on a 0-1 scale.

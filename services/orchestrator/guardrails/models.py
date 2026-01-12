@@ -1,7 +1,7 @@
 """Pydantic models for guardrails."""
 
 from enum import Enum
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -32,15 +32,15 @@ class Violation(BaseModel):
     type: ViolationType
     severity: str  # "low", "medium", "high"
     description: str
-    location: Optional[str] = None  # Where in the text
+    location: str | None = None  # Where in the text
 
 
 class GuardrailResult(BaseModel):
     """Result of a guardrail check."""
 
     passed: bool
-    violations: List[Violation] = Field(default_factory=list)
-    sanitized_content: Optional[str] = None
+    violations: list[Violation] = Field(default_factory=list)
+    sanitized_content: str | None = None
     processing_time_ms: float = 0.0
 
 
@@ -51,41 +51,41 @@ class GuardrailConfig(BaseModel):
     max_input_length: int = Field(default=4000, description="Maximum input text length")
     enable_pii_detection: bool = Field(default=True, description="Enable PII detection")
     enable_injection_detection: bool = Field(
-        default=True, description="Enable prompt injection detection"
+        default=True, description="Enable prompt injection detection",
     )
 
     # Output guardrails
     max_output_length: int = Field(default=8000, description="Maximum output text length")
     enable_harmful_content_filter: bool = Field(
-        default=True, description="Enable harmful content filtering"
+        default=True, description="Enable harmful content filtering",
     )
     enable_hallucination_check: bool = Field(
-        default=True, description="Enable hallucination checking"
+        default=True, description="Enable hallucination checking",
     )
 
     # Behavior configuration
     block_on_pii: bool = Field(
-        default=False, description="Block request on PII detection vs just warn"
+        default=False, description="Block request on PII detection vs just warn",
     )
     block_on_injection: bool = Field(
-        default=True, description="Block request on injection detection"
+        default=True, description="Block request on injection detection",
     )
     block_on_harmful_content: bool = Field(
-        default=True, description="Block response on harmful content"
+        default=True, description="Block response on harmful content",
     )
 
     # Severity thresholds
     pii_severity: Literal["low", "medium", "high", "critical"] = Field(
-        default="medium", description="Default severity for PII violations"
+        default="medium", description="Default severity for PII violations",
     )
     injection_severity: Literal["low", "medium", "high", "critical"] = Field(
-        default="critical", description="Default severity for injection violations"
+        default="critical", description="Default severity for injection violations",
     )
     harmful_content_severity: Literal["low", "medium", "high", "critical"] = Field(
-        default="high", description="Default severity for harmful content violations"
+        default="high", description="Default severity for harmful content violations",
     )
     length_severity: Literal["low", "medium", "high", "critical"] = Field(
-        default="low", description="Default severity for length violations"
+        default="low", description="Default severity for length violations",
     )
 
     # Hallucination detection

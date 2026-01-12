@@ -6,8 +6,6 @@ This module tests the TokenBuffer class for batching tokens before emission.
 import time
 from unittest.mock import patch
 
-import pytest
-
 from streaming.buffer import TokenBuffer
 
 
@@ -130,7 +128,7 @@ class TestTokenBufferTimeBasedEmit:
             # The next add should trigger emit due to timeout
             # We need to force the timing check
             current_ms = mock_time.return_value * 1000
-            elapsed = current_ms - buffer._first_token_time
+            current_ms - buffer._first_token_time
             # If elapsed >= max_wait_ms, should emit
 
     def test_max_wait_zero_immediate_emit(self):

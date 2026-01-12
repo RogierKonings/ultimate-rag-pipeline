@@ -9,29 +9,23 @@ Tests that verify all Wave 4 components work together:
 This test file ensures the full retrieval service is ready for production.
 """
 
-import json
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from jose import jwt
-
 from acl.context import UserContextExtractor
 from acl.filter import ACLFilter
-from acl.models import ACLFilterConfig, UserContext
+from acl.models import ACLFilterConfig
 from api.routes import health, retrieve
 from api.schemas import (
     DebugInfo,
     RetrieveRequest,
-    RetrieveResponse,
-    SearchMetrics,
     SearchMode,
 )
 from cache import CacheConfig, CacheStats, RetrievalCache
-from config import RetrievalConfig
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from jose import jwt
 from observability import RetrievalLogger, RetrievalMetrics, TracingSetup
 from query.models import ProcessedQuery, QueryType
 from query.preprocessor import QueryPreprocessor
@@ -41,22 +35,17 @@ from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher
 from search.semantic import SemanticSearcher
 
+from config import RetrievalConfig
+
 
 class TestWave4Imports:
     """Test that all Wave 4 components can be imported."""
 
     def test_api_imports(self):
         """Test API module imports."""
-        from api.main import app, lifespan
+        from api.main import app
         from api.routes.health import router as health_router
         from api.routes.retrieve import router as retrieve_router
-        from api.dependencies import get_user_context
-        from api.schemas import (
-            RetrieveRequest,
-            RetrieveResponse,
-            SearchMode,
-            DebugInfo,
-        )
 
         assert app is not None
         assert health_router is not None
@@ -68,7 +57,6 @@ class TestWave4Imports:
             RetrievalLogger,
             RetrievalMetrics,
             TracingSetup,
-            setup_observability,
         )
 
         assert RetrievalLogger is not None
@@ -78,9 +66,9 @@ class TestWave4Imports:
     def test_cache_imports(self):
         """Test cache module imports."""
         from cache import (
-            RetrievalCache,
             CacheConfig,
             CacheStats,
+            RetrievalCache,
         )
 
         assert RetrievalCache is not None
@@ -150,7 +138,7 @@ class TestAPIWithObservability:
                     semantic_rank=1,
                     keyword_rank=2,
                     metadata={},
-                )
+                ),
             ],
             total_semantic=10,
             total_keyword=8,
@@ -602,13 +590,13 @@ class TestEndToEndIntegration:
                         semantic_score=0.9,
                         semantic_rank=1,
                         metadata={},
-                    )
+                    ),
                 ],
                 total_semantic=10,
                 total_keyword=0,
                 search_time_ms=15.0,
                 fusion_method=FusionMethod.RRF,
-            )
+            ),
         )
 
         response = client.post(
@@ -636,13 +624,13 @@ class TestEndToEndIntegration:
                         keyword_score=0.8,
                         keyword_rank=1,
                         metadata={},
-                    )
+                    ),
                 ],
                 total_semantic=0,
                 total_keyword=8,
                 search_time_ms=10.0,
                 fusion_method=FusionMethod.RRF,
-            )
+            ),
         )
 
         response = client.post(

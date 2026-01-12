@@ -5,8 +5,7 @@ Provides configuration for Phoenix LLM observability.
 """
 
 import os
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -39,7 +38,7 @@ class PhoenixConfig:
     flush_interval: float = 5.0
     max_queue_size: int = 10000
 
-    postgres_url: Optional[str] = None
+    postgres_url: str | None = None
 
     # Token counting
     count_tokens: bool = True

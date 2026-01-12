@@ -13,19 +13,15 @@ Contract Requirements:
     - TTFT target: <500ms
 """
 
-import asyncio
 import json
 import time
-from typing import AsyncGenerator, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-
 from streaming.manager import StreamManager
 from streaming.metrics import StreamMetricsRecorder, TTFTTracker
 from streaming.models import StreamEvent, StreamEventType
 from streaming.validation import EventSequenceValidator, EventValidationError
-
 
 # ============================================================================
 # Contract Compliance Tests
@@ -58,7 +54,7 @@ class TestStreamingContractEventOrder:
 
         # Citations
         sources = [
-            {"title": "Hitchhiker's Guide", "uri": "h2g2.txt", "chunk_id": "c1"}
+            {"title": "Hitchhiker's Guide", "uri": "h2g2.txt", "chunk_id": "c1"},
         ]
         validator.add_event(StreamEvent.citations("req-1", sources))
 
@@ -91,7 +87,7 @@ class TestStreamingContractEventOrder:
         validator.add_event(StreamEvent.start("req-1", "llama"))
         validator.add_event(StreamEvent.delta("req-1", "Starting"))
         validator.add_event(
-            StreamEvent.error("req-1", "Model timeout", "TIMEOUT", recoverable=True)
+            StreamEvent.error("req-1", "Model timeout", "TIMEOUT", recoverable=True),
         )
 
         assert validator.validate_sequence() is True
@@ -109,7 +105,7 @@ class TestStreamingContractEventStructure:
 
         # Parse SSE data
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "request_id" in data
@@ -123,7 +119,7 @@ class TestStreamingContractEventStructure:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "token" in data
@@ -136,7 +132,7 @@ class TestStreamingContractEventStructure:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "sources" in data
@@ -150,7 +146,7 @@ class TestStreamingContractEventStructure:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "usage" in data
@@ -164,7 +160,7 @@ class TestStreamingContractEventStructure:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "error" in data
@@ -205,7 +201,7 @@ class TestStreamingContractSSEFormat:
         for event in events:
             sse = event.to_sse()
             lines = sse.strip().split("\n")
-            data_line = next(l for l in lines if l.startswith("data: "))
+            data_line = next(line for line in lines if line.startswith("data: "))
 
             # Should not raise
             parsed = json.loads(data_line[6:])
@@ -217,7 +213,7 @@ class TestStreamingContractSSEFormat:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert data["token"] == 'Line1\nLine2\t"quoted"\\slash'
@@ -228,7 +224,7 @@ class TestStreamingContractSSEFormat:
         sse = event.to_sse()
 
         lines = sse.strip().split("\n")
-        data_line = next(l for l in lines if l.startswith("data: "))
+        data_line = next(line for line in lines if line.startswith("data: "))
         data = json.loads(data_line[6:])
 
         assert "timestamp" in data
@@ -357,7 +353,7 @@ class TestEndToEndStreamValidation:
                 "Model overloaded",
                 "MODEL_OVERLOAD",
                 recoverable=True,
-            )
+            ),
         )
         recorder.stream_completed(success=False)
 

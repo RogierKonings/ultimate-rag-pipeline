@@ -6,7 +6,7 @@ permissions and enforces access control policies.
 """
 
 import logging
-from typing import Optional, Protocol
+from typing import Protocol
 from uuid import UUID
 
 from .permissions import (
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class AuthorizationError(Exception):
     """Base exception for authorization errors."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -35,8 +35,8 @@ class InsufficientPermissionsError(AuthorizationError):
     def __init__(
         self,
         required: str | list[str],
-        user_id: Optional[UUID] = None,
-        details: Optional[dict] = None,
+        user_id: UUID | None = None,
+        details: dict | None = None,
     ):
         required_str = required if isinstance(required, str) else ", ".join(required)
         message = f"Insufficient permissions. Required: {required_str}"
@@ -52,7 +52,7 @@ class TenantMismatchError(AuthorizationError):
         self,
         user_tenant: UUID,
         resource_tenant: UUID,
-        details: Optional[dict] = None,
+        details: dict | None = None,
     ):
         message = f"Tenant mismatch: user tenant {user_tenant} cannot access tenant {resource_tenant}"
         super().__init__(message, details)
@@ -63,7 +63,7 @@ class TenantMismatchError(AuthorizationError):
 class RoleNotFoundError(AuthorizationError):
     """Raised when a specified role does not exist."""
 
-    def __init__(self, role: str, details: Optional[dict] = None):
+    def __init__(self, role: str, details: dict | None = None):
         message = f"Role not found: {role}"
         super().__init__(message, details)
         self.role = role
@@ -122,8 +122,8 @@ class AuthorizationService:
 
     def __init__(
         self,
-        role_hierarchy: Optional[RoleHierarchy] = None,
-        super_tenant_id: Optional[UUID] = None,
+        role_hierarchy: RoleHierarchy | None = None,
+        super_tenant_id: UUID | None = None,
         admin_bypass: bool = True,
     ):
         """
@@ -287,7 +287,7 @@ class AuthorizationService:
         if not self.has_permission(user, required):
             required_str = required.value if isinstance(required, Permission) else required
             logger.warning(
-                f"Permission denied: user={user.sub} required={required_str}"
+                f"Permission denied: user={user.sub} required={required_str}",
             )
             raise InsufficientPermissionsError(
                 required=required_str,
@@ -402,7 +402,7 @@ class AuthorizationService:
             logger.warning(
                 f"Tenant mismatch: user={user.sub} "
                 f"user_tenant={user.tenant_id} "
-                f"resource_tenant={resource_tenant_id}"
+                f"resource_tenant={resource_tenant_id}",
             )
             raise TenantMismatchError(
                 user_tenant=user.tenant_id,
@@ -461,7 +461,7 @@ class AuthorizationService:
 
 
 # Default service instance
-_default_service: Optional[AuthorizationService] = None
+_default_service: AuthorizationService | None = None
 
 
 def get_authorization_service() -> AuthorizationService:
@@ -473,7 +473,7 @@ def get_authorization_service() -> AuthorizationService:
 
 
 def configure_authorization_service(
-    super_tenant_id: Optional[UUID] = None,
+    super_tenant_id: UUID | None = None,
     admin_bypass: bool = True,
 ) -> AuthorizationService:
     """

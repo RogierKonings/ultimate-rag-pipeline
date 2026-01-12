@@ -7,7 +7,7 @@ of API requests and responses.
 
 import re
 import time
-from typing import Any, Callable, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import Request, Response
@@ -42,9 +42,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
         self,
         app,
         service_name: str = "rag-pipeline",
-        logger: Optional[AuditLogger] = None,
-        exclude_paths: Optional[list[str]] = None,
-        exclude_patterns: Optional[list[str]] = None,
+        logger: AuditLogger | None = None,
+        exclude_paths: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
         log_request_body: bool = False,
         log_response_body: bool = False,
     ):
@@ -104,7 +104,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("user-agent")
         request_id = request.headers.get("x-request-id")
         trace_id = request.headers.get("x-trace-id") or request.headers.get(
-            "traceparent", ""
+            "traceparent", "",
         ).split("-")[1] if "-" in request.headers.get("traceparent", "") else None
 
         # Extract user info from request state (set by auth middleware)
@@ -117,8 +117,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
         resource_type, resource_id = self._extract_resource(request.url.path)
 
         # Process request
-        response: Optional[Response] = None
-        error_message: Optional[str] = None
+        response: Response | None = None
+        error_message: str | None = None
         outcome = AuditOutcome.SUCCESS
         severity = AuditSeverity.INFO
 
@@ -187,11 +187,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             return True
 
         # Check patterns
-        for pattern in self.exclude_patterns:
-            if pattern.match(path):
-                return True
-
-        return False
+        return any(pattern.match(path) for pattern in self.exclude_patterns)
 
     def _get_client_ip(self, request: Request) -> str:
         """Extract client IP, handling proxies."""
@@ -284,7 +280,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         return AuditAction.GENERIC_READ
 
-    def _extract_resource(self, path: str) -> tuple[Optional[str], Optional[str]]:
+    def _extract_resource(self, path: str) -> tuple[str | None, str | None]:
         """Extract resource type and ID from path."""
         # Common patterns: /api/v1/documents/{id}, /api/v1/users/{id}
         parts = path.strip("/").split("/")
@@ -293,7 +289,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         resource_id = None
 
         # Look for resource type and ID
-        for i, part in enumerate(parts):
+        for _i, part in enumerate(parts):
             # Skip version prefixes
             if part in ("api", "v1", "v2"):
                 continue
@@ -321,10 +317,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
             return True
 
         # Short UUID or hash
-        if len(value) >= 8 and all(c in "0123456789abcdef-" for c in value.lower()):
-            return True
-
-        return False
+        return bool(len(value) >= 8 and all(c in "0123456789abcdef-" for c in value.lower()))
 
 
 def create_audit_middleware(

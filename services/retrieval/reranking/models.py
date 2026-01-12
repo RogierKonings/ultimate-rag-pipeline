@@ -1,9 +1,8 @@
 """Data models for reranking module."""
 
-from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class RerankRequest(BaseModel):
@@ -12,7 +11,7 @@ class RerankRequest(BaseModel):
     query: str
     documents: list[str]  # Document contents to rerank
     document_ids: list[UUID]  # Corresponding IDs
-    top_k: Optional[int] = None  # Return top k after reranking
+    top_k: int | None = None  # Return top k after reranking
     return_documents: bool = False  # Include document text in response
 
 
@@ -22,7 +21,7 @@ class RerankResult(BaseModel):
     document_id: UUID
     index: int  # Original index in input
     relevance_score: float  # Cross-encoder score
-    document: Optional[str] = None  # If return_documents=True
+    document: str | None = None  # If return_documents=True
 
 
 class RerankResponse(BaseModel):

@@ -3,7 +3,6 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from observability.metrics import RetrievalMetrics
 from observability.middleware import LoggingMiddleware, setup_observability
 from observability.retrieval_logger import RetrievalLogger

@@ -1,8 +1,8 @@
 """Security module for the Gateway."""
 
-from .auth import JWTAuth, AuthContext, get_auth_context
-from .rate_limit import RateLimiter, RateLimitConfig, get_rate_limiter
+from .auth import AuthContext, JWTAuth, get_auth_context
 from .middleware import AuthMiddleware, RateLimitMiddleware
+from .rate_limit import RateLimitConfig, RateLimiter, get_rate_limiter
 
 __all__ = [
     "JWTAuth",

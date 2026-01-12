@@ -1,8 +1,7 @@
 """PostgreSQL writer for metadata store."""
 
 import time
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 import asyncpg
@@ -28,14 +27,14 @@ class PostgresWriter(BaseIndexWriter):
     Uses ON CONFLICT for idempotent upserts.
     """
 
-    def __init__(self, config: Optional[PostgresWriterConfig] = None):
+    def __init__(self, config: PostgresWriterConfig | None = None):
         """Initialize PostgresWriter.
 
         Args:
             config: Configuration for the writer. Uses defaults if not provided.
         """
         self.config = config or PostgresWriterConfig()
-        self._pool: Optional[asyncpg.Pool] = None
+        self._pool: asyncpg.Pool | None = None
 
     async def connect(self) -> None:
         """Establish connection pool to PostgreSQL."""
@@ -249,7 +248,7 @@ class PostgresWriter(BaseIndexWriter):
         self,
         document_id: UUID,
         status: str,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> None:
         """Update document indexing status.
 
@@ -273,11 +272,11 @@ class PostgresWriter(BaseIndexWriter):
             """,
                 status,
                 error_message,
-                datetime.utcnow(),
+                datetime.now(tz=UTC),
                 document_id,
             )
 
-    async def get_document(self, document_id: UUID) -> Optional[DocumentRecord]:
+    async def get_document(self, document_id: UUID) -> DocumentRecord | None:
         """Retrieve a document by ID.
 
         Args:

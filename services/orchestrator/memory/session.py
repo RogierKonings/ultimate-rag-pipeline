@@ -1,7 +1,7 @@
 """Session management for conversation memory."""
 
-from datetime import datetime
-from typing import Any, Optional, Protocol
+from datetime import UTC, datetime
+from typing import Any, Protocol
 from uuid import UUID
 
 from .models import (
@@ -28,7 +28,7 @@ class HistorySummarizerProtocol(Protocol):
     async def summarize(
         self,
         messages: list[Message],
-        existing_summary: Optional[str] = None,
+        existing_summary: str | None = None,
     ) -> str:
         """Summarize messages."""
         ...
@@ -49,8 +49,8 @@ class SessionManager:
         self,
         store: RedisSessionStore,
         config: MemoryConfig,
-        summarizer: Optional[HistorySummarizerProtocol] = None,
-        tokenizer: Optional[TokenCounter] = None,
+        summarizer: HistorySummarizerProtocol | None = None,
+        tokenizer: TokenCounter | None = None,
     ):
         """Initialize the session manager.
 
@@ -67,9 +67,9 @@ class SessionManager:
 
     async def create_session(
         self,
-        user_id: Optional[UUID] = None,
-        tenant_id: Optional[UUID] = None,
-        system_prompt: Optional[str] = None,
+        user_id: UUID | None = None,
+        tenant_id: UUID | None = None,
+        system_prompt: str | None = None,
     ) -> ConversationSession:
         """Create a new conversation session.
 
@@ -87,7 +87,7 @@ class SessionManager:
             system_prompt=system_prompt,
         )
 
-    async def get_session(self, session_id: UUID) -> Optional[ConversationSession]:
+    async def get_session(self, session_id: UUID) -> ConversationSession | None:
         """Get a session by ID.
 
         Args:
@@ -103,7 +103,7 @@ class SessionManager:
         session_id: UUID,
         role: MessageRole,
         content: str,
-        sources: Optional[list[str]] = None,
+        sources: list[str] | None = None,
     ) -> Message:
         """
         Add a message to the session.
@@ -141,7 +141,7 @@ class SessionManager:
         session.messages.append(message)
         session.total_messages += 1
         session.total_tokens += token_count
-        session.last_activity = datetime.utcnow()
+        session.last_activity = datetime.now(tz=UTC)
 
         # Check if summarization is needed
         if await self._should_summarize(session):
@@ -178,7 +178,7 @@ class SessionManager:
         self,
         session_id: UUID,
         content: str,
-        sources: Optional[list[str]] = None,
+        sources: list[str] | None = None,
     ) -> Message:
         """Convenience method to add an assistant message.
 
@@ -200,7 +200,7 @@ class SessionManager:
     async def get_history(
         self,
         session_id: UUID,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         include_system: bool = True,
     ) -> list[Message]:
         """
@@ -268,7 +268,7 @@ class SessionManager:
     async def get_history_for_llm(
         self,
         session_id: UUID,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get history formatted for LLM API.
@@ -316,7 +316,7 @@ class SessionManager:
         """
         return await self.store.delete_session(session_id)
 
-    async def get_session_stats(self, session_id: UUID) -> Optional[SessionStats]:
+    async def get_session_stats(self, session_id: UUID) -> SessionStats | None:
         """Get statistics for a session.
 
         Args:
@@ -329,7 +329,7 @@ class SessionManager:
         if not session:
             return None
 
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
 
         return SessionStats(
             message_count=len(session.messages),

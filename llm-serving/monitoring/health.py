@@ -6,10 +6,11 @@ and detailed component health status.
 """
 
 import asyncio
+import contextlib
 import logging
 import time
-from datetime import datetime
-from typing import Callable, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
 
 import httpx
 
@@ -29,7 +30,7 @@ class HealthChecker:
     def __init__(
         self,
         service_name: str,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         check_interval: float = 30.0,
     ):
         """
@@ -45,13 +46,13 @@ class HealthChecker:
         self.check_interval = check_interval
 
         self._startup_time = time.time()
-        self._last_request_time: Optional[datetime] = None
+        self._last_request_time: datetime | None = None
         self._is_model_loaded = False
         self._components: dict[str, Callable] = {}
 
-        self._check_task: Optional[asyncio.Task] = None
+        self._check_task: asyncio.Task | None = None
         self._running = False
-        self._last_health: Optional[ServiceHealth] = None
+        self._last_health: ServiceHealth | None = None
 
     async def start(self) -> None:
         """Start periodic health checking."""
@@ -64,10 +65,8 @@ class HealthChecker:
         self._running = False
         if self._check_task:
             self._check_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._check_task
-            except asyncio.CancelledError:
-                pass
         logger.info(f"Health checker stopped for {self.service_name}")
 
     async def _check_loop(self) -> None:
@@ -116,7 +115,7 @@ class HealthChecker:
                         name=name,
                         status=HealthStatus.UNHEALTHY,
                         message=str(e),
-                    )
+                    ),
                 )
                 overall_status = HealthStatus.DEGRADED
 
@@ -159,12 +158,11 @@ class HealthChecker:
                     message=f"Model {self.model_name} loaded",
                     latency_ms=(time.time() - start) * 1000,
                 )
-            else:
-                return ComponentHealth(
-                    name="model",
-                    status=HealthStatus.UNHEALTHY,
-                    message="Model not loaded",
-                )
+            return ComponentHealth(
+                name="model",
+                status=HealthStatus.UNHEALTHY,
+                message="Model not loaded",
+            )
         except Exception as e:
             return ComponentHealth(
                 name="model",
@@ -240,7 +238,7 @@ class HealthChecker:
 
     def record_request(self) -> None:
         """Record that a request was processed."""
-        self._last_request_time = datetime.utcnow()
+        self._last_request_time = datetime.now(tz=UTC)
 
     def liveness_check(self) -> bool:
         """Simple liveness check for Kubernetes."""
@@ -250,7 +248,7 @@ class HealthChecker:
         """Readiness check for Kubernetes."""
         return self._is_model_loaded
 
-    def get_last_health(self) -> Optional[ServiceHealth]:
+    def get_last_health(self) -> ServiceHealth | None:
         """Get the last health check result."""
         return self._last_health
 

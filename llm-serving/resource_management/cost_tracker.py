@@ -8,8 +8,7 @@ and calculates associated costs.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from prometheus_client import Counter, Gauge
@@ -65,7 +64,7 @@ class CostConfig:
             "NVIDIA-RTX-4090": 1.00,
             "NVIDIA-RTX-A6000": 1.25,
             "default": 2.00,  # Default rate for unknown GPUs
-        }
+        },
     )
 
     # CPU cost per core-hour
@@ -89,7 +88,7 @@ class CostTracker:
 
     def __init__(
         self,
-        config: Optional[CostConfig] = None,
+        config: CostConfig | None = None,
         aggregation_interval: timedelta = timedelta(hours=1),
     ):
         """
@@ -102,7 +101,7 @@ class CostTracker:
         self.config = config or CostConfig()
         self.aggregation_interval = aggregation_interval
 
-        self._current_period_start = datetime.utcnow()
+        self._current_period_start = datetime.now(tz=UTC)
         self._usage_accumulator: dict[str, dict] = {}
         self._cost_records: list[CostRecord] = []
 
@@ -155,14 +154,14 @@ class CostTracker:
         acc["tokens"] += tokens
 
         # Check if we should finalize the period
-        if datetime.utcnow() - self._current_period_start > self.aggregation_interval:
+        if datetime.now(tz=UTC) - self._current_period_start > self.aggregation_interval:
             self._finalize_period()
 
     def _finalize_period(self) -> None:
         """Finalize the current period and create cost records."""
-        period_end = datetime.utcnow()
+        period_end = datetime.now(tz=UTC)
 
-        for key, acc in self._usage_accumulator.items():
+        for _key, acc in self._usage_accumulator.items():
             gpu_hours = acc["gpu_seconds"] / 3600
             cpu_hours = acc["cpu_core_seconds"] / 3600
             memory_gb_hours = acc["memory_gb_seconds"] / 3600
@@ -217,7 +216,7 @@ class CostTracker:
 
             logger.info(
                 f"Cost record for {acc['service_name']}/{acc['model_name']}: "
-                f"${total_cost:.4f} ({acc['requests']} requests, {acc['tokens']} tokens)"
+                f"${total_cost:.4f} ({acc['requests']} requests, {acc['tokens']} tokens)",
             )
 
         # Reset accumulator
@@ -231,10 +230,10 @@ class CostTracker:
 
     def get_cost_summary(
         self,
-        service_name: Optional[str] = None,
-        model_name: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        service_name: str | None = None,
+        model_name: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> dict:
         """
         Get cost summary for a time period.
@@ -362,7 +361,7 @@ class CostTracker:
         Returns:
             Estimated monthly cost in USD
         """
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
         day_ago = now - timedelta(days=1)
 
         recent_records = [r for r in self._cost_records if r.start_time >= day_ago]
@@ -384,7 +383,7 @@ class CostTracker:
 
     def get_all_records(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
     ) -> list[CostRecord]:
         """
         Get all cost records.
@@ -400,7 +399,7 @@ class CostTracker:
             records = records[-limit:]
         return records
 
-    def clear_records(self, before: Optional[datetime] = None) -> int:
+    def clear_records(self, before: datetime | None = None) -> int:
         """
         Clear cost records.
 

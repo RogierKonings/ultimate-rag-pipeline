@@ -4,9 +4,10 @@ This module provides FastAPI integration for ACL filtering,
 including dependency injection functions and middleware.
 """
 
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
-from fastapi import Depends, Request
+from fastapi import Request
 
 from .context import UserContextExtractor
 from .filter import ACLFilter
@@ -56,7 +57,7 @@ class ACLMiddleware:
     async def get_acl_filter(
         self,
         request: Request,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Get ACL filter dict for current user.
 
@@ -75,10 +76,10 @@ class ACLMiddleware:
 
 def create_acl_dependencies(
     secret_key: str,
-    config: Optional[ACLFilterConfig] = None,
+    config: ACLFilterConfig | None = None,
     algorithm: str = "HS256",
-    issuer: Optional[str] = None,
-    audience: Optional[str] = None,
+    issuer: str | None = None,
+    audience: str | None = None,
 ) -> tuple[Callable, Callable]:
     """Create FastAPI dependencies for ACL.
 
@@ -117,8 +118,8 @@ def create_acl_dependencies(
 def get_user_context_dependency(
     secret_key: str,
     algorithm: str = "HS256",
-    issuer: Optional[str] = None,
-    audience: Optional[str] = None,
+    issuer: str | None = None,
+    audience: str | None = None,
 ) -> Callable:
     """Create a standalone user context dependency.
 

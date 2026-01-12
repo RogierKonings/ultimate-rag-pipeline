@@ -5,7 +5,8 @@ from LLM providers.
 """
 
 import json
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 

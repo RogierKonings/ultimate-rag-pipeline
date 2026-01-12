@@ -16,15 +16,15 @@ The pipeline stages are:
 import asyncio
 import logging
 import traceback
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from celery import group
 from celery.exceptions import Reject, SoftTimeLimitExceeded
 
-from .celery_app import celery_app
 from .callbacks import send_to_dlq
+from .celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ def process_document(
         )
 
         # Run async pipeline
-        result = asyncio.run(
+        return asyncio.run(
             _process_document_async(
                 task=self,
                 document_source_id=document_source_id,
@@ -79,10 +79,9 @@ def process_document(
                 source_config=source_config,
                 processing_config=processing_config,
                 acl_context=acl_context,
-            )
+            ),
         )
 
-        return result
 
     except SoftTimeLimitExceeded:
         # Task taking too long
@@ -91,7 +90,7 @@ def process_document(
             state="FAILURE",
             meta={"error": "Task timed out", "document_source_id": document_source_id},
         )
-        raise Reject("Task timed out", requeue=False)
+        raise Reject("Task timed out", requeue=False) from None
 
     except Exception as e:
         error_info = {
@@ -104,22 +103,21 @@ def process_document(
 
         if self.request.retries < self.max_retries:
             # Retry with exponential backoff
-            raise self.retry(exc=e)
-        else:
-            # Max retries exceeded, send to DLQ
-            send_to_dlq.delay(
-                {
-                    "task_name": "process_document",
-                    "args": [document_source_id, source_type, source_config],
-                    "kwargs": {
-                        "processing_config": processing_config,
-                        "acl_context": acl_context,
-                    },
-                    "error": error_info,
-                    "retries": self.request.retries,
-                }
-            )
-            raise
+            raise self.retry(exc=e) from e
+        # Max retries exceeded, send to DLQ
+        send_to_dlq.delay(
+            {
+                "task_name": "process_document",
+                "args": [document_source_id, source_type, source_config],
+                "kwargs": {
+                    "processing_config": processing_config,
+                    "acl_context": acl_context,
+                },
+                "error": error_info,
+                "retries": self.request.retries,
+            },
+        )
+        raise
 
 
 async def _process_document_async(
@@ -149,31 +147,21 @@ async def _process_document_async(
         Processing results dict with deduplication status.
     """
     # Import pipeline components
-    from services.ingestion.connectors import (
-        FilesystemConnector,
-        FilesystemConnectorConfig,
-        DatabaseConnector,
-        DatabaseConnectorConfig,
-        WebConnector,
-        WebConnectorConfig,
-        APIConnector,
-        APIConnectorConfig,
-    )
-    from services.ingestion.processors.parsers import ParserRegistry
-    from services.ingestion.processors import ChunkingEngine, ChunkingConfig
-    from services.ingestion.processors.enrichment import EnrichmentPipeline, EnrichmentContext
+    from services.ingestion.config import get_settings
     from services.ingestion.embedding.service import create_embedding_service
     from services.ingestion.indexing.coordinator import IndexCoordinator
-    from services.ingestion.indexing.models import IndexedChunk, DocumentRecord
+    from services.ingestion.indexing.models import DocumentRecord, IndexedChunk
+    from services.ingestion.processors import ChunkingConfig, ChunkingEngine
+    from services.ingestion.processors.enrichment import EnrichmentContext, EnrichmentPipeline
+    from services.ingestion.processors.parsers import ParserRegistry
     from services.ingestion.services.deduplication import (
-        DeduplicationService,
-        DeduplicationResult,
         CHUNK_SCHEMA_VERSION,
+        DeduplicationResult,
+        DeduplicationService,
     )
-    from services.ingestion.config import get_settings
 
     settings = get_settings()
-    start_time = datetime.utcnow()
+    start_time = datetime.now(tz=UTC)
 
     # Stage 1: Fetch document
     task.update_state(
@@ -211,7 +199,7 @@ async def _process_document_async(
                 "Duplicate content detected, skipping processing for source_uri=%s",
                 document_source_id,
             )
-            end_time = datetime.utcnow()
+            end_time = datetime.now(tz=UTC)
             return {
                 "document_id": str(dedup_result.document_id),
                 "source_uri": document_source_id,
@@ -298,7 +286,7 @@ async def _process_document_async(
 
         # Combine chunks with embeddings and versioning metadata (US-2.11)
         indexed_chunks = []
-        for chunk, emb_result in zip(chunks, embedding_results.results):
+        for chunk, emb_result in zip(chunks, embedding_results.results, strict=True):
             indexed_chunks.append(
                 IndexedChunk(
                     chunk_id=chunk.chunk_id,
@@ -316,7 +304,7 @@ async def _process_document_async(
                     visibility=acl_context.get("visibility", "private"),
                     allowed_groups=acl_context.get("allowed_groups", []),
                     allowed_users=acl_context.get("allowed_users", []),
-                )
+                ),
             )
 
         # Stage 7: Index to stores
@@ -345,7 +333,7 @@ async def _process_document_async(
 
         # Use coordinator to write to all stores
         async with IndexCoordinator() as coordinator:
-            index_results = await coordinator.index_document(document_record, indexed_chunks)
+            await coordinator.index_document(document_record, indexed_chunks)
 
         # Mark previous versions as superseded if this is a new version
         if dedup_result.result == DeduplicationResult.NEW_VERSION:
@@ -359,7 +347,7 @@ async def _process_document_async(
         await pool.close()
 
     # Calculate duration
-    end_time = datetime.utcnow()
+    end_time = datetime.now(tz=UTC)
     duration = (end_time - start_time).total_seconds()
 
     status = "new_version" if version > 1 else "created"
@@ -391,14 +379,14 @@ def _get_connector(source_type: str, source_config: dict[str, Any]):
         ValueError: If source_type is not recognized.
     """
     from services.ingestion.connectors import (
-        FilesystemConnector,
-        FilesystemConnectorConfig,
-        DatabaseConnector,
-        DatabaseConnectorConfig,
-        WebConnector,
-        WebConnectorConfig,
         APIConnector,
         APIConnectorConfig,
+        DatabaseConnector,
+        DatabaseConnectorConfig,
+        FilesystemConnector,
+        FilesystemConnectorConfig,
+        WebConnector,
+        WebConnectorConfig,
     )
 
     connectors = {

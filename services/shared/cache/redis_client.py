@@ -4,13 +4,13 @@ import hashlib
 import json
 import os
 import ssl
-from typing import Any, Optional
+from typing import Any
 
 import redis.asyncio as redis
 from redis.asyncio.sentinel import Sentinel
 
 
-def get_ssl_context() -> Optional[ssl.SSLContext]:
+def get_ssl_context() -> ssl.SSLContext | None:
     """Create SSL context for Redis TLS connections.
 
     Returns:
@@ -38,15 +38,15 @@ class RedisCache:
 
     def __init__(
         self,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        password: Optional[str] = None,
+        host: str | None = None,
+        port: int | None = None,
+        password: str | None = None,
         db: int = 0,
         decode_responses: bool = True,
-        use_sentinel: Optional[bool] = None,
-        sentinel_hosts: Optional[str] = None,
-        sentinel_master: Optional[str] = None,
-        use_tls: Optional[bool] = None,
+        use_sentinel: bool | None = None,
+        sentinel_hosts: str | None = None,
+        sentinel_master: str | None = None,
+        use_tls: bool | None = None,
     ):
         """Initialize Redis cache client.
 
@@ -93,8 +93,8 @@ class RedisCache:
 
     def _create_sentinel_client(
         self,
-        sentinel_hosts: Optional[str] = None,
-        sentinel_master: Optional[str] = None,
+        sentinel_hosts: str | None = None,
+        sentinel_master: str | None = None,
     ) -> redis.Redis:
         """Create Redis client via Sentinel for HA.
 
@@ -107,7 +107,7 @@ class RedisCache:
         """
         hosts_str = sentinel_hosts or os.getenv(
             "REDIS_SENTINEL_HOSTS",
-            "redis-sentinel.rag-pipeline.svc.cluster.local:26379"
+            "redis-sentinel.rag-pipeline.svc.cluster.local:26379",
         )
         master_name = sentinel_master or os.getenv("REDIS_SENTINEL_MASTER", "mymaster")
 
@@ -143,7 +143,7 @@ class RedisCache:
 
         return sentinel.master_for(master_name, **master_kwargs)
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache.
 
         Args:
@@ -161,7 +161,7 @@ class RedisCache:
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Set value in cache with optional TTL.
 
@@ -195,7 +195,7 @@ class RedisCache:
         """
         return await self.redis.exists(key) > 0
 
-    async def get_many(self, keys: list[str]) -> dict[str, Optional[Any]]:
+    async def get_many(self, keys: list[str]) -> dict[str, Any | None]:
         """Get multiple values from cache.
 
         Args:
@@ -220,7 +220,7 @@ class RedisCache:
     async def set_many(
         self,
         items: dict[str, Any],
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Set multiple values in cache.
 
@@ -309,7 +309,7 @@ def get_redis_client():
     if use_sentinel:
         sentinel_hosts = os.getenv(
             "REDIS_SENTINEL_HOSTS",
-            "redis-sentinel.rag-pipeline.svc.cluster.local:26379"
+            "redis-sentinel.rag-pipeline.svc.cluster.local:26379",
         )
         sentinel_master = os.getenv("REDIS_SENTINEL_MASTER", "mymaster")
 
@@ -344,18 +344,17 @@ def get_redis_client():
             master_kwargs["ssl_context"] = ssl_context
 
         return sentinel.master_for(sentinel_master, **master_kwargs)
-    else:
-        kwargs = {
-            "host": os.getenv("REDIS_HOST", "localhost"),
-            "port": int(os.getenv("REDIS_PORT", 6379)),
-            "password": password,
-            "decode_responses": True,
-        }
-        if ssl_context:
-            kwargs["ssl"] = True
-            kwargs["ssl_context"] = ssl_context
+    kwargs = {
+        "host": os.getenv("REDIS_HOST", "localhost"),
+        "port": int(os.getenv("REDIS_PORT", 6379)),
+        "password": password,
+        "decode_responses": True,
+    }
+    if ssl_context:
+        kwargs["ssl"] = True
+        kwargs["ssl_context"] = ssl_context
 
-        return sync_redis.Redis(**kwargs)
+    return sync_redis.Redis(**kwargs)
 
 
 async def get_async_redis_client() -> redis.Redis:
@@ -373,7 +372,7 @@ async def get_async_redis_client() -> redis.Redis:
     if use_sentinel:
         sentinel_hosts = os.getenv(
             "REDIS_SENTINEL_HOSTS",
-            "redis-sentinel.rag-pipeline.svc.cluster.local:26379"
+            "redis-sentinel.rag-pipeline.svc.cluster.local:26379",
         )
         sentinel_master = os.getenv("REDIS_SENTINEL_MASTER", "mymaster")
 
@@ -403,15 +402,14 @@ async def get_async_redis_client() -> redis.Redis:
             master_kwargs["ssl_context"] = ssl_context
 
         return sentinel.master_for(sentinel_master, **master_kwargs)
-    else:
-        kwargs = {
-            "host": os.getenv("REDIS_HOST", "localhost"),
-            "port": int(os.getenv("REDIS_PORT", 6379)),
-            "password": password,
-            "decode_responses": True,
-        }
-        if ssl_context:
-            kwargs["ssl"] = True
-            kwargs["ssl_context"] = ssl_context
+    kwargs = {
+        "host": os.getenv("REDIS_HOST", "localhost"),
+        "port": int(os.getenv("REDIS_PORT", 6379)),
+        "password": password,
+        "decode_responses": True,
+    }
+    if ssl_context:
+        kwargs["ssl"] = True
+        kwargs["ssl_context"] = ssl_context
 
-        return redis.Redis(**kwargs)
+    return redis.Redis(**kwargs)

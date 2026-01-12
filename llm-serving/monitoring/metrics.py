@@ -8,8 +8,9 @@ token throughput, and resource utilization.
 import functools
 import logging
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable, Optional
+from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
@@ -176,7 +177,7 @@ class MetricsCollector:
     Provides convenient methods and decorators for instrumenting code.
     """
 
-    def __init__(self, service_name: str, model_name: Optional[str] = None):
+    def __init__(self, service_name: str, model_name: str | None = None):
         """
         Initialize metrics collector.
 
@@ -195,7 +196,7 @@ class MetricsCollector:
         endpoint: str,
         status: str,
         latency: float,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record a completed request.
@@ -226,7 +227,7 @@ class MetricsCollector:
         input_tokens: int,
         output_tokens: int,
         duration: float,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record token processing metrics.
@@ -261,7 +262,7 @@ class MetricsCollector:
     def record_time_to_first_token(
         self,
         ttft: float,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record time to first token for streaming.
@@ -280,7 +281,7 @@ class MetricsCollector:
     def record_embeddings(
         self,
         count: int,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record embedding generation.
@@ -300,7 +301,7 @@ class MetricsCollector:
         self,
         batch_size: int,
         processing_time: float,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record batch processing metrics.
@@ -325,7 +326,7 @@ class MetricsCollector:
     def record_queue_metrics(
         self,
         queue_size: int,
-        wait_time: Optional[float] = None,
+        wait_time: float | None = None,
         queue_type: str = "request",
     ) -> None:
         """
@@ -350,7 +351,7 @@ class MetricsCollector:
     def record_error(
         self,
         error_type: str,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> None:
         """
         Record an error.
@@ -390,7 +391,7 @@ class MetricsCollector:
                 cache_type=cache_type,
             ).inc()
 
-    def set_model_loaded(self, loaded: bool, model: Optional[str] = None) -> None:
+    def set_model_loaded(self, loaded: bool, model: str | None = None) -> None:
         """
         Update model loaded status.
 
@@ -415,7 +416,7 @@ class MetricsCollector:
         MODEL_INFO.info(info)
 
     @contextmanager
-    def track_request(self, endpoint: str, model: Optional[str] = None):
+    def track_request(self, endpoint: str, model: str | None = None):
         """
         Context manager to track request metrics.
 
@@ -480,7 +481,7 @@ class MetricsCollector:
     def request_instrumentation(
         self,
         endpoint: str,
-        model: Optional[str] = None,
+        model: str | None = None,
     ) -> Callable:
         """
         Decorator for request instrumentation.

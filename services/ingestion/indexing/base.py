@@ -23,7 +23,6 @@ class BaseIndexWriter(ABC):
         pools. It will be called automatically when using the writer as
         an async context manager.
         """
-        pass
 
     @abstractmethod
     async def disconnect(self) -> None:
@@ -32,7 +31,6 @@ class BaseIndexWriter(ABC):
         This method should properly close any clients or connection pools.
         It will be called automatically when exiting the async context manager.
         """
-        pass
 
     @abstractmethod
     async def ensure_index(self) -> None:
@@ -41,7 +39,6 @@ class BaseIndexWriter(ABC):
         This method should be idempotent - calling it multiple times
         should have the same effect as calling it once.
         """
-        pass
 
     @abstractmethod
     async def write(self, items: list[Any]) -> "WriteResult":  # noqa: F821
@@ -57,7 +54,6 @@ class BaseIndexWriter(ABC):
         Returns:
             WriteResult containing success status, counts, and any errors.
         """
-        pass
 
     @abstractmethod
     async def delete(self, ids: list[UUID]) -> "WriteResult":  # noqa: F821
@@ -69,7 +65,6 @@ class BaseIndexWriter(ABC):
         Returns:
             WriteResult containing success status and any errors.
         """
-        pass
 
     @abstractmethod
     async def delete_by_document(self, document_id: UUID) -> "WriteResult":  # noqa: F821
@@ -84,7 +79,6 @@ class BaseIndexWriter(ABC):
         Returns:
             WriteResult containing success status and any errors.
         """
-        pass
 
     async def __aenter__(self) -> "BaseIndexWriter":
         """Enter async context manager."""

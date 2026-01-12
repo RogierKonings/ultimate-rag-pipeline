@@ -5,9 +5,7 @@ metrics for monitoring streaming performance.
 """
 
 import time
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from streaming.metrics import (
     StreamMetricsRecorder,
@@ -18,7 +16,6 @@ from streaming.metrics import (
     stream_duration_histogram,
     ttft_histogram,
 )
-
 
 # ============================================================================
 # TTFTTracker Tests
@@ -384,7 +381,7 @@ class TestStreamMetricsIntegration:
         recorder.stream_started()
 
         # Receive tokens
-        for i in range(10):
+        for _i in range(10):
             time.sleep(0.01)  # Simulate token arrival
             recorder.token_received()
 

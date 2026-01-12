@@ -6,10 +6,11 @@ GPU utilization, memory usage, temperature, and power consumption.
 """
 
 import asyncio
+import contextlib
 import logging
 import subprocess
 import xml.etree.ElementTree as ET
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from prometheus_client import Gauge
 
@@ -66,7 +67,7 @@ class GPUMonitor:
         """
         self.poll_interval = poll_interval
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._latest_metrics: dict[int, GPUMetrics] = {}
         self._callbacks: list[Callable] = []
 
@@ -81,10 +82,8 @@ class GPUMonitor:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         logger.info("GPU monitoring stopped")
 
     async def _monitor_loop(self) -> None:
@@ -147,23 +146,23 @@ class GPUMonitor:
                         memory_used=self._parse_memory(fb_memory.find("used").text),
                         memory_free=self._parse_memory(fb_memory.find("free").text),
                         memory_utilization_percent=self._parse_percent(
-                            utilization.find("memory_util").text
+                            utilization.find("memory_util").text,
                         ),
                         gpu_utilization_percent=self._parse_percent(
-                            utilization.find("gpu_util").text
+                            utilization.find("gpu_util").text,
                         ),
                         temperature_celsius=float(
-                            temperature.find("gpu_temp").text.replace(" C", "")
+                            temperature.find("gpu_temp").text.replace(" C", ""),
                         ),
                         power_draw_watts=self._parse_power(
-                            power.find("power_draw").text
+                            power.find("power_draw").text,
                         ),
                         power_limit_watts=self._parse_power(
-                            power.find("power_limit").text
+                            power.find("power_limit").text,
                         ),
                         sm_clock=self._parse_clock(clocks.find("sm_clock").text),
                         memory_clock=self._parse_clock(clocks.find("mem_clock").text),
-                    )
+                    ),
                 )
             except Exception as e:
                 logger.warning(f"Failed to parse GPU {i}: {e}")
@@ -178,7 +177,7 @@ class GPUMonitor:
 
         if unit == "MiB":
             return int(value * 1024 * 1024)
-        elif unit == "GiB":
+        if unit == "GiB":
             return int(value * 1024 * 1024 * 1024)
         return int(value)
 
@@ -204,7 +203,7 @@ class GPUMonitor:
             GPU_TEMPERATURE.labels(**labels).set(m.temperature_celsius)
             GPU_POWER_DRAW.labels(**labels).set(m.power_draw_watts)
 
-    def get_metrics(self, gpu_id: Optional[int] = None) -> list[GPUMetrics]:
+    def get_metrics(self, gpu_id: int | None = None) -> list[GPUMetrics]:
         """
         Get latest GPU metrics.
 

@@ -4,11 +4,10 @@ vLLM service client.
 Handles communication with the vLLM service for chat completions.
 """
 
-import asyncio
 import json
 import logging
 import time
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
 
 import httpx
 
@@ -19,7 +18,6 @@ from ..models import (
     ChatCompletionResponse,
     ChatMessage,
     ChatMessageRole,
-    DeltaMessage,
     Usage,
 )
 
@@ -46,7 +44,7 @@ class VLLMClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.default_model = default_model
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -87,7 +85,7 @@ class VLLMClient:
     async def chat_completion(
         self,
         request: ChatCompletionRequest,
-        context_headers: Optional[dict[str, str]] = None,
+        context_headers: dict[str, str] | None = None,
     ) -> ChatCompletionResponse:
         """
         Create a chat completion (non-streaming).
@@ -151,7 +149,7 @@ class VLLMClient:
                             content=msg.get("content"),
                         ),
                         finish_reason=choice.get("finish_reason"),
-                    )
+                    ),
                 )
 
             usage_data = data.get("usage", {})
@@ -182,7 +180,7 @@ class VLLMClient:
     async def chat_completion_stream(
         self,
         request: ChatCompletionRequest,
-        context_headers: Optional[dict[str, str]] = None,
+        context_headers: dict[str, str] | None = None,
     ) -> AsyncIterator[ChatCompletionChunk]:
         """
         Create a streaming chat completion.

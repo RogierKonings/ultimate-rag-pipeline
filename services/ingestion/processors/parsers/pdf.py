@@ -3,7 +3,7 @@
 import asyncio
 import io
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import fitz
@@ -23,7 +23,7 @@ class PDFParserConfig(BaseModel):
     ocr_enabled: bool = True
     ocr_language: str = "eng"
     use_unstructured_fallback: bool = True
-    max_pages: Optional[int] = None
+    max_pages: int | None = None
 
 
 class PDFParser(BaseParser):
@@ -33,7 +33,7 @@ class PDFParser(BaseParser):
     to Unstructured for complex layouts.
     """
 
-    def __init__(self, config: Optional[PDFParserConfig] = None):
+    def __init__(self, config: PDFParserConfig | None = None):
         """Initialize PDF parser.
 
         Args:
@@ -47,7 +47,7 @@ class PDFParser(BaseParser):
         return ["application/pdf"]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse PDF document.
 
@@ -76,7 +76,7 @@ class PDFParser(BaseParser):
             raise ValueError(f"Failed to parse PDF: {e}") from e
 
     async def _parse_with_pymupdf(
-        self, content: bytes, metadata: dict
+        self, content: bytes, metadata: dict,
     ) -> ParsedDocument:
         """Parse PDF using PyMuPDF (fitz).
 
@@ -121,7 +121,7 @@ class PDFParser(BaseParser):
                             content=text,
                             page_number=page_num + 1,
                             position=len(blocks),
-                        )
+                        ),
                     )
 
                 # Extract tables if enabled
@@ -139,11 +139,11 @@ class PDFParser(BaseParser):
                                         content=self._table_to_text(converted),
                                         page_number=page_num + 1,
                                         position=len(blocks),
-                                    )
+                                    ),
                                 )
                     except Exception as e:
                         logger.warning(
-                            f"Table extraction failed on page {page_num + 1}: {e}"
+                            f"Table extraction failed on page {page_num + 1}: {e}",
                         )
 
             # Extract document metadata
@@ -169,7 +169,7 @@ class PDFParser(BaseParser):
             doc.close()
 
     async def _parse_with_unstructured(
-        self, content: bytes, metadata: dict
+        self, content: bytes, metadata: dict,
     ) -> ParsedDocument:
         """Parse PDF using Unstructured library.
 
@@ -200,7 +200,7 @@ class PDFParser(BaseParser):
                     content_type = ContentType.TABLE
                     # Try to extract table structure
                     if hasattr(element, "metadata") and hasattr(
-                        element.metadata, "text_as_html"
+                        element.metadata, "text_as_html",
                     ):
                         table = self._parse_html_table(element.metadata.text_as_html)
                         if table:
@@ -211,7 +211,7 @@ class PDFParser(BaseParser):
                 # Get page number if available
                 page_num = None
                 if hasattr(element, "metadata") and hasattr(
-                    element.metadata, "page_number"
+                    element.metadata, "page_number",
                 ):
                     page_num = element.metadata.page_number
 
@@ -222,7 +222,7 @@ class PDFParser(BaseParser):
                         page_number=page_num,
                         position=i,
                         metadata={"element_type": element_type},
-                    )
+                    ),
                 )
 
         return ParsedDocument(
@@ -266,14 +266,14 @@ class PDFParser(BaseParser):
             text = await asyncio.to_thread(
                 pytesseract.image_to_string,
                 img,
-                lang=self.config.ocr_language
+                lang=self.config.ocr_language,
             )
             return text.strip()
         except Exception as e:
             logger.warning(f"OCR failed for page: {e}")
             return ""
 
-    def _convert_pymupdf_table(self, table) -> Optional[TableContent]:
+    def _convert_pymupdf_table(self, table) -> TableContent | None:
         """Convert PyMuPDF table to TableContent.
 
         Args:
@@ -324,7 +324,7 @@ class PDFParser(BaseParser):
 
         return "\n".join(lines)
 
-    def _parse_html_table(self, html: str) -> Optional[TableContent]:
+    def _parse_html_table(self, html: str) -> TableContent | None:
         """Parse HTML table string into TableContent.
 
         Args:

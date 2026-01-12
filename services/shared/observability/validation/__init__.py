@@ -20,10 +20,10 @@ Usage:
     result = await validator.validate_correlation(trace_id)
 """
 
-from .trace_log import TraceLogValidator, CorrelationResult
-from .otlp import OTLPValidator
 from .loki import LokiValidator
-from .smoke_tests import run_smoke_tests, SmokeTestResult
+from .otlp import OTLPValidator
+from .smoke_tests import SmokeTestResult, run_smoke_tests
+from .trace_log import CorrelationResult, TraceLogValidator
 
 __all__ = [
     "TraceLogValidator",

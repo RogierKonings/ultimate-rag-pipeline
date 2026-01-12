@@ -2,17 +2,17 @@
 Database models package.
 """
 
-from database.models.base import Base, TimestampMixin, SoftDeleteMixin
-from database.models.document import Document, Chunk
 from database.models.audit import AuditLog
+from database.models.base import Base, SoftDeleteMixin, TimestampMixin
+from database.models.document import Chunk, Document
 from database.models.user import (
+    ApiKey,
+    Group,
+    RoleModel,
     Tenant,
     User,
-    RoleModel,
-    Group,
-    UserRole,
     UserGroup,
-    ApiKey,
+    UserRole,
 )
 
 __all__ = [

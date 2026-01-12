@@ -9,25 +9,21 @@ Tests covering:
 - Reporters
 """
 
-import json
-import pytest
-from datetime import datetime
+import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-import tempfile
+
+import pytest
 
 from ..config import EvaluationConfig, SamplingStrategy
-from ..datasets import EvaluationSample, EvaluationDataset
-from ..ragas_evaluator import RagasEvaluator, EvaluationResult, AggregatedResults
+from ..datasets import EvaluationDataset, EvaluationSample
 from ..pipeline import EvaluationPipeline, EvaluationRun, RAGClient, RAGResponse
+from ..ragas_evaluator import AggregatedResults, EvaluationResult, RagasEvaluator
 from ..reporters import (
-    JSONFileReporter,
-    PostgreSQLReporter,
-    GrafanaAnnotationReporter,
-    SlackReporter,
     CompositeReporter,
+    JSONFileReporter,
 )
-
 
 # ============================================================================
 # EvaluationConfig Tests
@@ -223,7 +219,7 @@ class TestEvaluationDataset:
                     contexts=["C"],
                     answer=f"A{i}",
                     metadata={"category": "A" if i < 25 else "B"},
-                )
+                ),
             )
         dataset = EvaluationDataset(name="test", samples=samples)
 
@@ -262,7 +258,7 @@ class TestEvaluationDataset:
                 contexts=["C1"],
                 answer="A1",
                 ground_truth="GT1",
-            )
+            ),
         ]
         dataset = EvaluationDataset(
             name="test",
@@ -281,7 +277,7 @@ class TestEvaluationDataset:
     def test_dataset_save_load(self):
         """Test saving and loading dataset from file."""
         samples = [
-            EvaluationSample(question="Q1", contexts=["C1"], answer="A1")
+            EvaluationSample(question="Q1", contexts=["C1"], answer="A1"),
         ]
         dataset = EvaluationDataset(name="test", samples=samples)
 
@@ -476,7 +472,7 @@ class TestEvaluationPipeline:
                     metrics={"faithfulness": 0.8},
                     metadata={},
                 ),
-            ]
+            ],
         )
         mock_evaluator.aggregate_results = MagicMock(
             return_value=AggregatedResults(
@@ -486,7 +482,7 @@ class TestEvaluationPipeline:
                 successful_samples=2,
                 failed_samples=0,
                 metadata={},
-            )
+            ),
         )
 
         pipeline = EvaluationPipeline(evaluator=mock_evaluator, config=config)
@@ -558,8 +554,8 @@ class TestJSONFileReporter:
                 name="test-run",
                 config=EvaluationConfig(evaluator_api_key="test"),
                 dataset_name="test-dataset",
-                started_at=datetime.utcnow(),
-                completed_at=datetime.utcnow(),
+                started_at=datetime.now(tz=UTC),
+                completed_at=datetime.now(tz=UTC),
                 status="completed",
                 results=AggregatedResults(
                     individual_results=[],

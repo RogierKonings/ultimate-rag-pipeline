@@ -1,9 +1,7 @@
 """Unit tests for the filesystem connector."""
 
-import asyncio
-import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +11,6 @@ from services.ingestion.connectors.filesystem import (
     FilesystemConnector,
     FilesystemConnectorConfig,
 )
-
 
 # ============================================================================
 # Local Filesystem Tests
@@ -74,7 +71,7 @@ class TestFilesystemConnectorLocal:
         """Test listing documents recursively."""
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 3
             filenames = {doc.filename for doc in docs}
             assert filenames == {"test.txt", "test.pdf", "nested.txt"}
@@ -89,7 +86,7 @@ class TestFilesystemConnectorLocal:
         )
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 2
             filenames = {doc.filename for doc in docs}
             assert filenames == {"test.txt", "test.pdf"}
@@ -104,7 +101,7 @@ class TestFilesystemConnectorLocal:
         )
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 2
             for doc in docs:
                 assert doc.filename.endswith(".txt")
@@ -114,7 +111,7 @@ class TestFilesystemConnectorLocal:
         """Test listing documents in a subdirectory."""
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents("subdir")]
-            
+
             assert len(docs) == 1
             assert docs[0].filename == "nested.txt"
 
@@ -123,7 +120,7 @@ class TestFilesystemConnectorLocal:
         """Test fetching a single document."""
         async with FilesystemConnector(config) as connector:
             doc = await connector.fetch_document("test.txt")
-            
+
             assert doc.content == b"Hello, World!"
             assert doc.metadata.source_id == "test.txt"
             assert doc.metadata.source_type == "local"
@@ -149,7 +146,7 @@ class TestFilesystemConnectorLocal:
         """Test streaming all documents."""
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.stream_documents()]
-            
+
             assert len(docs) == 3
             contents = {doc.content for doc in docs}
             assert b"Hello, World!" in contents
@@ -160,7 +157,7 @@ class TestFilesystemConnectorLocal:
         """Test that metadata is correctly populated."""
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             for doc in docs:
                 assert doc.source_id is not None
                 assert doc.source_type == "local"
@@ -205,7 +202,7 @@ class TestFilesystemConnectorS3:
 
             connector = FilesystemConnector(s3_config)
             await connector.connect()
-            
+
             assert connector._connected is True
             await connector.disconnect()
 
@@ -272,38 +269,38 @@ class TestFilesystemConnectorS3:
     async def test_fetch_document_s3(self, s3_config):
         """Test fetching an S3 object."""
         test_content = b"Test S3 content"
-        
+
         with patch("services.ingestion.connectors.filesystem.aioboto3") as mock_boto:
             mock_session = MagicMock()
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
             mock_client.__aexit__.return_value = None
             mock_client.head_bucket = AsyncMock()
-            
+
             # Mock download_fileobj to write content to buffer
             async def mock_download(Bucket, Key, Fileobj):
                 Fileobj.write(test_content)
-                
+
             mock_client.download_fileobj = mock_download
             mock_client.head_object = AsyncMock(return_value={
                 "ContentType": "text/plain",
-                "LastModified": datetime.now(timezone.utc),
+                "LastModified": datetime.now(UTC),
                 "ETag": '"abc123"',
             })
-            
+
             mock_session.client.return_value = mock_client
             mock_boto.Session.return_value = mock_session
 
             connector = FilesystemConnector(s3_config)
             await connector.connect()
-            
+
             doc = await connector.fetch_document("test/file.txt")
-            
+
             assert doc.content == test_content
             assert doc.metadata.source_id == "test/file.txt"
             assert doc.metadata.source_type == "s3"
             assert doc.metadata.mime_type == "text/plain"
-            
+
             await connector.disconnect()
 
 
@@ -327,13 +324,13 @@ class TestMimeTypeDetection:
         # Create files with known extensions
         (Path(temp_dir) / "test.txt").write_text("Hello")
         (Path(temp_dir) / "test.html").write_text("<html></html>")
-        
+
         config = FilesystemConnectorConfig(base_path=temp_dir, storage_type="local")
-        
+
         async with FilesystemConnector(config) as connector:
             txt_doc = await connector.fetch_document("test.txt")
             html_doc = await connector.fetch_document("test.html")
-            
+
             # Extension-based detection
             assert txt_doc.metadata.mime_type in ("text/plain", "application/octet-stream")
             assert html_doc.metadata.mime_type in ("text/html", "application/octet-stream")

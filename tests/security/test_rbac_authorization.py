@@ -28,7 +28,6 @@ from services.shared.security.rbac import (
     permission_implies,
 )
 
-
 # Test fixtures
 TEST_USER_ID = uuid4()
 TEST_TENANT_ID = uuid4()
@@ -225,34 +224,34 @@ class TestPermissionImplication:
     def test_admin_implies_all_in_scope(self):
         """Test admin permission implies all in scope."""
         assert permission_implies(
-            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_READ
+            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_READ,
         ) is True
         assert permission_implies(
-            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_WRITE
+            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_WRITE,
         ) is True
         assert permission_implies(
-            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_DELETE
+            Permission.DOCUMENTS_ADMIN, Permission.DOCUMENTS_DELETE,
         ) is True
 
     def test_write_implies_read(self):
         """Test write implies read."""
         assert permission_implies(
-            Permission.DOCUMENTS_WRITE, Permission.DOCUMENTS_READ
+            Permission.DOCUMENTS_WRITE, Permission.DOCUMENTS_READ,
         ) is True
 
     def test_delete_implies_read_write(self):
         """Test delete implies read and write."""
         assert permission_implies(
-            Permission.DOCUMENTS_DELETE, Permission.DOCUMENTS_READ
+            Permission.DOCUMENTS_DELETE, Permission.DOCUMENTS_READ,
         ) is True
         assert permission_implies(
-            Permission.DOCUMENTS_DELETE, Permission.DOCUMENTS_WRITE
+            Permission.DOCUMENTS_DELETE, Permission.DOCUMENTS_WRITE,
         ) is True
 
     def test_cross_scope_no_implication(self):
         """Test permissions in different scopes don't imply each other."""
         assert permission_implies(
-            Permission.DOCUMENTS_ADMIN, Permission.SEARCH_EXECUTE
+            Permission.DOCUMENTS_ADMIN, Permission.SEARCH_EXECUTE,
         ) is False
 
 
@@ -271,10 +270,10 @@ class TestHasPermission:
         user_roles = ["analyst"]
 
         assert has_permission(
-            user_perms, Permission.ANALYTICS_READ, user_roles
+            user_perms, Permission.ANALYTICS_READ, user_roles,
         ) is True
         assert has_permission(
-            user_perms, Permission.USERS_ADMIN, user_roles
+            user_perms, Permission.USERS_ADMIN, user_roles,
         ) is False
 
 
@@ -284,20 +283,20 @@ class TestAuthorizationService:
     def test_basic_user_document_read(self, auth_service, basic_user):
         """Test basic user can read documents."""
         assert auth_service.has_permission(
-            basic_user, Permission.DOCUMENTS_READ
+            basic_user, Permission.DOCUMENTS_READ,
         ) is True
 
     def test_basic_user_cannot_delete(self, auth_service, basic_user):
         """Test basic user cannot delete documents."""
         assert auth_service.has_permission(
-            basic_user, Permission.DOCUMENTS_DELETE
+            basic_user, Permission.DOCUMENTS_DELETE,
         ) is False
 
     def test_admin_bypass(self, auth_service, admin_user):
         """Test admin bypasses permission checks."""
         # Admin can do anything
         assert auth_service.has_permission(
-            admin_user, Permission.SECRETS_ADMIN
+            admin_user, Permission.SECRETS_ADMIN,
         ) is True
 
     def test_has_any_permission(self, auth_service, basic_user):
@@ -330,7 +329,7 @@ class TestAuthorizationService:
         """Test authorize_permission raises on failure."""
         with pytest.raises(InsufficientPermissionsError) as exc_info:
             auth_service.authorize_permission(
-                basic_user, Permission.DOCUMENTS_DELETE
+                basic_user, Permission.DOCUMENTS_DELETE,
             )
         assert "documents:delete" in str(exc_info.value)
 

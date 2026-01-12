@@ -1,9 +1,7 @@
 """Tests for routing classifiers and scorers."""
 
 import pytest
-
-from routing.classifiers import KeywordClassifier, ComplexityScorer
-
+from routing.classifiers import ComplexityScorer, KeywordClassifier
 
 # ============================================================================
 # KeywordClassifier Tests
@@ -160,7 +158,7 @@ class TestKeywordClassifierQuestionTypes:
     def test_unknown_question_type(self, classifier):
         """Test that ambiguous queries return unknown with low confidence."""
         question_type, confidence = classifier.classify_question_type(
-            "interesting stuff here"
+            "interesting stuff here",
         )
         assert question_type == "unknown"
         assert confidence <= 0.4
@@ -172,7 +170,7 @@ class TestKeywordClassifierQuestionTypes:
 
         # Multiple markers
         _, multi_conf = classifier.classify_question_type(
-            "What is Python and define its main features?"
+            "What is Python and define its main features?",
         )
 
         # Both should be factual, but multi should have higher confidence
@@ -220,7 +218,7 @@ class TestKeywordClassifierMultiPart:
 
         # Multiple conjunctions
         _, part_count = classifier.is_multi_part(
-            "First, explain A. Second, describe B. Finally, analyze C."
+            "First, explain A. Second, describe B. Finally, analyze C.",
         )
         assert part_count >= 2
 
@@ -327,12 +325,12 @@ class TestComplexityScorer:
 
         # Heavy modifier weight
         modifier_heavy_score = scorer.score(
-            query, weights={"clause": 0.1, "length": 0.1, "modifier": 0.7, "history": 0.1}
+            query, weights={"clause": 0.1, "length": 0.1, "modifier": 0.7, "history": 0.1},
         )
 
         # Heavy length weight
         length_heavy_score = scorer.score(
-            query, weights={"clause": 0.1, "length": 0.7, "modifier": 0.1, "history": 0.1}
+            query, weights={"clause": 0.1, "length": 0.7, "modifier": 0.1, "history": 0.1},
         )
 
         # Scores should differ based on weights
@@ -349,9 +347,9 @@ class TestComplexityScorer:
         complex_query = " ".join(
             [
                 "Compare and analyze the performance characteristics, "
-                "advantages and disadvantages, and trade-offs"
+                "advantages and disadvantages, and trade-offs",
             ]
-            * 10
+            * 10,
         )
         complex_score = scorer.score(complex_query)
         assert 0.0 <= complex_score <= 1.0
@@ -387,7 +385,7 @@ class TestComplexityScorerComponents:
 
         # Many clauses should approach 1.0
         many_clause = scorer._score_clauses(
-            "A and B, but C, because D, while E, although F, if G"
+            "A and B, but C, because D, while E, although F, if G",
         )
         assert many_clause >= 0.5
 
@@ -419,7 +417,7 @@ class TestComplexityScorerComponents:
 
         # Multiple modifiers
         many_mods = scorer._score_modifiers(
-            "Compare Python before and after version 3, considering what is better"
+            "Compare Python before and after version 3, considering what is better",
         )
         assert many_mods >= 0.5
 

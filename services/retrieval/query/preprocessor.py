@@ -4,10 +4,12 @@ This module provides the main query preprocessing pipeline that
 normalizes, expands, and embeds queries for optimal retrieval.
 """
 
+from __future__ import annotations
+
 import hashlib
 import re
 import time
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import httpx
 from tenacity import (
@@ -18,6 +20,11 @@ from tenacity import (
 )
 
 from .models import ProcessedQuery, QueryPreprocessorConfig, QueryType
+
+if TYPE_CHECKING:
+    from .cache import QueryCache
+    from .expander import QueryExpander
+    from .hyde import HyDEGenerator
 
 
 class QueryPreprocessor:
@@ -33,8 +40,8 @@ class QueryPreprocessor:
 
     def __init__(
         self,
-        config: Optional[QueryPreprocessorConfig] = None,
-        cache: Optional["QueryCache"] = None,
+        config: QueryPreprocessorConfig | None = None,
+        cache: QueryCache | None = None,
     ):
         """Initialize query preprocessor.
 
@@ -44,9 +51,9 @@ class QueryPreprocessor:
         """
         self.config = config or QueryPreprocessorConfig()
         self.cache = cache
-        self._http_client: Optional[httpx.AsyncClient] = None
-        self._expander: Optional["QueryExpander"] = None
-        self._hyde: Optional["HyDEGenerator"] = None
+        self._http_client: httpx.AsyncClient | None = None
+        self._expander: QueryExpander | None = None
+        self._hyde: HyDEGenerator | None = None
 
     @property
     def http_client(self) -> httpx.AsyncClient:
@@ -89,7 +96,7 @@ class QueryPreprocessor:
             expanded_queries = await self._expand_query(normalized)
 
         # 4. HyDE (optional)
-        hyde_document: Optional[str] = None
+        hyde_document: str | None = None
         if self.config.enable_hyde and query_type == QueryType.QUESTION:
             hyde_document = await self._generate_hyde(normalized)
 

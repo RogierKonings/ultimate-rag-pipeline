@@ -11,11 +11,9 @@ Architecture defaults (from docs/architecture.md):
 - Chunking overlap: 50 tokens
 """
 
-from typing import Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-
 
 # Architecture-defined constants (US-2.12)
 ARCHITECTURE_EMBEDDING_DIMENSIONS = 1024
@@ -87,7 +85,7 @@ class Settings(BaseSettings):
         if v != ARCHITECTURE_EMBEDDING_DIMENSIONS:
             raise ValueError(
                 f"Embedding dimensions must be {ARCHITECTURE_EMBEDDING_DIMENSIONS} "
-                f"per architecture specification (got {v})"
+                f"per architecture specification (got {v})",
             )
         return v
 
@@ -98,7 +96,7 @@ class Settings(BaseSettings):
         if v != ARCHITECTURE_CHUNKING_TARGET_TOKENS:
             raise ValueError(
                 f"Chunking target tokens must be {ARCHITECTURE_CHUNKING_TARGET_TOKENS} "
-                f"per architecture specification (got {v})"
+                f"per architecture specification (got {v})",
             )
         return v
 
@@ -109,7 +107,7 @@ class Settings(BaseSettings):
         if v != ARCHITECTURE_CHUNKING_MAX_TOKENS:
             raise ValueError(
                 f"Chunking max tokens must be {ARCHITECTURE_CHUNKING_MAX_TOKENS} "
-                f"per architecture specification (got {v})"
+                f"per architecture specification (got {v})",
             )
         return v
 
@@ -120,7 +118,7 @@ class Settings(BaseSettings):
         if v != ARCHITECTURE_CHUNKING_OVERLAP_TOKENS:
             raise ValueError(
                 f"Chunking overlap tokens must be {ARCHITECTURE_CHUNKING_OVERLAP_TOKENS} "
-                f"per architecture specification (got {v})"
+                f"per architecture specification (got {v})",
             )
         return v
 
@@ -132,7 +130,7 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:

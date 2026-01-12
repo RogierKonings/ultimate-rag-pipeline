@@ -8,7 +8,6 @@ with full documentation and semantic meaning.
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Dict, Any
 
 
 class MetricType(str, Enum):
@@ -33,7 +32,7 @@ class Label:
     name: str
     description: str
     cardinality: str = "low"  # low (<10), medium (<100), high (>100)
-    example_values: List[str] = field(default_factory=list)
+    example_values: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -60,11 +59,11 @@ class MetricDefinition:
     metric_type: MetricType
     unit: str
     description: str
-    labels: List[Label] = field(default_factory=list)
-    buckets: Optional[tuple] = None
-    objectives: Optional[Dict[float, float]] = None
-    use_cases: List[str] = field(default_factory=list)
-    example_queries: List[str] = field(default_factory=list)
+    labels: list[Label] = field(default_factory=list)
+    buckets: tuple | None = None
+    objectives: dict[float, float] | None = None
+    use_cases: list[str] = field(default_factory=list)
+    example_queries: list[str] = field(default_factory=list)
     slo_relevant: bool = False
     subsystem: str = ""
 
@@ -90,7 +89,7 @@ class MetricDefinition:
 # Metric Catalog - All canonical metrics
 # =============================================================================
 
-METRIC_CATALOG: Dict[str, MetricDefinition] = {}
+METRIC_CATALOG: dict[str, MetricDefinition] = {}
 
 
 def _register(metric: MetricDefinition) -> MetricDefinition:
@@ -119,7 +118,7 @@ _register(MetricDefinition(
         "Calculate request rate for capacity planning",
     ],
     example_queries=[
-        'sum(rate(rag_query_total[5m])) by (service)',
+        "sum(rate(rag_query_total[5m])) by (service)",
         'sum(rate(rag_query_total{status="error"}[5m])) / sum(rate(rag_query_total[5m]))',
     ],
     slo_relevant=True,
@@ -141,8 +140,8 @@ _register(MetricDefinition(
         "Compare latency across search modes",
     ],
     example_queries=[
-        'histogram_quantile(0.95, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le))',
-        'histogram_quantile(0.99, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le, mode))',
+        "histogram_quantile(0.95, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le))",
+        "histogram_quantile(0.99, sum(rate(rag_query_duration_seconds_bucket[5m])) by (le, mode))",
     ],
     slo_relevant=True,
 ))
@@ -161,8 +160,8 @@ _register(MetricDefinition(
         "Trigger autoscaling",
     ],
     example_queries=[
-        'sum(rag_query_active) by (service)',
-        'max_over_time(rag_query_active[1h])',
+        "sum(rag_query_active) by (service)",
+        "max_over_time(rag_query_active[1h])",
     ],
 ))
 
@@ -186,7 +185,7 @@ _register(MetricDefinition(
         "Identify vector DB bottlenecks",
     ],
     example_queries=[
-        'histogram_quantile(0.99, sum(rate(rag_retrieval_duration_seconds_bucket[5m])) by (le, search_type))',
+        "histogram_quantile(0.99, sum(rate(rag_retrieval_duration_seconds_bucket[5m])) by (le, search_type))",
     ],
     slo_relevant=True,
 ))
@@ -207,7 +206,7 @@ _register(MetricDefinition(
         "Tune top-k parameters",
     ],
     example_queries=[
-        'histogram_quantile(0.5, sum(rate(rag_retrieval_result_count_bucket[5m])) by (le))',
+        "histogram_quantile(0.5, sum(rate(rag_retrieval_result_count_bucket[5m])) by (le))",
         'sum(rate(rag_retrieval_result_count_bucket{le="0"}[5m])) / sum(rate(rag_retrieval_result_count_count[5m]))',
     ],
 ))
@@ -227,7 +226,7 @@ _register(MetricDefinition(
         "Identify query understanding problems",
     ],
     example_queries=[
-        'sum(rate(rag_retrieval_zero_results_total[1h])) / sum(rate(rag_query_total[1h]))',
+        "sum(rate(rag_retrieval_zero_results_total[1h])) / sum(rate(rag_query_total[1h]))",
     ],
     slo_relevant=True,
 ))
@@ -248,7 +247,7 @@ _register(MetricDefinition(
         "Tune batch sizes",
     ],
     example_queries=[
-        'histogram_quantile(0.95, sum(rate(rag_rerank_duration_seconds_bucket[5m])) by (le, model))',
+        "histogram_quantile(0.95, sum(rate(rag_rerank_duration_seconds_bucket[5m])) by (le, model))",
     ],
 ))
 
@@ -273,7 +272,7 @@ _register(MetricDefinition(
         "Calculate costs",
     ],
     example_queries=[
-        'sum(rate(rag_llm_requests_total[5m])) by (model)',
+        "sum(rate(rag_llm_requests_total[5m])) by (model)",
         'sum(rate(rag_llm_requests_total{status="error"}[5m])) / sum(rate(rag_llm_requests_total[5m]))',
     ],
     slo_relevant=True,
@@ -295,7 +294,7 @@ _register(MetricDefinition(
         "Detect degradation",
     ],
     example_queries=[
-        'histogram_quantile(0.95, sum(rate(rag_llm_duration_seconds_bucket[5m])) by (le, model))',
+        "histogram_quantile(0.95, sum(rate(rag_llm_duration_seconds_bucket[5m])) by (le, model))",
     ],
     slo_relevant=True,
 ))
@@ -316,7 +315,7 @@ _register(MetricDefinition(
         "Compare streaming performance",
     ],
     example_queries=[
-        'histogram_quantile(0.95, sum(rate(rag_llm_ttft_seconds_bucket[5m])) by (le))',
+        "histogram_quantile(0.95, sum(rate(rag_llm_ttft_seconds_bucket[5m])) by (le))",
     ],
     slo_relevant=True,
 ))
@@ -337,8 +336,8 @@ _register(MetricDefinition(
         "Track context usage",
     ],
     example_queries=[
-        'sum(rate(rag_llm_tokens_total[1h])) by (model, type)',
-        'sum(increase(rag_llm_tokens_total[24h])) by (type)',
+        "sum(rate(rag_llm_tokens_total[1h])) by (model, type)",
+        "sum(increase(rag_llm_tokens_total[24h])) by (type)",
     ],
 ))
 
@@ -362,7 +361,7 @@ _register(MetricDefinition(
         "Calculate throughput",
     ],
     example_queries=[
-        'sum(rate(rag_ingest_documents_total[1h])) by (source_type)',
+        "sum(rate(rag_ingest_documents_total[1h])) by (source_type)",
         'sum(increase(rag_ingest_documents_total{status="success"}[24h]))',
     ],
 ))
@@ -382,7 +381,7 @@ _register(MetricDefinition(
         "Monitor index growth",
     ],
     example_queries=[
-        'sum(rate(rag_ingest_chunks_total[1h])) by (strategy)',
+        "sum(rate(rag_ingest_chunks_total[1h])) by (strategy)",
     ],
 ))
 
@@ -401,8 +400,8 @@ _register(MetricDefinition(
         "Detect bottlenecks",
     ],
     example_queries=[
-        'sum(rag_ingest_queue_size) by (queue)',
-        'max_over_time(rag_ingest_queue_size[1h])',
+        "sum(rag_ingest_queue_size) by (queue)",
+        "max_over_time(rag_ingest_queue_size[1h])",
     ],
     slo_relevant=True,
 ))
@@ -426,7 +425,7 @@ _register(MetricDefinition(
         "Tune cache parameters",
     ],
     example_queries=[
-        'sum(rate(rag_cache_hits_total[5m])) / (sum(rate(rag_cache_hits_total[5m])) + sum(rate(rag_cache_misses_total[5m])))',
+        "sum(rate(rag_cache_hits_total[5m])) / (sum(rate(rag_cache_hits_total[5m])) + sum(rate(rag_cache_misses_total[5m])))",
     ],
 ))
 
@@ -445,7 +444,7 @@ _register(MetricDefinition(
         "Tune cache TTL",
     ],
     example_queries=[
-        'sum(rate(rag_cache_misses_total[5m])) by (cache_type)',
+        "sum(rate(rag_cache_misses_total[5m])) by (cache_type)",
     ],
 ))
 
@@ -454,7 +453,7 @@ _register(MetricDefinition(
 # Utility Functions
 # =============================================================================
 
-def get_metric_definition(name: str) -> Optional[MetricDefinition]:
+def get_metric_definition(name: str) -> MetricDefinition | None:
     """
     Get a metric definition by name.
 
@@ -467,7 +466,7 @@ def get_metric_definition(name: str) -> Optional[MetricDefinition]:
     return METRIC_CATALOG.get(name)
 
 
-def get_slo_relevant_metrics() -> List[MetricDefinition]:
+def get_slo_relevant_metrics() -> list[MetricDefinition]:
     """
     Get all metrics relevant for SLOs.
 
@@ -514,7 +513,7 @@ def generate_metrics_documentation() -> str:
     ]
 
     # Group by subsystem
-    by_subsystem: Dict[str, List[MetricDefinition]] = {}
+    by_subsystem: dict[str, list[MetricDefinition]] = {}
     for metric in METRIC_CATALOG.values():
         subsystem = metric.subsystem or "other"
         if subsystem not in by_subsystem:

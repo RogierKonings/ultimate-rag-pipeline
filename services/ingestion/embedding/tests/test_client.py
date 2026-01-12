@@ -1,8 +1,9 @@
 """Tests for the LLM Gateway client."""
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from ..client import LLMGatewayClient, LLMGatewayError
 from ..models import EmbeddingServiceConfig
@@ -41,7 +42,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_embed_batch_returns_embeddings(
-        self, client_config: EmbeddingServiceConfig, mock_response
+        self, client_config: EmbeddingServiceConfig, mock_response,
     ):
         """Test that embed_batch returns embeddings correctly."""
         client = LLMGatewayClient(client_config)
@@ -58,7 +59,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_embed_batch_sends_correct_request(
-        self, client_config: EmbeddingServiceConfig, mock_response
+        self, client_config: EmbeddingServiceConfig, mock_response,
     ):
         """Test that embed_batch sends correct request format."""
         client = LLMGatewayClient(client_config)
@@ -79,7 +80,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_embed_batch_handles_missing_usage(
-        self, client_config: EmbeddingServiceConfig
+        self, client_config: EmbeddingServiceConfig,
     ):
         """Test that embed_batch handles missing usage field."""
         client = LLMGatewayClient(client_config)
@@ -102,7 +103,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_embed_batch_raises_on_http_error(
-        self, client_config: EmbeddingServiceConfig
+        self, client_config: EmbeddingServiceConfig,
     ):
         """Test that embed_batch raises LLMGatewayError on HTTP errors."""
         client_config.max_retries = 1
@@ -114,7 +115,7 @@ class TestLLMGatewayClient:
         mock_response.text = "Internal Server Error"
 
         error = httpx.HTTPStatusError(
-            "Server Error", request=MagicMock(), response=mock_response
+            "Server Error", request=MagicMock(), response=mock_response,
         )
         mock_response.raise_for_status = MagicMock(side_effect=error)
 
@@ -129,7 +130,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_health_check_returns_true_on_success(
-        self, client_config: EmbeddingServiceConfig
+        self, client_config: EmbeddingServiceConfig,
     ):
         """Test that health_check returns True when healthy."""
         client = LLMGatewayClient(client_config)
@@ -148,7 +149,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_health_check_returns_false_on_failure(
-        self, client_config: EmbeddingServiceConfig
+        self, client_config: EmbeddingServiceConfig,
     ):
         """Test that health_check returns False when unhealthy."""
         client = LLMGatewayClient(client_config)
@@ -175,7 +176,7 @@ class TestLLMGatewayClient:
 
     @pytest.mark.asyncio
     async def test_ensure_connected_creates_client(
-        self, client_config: EmbeddingServiceConfig
+        self, client_config: EmbeddingServiceConfig,
     ):
         """Test that _ensure_connected creates client when needed."""
         client = LLMGatewayClient(client_config)

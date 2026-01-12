@@ -5,15 +5,12 @@ This module provides JWT token creation, validation, and management
 with support for RS256 (production) and HS256 (development) algorithms.
 """
 
-from .config import JWTAlgorithm, JWTSettings
-from .models import (
-    TokenClaims,
-    TokenIntrospectionResponse,
-    TokenPair,
-    TokenRequest,
-    TokenRevocationRequest,
-    TokenType,
+from .blocklist import (
+    AsyncRedisTokenBlocklist,
+    InMemoryTokenBlocklist,
+    RedisTokenBlocklist,
 )
+from .config import JWTAlgorithm, JWTSettings
 from .handler import (
     JWTError,
     JWTHandler,
@@ -23,11 +20,6 @@ from .handler import (
     TokenInvalidError,
     TokenRevokedError,
 )
-from .blocklist import (
-    AsyncRedisTokenBlocklist,
-    InMemoryTokenBlocklist,
-    RedisTokenBlocklist,
-)
 from .middleware import (
     CurrentUser,
     JWTAuthMiddleware,
@@ -36,6 +28,14 @@ from .middleware import (
     require_permissions,
     require_roles,
     require_tenant,
+)
+from .models import (
+    TokenClaims,
+    TokenIntrospectionResponse,
+    TokenPair,
+    TokenRequest,
+    TokenRevocationRequest,
+    TokenType,
 )
 
 __all__ = [

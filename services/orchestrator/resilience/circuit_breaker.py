@@ -15,11 +15,11 @@ States:
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, TypeVar
 
 from .config import CircuitBreakerConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class CircuitOpenError(Exception):
         self.name = name
         self.time_until_recovery = time_until_recovery
         super().__init__(
-            f"Circuit '{name}' is open. Retry in {time_until_recovery:.1f} seconds."
+            f"Circuit '{name}' is open. Retry in {time_until_recovery:.1f} seconds.",
         )
 
 
@@ -66,7 +66,7 @@ class CircuitBreaker:
     def __init__(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
     ):
         """Initialize circuit breaker.
 
@@ -81,7 +81,7 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._failure_count = 0
         self._success_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._half_open_calls = 0
 
         # Thread safety
@@ -97,7 +97,7 @@ class CircuitBreaker:
         self,
         func: Callable[..., T],
         *args: Any,
-        fallback: Optional[Callable[..., T]] = None,
+        fallback: Callable[..., T] | None = None,
         **kwargs: Any,
     ) -> T:
         """Execute function with circuit breaker protection.

@@ -1,6 +1,5 @@
 """Language detection using langdetect."""
 
-from typing import Optional
 
 from langdetect import detect_langs
 from langdetect.lang_detect_exception import LangDetectException
@@ -63,7 +62,7 @@ class LanguageDetector:
     # Minimum text length for reliable detection
     MIN_TEXT_LENGTH = 50
 
-    async def detect(self, text: str) -> Optional[LanguageResult]:
+    async def detect(self, text: str) -> LanguageResult | None:
         """
         Detect the primary language of the text.
 

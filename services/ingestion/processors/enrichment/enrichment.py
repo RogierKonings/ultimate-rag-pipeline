@@ -1,7 +1,9 @@
 """Enrichment pipeline for document metadata."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
+from .language_detector import LanguageDetector
+from .metadata_extractor import MetadataExtractor
 from .models import (
     DocumentMetadataEnriched,
     EnrichmentConfig,
@@ -9,9 +11,7 @@ from .models import (
     LanguageResult,
     PIIResult,
 )
-from .language_detector import LanguageDetector
 from .pii_detector import PIIDetector, PIIDetectorConfig
-from .metadata_extractor import MetadataExtractor
 
 if TYPE_CHECKING:
     from ..parsers.base import ParsedDocument
@@ -31,7 +31,7 @@ class EnrichmentPipeline:
     all results into a single enriched metadata object.
     """
 
-    def __init__(self, config: Optional[EnrichmentConfig] = None):
+    def __init__(self, config: EnrichmentConfig | None = None):
         """
         Initialize the enrichment pipeline.
 
@@ -40,7 +40,7 @@ class EnrichmentPipeline:
         """
         self.config = config or EnrichmentConfig()
         self._language_detector = LanguageDetector()
-        self._pii_detector: Optional[PIIDetector] = None
+        self._pii_detector: PIIDetector | None = None
 
         if self.config.enable_pii_detection:
             pii_config = PIIDetectorConfig(
@@ -71,12 +71,12 @@ class EnrichmentPipeline:
         modified_date = MetadataExtractor.parse_date(parsed_doc.modified_date)
 
         # Detect language
-        language: Optional[LanguageResult] = None
+        language: LanguageResult | None = None
         if self.config.enable_language_detection and parsed_doc.text:
             language = await self._language_detector.detect(parsed_doc.text)
 
         # Detect PII
-        pii: Optional[PIIResult] = None
+        pii: PIIResult | None = None
         if self._pii_detector and parsed_doc.text:
             pii = await self._pii_detector.detect(parsed_doc.text)
 
@@ -94,7 +94,7 @@ class EnrichmentPipeline:
             custom=context.custom_metadata,
         )
 
-    def _extract_title(self, parsed_doc: "ParsedDocument") -> Optional[str]:
+    def _extract_title(self, parsed_doc: "ParsedDocument") -> str | None:
         """
         Extract title from parsed document.
 
@@ -119,8 +119,8 @@ class EnrichmentPipeline:
         self,
         text: str,
         context: EnrichmentContext,
-        title: Optional[str] = None,
-        author: Optional[str] = None,
+        title: str | None = None,
+        author: str | None = None,
     ) -> DocumentMetadataEnriched:
         """
         Enrich raw text with metadata.
@@ -137,12 +137,12 @@ class EnrichmentPipeline:
             Enriched metadata
         """
         # Detect language
-        language: Optional[LanguageResult] = None
+        language: LanguageResult | None = None
         if self.config.enable_language_detection and text:
             language = await self._language_detector.detect(text)
 
         # Detect PII
-        pii: Optional[PIIResult] = None
+        pii: PIIResult | None = None
         if self._pii_detector and text:
             pii = await self._pii_detector.detect(text)
 

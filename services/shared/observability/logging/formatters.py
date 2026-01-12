@@ -7,8 +7,8 @@ Provides structured JSON formatting for log records with trace context.
 import json
 import logging
 import traceback
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from opentelemetry import trace
 
@@ -31,7 +31,7 @@ class JSONFormatter(logging.Formatter):
         service_version: str = "0.0.0",
         environment: str = "development",
         include_trace_context: bool = True,
-        static_fields: Optional[dict[str, Any]] = None,
+        static_fields: dict[str, Any] | None = None,
     ):
         """
         Initialize the formatter.
@@ -103,10 +103,10 @@ class JSONFormatter(logging.Formatter):
 
     def _format_timestamp(self, record: logging.LogRecord) -> str:
         """Format timestamp as ISO 8601 with timezone."""
-        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        dt = datetime.fromtimestamp(record.created, tz=UTC)
         return dt.isoformat()
 
-    def _get_trace_context(self) -> Optional[dict[str, str]]:
+    def _get_trace_context(self) -> dict[str, str] | None:
         """Get current trace context from OpenTelemetry."""
         try:
             span = trace.get_current_span()
@@ -198,7 +198,7 @@ class TextFormatter(logging.Formatter):
         parts = []
 
         # Timestamp
-        dt = datetime.fromtimestamp(record.created, tz=timezone.utc)
+        dt = datetime.fromtimestamp(record.created, tz=UTC)
         parts.append(dt.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3])
 
         # Level

@@ -8,7 +8,6 @@ This module provides pattern-based detection for:
 
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Pattern
 
 from .models import PIIType
 
@@ -21,7 +20,7 @@ class DetectionMatch:
     start: int
     end: int
     pattern_name: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 # =============================================================================
@@ -30,7 +29,7 @@ class DetectionMatch:
 
 # Email pattern - RFC 5322 simplified
 EMAIL_PATTERN = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", re.IGNORECASE
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", re.IGNORECASE,
 )
 
 # Phone number patterns (US formats)
@@ -63,11 +62,11 @@ CREDIT_CARD_PATTERNS = [
 # IP Address pattern (IPv4)
 IP_ADDRESS_PATTERN = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
+    r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
 )
 
 
-def detect_pii(text: str) -> List[DetectionMatch]:
+def detect_pii(text: str) -> list[DetectionMatch]:
     """Detect PII in text.
 
     Args:
@@ -76,7 +75,7 @@ def detect_pii(text: str) -> List[DetectionMatch]:
     Returns:
         List of DetectionMatch objects for each PII found.
     """
-    matches: List[DetectionMatch] = []
+    matches: list[DetectionMatch] = []
 
     # Detect emails
     for match in EMAIL_PATTERN.finditer(text):
@@ -87,7 +86,7 @@ def detect_pii(text: str) -> List[DetectionMatch]:
                 end=match.end(),
                 pattern_name="email",
                 details={"pii_type": PIIType.EMAIL.value},
-            )
+            ),
         )
 
     # Detect phone numbers
@@ -102,7 +101,7 @@ def detect_pii(text: str) -> List[DetectionMatch]:
                         end=match.end(),
                         pattern_name="phone",
                         details={"pii_type": PIIType.PHONE.value},
-                    )
+                    ),
                 )
 
     # Detect SSNs
@@ -116,7 +115,7 @@ def detect_pii(text: str) -> List[DetectionMatch]:
                     end=match.end(),
                     pattern_name="ssn",
                     details={"pii_type": PIIType.SSN.value},
-                )
+                ),
             )
 
     # Detect credit cards
@@ -130,7 +129,7 @@ def detect_pii(text: str) -> List[DetectionMatch]:
                         end=match.end(),
                         pattern_name="credit_card",
                         details={"pii_type": PIIType.CREDIT_CARD.value},
-                    )
+                    ),
                 )
 
     # Detect IP addresses
@@ -143,18 +142,15 @@ def detect_pii(text: str) -> List[DetectionMatch]:
                     end=match.end(),
                     pattern_name="ip_address",
                     details={"pii_type": PIIType.IP_ADDRESS.value},
-                )
+                ),
             )
 
     return matches
 
 
-def _overlaps_existing(matches: List[DetectionMatch], start: int, end: int) -> bool:
+def _overlaps_existing(matches: list[DetectionMatch], start: int, end: int) -> bool:
     """Check if a range overlaps with existing matches."""
-    for m in matches:
-        if not (end <= m.start or start >= m.end):
-            return True
-    return False
+    return any(not (end <= m.start or start >= m.end) for m in matches)
 
 
 # =============================================================================
@@ -193,7 +189,7 @@ INJECTION_PATTERNS = [
 ]
 
 
-def detect_injection(text: str) -> List[DetectionMatch]:
+def detect_injection(text: str) -> list[DetectionMatch]:
     """Detect prompt injection attempts in text.
 
     Args:
@@ -202,7 +198,7 @@ def detect_injection(text: str) -> List[DetectionMatch]:
     Returns:
         List of DetectionMatch objects for each injection pattern found.
     """
-    matches: List[DetectionMatch] = []
+    matches: list[DetectionMatch] = []
 
     for pattern in INJECTION_PATTERNS:
         for match in pattern.finditer(text):
@@ -214,7 +210,7 @@ def detect_injection(text: str) -> List[DetectionMatch]:
                         end=match.end(),
                         pattern_name="injection",
                         details={"pattern": pattern.pattern},
-                    )
+                    ),
                 )
 
     return matches
@@ -241,7 +237,7 @@ HARMFUL_PATTERNS = [
 ]
 
 
-def detect_harmful_content(text: str) -> List[DetectionMatch]:
+def detect_harmful_content(text: str) -> list[DetectionMatch]:
     """Detect harmful content in text.
 
     Args:
@@ -250,7 +246,7 @@ def detect_harmful_content(text: str) -> List[DetectionMatch]:
     Returns:
         List of DetectionMatch objects for each harmful pattern found.
     """
-    matches: List[DetectionMatch] = []
+    matches: list[DetectionMatch] = []
 
     for pattern, category, severity in HARMFUL_PATTERNS:
         for match in pattern.finditer(text):
@@ -262,7 +258,7 @@ def detect_harmful_content(text: str) -> List[DetectionMatch]:
                         end=match.end(),
                         pattern_name="harmful_content",
                         details={"category": category, "severity": severity},
-                    )
+                    ),
                 )
 
     return matches
@@ -273,7 +269,7 @@ def detect_harmful_content(text: str) -> List[DetectionMatch]:
 # =============================================================================
 
 
-def detect_hallucination(response: str, context: str, threshold: float = 0.5) -> List[DetectionMatch]:
+def detect_hallucination(response: str, context: str, threshold: float = 0.5) -> list[DetectionMatch]:
     """Detect potential hallucinations in a response.
 
     This is a basic implementation that checks if key claims in the response
@@ -288,7 +284,7 @@ def detect_hallucination(response: str, context: str, threshold: float = 0.5) ->
     Returns:
         List of DetectionMatch objects for potential hallucinations.
     """
-    matches: List[DetectionMatch] = []
+    matches: list[DetectionMatch] = []
 
     if not context or not response:
         return matches
@@ -333,20 +329,20 @@ def detect_hallucination(response: str, context: str, threshold: float = 0.5) ->
                         "key_terms": key_terms,
                         "terms_found": terms_found,
                     },
-                )
+                ),
             )
 
     return matches
 
 
-def _split_sentences(text: str) -> List[str]:
+def _split_sentences(text: str) -> list[str]:
     """Split text into sentences."""
     # Simple sentence splitting - could be improved with NLTK or spaCy
     sentences = re.split(r"[.!?]+", text)
     return [s.strip() for s in sentences if s.strip()]
 
 
-def _extract_key_terms(text: str) -> List[str]:
+def _extract_key_terms(text: str) -> list[str]:
     """Extract key terms from text for hallucination detection.
 
     This is a simple implementation that extracts:

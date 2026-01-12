@@ -9,18 +9,15 @@ Provides endpoints for:
 - Health checks
 """
 
-import json
 import logging
 import time
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from ..clients import EmbeddingClient, RerankerClient, VLLMClient
 from ..models import (
     ChatCompletionRequest,
-    ChatCompletionResponse,
     EmbeddingRequest,
     EmbeddingResponse,
     ErrorResponse,
@@ -35,9 +32,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Client instances (will be set by dependency injection or startup)
-_vllm_client: Optional[VLLMClient] = None
-_embedding_client: Optional[EmbeddingClient] = None
-_reranker_client: Optional[RerankerClient] = None
+_vllm_client: VLLMClient | None = None
+_embedding_client: EmbeddingClient | None = None
+_reranker_client: RerankerClient | None = None
 
 
 def get_vllm_client() -> VLLMClient:
@@ -65,9 +62,9 @@ def get_reranker_client() -> RerankerClient:
 
 
 def get_context_headers(
-    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
-    x_user_id: Optional[str] = Header(None, alias="X-User-ID"),
-    x_request_id: Optional[str] = Header(None, alias="X-Request-ID"),
+    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
+    x_user_id: str | None = Header(None, alias="X-User-ID"),
+    x_request_id: str | None = Header(None, alias="X-Request-ID"),
 ) -> dict[str, str]:
     """Extract context headers for downstream services."""
     headers = {}
@@ -146,7 +143,7 @@ async def list_models(
                 ModelInfo(
                     id=m.get("id", "unknown"),
                     owned_by="vllm",
-                )
+                ),
             )
     except Exception as e:
         logger.warning(f"Failed to get vLLM models: {e}")
@@ -159,7 +156,7 @@ async def list_models(
                 ModelInfo(
                     id=embedding.default_model,
                     owned_by="embedding-service",
-                )
+                ),
             )
     except Exception as e:
         logger.warning(f"Failed to get embedding model: {e}")
@@ -172,7 +169,7 @@ async def list_models(
                 ModelInfo(
                     id=reranker.default_model,
                     owned_by="reranker-service",
-                )
+                ),
             )
     except Exception as e:
         logger.warning(f"Failed to get reranker model: {e}")
@@ -210,7 +207,7 @@ async def create_chat_completion(
             async def generate():
                 try:
                     async for chunk in vllm.chat_completion_stream(
-                        request, context_headers
+                        request, context_headers,
                     ):
                         yield f"data: {chunk.model_dump_json()}\n\n"
                     yield "data: [DONE]\n\n"
@@ -227,17 +224,16 @@ async def create_chat_completion(
                     "Connection": "keep-alive",
                 },
             )
-        else:
-            # Non-streaming response
-            response = await vllm.chat_completion(request, context_headers)
+        # Non-streaming response
+        response = await vllm.chat_completion(request, context_headers)
 
-            latency_ms = (time.time() - start_time) * 1000
-            logger.info(
-                f"Chat completion: model={request.model} "
-                f"messages={len(request.messages)} latency={latency_ms:.1f}ms"
-            )
+        latency_ms = (time.time() - start_time) * 1000
+        logger.info(
+            f"Chat completion: model={request.model} "
+            f"messages={len(request.messages)} latency={latency_ms:.1f}ms",
+        )
 
-            return response
+        return response
 
     except HTTPException:
         raise
@@ -246,7 +242,7 @@ async def create_chat_completion(
         raise HTTPException(
             status_code=500,
             detail=ErrorResponse.create(str(e), "server_error").model_dump(),
-        )
+        ) from e
 
 
 # =============================================================================
@@ -276,7 +272,7 @@ async def create_embeddings(
         latency_ms = (time.time() - start_time) * 1000
         logger.info(
             f"Embeddings: model={request.model} count={input_count} "
-            f"latency={latency_ms:.1f}ms"
+            f"latency={latency_ms:.1f}ms",
         )
 
         return response
@@ -288,7 +284,7 @@ async def create_embeddings(
         raise HTTPException(
             status_code=500,
             detail=ErrorResponse.create(str(e), "server_error").model_dump(),
-        )
+        ) from e
 
 
 # =============================================================================
@@ -315,7 +311,7 @@ async def create_rerank(
         latency_ms = (time.time() - start_time) * 1000
         logger.info(
             f"Rerank: model={request.model} documents={len(request.documents)} "
-            f"latency={latency_ms:.1f}ms"
+            f"latency={latency_ms:.1f}ms",
         )
 
         return response
@@ -327,7 +323,7 @@ async def create_rerank(
         raise HTTPException(
             status_code=500,
             detail=ErrorResponse.create(str(e), "server_error").model_dump(),
-        )
+        ) from e
 
 
 # Alias for /v1/rerankings (alternative endpoint name)

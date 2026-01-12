@@ -8,13 +8,14 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from starlette.responses import Response
 
+from ..core.batching import RerankBatcher
+from ..core.reranker import RerankerService
 from .models import (
     HealthResponse,
     ModelInfo,
@@ -22,13 +23,11 @@ from .models import (
     RerankRequest,
     RerankResponse,
 )
-from ..core.batching import RerankBatcher
-from ..core.reranker import RerankerService
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -36,27 +35,27 @@ logger = logging.getLogger(__name__)
 REQUESTS_TOTAL = Counter(
     "rerank_requests_total",
     "Total rerank requests",
-    ["status", "model"]
+    ["status", "model"],
 )
 REQUEST_LATENCY = Histogram(
     "rerank_request_latency_seconds",
     "Rerank request latency",
     ["model"],
-    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5]
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5],
 )
 PAIRS_PER_REQUEST = Histogram(
     "rerank_pairs_per_request",
     "Number of pairs per rerank request",
-    buckets=[1, 5, 10, 20, 50, 100]
+    buckets=[1, 5, 10, 20, 50, 100],
 )
 QUEUE_SIZE = Gauge(
     "rerank_queue_size",
-    "Current queue size"
+    "Current queue size",
 )
 
 # Global instances
-reranker_service: Optional[RerankerService] = None
-batcher: Optional[RerankBatcher] = None
+reranker_service: RerankerService | None = None
+batcher: RerankBatcher | None = None
 
 
 @asynccontextmanager
@@ -90,7 +89,7 @@ async def lifespan(app: FastAPI):
         score_fn=reranker_service._score_pairs_batch,
         max_batch_size=max_batch_size,
         batch_timeout_ms=batch_timeout_ms,
-        max_queue_size=max_queue_size
+        max_queue_size=max_queue_size,
     )
     await batcher.start()
 
@@ -108,7 +107,7 @@ app = FastAPI(
     title="Reranker Service",
     description="Cross-encoder based document reranking",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -150,7 +149,7 @@ async def rerank_documents(request: RerankRequest):
                 pairs=request.pairs,
                 top_k=request.top_k,
                 min_score=request.min_score,
-                return_documents=request.return_documents
+                return_documents=request.return_documents,
             )
         elif request.query and request.documents:
             # Use query + documents
@@ -161,12 +160,12 @@ async def rerank_documents(request: RerankRequest):
                 documents=request.documents,
                 top_k=request.top_k,
                 min_score=request.min_score,
-                return_documents=request.return_documents
+                return_documents=request.return_documents,
             )
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Must provide either (query + documents) or pairs"
+                detail="Must provide either (query + documents) or pairs",
             )
 
         latency = time.time() - start_time
@@ -180,7 +179,7 @@ async def rerank_documents(request: RerankRequest):
     except Exception as e:
         REQUESTS_TOTAL.labels(status="error", model=request.model).inc()
         logger.error(f"Rerank error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/v1/rerank", response_model=RerankResponse)
@@ -210,7 +209,7 @@ async def metrics():
     """Prometheus metrics endpoint."""
     return Response(
         content=generate_latest(),
-        media_type="text/plain"
+        media_type="text/plain",
     )
 
 
@@ -222,7 +221,7 @@ async def list_models():
             ModelInfo(
                 id=reranker_service.model_name,
                 owned_by="bge",
-                type="reranker"
-            )
-        ]
+                type="reranker",
+            ),
+        ],
     )

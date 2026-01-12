@@ -1,7 +1,6 @@
 """HTML document parser."""
 
 import logging
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -27,7 +26,7 @@ class HTMLParser(BaseParser):
     cleaning and content extraction.
     """
 
-    def __init__(self, config: Optional[HTMLParserConfig] = None):
+    def __init__(self, config: HTMLParserConfig | None = None):
         """Initialize HTML parser.
 
         Args:
@@ -41,7 +40,7 @@ class HTMLParser(BaseParser):
         return ["text/html", "application/xhtml+xml"]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse HTML document.
 
@@ -98,7 +97,7 @@ class HTMLParser(BaseParser):
                         content=text,
                         position=position,
                         metadata={"tag": element.name},
-                    )
+                    ),
                 )
                 position += 1
 
@@ -114,7 +113,7 @@ class HTMLParser(BaseParser):
                             content=text,
                             position=position,
                             metadata={"tag": "pre"},
-                        )
+                        ),
                     )
                     position += 1
 
@@ -130,7 +129,7 @@ class HTMLParser(BaseParser):
                             content_type=ContentType.TABLE,
                             content=self._table_to_text(table),
                             position=position,
-                        )
+                        ),
                     )
                     position += 1
             except Exception as e:
@@ -169,7 +168,7 @@ class HTMLParser(BaseParser):
             metadata=result_metadata,
         )
 
-    def _extract_html_table(self, table_element) -> Optional[TableContent]:
+    def _extract_html_table(self, table_element) -> TableContent | None:
         """Extract TableContent from an HTML table element.
 
         Args:

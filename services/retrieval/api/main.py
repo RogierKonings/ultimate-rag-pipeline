@@ -1,18 +1,15 @@
 """FastAPI application for the Retrieval Service."""
 
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from acl.context import UserContextExtractor
 from acl.filter import ACLFilter
 from acl.models import ACLFilterConfig
-from api.routes import health, retrieve
-from config import RetrievalConfig
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from query.models import QueryPreprocessorConfig
 from query.preprocessor import QueryPreprocessor
 from reranking.models import RerankerConfig
@@ -21,6 +18,9 @@ from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher, OpenSearchConfig
 from search.semantic import QdrantConfig, SemanticSearcher
+
+from api.routes import health, retrieve
+from config import RetrievalConfig
 
 
 @asynccontextmanager
@@ -32,14 +32,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     preprocessor = QueryPreprocessor(
         QueryPreprocessorConfig(
             llm_gateway_url=config.llm_gateway_url,
-        )
+        ),
     )
 
     semantic = SemanticSearcher(
         QdrantConfig(
             url=config.qdrant_url,
             collection_name=config.qdrant_collection,
-        )
+        ),
     )
     await semantic.connect()
 
@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         OpenSearchConfig(
             url=config.opensearch_url,
             index_name=config.opensearch_index,
-        )
+        ),
     )
     await keyword.connect()
 
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     reranker = RerankerService(
         RerankerConfig(
             llm_gateway_url=config.llm_gateway_url,
-        )
+        ),
     )
 
     acl_filter = ACLFilter(ACLFilterConfig())

@@ -1,8 +1,8 @@
 """Tests for query expander."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from query.expander import QueryExpander, SynonymDatabase
 from query.models import QueryPreprocessorConfig
 
@@ -47,7 +47,7 @@ class TestSynonymDatabase:
 
     def test_add_synonym_existing_word(self, db):
         """Test extending synonyms for existing word."""
-        original = db.get_synonyms("error")
+        db.get_synonyms("error")
         db.add_synonym("error", ["newsynonym"])
 
         updated = db.get_synonyms("error")
@@ -141,9 +141,9 @@ class TestQueryExpander:
         mock_response.json.return_value = {
             "choices": [
                 {
-                    "text": "resolve the bug\nfix the issue\naddress the problem"
-                }
-            ]
+                    "text": "resolve the bug\nfix the issue\naddress the problem",
+                },
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 

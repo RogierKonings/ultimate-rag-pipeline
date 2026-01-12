@@ -1,26 +1,22 @@
 """Unit tests for the ModelGateway client."""
 
-import pytest
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import httpx
-
-from config import OrchestratorConfig
+import pytest
 from gateway import (
-    ModelGateway,
-    ChatCompletionRequest,
-    ChatMessage,
-    ChatCompletionResponse,
-    ModelError,
-    ModelTimeoutError,
-    RateLimitError,
     AuthenticationError,
-    ModelNotFoundError,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatMessage,
+    ModelError,
+    ModelGateway,
+    ModelTimeoutError,
     StreamingNotSupportedError,
 )
 
+from config import OrchestratorConfig
 
 # ============================================================================
 # Fixtures
@@ -75,7 +71,7 @@ def mock_response_data():
     return {
         "id": "chatcmpl-test123",
         "object": "chat.completion",
-        "created": int(datetime.utcnow().timestamp()),
+        "created": int(datetime.now(tz=UTC).timestamp()),
         "model": "test-model",
         "choices": [
             {
@@ -85,7 +81,7 @@ def mock_response_data():
                     "content": "Hello! How can I help you today?",
                 },
                 "finish_reason": "stop",
-            }
+            },
         ],
         "usage": {
             "prompt_tokens": 15,
@@ -238,7 +234,7 @@ async def test_chat_completion_client_error_no_retry(gateway, chat_request):
                 "Bad Request",
                 request=MagicMock(),
                 response=error_response,
-            )
+            ),
         )
         mock_ensure.return_value = mock_client
 
@@ -294,7 +290,7 @@ async def test_chat_completion_auth_error(gateway, chat_request):
                 "Unauthorized",
                 request=MagicMock(),
                 response=error_response,
-            )
+            ),
         )
         mock_ensure.return_value = mock_client
 
@@ -308,7 +304,7 @@ async def test_chat_completion_timeout(gateway, chat_request):
     with patch.object(gateway, "_ensure_client") as mock_ensure:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(
-            side_effect=httpx.TimeoutException("Request timed out")
+            side_effect=httpx.TimeoutException("Request timed out"),
         )
         mock_ensure.return_value = mock_client
 

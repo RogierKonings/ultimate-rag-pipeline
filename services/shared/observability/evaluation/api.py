@@ -5,14 +5,13 @@ Provides REST API for managing evaluation datasets and runs.
 """
 
 import logging
-from typing import Any, Optional
-from uuid import UUID
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .config import EvaluationConfig
-from .datasets import EvaluationDataset, EvaluationSample
+from .datasets import EvaluationSample
 from .persistence import EvaluationRepository
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ class ExampleCreate(BaseModel):
     question: str = Field(..., min_length=1)
     contexts: list[str] = Field(default_factory=list)
     answer: str = ""
-    ground_truth: Optional[str] = None
+    ground_truth: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -72,7 +71,7 @@ class ExampleResponse(BaseModel):
     question: str
     contexts: list[str]
     answer: str
-    ground_truth: Optional[str]
+    ground_truth: str | None
     metadata: dict[str, Any]
     created_at: str
 
@@ -81,11 +80,11 @@ class RunCreate(BaseModel):
     """Request to create a run."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    dataset_id: Optional[str] = None
-    dataset_name: Optional[str] = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
     config: dict[str, Any] = Field(default_factory=dict)
-    pipeline_version: Optional[str] = None
-    model_version: Optional[str] = None
+    pipeline_version: str | None = None
+    model_version: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -94,18 +93,18 @@ class RunResponse(BaseModel):
 
     id: str
     name: str
-    dataset_id: Optional[str]
-    dataset_name: Optional[str]
+    dataset_id: str | None
+    dataset_name: str | None
     status: str
     total_samples: int
     successful_samples: int
     failed_samples: int
-    aggregated_scores: Optional[dict[str, Any]]
-    pipeline_version: Optional[str]
-    model_version: Optional[str]
+    aggregated_scores: dict[str, Any] | None
+    pipeline_version: str | None
+    model_version: str | None
     started_at: str
-    completed_at: Optional[str]
-    error_message: Optional[str]
+    completed_at: str | None
+    error_message: str | None
 
 
 class RunMetricsResponse(BaseModel):
@@ -134,7 +133,7 @@ class RunCompareResponse(BaseModel):
 # Dependency
 # =============================================================================
 
-_repository: Optional[EvaluationRepository] = None
+_repository: EvaluationRepository | None = None
 
 
 async def get_repository() -> EvaluationRepository:
@@ -146,7 +145,7 @@ async def get_repository() -> EvaluationRepository:
         if not config.postgres_url:
             raise HTTPException(
                 status_code=500,
-                detail="Database not configured"
+                detail="Database not configured",
             )
         _repository = EvaluationRepository(config.postgres_url)
 
@@ -174,8 +173,8 @@ async def create_dataset(
         return {"id": dataset_id}
     except Exception as e:
         if "unique" in str(e).lower():
-            raise HTTPException(status_code=409, detail="Dataset name already exists")
-        raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=409, detail="Dataset name already exists") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/datasets", response_model=list[DatasetResponse])
@@ -345,8 +344,8 @@ async def create_run(
 
 @router.get("/runs", response_model=list[RunResponse])
 async def list_runs(
-    dataset_id: Optional[str] = None,
-    status: Optional[str] = None,
+    dataset_id: str | None = None,
+    status: str | None = None,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     repo: EvaluationRepository = Depends(get_repository),
@@ -429,7 +428,7 @@ async def get_run_metrics(
 @router.get("/metrics/{metric_name}/trend", response_model=MetricTrendResponse)
 async def get_metric_trend(
     metric_name: str,
-    dataset_id: Optional[str] = None,
+    dataset_id: str | None = None,
     limit: int = Query(30, ge=1, le=100),
     repo: EvaluationRepository = Depends(get_repository),
 ):

@@ -1,7 +1,8 @@
 """OpenTelemetry tracing for the Retrieval Service."""
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any
 
 # Try to import OpenTelemetry, provide stubs if not available
 try:
@@ -43,7 +44,7 @@ class TracingSetup:
         """
         self.service_name = service_name
         self.otlp_endpoint = otlp_endpoint
-        self.tracer: Optional[Any] = None
+        self.tracer: Any | None = None
         self._enabled = HAS_OPENTELEMETRY
 
         if self._enabled:
@@ -55,7 +56,7 @@ class TracingSetup:
             {
                 ResourceAttributes.SERVICE_NAME: self.service_name,
                 ResourceAttributes.SERVICE_VERSION: "1.0.0",
-            }
+            },
         )
 
         provider = TracerProvider(resource=resource)
@@ -63,7 +64,7 @@ class TracingSetup:
         # OTLP exporter for Jaeger
         try:
             otlp_exporter = OTLPSpanExporter(
-                endpoint=self.otlp_endpoint, insecure=True
+                endpoint=self.otlp_endpoint, insecure=True,
             )
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         except Exception:
@@ -99,7 +100,7 @@ class TracingSetup:
             # Silently fail if instrumentation fails
             pass
 
-    def get_tracer(self) -> Optional[Any]:
+    def get_tracer(self) -> Any | None:
         """
         Get the configured tracer.
 
@@ -127,11 +128,10 @@ class TracingSetup:
 
                 with self.tracer.start_as_current_span(name) as span:
                     try:
-                        result = await func(*args, **kwargs)
-                        return result
+                        return await func(*args, **kwargs)
                     except Exception as e:
                         span.set_status(
-                            trace.Status(trace.StatusCode.ERROR, str(e))
+                            trace.Status(trace.StatusCode.ERROR, str(e)),
                         )
                         span.record_exception(e)
                         raise
@@ -141,7 +141,7 @@ class TracingSetup:
         return decorator
 
     @staticmethod
-    def get_current_trace_id() -> Optional[str]:
+    def get_current_trace_id() -> str | None:
         """
         Get current trace ID if in a span.
 
@@ -159,7 +159,7 @@ class TracingSetup:
         return None
 
     @staticmethod
-    def get_current_span_id() -> Optional[str]:
+    def get_current_span_id() -> str | None:
         """
         Get current span ID if in a span.
 
@@ -177,7 +177,7 @@ class TracingSetup:
         return None
 
 
-def traced_retrieval(tracer: Optional[Any]) -> Callable:
+def traced_retrieval(tracer: Any | None) -> Callable:
     """
     Decorator to trace retrieval operations with custom attributes.
 

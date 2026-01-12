@@ -1,10 +1,9 @@
 """Embedding cache for storing computed embeddings."""
 
 import json
-from typing import Optional
 
+from .key_builder import KeyBuilder, KeyType, ServicePrefix
 from .redis_client import RedisCache
-from .key_builder import KeyBuilder, ServicePrefix, KeyType
 
 
 class EmbeddingCache:
@@ -34,7 +33,7 @@ class EmbeddingCache:
         self,
         text_hash: str,
         tenant_id: str,
-    ) -> Optional[list[float]]:
+    ) -> list[float] | None:
         """Get cached embedding for text.
 
         Args:
@@ -52,7 +51,7 @@ class EmbeddingCache:
         text_hash: str,
         tenant_id: str,
         embedding: list[float],
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Cache embedding for text.
 
@@ -69,7 +68,7 @@ class EmbeddingCache:
         self,
         text_hashes: list[str],
         tenant_id: str,
-    ) -> dict[str, Optional[list[float]]]:
+    ) -> dict[str, list[float] | None]:
         """Get multiple cached embeddings.
 
         Args:
@@ -102,7 +101,7 @@ class EmbeddingCache:
         self,
         embeddings: dict[str, list[float]],
         tenant_id: str,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """Cache multiple embeddings.
 

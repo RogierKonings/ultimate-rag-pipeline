@@ -1,17 +1,16 @@
 """Unit tests for SSE stream parsing utilities."""
 
 import json
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-
 from gateway.streaming import (
-    parse_sse_stream,
-    parse_sse_lines,
-    format_sse_event,
-    format_sse_done,
     SSEBuffer,
+    format_sse_done,
+    format_sse_event,
+    parse_sse_lines,
+    parse_sse_stream,
 )
-
 
 # ============================================================================
 # parse_sse_stream Tests
@@ -279,8 +278,8 @@ def test_format_sse_event_complex_data():
                 "index": 0,
                 "delta": {"content": "Hello"},
                 "finish_reason": None,
-            }
-        ]
+            },
+        ],
     }
     result = format_sse_event(data)
 

@@ -9,7 +9,6 @@ import os
 import statistics
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -37,8 +36,8 @@ async def benchmark_request(
     client: httpx.AsyncClient,
     prompt: str,
     max_tokens: int,
-    model: str
-) -> tuple[Optional[float], int]:
+    model: str,
+) -> tuple[float | None, int]:
     """
     Send a benchmark request.
 
@@ -54,9 +53,9 @@ async def benchmark_request(
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": max_tokens,
-                "temperature": 0.7
+                "temperature": 0.7,
             },
-            timeout=120.0
+            timeout=120.0,
         )
 
         if response.status_code == 200:
@@ -64,8 +63,7 @@ async def benchmark_request(
             data = response.json()
             tokens = data.get("usage", {}).get("completion_tokens", 0)
             return latency_ms, tokens
-        else:
-            return None, 0
+        return None, 0
 
     except Exception as e:
         print(f"Request failed: {e}")
@@ -76,7 +74,7 @@ async def run_benchmark(
     num_requests: int = 100,
     concurrent: int = 10,
     max_tokens: int = 100,
-    model: str = "Qwen/Qwen2.5-7B-Instruct"
+    model: str = "Qwen/Qwen2.5-7B-Instruct",
 ) -> BenchmarkResult:
     """Run performance benchmark."""
     prompts = [
@@ -97,7 +95,7 @@ async def run_benchmark(
         latencies: list[float] = []
         total_tokens = 0
 
-        async def bounded_request(prompt: str) -> tuple[Optional[float], int]:
+        async def bounded_request(prompt: str) -> tuple[float | None, int]:
             async with semaphore:
                 return await benchmark_request(client, prompt, max_tokens, model)
 
@@ -128,7 +126,7 @@ async def run_benchmark(
                 p50_latency_ms=0,
                 p95_latency_ms=0,
                 p99_latency_ms=0,
-                total_tokens_generated=0
+                total_tokens_generated=0,
             )
 
         sorted_latencies = sorted(latencies)
@@ -145,7 +143,7 @@ async def run_benchmark(
             p50_latency_ms=sorted_latencies[int(n * 0.5)] if n > 0 else 0,
             p95_latency_ms=sorted_latencies[min(int(n * 0.95), n - 1)] if n > 0 else 0,
             p99_latency_ms=sorted_latencies[min(int(n * 0.99), n - 1)] if n > 0 else 0,
-            total_tokens_generated=total_tokens
+            total_tokens_generated=total_tokens,
         )
 
         print("\n=== Benchmark Results ===")
@@ -177,5 +175,5 @@ if __name__ == "__main__":
         num_requests=args.requests,
         concurrent=args.concurrent,
         max_tokens=args.max_tokens,
-        model=args.model
+        model=args.model,
     ))

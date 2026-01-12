@@ -8,11 +8,9 @@ with authenticated encryption ensuring both confidentiality and integrity.
 import base64
 import json
 import logging
-import os
 import secrets
-from typing import Any, Optional, Union
+from typing import Any
 
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 logger = logging.getLogger(__name__)
@@ -26,19 +24,16 @@ TAG_SIZE = 16  # 128 bits authentication tag
 class EncryptionError(Exception):
     """Base exception for encryption errors."""
 
-    pass
 
 
 class DecryptionError(EncryptionError):
     """Raised when decryption fails."""
 
-    pass
 
 
-class KeyError(EncryptionError):
+class EncryptionKeyError(EncryptionError):
     """Raised when there's an issue with encryption keys."""
 
-    pass
 
 
 class FieldEncryption:
@@ -69,8 +64,8 @@ class FieldEncryption:
 
     def __init__(
         self,
-        key: Union[bytes, str],
-        associated_data: Optional[bytes] = None,
+        key: bytes | str,
+        associated_data: bytes | None = None,
     ):
         """
         Initialize field encryption.
@@ -85,7 +80,7 @@ class FieldEncryption:
         self._aad = associated_data
 
     @staticmethod
-    def _normalize_key(key: Union[bytes, str]) -> bytes:
+    def _normalize_key(key: bytes | str) -> bytes:
         """Normalize key to bytes."""
         if isinstance(key, str):
             try:
@@ -94,9 +89,9 @@ class FieldEncryption:
                 key = key.encode("utf-8")
 
         if len(key) != KEY_SIZE:
-            raise KeyError(
+            raise EncryptionKeyError(
                 f"Invalid key size: {len(key)} bytes. "
-                f"Expected {KEY_SIZE} bytes for AES-256."
+                f"Expected {KEY_SIZE} bytes for AES-256.",
             )
 
         return key
@@ -121,7 +116,7 @@ class FieldEncryption:
         """Load key from base64 string."""
         return base64.b64decode(key_str)
 
-    def encrypt(self, plaintext: Union[str, bytes]) -> str:
+    def encrypt(self, plaintext: str | bytes) -> str:
         """
         Encrypt plaintext data.
 
@@ -229,7 +224,7 @@ class FieldEncryption:
     def encrypt_dict(
         self,
         data: dict[str, Any],
-        fields_to_encrypt: Optional[list[str]] = None,
+        fields_to_encrypt: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Encrypt specified fields in a dictionary.
@@ -267,8 +262,8 @@ class FieldEncryption:
     def decrypt_dict(
         self,
         data: dict[str, Any],
-        fields_to_decrypt: Optional[list[str]] = None,
-        json_fields: Optional[list[str]] = None,
+        fields_to_decrypt: list[str] | None = None,
+        json_fields: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Decrypt specified fields in a dictionary.
@@ -306,7 +301,7 @@ class FieldEncryption:
 
     def rotate_key(
         self,
-        new_key: Union[bytes, str],
+        new_key: bytes | str,
         ciphertext: str,
     ) -> str:
         """
@@ -353,9 +348,9 @@ class MultiKeyFieldEncryption:
 
     def __init__(
         self,
-        primary_key: Union[bytes, str],
-        previous_keys: Optional[list[Union[bytes, str]]] = None,
-        associated_data: Optional[bytes] = None,
+        primary_key: bytes | str,
+        previous_keys: list[bytes | str] | None = None,
+        associated_data: bytes | None = None,
     ):
         """
         Initialize multi-key encryption.
@@ -371,7 +366,7 @@ class MultiKeyFieldEncryption:
             for k in (previous_keys or [])
         ]
 
-    def encrypt(self, plaintext: Union[str, bytes]) -> str:
+    def encrypt(self, plaintext: str | bytes) -> str:
         """Encrypt with primary key."""
         return self._primary.encrypt(plaintext)
 
@@ -402,13 +397,13 @@ class MultiKeyFieldEncryption:
                 continue
 
         raise DecryptionError(
-            "Failed to decrypt with primary key or any previous keys"
+            "Failed to decrypt with primary key or any previous keys",
         )
 
     def encrypt_dict(
         self,
         data: dict[str, Any],
-        fields_to_encrypt: Optional[list[str]] = None,
+        fields_to_encrypt: list[str] | None = None,
     ) -> dict[str, Any]:
         """Encrypt dict fields with primary key."""
         return self._primary.encrypt_dict(data, fields_to_encrypt)
@@ -416,8 +411,8 @@ class MultiKeyFieldEncryption:
     def decrypt_dict(
         self,
         data: dict[str, Any],
-        fields_to_decrypt: Optional[list[str]] = None,
-        json_fields: Optional[list[str]] = None,
+        fields_to_decrypt: list[str] | None = None,
+        json_fields: list[str] | None = None,
     ) -> dict[str, Any]:
         """Decrypt dict fields, trying all keys."""
         result = data.copy()

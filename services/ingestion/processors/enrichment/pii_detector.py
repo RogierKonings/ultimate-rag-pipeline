@@ -1,14 +1,13 @@
 """PII detection and anonymization using Microsoft Presidio."""
 
-from typing import Optional
 
-from pydantic import BaseModel, Field
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
-from presidio_anonymizer.entities import RecognizerResult, OperatorConfig
+from presidio_anonymizer.entities import OperatorConfig, RecognizerResult
+from pydantic import BaseModel, Field
 
-from .models import PIIType, PIIEntity, PIIResult
+from .models import PIIEntity, PIIResult, PIIType
 
 
 class PIIDetectorConfig(BaseModel):
@@ -26,14 +25,14 @@ class PIIDetectorConfig(BaseModel):
             "US_SSN",
             "IP_ADDRESS",
             "ORGANIZATION",
-        ]
+        ],
     )
     high_sensitivity_entities: list[str] = Field(
         default_factory=lambda: [
             "US_SSN",
             "CREDIT_CARD",
             "MEDICAL_LICENSE",
-        ]
+        ],
     )
 
 
@@ -47,7 +46,7 @@ class PIIDetector:
     - Is extensible with custom recognizers
     """
 
-    def __init__(self, config: Optional[PIIDetectorConfig] = None):
+    def __init__(self, config: PIIDetectorConfig | None = None):
         """
         Initialize the PII detector.
 
@@ -55,7 +54,7 @@ class PIIDetector:
             config: Configuration for PII detection. If None, uses defaults.
         """
         self.config = config or PIIDetectorConfig()
-        self._analyzer: Optional[AnalyzerEngine] = None
+        self._analyzer: AnalyzerEngine | None = None
 
     def _get_analyzer(self) -> AnalyzerEngine:
         """
@@ -160,7 +159,7 @@ class PIIDetector:
 
         # Sort by position (descending) to replace from end
         sorted_entities = sorted(
-            result.entities, key=lambda e: e.start, reverse=True
+            result.entities, key=lambda e: e.start, reverse=True,
         )
 
         redacted = text
@@ -221,15 +220,15 @@ class PIIAnonymizer:
         operators: dict[str, OperatorConfig] = {}
         if strategy == "replace":
             operators = {
-                "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
+                "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"}),
             }
         elif strategy == "hash":
             operators = {"DEFAULT": OperatorConfig("hash")}
         elif strategy == "mask":
             operators = {
                 "DEFAULT": OperatorConfig(
-                    "mask", {"chars_to_mask": 4, "masking_char": "*"}
-                )
+                    "mask", {"chars_to_mask": 4, "masking_char": "*"},
+                ),
             }
 
         result = self._anonymizer.anonymize(

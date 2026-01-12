@@ -9,7 +9,8 @@ with RAG-specific extensions prefixed with "rag.".
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from opentelemetry import trace
 from opentelemetry.trace import Span
 
@@ -165,11 +166,11 @@ class RAGAttributes:
 
 
 def set_rag_attributes(
-    span: Optional[Span] = None,
-    operation: Optional[RAGOperation] = None,
-    tenant_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    request_id: Optional[str] = None,
+    span: Span | None = None,
+    operation: RAGOperation | None = None,
+    tenant_id: str | None = None,
+    user_id: str | None = None,
+    request_id: str | None = None,
     **kwargs: Any,
 ) -> None:
     """
@@ -216,9 +217,9 @@ def set_rag_attributes(
 
 
 def set_retrieval_results(
-    span: Optional[Span] = None,
+    span: Span | None = None,
     count: int = 0,
-    scores: Optional[List[float]] = None,
+    scores: list[float] | None = None,
 ) -> None:
     """
     Set retrieval result attributes on a span.
@@ -244,13 +245,13 @@ def set_retrieval_results(
 
 
 def set_llm_usage(
-    span: Optional[Span] = None,
-    model: Optional[str] = None,
-    provider: Optional[str] = None,
-    input_tokens: Optional[int] = None,
-    output_tokens: Optional[int] = None,
-    ttft_ms: Optional[float] = None,
-    stop_reason: Optional[str] = None,
+    span: Span | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    ttft_ms: float | None = None,
+    stop_reason: str | None = None,
 ) -> None:
     """
     Set LLM usage attributes on a span.
@@ -293,11 +294,11 @@ def set_llm_usage(
 
 
 def set_embedding_attributes(
-    span: Optional[Span] = None,
-    model: Optional[str] = None,
-    dimension: Optional[int] = None,
-    batch_size: Optional[int] = None,
-    tokens: Optional[int] = None,
+    span: Span | None = None,
+    model: str | None = None,
+    dimension: int | None = None,
+    batch_size: int | None = None,
+    tokens: int | None = None,
 ) -> None:
     """
     Set embedding operation attributes on a span.
@@ -329,11 +330,11 @@ def set_embedding_attributes(
 
 
 def set_cache_attributes(
-    span: Optional[Span] = None,
-    cache_type: Optional[str] = None,
-    hit: Optional[bool] = None,
-    key: Optional[str] = None,
-    ttl: Optional[int] = None,
+    span: Span | None = None,
+    cache_type: str | None = None,
+    hit: bool | None = None,
+    key: str | None = None,
+    ttl: int | None = None,
 ) -> None:
     """
     Set cache operation attributes on a span.

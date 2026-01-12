@@ -5,13 +5,13 @@ based on the query and routing strategy.
 """
 
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
 
-def _format_context(documents: List[dict]) -> str:
+def _format_context(documents: list[dict]) -> str:
     """
     Format retrieved documents into a context string.
 
@@ -56,7 +56,7 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
 
     # Stub: In production, this would call the retrieval service
     # For now, we return empty results (will be mocked in tests)
-    documents: List[dict] = []
+    documents: list[dict] = []
 
     # Format context from retrieved documents
     context = _format_context(documents)

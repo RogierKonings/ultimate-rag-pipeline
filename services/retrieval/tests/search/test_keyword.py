@@ -1,12 +1,12 @@
 """Tests for keyword search."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+import pytest
+from search.exceptions import SearchFilterError
 from search.keyword import KeywordSearcher
 from search.models import OpenSearchConfig, SearchResultItem
-from search.exceptions import SearchFilterError
 
 
 @pytest.fixture
@@ -29,8 +29,7 @@ def searcher(config):
 @pytest.fixture
 def mock_client():
     """Create mock OpenSearch client."""
-    mock = AsyncMock()
-    return mock
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -53,7 +52,7 @@ def mock_opensearch_response():
                         "total_chunks": 3,
                     },
                     "highlight": {
-                        "content": ["<mark>Machine learning</mark> is transforming AI"]
+                        "content": ["<mark>Machine learning</mark> is transforming AI"],
                     },
                 },
                 {
@@ -68,7 +67,7 @@ def mock_opensearch_response():
                     },
                 },
             ],
-        }
+        },
     }
 
 
@@ -186,7 +185,7 @@ class TestKeywordSearcherSearch:
         """Test search with field boosting."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         await searcher.search(
@@ -206,7 +205,7 @@ class TestKeywordSearcherSearch:
         """Test search with ACL filters."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         filters = {
@@ -224,7 +223,7 @@ class TestKeywordSearcherSearch:
         """Test search with minimum score threshold."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         await searcher.search(query="test", min_score=5.0)
@@ -238,7 +237,7 @@ class TestKeywordSearcherSearch:
         with patch("search.keyword.AsyncOpenSearch") as mock_class:
             mock_client = AsyncMock()
             mock_client.search = AsyncMock(
-                return_value={"hits": {"total": {"value": 0}, "hits": []}}
+                return_value={"hits": {"total": {"value": 0}, "hits": []}},
             )
             mock_class.return_value = mock_client
 
@@ -253,7 +252,7 @@ class TestKeywordSearcherFilterBuilding:
     def test_build_filter_must(self, searcher):
         """Test must filter conditions."""
         filters = {
-            "must": [{"key": "tenant_id", "match": {"value": "tenant-123"}}]
+            "must": [{"key": "tenant_id", "match": {"value": "tenant-123"}}],
         }
         clauses = searcher._build_filter_clauses(filters)
 
@@ -266,7 +265,7 @@ class TestKeywordSearcherFilterBuilding:
             "should": [
                 {"key": "visibility", "match": {"value": "public"}},
                 {"key": "allowed_groups", "match": {"any": ["group-1", "group-2"]}},
-            ]
+            ],
         }
         clauses = searcher._build_filter_clauses(filters)
 
@@ -278,7 +277,7 @@ class TestKeywordSearcherFilterBuilding:
     def test_build_filter_must_not(self, searcher):
         """Test must_not filter conditions."""
         filters = {
-            "must_not": [{"key": "visibility", "match": {"value": "private"}}]
+            "must_not": [{"key": "visibility", "match": {"value": "private"}}],
         }
         clauses = searcher._build_filter_clauses(filters)
 
@@ -289,7 +288,7 @@ class TestKeywordSearcherFilterBuilding:
     def test_build_filter_match_any(self, searcher):
         """Test match any condition."""
         filters = {
-            "must": [{"key": "groups", "match": {"any": ["a", "b"]}}]
+            "must": [{"key": "groups", "match": {"any": ["a", "b"]}}],
         }
         clauses = searcher._build_filter_clauses(filters)
 
@@ -298,7 +297,7 @@ class TestKeywordSearcherFilterBuilding:
     def test_build_filter_range(self, searcher):
         """Test range condition."""
         filters = {
-            "must": [{"key": "created_at", "range": {"gte": "2024-01-01"}}]
+            "must": [{"key": "created_at", "range": {"gte": "2024-01-01"}}],
         }
         clauses = searcher._build_filter_clauses(filters)
 
@@ -357,7 +356,7 @@ class TestKeywordSearcherPhraseSearch:
         """Test phrase search with slop."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         await searcher.search_phrase(
@@ -376,7 +375,7 @@ class TestKeywordSearcherPhraseSearch:
         """Test phrase search with filters."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         filters = {"must": [{"key": "tenant_id", "match": {"value": "123"}}]}
@@ -398,7 +397,7 @@ class TestKeywordSearcherExpansionSearch:
         """Test search with multiple query variations."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         await searcher.search_with_expansion(
@@ -416,7 +415,7 @@ class TestKeywordSearcherExpansionSearch:
         """Test expansion search with filters."""
         searcher._client = mock_client
         mock_client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 0}, "hits": []}}
+            return_value={"hits": {"total": {"value": 0}, "hits": []}},
         )
 
         filters = {"must": [{"key": "tenant_id", "match": {"value": "123"}}]}
@@ -444,10 +443,10 @@ class TestKeywordSearcherIndexInfo:
                         "total": {
                             "docs": {"count": 1000, "deleted": 50},
                             "store": {"size_in_bytes": 1048576},
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         )
 
         info = await searcher.get_index_info()
@@ -538,7 +537,7 @@ class TestKeywordSearcherResultConversion:
                 "document_id": str(uuid4()),
             },
             "highlight": {
-                "content": ["<mark>highlighted</mark> content"]
+                "content": ["<mark>highlighted</mark> content"],
             },
         }
 

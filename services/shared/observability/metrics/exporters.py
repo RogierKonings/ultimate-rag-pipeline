@@ -9,7 +9,6 @@ Provides the /metrics endpoint for Prometheus scraping with:
 
 import logging
 import os
-from typing import Optional
 
 from fastapi import APIRouter, FastAPI, Response
 from prometheus_client import (
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 metrics_router = APIRouter(tags=["monitoring"])
 
 
-def get_metrics_output(registry: Optional[CollectorRegistry] = None) -> tuple[bytes, str]:
+def get_metrics_output(registry: CollectorRegistry | None = None) -> tuple[bytes, str]:
     """
     Generate Prometheus metrics output.
 
@@ -114,7 +113,7 @@ class MetricsExporter:
     and handling multiprocess scenarios.
     """
 
-    def __init__(self, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, registry: CollectorRegistry | None = None):
         """
         Initialize the exporter.
 

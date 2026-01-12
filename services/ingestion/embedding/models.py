@@ -1,8 +1,8 @@
 """Pydantic models for the embedding service."""
 
-from pydantic import BaseModel, Field
-from typing import Optional
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class EmbeddingRequest(BaseModel):
@@ -11,7 +11,7 @@ class EmbeddingRequest(BaseModel):
     texts: list[str]
     model: str = "BAAI/bge-large-en-v1.5"
     normalize: bool = True
-    prefix: Optional[str] = None  # BGE models use "query: " or "passage: " prefix
+    prefix: str | None = None  # BGE models use "query: " or "passage: " prefix
 
 
 class EmbeddingResult(BaseModel):

@@ -13,13 +13,13 @@ sys.path.insert(0, str(project_root))
 def pytest_configure(config):
     """Add custom markers for test categorization."""
     config.addinivalue_line(
-        "markers", "integration: mark test as integration test (requires Docker)"
+        "markers", "integration: mark test as integration test (requires Docker)",
     )
     config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
+        "markers", "slow: mark test as slow running",
     )
     config.addinivalue_line(
-        "markers", "unit: mark test as unit test"
+        "markers", "unit: mark test as unit test",
     )
 
 
@@ -29,12 +29,12 @@ def pytest_collection_modifyitems(config, items):
         # Add unit marker to tests not marked as integration
         if "integration" not in item.keywords:
             item.add_marker(pytest.mark.unit)
-        
+
         # Skip integration tests by default unless explicitly requested
         if "integration" in item.keywords:
             if not config.getoption("-m") or "integration" not in config.getoption("-m"):
                 item.add_marker(
-                    pytest.mark.skip(reason="Integration tests require -m integration flag")
+                    pytest.mark.skip(reason="Integration tests require -m integration flag"),
                 )
 
 

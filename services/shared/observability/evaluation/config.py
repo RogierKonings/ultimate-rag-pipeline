@@ -6,7 +6,6 @@ Provides configuration for RAG evaluation runs.
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional
 from enum import Enum
 
 
@@ -51,8 +50,8 @@ class EvaluationConfig:
     """
 
     evaluator_model: str = "gpt-4"
-    evaluator_api_key: Optional[str] = None
-    evaluator_base_url: Optional[str] = None
+    evaluator_api_key: str | None = None
+    evaluator_base_url: str | None = None
 
     metrics: list[str] = field(default_factory=lambda: [
         "context_precision",
@@ -61,8 +60,8 @@ class EvaluationConfig:
         "answer_relevancy",
     ])
 
-    dataset_path: Optional[str] = None
-    sample_size: Optional[int] = None
+    dataset_path: str | None = None
+    sample_size: int | None = None
     sampling_strategy: SamplingStrategy = SamplingStrategy.RANDOM
     random_seed: int = 42
 
@@ -73,14 +72,14 @@ class EvaluationConfig:
     result_storage: list[str] = field(default_factory=lambda: ["json", "postgres"])
     result_dir: str = "./eval_results"
 
-    postgres_url: Optional[str] = None
-    grafana_url: Optional[str] = None
-    grafana_api_key: Optional[str] = None
-    slack_webhook_url: Optional[str] = None
+    postgres_url: str | None = None
+    grafana_url: str | None = None
+    grafana_api_key: str | None = None
+    slack_webhook_url: str | None = None
 
     # RAG pipeline configuration for live evaluation
-    rag_api_url: Optional[str] = None
-    rag_api_key: Optional[str] = None
+    rag_api_url: str | None = None
+    rag_api_key: str | None = None
 
     @classmethod
     def from_env(cls) -> "EvaluationConfig":

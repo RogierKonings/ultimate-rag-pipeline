@@ -1,9 +1,10 @@
 """Tests for re-embedding tasks."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from ..reembed import reembed_collection, _reembed_collection_async
+import pytest
+
+from ..reembed import _reembed_collection_async, reembed_collection
 
 
 class TestReembedCollection:
@@ -61,15 +62,15 @@ class TestReembedCollection:
                 mock_service = AsyncMock()
                 mock_service.embed_texts = AsyncMock(
                     return_value=MagicMock(
-                        results=[MagicMock(embedding=[0.1] * 1024) for _ in mock_chunks]
-                    )
+                        results=[MagicMock(embedding=[0.1] * 1024) for _ in mock_chunks],
+                    ),
                 )
                 mock_service.__aenter__ = AsyncMock(return_value=mock_service)
                 mock_service.__aexit__ = AsyncMock(return_value=None)
                 mock_embed.return_value = mock_service
 
                 with patch(
-                    "services.ingestion.tasks.reembed._update_embeddings_in_qdrant"
+                    "services.ingestion.tasks.reembed._update_embeddings_in_qdrant",
                 ) as mock_update:
                     mock_update.return_value = None
 

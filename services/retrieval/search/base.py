@@ -1,9 +1,7 @@
 """Base search interface."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
-
-from search.models import SearchResultItem
+from typing import Any
 
 
 class BaseSearcher(ABC):
@@ -14,26 +12,22 @@ class BaseSearcher(ABC):
         self,
         query: Any,
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         **kwargs,
     ) -> Any:
         """Execute search and return results."""
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
         """Check if search backend is healthy."""
-        pass
 
     @abstractmethod
     async def connect(self) -> None:
         """Establish connection to search backend."""
-        pass
 
     @abstractmethod
     async def close(self) -> None:
         """Close connections."""
-        pass
 
     async def __aenter__(self):
         await self.connect()

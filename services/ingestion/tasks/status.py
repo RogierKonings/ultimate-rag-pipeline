@@ -6,7 +6,6 @@ Celery task states and managing jobs.
 
 import json
 import logging
-from typing import Optional
 
 import redis.asyncio as redis
 from celery.result import AsyncResult
@@ -29,7 +28,7 @@ class JobStatusTracker:
             print(status.status)
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         """Initialize the job status tracker.
 
         Args:
@@ -38,9 +37,9 @@ class JobStatusTracker:
         import os
 
         self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/2"
+            "REDIS_URL", "redis://localhost:6379/2",
         )
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Connect to Redis."""
@@ -158,7 +157,7 @@ class JobStatusTracker:
             active = inspect.active() or {}
 
             job_ids = []
-            for worker, tasks in active.items():
+            for _worker, tasks in active.items():
                 for task in tasks:
                     job_ids.append(task["id"])
 
@@ -186,7 +185,7 @@ class JobStatusTracker:
             cursor = 0
             while True:
                 cursor, keys = await self._redis.scan(
-                    cursor, match=pattern, count=100
+                    cursor, match=pattern, count=100,
                 )
                 for key in keys[: limit - len(entries)]:
                     data = await self._redis.get(key)
@@ -235,12 +234,11 @@ class JobStatusTracker:
             active = inspect.active() or {}
             scheduled = inspect.scheduled() or {}
 
-            stats = {
+            return {
                 "reserved": sum(len(tasks) for tasks in reserved.values()),
                 "active": sum(len(tasks) for tasks in active.values()),
                 "scheduled": sum(len(tasks) for tasks in scheduled.values()),
             }
-            return stats
 
         except Exception as e:
             logger.error(f"Failed to get queue stats: {e}")

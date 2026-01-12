@@ -1,6 +1,5 @@
 """Request models for the Orchestrator API."""
 
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -23,19 +22,19 @@ class QueryRequest(BaseModel):
         max_length=4000,
         description="The user's query text",
     )
-    session_id: Optional[UUID] = Field(
+    session_id: UUID | None = Field(
         default=None,
         description="Session ID for conversation continuity",
     )
-    user_id: Optional[UUID] = Field(
+    user_id: UUID | None = Field(
         default=None,
         description="User identifier for ACL filtering",
     )
-    tenant_id: Optional[UUID] = Field(
+    tenant_id: UUID | None = Field(
         default=None,
         description="Tenant identifier for multi-tenancy",
     )
-    options: Optional[dict] = Field(
+    options: dict | None = Field(
         default=None,
         description="Optional configuration overrides (model, temperature, etc.)",
     )
@@ -58,19 +57,19 @@ class StreamQueryRequest(BaseModel):
         max_length=4000,
         description="The user's query text",
     )
-    session_id: Optional[UUID] = Field(
+    session_id: UUID | None = Field(
         default=None,
         description="Session ID for conversation continuity",
     )
-    user_id: Optional[UUID] = Field(
+    user_id: UUID | None = Field(
         default=None,
         description="User identifier for ACL filtering",
     )
-    tenant_id: Optional[UUID] = Field(
+    tenant_id: UUID | None = Field(
         default=None,
         description="Tenant identifier for multi-tenancy",
     )
-    options: Optional[dict] = Field(
+    options: dict | None = Field(
         default=None,
         description="Optional configuration overrides",
     )
@@ -101,12 +100,12 @@ class FeedbackRequest(BaseModel):
         default="general",
         description="Type of feedback (helpful, unhelpful, wrong, general)",
     )
-    comment: Optional[str] = Field(
+    comment: str | None = Field(
         default=None,
         max_length=1000,
         description="Optional user comment",
     )
-    session_id: Optional[UUID] = Field(
+    session_id: UUID | None = Field(
         default=None,
         description="Session ID for context",
     )
@@ -122,20 +121,20 @@ class CreateSessionRequest(BaseModel):
         metadata: Optional additional metadata for the session.
     """
 
-    user_id: Optional[UUID] = Field(
+    user_id: UUID | None = Field(
         default=None,
         description="User identifier",
     )
-    tenant_id: Optional[UUID] = Field(
+    tenant_id: UUID | None = Field(
         default=None,
         description="Tenant identifier",
     )
-    system_prompt: Optional[str] = Field(
+    system_prompt: str | None = Field(
         default=None,
         max_length=4000,
         description="Custom system prompt for this session",
     )
-    metadata: Optional[dict] = Field(
+    metadata: dict | None = Field(
         default=None,
         description="Additional metadata for the session",
     )

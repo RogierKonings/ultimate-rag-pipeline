@@ -6,12 +6,9 @@ Provides comprehensive persistence for evaluation datasets, runs, and results.
 
 import json
 import logging
-from dataclasses import asdict
-from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
-from .config import EvaluationConfig
 from .datasets import EvaluationDataset, EvaluationSample
 from .ragas_evaluator import AggregatedResults
 
@@ -67,8 +64,8 @@ class EvaluationRepository:
         name: str,
         description: str = "",
         version: str = "1.0.0",
-        config: Optional[dict[str, Any]] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Create a new evaluation dataset.
@@ -104,7 +101,7 @@ class EvaluationRepository:
         logger.info(f"Created dataset {dataset_id}: {name}")
         return dataset_id
 
-    async def get_dataset(self, dataset_id: str) -> Optional[dict[str, Any]]:
+    async def get_dataset(self, dataset_id: str) -> dict[str, Any] | None:
         """Get a dataset by ID."""
         pool = await self._get_pool()
 
@@ -118,7 +115,7 @@ class EvaluationRepository:
                 return dict(row)
             return None
 
-    async def get_dataset_by_name(self, name: str) -> Optional[dict[str, Any]]:
+    async def get_dataset_by_name(self, name: str) -> dict[str, Any] | None:
         """Get a dataset by name."""
         pool = await self._get_pool()
 
@@ -175,8 +172,8 @@ class EvaluationRepository:
         question: str,
         contexts: list[str],
         answer: str = "",
-        ground_truth: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        ground_truth: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Add an example to a dataset.
@@ -315,7 +312,7 @@ class EvaluationRepository:
 
             return [dict(row) for row in rows]
 
-    async def load_dataset(self, dataset_id: str) -> Optional[EvaluationDataset]:
+    async def load_dataset(self, dataset_id: str) -> EvaluationDataset | None:
         """
         Load a full dataset with examples.
 
@@ -400,12 +397,12 @@ class EvaluationRepository:
     async def create_run(
         self,
         name: str,
-        dataset_id: Optional[str] = None,
-        dataset_name: Optional[str] = None,
-        config: Optional[dict[str, Any]] = None,
-        pipeline_version: Optional[str] = None,
-        model_version: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        dataset_id: str | None = None,
+        dataset_name: str | None = None,
+        config: dict[str, Any] | None = None,
+        pipeline_version: str | None = None,
+        model_version: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """
         Create a new evaluation run.
@@ -450,7 +447,7 @@ class EvaluationRepository:
         self,
         run_id: str,
         status: str,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> None:
         """Update run status."""
         pool = await self._get_pool()
@@ -492,11 +489,10 @@ class EvaluationRepository:
         """
         pool = await self._get_pool()
 
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                # Update run with summary
-                await conn.execute(
-                    f"""
+        async with pool.acquire() as conn, conn.transaction():
+            # Update run with summary
+            await conn.execute(
+                f"""
                     UPDATE {self.table_prefix}runs
                     SET status = 'completed',
                         completed_at = NOW(),
@@ -507,18 +503,18 @@ class EvaluationRepository:
                         metadata = metadata || $5
                     WHERE id = $6
                     """,
-                    results.total_samples,
-                    results.successful_samples,
-                    results.failed_samples,
-                    json.dumps(results.aggregated_metrics),
-                    json.dumps(results.metadata),
-                    run_id,
-                )
+                results.total_samples,
+                results.successful_samples,
+                results.failed_samples,
+                json.dumps(results.aggregated_metrics),
+                json.dumps(results.metadata),
+                run_id,
+            )
 
-                # Insert individual metrics
-                for metric_name, stats in results.aggregated_metrics.items():
-                    await conn.execute(
-                        f"""
+            # Insert individual metrics
+            for metric_name, stats in results.aggregated_metrics.items():
+                await conn.execute(
+                    f"""
                         INSERT INTO {self.table_prefix}metrics
                         (run_id, metric_name, mean, std, min, max, median)
                         VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -529,18 +525,18 @@ class EvaluationRepository:
                             max = EXCLUDED.max,
                             median = EXCLUDED.median
                         """,
-                        run_id,
-                        metric_name,
-                        stats["mean"],
-                        stats["std"],
-                        stats["min"],
-                        stats["max"],
-                        stats["median"],
-                    )
+                    run_id,
+                    metric_name,
+                    stats["mean"],
+                    stats["std"],
+                    stats["min"],
+                    stats["max"],
+                    stats["median"],
+                )
 
         logger.info(f"Saved results for run {run_id}")
 
-    async def get_run(self, run_id: str) -> Optional[dict[str, Any]]:
+    async def get_run(self, run_id: str) -> dict[str, Any] | None:
         """Get a run by ID."""
         pool = await self._get_pool()
 
@@ -565,8 +561,8 @@ class EvaluationRepository:
 
     async def list_runs(
         self,
-        dataset_id: Optional[str] = None,
-        status: Optional[str] = None,
+        dataset_id: str | None = None,
+        status: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
@@ -597,7 +593,7 @@ class EvaluationRepository:
     async def get_metric_trend(
         self,
         metric_name: str,
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
         limit: int = 30,
     ) -> list[dict[str, Any]]:
         """Get metric values over time."""

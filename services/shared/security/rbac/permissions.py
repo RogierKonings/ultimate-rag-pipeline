@@ -333,12 +333,8 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
         Permission.INTEGRATIONS_ADMIN,
     },
     # Super admin - full system access
-    "admin": {
-        perm for perm in Permission  # All permissions
-    },
-    "super_admin": {
-        perm for perm in Permission  # All permissions
-    },
+    "admin": set(Permission),
+    "super_admin": set(Permission),
     # Service account - internal service-to-service
     "service": {
         Permission.DOCUMENTS_READ,
@@ -388,7 +384,7 @@ def get_all_permissions_for_roles(roles: list[str]) -> set[Permission]:
 def has_permission(
     user_permissions: list[str] | set[str],
     required: Permission | str,
-    user_roles: Optional[list[str]] = None,
+    user_roles: list[str] | None = None,
 ) -> bool:
     """
     Check if a user has a required permission.

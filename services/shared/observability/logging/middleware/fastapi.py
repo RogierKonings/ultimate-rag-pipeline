@@ -6,18 +6,17 @@ Provides automatic request logging with timing and error tracking.
 
 import time
 import uuid
-from typing import Callable, Optional
+from collections.abc import Callable
 
+from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from opentelemetry import trace
-
-from ..logger import get_structured_logger
-from ..context import set_request_context, clear_request_context
 from ..config import LoggingConfig
+from ..context import clear_request_context, set_request_context
+from ..logger import get_structured_logger
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -35,9 +34,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        config: Optional[LoggingConfig] = None,
+        config: LoggingConfig | None = None,
         service_name: str = "unknown",
-        excluded_paths: Optional[list[str]] = None,
+        excluded_paths: list[str] | None = None,
         log_request_headers: bool = False,
         log_response_headers: bool = False,
     ):
@@ -194,10 +193,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     def _should_exclude(self, path: str) -> bool:
         """Check if path should be excluded from logging."""
-        for excluded in self.excluded_paths:
-            if path.startswith(excluded):
-                return True
-        return False
+        return any(path.startswith(excluded) for excluded in self.excluded_paths)
 
     def _get_request_id(self, request: Request) -> str:
         """Get or generate request ID."""
@@ -209,7 +205,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Generate new UUID
         return str(uuid.uuid4())
 
-    def _get_trace_context(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_trace_context(self) -> tuple[str | None, str | None]:
         """Get current trace context from OpenTelemetry."""
         try:
             span = trace.get_current_span()
@@ -226,7 +222,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def create_request_logging_middleware(
-    config: Optional[LoggingConfig] = None,
+    config: LoggingConfig | None = None,
     service_name: str = "unknown",
 ) -> type:
     """

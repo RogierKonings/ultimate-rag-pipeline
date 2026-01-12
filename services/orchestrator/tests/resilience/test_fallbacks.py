@@ -1,13 +1,12 @@
 """Tests for fallback handlers."""
 
 import pytest
-
+from resilience.config import FallbackConfig
 from resilience.fallbacks import (
     FallbackError,
     FallbackHandlers,
     create_fallback_response,
 )
-from resilience.config import FallbackConfig
 
 
 class TestFallbackHandlersConfiguration:

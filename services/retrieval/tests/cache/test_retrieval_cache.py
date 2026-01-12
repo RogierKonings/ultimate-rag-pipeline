@@ -1,11 +1,10 @@
 """Tests for RetrievalCache."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-
 from cache.retrieval_cache import (
     CacheConfig,
     CacheStats,
@@ -143,13 +142,13 @@ class TestRetrievalCacheKeyGeneration:
         tenant_id = uuid4()
 
         key1 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, mode="hybrid"
+            query="test", tenant_id=tenant_id, mode="hybrid",
         )
         key2 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, mode="semantic"
+            query="test", tenant_id=tenant_id, mode="semantic",
         )
         key3 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, mode="keyword"
+            query="test", tenant_id=tenant_id, mode="keyword",
         )
 
         assert key1 != key2 != key3
@@ -170,10 +169,10 @@ class TestRetrievalCacheKeyGeneration:
         tenant_id = uuid4()
 
         key1 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, filters={"type": "doc"}
+            query="test", tenant_id=tenant_id, filters={"type": "doc"},
         )
         key2 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, filters={"type": "code"}
+            query="test", tenant_id=tenant_id, filters={"type": "code"},
         )
         key3 = cache._generate_cache_key(query="test", tenant_id=tenant_id, filters=None)
 
@@ -217,10 +216,10 @@ class TestRetrievalCacheKeyGeneration:
         user_id2 = uuid4()
 
         key1 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, user_id=user_id1
+            query="test", tenant_id=tenant_id, user_id=user_id1,
         )
         key2 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, user_id=user_id2
+            query="test", tenant_id=tenant_id, user_id=user_id2,
         )
         key3 = cache._generate_cache_key(query="test", tenant_id=tenant_id, user_id=None)
 
@@ -245,13 +244,13 @@ class TestRetrievalCacheKeyGeneration:
         tenant_id = uuid4()
 
         key1 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, min_score=0.5
+            query="test", tenant_id=tenant_id, min_score=0.5,
         )
         key2 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, min_score=0.7
+            query="test", tenant_id=tenant_id, min_score=0.7,
         )
         key3 = cache._generate_cache_key(
-            query="test", tenant_id=tenant_id, min_score=None
+            query="test", tenant_id=tenant_id, min_score=None,
         )
 
         assert key1 != key2

@@ -263,11 +263,11 @@ class TestArchitectureDeviations:
             rename_messages = []
             for col, details in column_renames.items():
                 rename_messages.append(
-                    f"  {col}: architecture='{details['architecture']}' -> orm='{details['orm']}'"
+                    f"  {col}: architecture='{details['architecture']}' -> orm='{details['orm']}'",
                 )
 
             warnings.warn(
-                f"ARCHITECTURE DEVIATION: Column name differences\n"
+                "ARCHITECTURE DEVIATION: Column name differences\n"
                 + "\n".join(rename_messages),
                 UserWarning,
             )

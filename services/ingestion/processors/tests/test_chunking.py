@@ -9,22 +9,21 @@ Tests cover:
 - ChunkingEngine orchestration
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from ..chunking import (
     Chunk,
-    ChunkingResult,
     ChunkingConfig,
-    SemanticChunkerConfig,
+    ChunkingEngine,
+    ChunkingResult,
+    HierarchicalChunker,
     HierarchicalChunkerConfig,
-    ChunkingStrategyType,
     RecursiveCharacterSplitter,
     SemanticChunker,
-    HierarchicalChunker,
-    ChunkingEngine,
+    SemanticChunkerConfig,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -89,7 +88,7 @@ class TestChunkModel:
             chunk_index=0,
             start_char=0,
             end_char=12,
-            token_count=2
+            token_count=2,
         )
 
         assert chunk.chunk_id is not None
@@ -113,7 +112,7 @@ class TestChunkModel:
             end_char=4,
             token_count=1,
             parent_chunk_id=parent_id,
-            child_chunk_ids=child_ids
+            child_chunk_ids=child_ids,
         )
 
         assert chunk.parent_chunk_id == parent_id
@@ -132,7 +131,7 @@ class TestChunkModel:
             token_count=1,
             metadata=metadata,
             source_page=1,
-            source_section="Introduction"
+            source_section="Introduction",
         )
 
         assert chunk.metadata == metadata
@@ -152,7 +151,7 @@ class TestChunkingResultModel:
                 chunk_index=0,
                 start_char=0,
                 end_char=7,
-                token_count=1
+                token_count=1,
             ),
             Chunk(
                 document_id=document_id,
@@ -160,8 +159,8 @@ class TestChunkingResultModel:
                 chunk_index=1,
                 start_char=8,
                 end_char=15,
-                token_count=1
-            )
+                token_count=1,
+            ),
         ]
 
         result = ChunkingResult(
@@ -169,7 +168,7 @@ class TestChunkingResultModel:
             chunks=chunks,
             total_chunks=2,
             strategy_used="test_strategy",
-            config={"target_tokens": 300}
+            config={"target_tokens": 300},
         )
 
         assert result.document_id == document_id
@@ -386,7 +385,7 @@ class TestHierarchicalChunker:
         """Test that hierarchical chunker creates parent-child relationships."""
         config = HierarchicalChunkerConfig(
             parent_chunk_size=500,
-            child_chunk_size=100
+            child_chunk_size=100,
         )
         chunker = HierarchicalChunker(config)
 
@@ -402,7 +401,7 @@ class TestHierarchicalChunker:
         """Test that parent-child links are valid."""
         config = HierarchicalChunkerConfig(
             parent_chunk_size=500,
-            child_chunk_size=100
+            child_chunk_size=100,
         )
         chunker = HierarchicalChunker(config)
 
@@ -422,7 +421,7 @@ class TestHierarchicalChunker:
         """Test that parent chunks are larger than children."""
         config = HierarchicalChunkerConfig(
             parent_chunk_size=500,
-            child_chunk_size=100
+            child_chunk_size=100,
         )
         chunker = HierarchicalChunker(config)
 
@@ -469,7 +468,7 @@ class TestChunkingEngine:
         result = chunking_engine.chunk(
             sample_text,
             document_id,
-            strategy="recursive_character"
+            strategy="recursive_character",
         )
 
         assert result.strategy_used == "recursive_character"
@@ -479,7 +478,7 @@ class TestChunkingEngine:
         result = chunking_engine.chunk(
             long_text,
             document_id,
-            strategy="hierarchical"
+            strategy="hierarchical",
         )
 
         assert result.strategy_used == "hierarchical"
@@ -497,7 +496,7 @@ class TestChunkingEngine:
             chunking_engine.chunk(
                 sample_text,
                 document_id,
-                strategy="unknown_strategy"
+                strategy="unknown_strategy",
             )
 
         assert "Unknown strategy" in str(exc_info.value)
@@ -510,7 +509,7 @@ class TestChunkingEngine:
             long_text,
             document_id,
             strategy="recursive_character",
-            config=custom_config
+            config=custom_config,
         )
 
         # With smaller chunks, we should get more chunks
@@ -524,7 +523,7 @@ class TestChunkingEngine:
         result = chunking_engine.chunk(
             sample_text,
             document_id,
-            metadata=metadata
+            metadata=metadata,
         )
 
         for chunk in result.chunks:
@@ -555,7 +554,7 @@ class TestChunkingEngine:
         result = chunking_engine.chunk(
             sample_text,
             document_id,
-            strategy="custom_test"
+            strategy="custom_test",
         )
 
         assert result.strategy_used == "custom_test"
@@ -577,7 +576,7 @@ class TestChunkingIntegration:
             result = engine.chunk(
                 long_text,
                 document_id,
-                strategy=strategy_name
+                strategy=strategy_name,
             )
 
             for chunk in result.chunks:

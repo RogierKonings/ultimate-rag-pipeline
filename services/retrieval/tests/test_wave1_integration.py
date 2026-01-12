@@ -3,11 +3,11 @@
 Tests that ACL and Query Preprocessor modules work together correctly.
 """
 
-import pytest
 from uuid import uuid4
 
-from acl.models import UserContext
+import pytest
 from acl.filter import ACLFilter
+from acl.models import UserContext
 from query.models import ProcessedQuery, QueryPreprocessorConfig
 from query.preprocessor import QueryPreprocessor
 
@@ -43,17 +43,12 @@ class TestWave1Integration:
     def test_imports_work(self):
         """Test that all imports work correctly without circular dependencies."""
         # ACL imports
-        from acl.models import UserContext, DocumentACL, Visibility, ACLFilterConfig
-        from acl.filter import ACLFilter, AnonymousAccessFilter
-        from acl.context import UserContextExtractor
-        from acl.middleware import ACLMiddleware, create_acl_dependencies
+        from acl.filter import ACLFilter
+        from acl.models import UserContext
 
         # Query imports
-        from query.models import ProcessedQuery, QueryType, QueryPreprocessorConfig
+        from query.models import ProcessedQuery
         from query.preprocessor import QueryPreprocessor
-        from query.expander import QueryExpander, SynonymDatabase
-        from query.hyde import HyDEGenerator, MultiQueryGenerator
-        from query.cache import QueryCache
 
         # All imports should succeed
         assert UserContext is not None
@@ -250,7 +245,7 @@ class TestWave1UsagePatterns:
 
         # 2. Preprocess query (mocked embedding)
         preprocessor = QueryPreprocessor(
-            QueryPreprocessorConfig(enable_expansion=True, cache_enabled=False)
+            QueryPreprocessorConfig(enable_expansion=True, cache_enabled=False),
         )
         normalized = preprocessor._normalize("What is machine learning?")
         query_type = preprocessor._classify_query(normalized)

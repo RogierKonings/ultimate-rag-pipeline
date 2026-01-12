@@ -8,18 +8,16 @@ This module provides FastAPI endpoints for JWT authentication:
 - POST /auth/introspect - Token introspection
 """
 
-from datetime import datetime, timezone
-from typing import Annotated, Callable, Optional
+from collections.abc import Callable
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from ..jwt import (
     JWTHandler,
     JWTSettings,
     TokenClaims,
-    TokenPair,
     TokenType,
 )
 from ..jwt.handler import (
@@ -60,16 +58,16 @@ class ErrorResponse(BaseModel):
 
 
 # Type for user lookup function
-UserLookupFunc = Callable[[str, str], Optional[tuple[UUID, UUID, list[str], list[str]]]]
+UserLookupFunc = Callable[[str, str], tuple[UUID, UUID, list[str], list[str]] | None]
 
 
 def create_auth_router(
-    settings: Optional[JWTSettings] = None,
-    handler: Optional[JWTHandler] = None,
-    blocklist: Optional[TokenBlocklist] = None,
-    user_lookup: Optional[UserLookupFunc] = None,
+    settings: JWTSettings | None = None,
+    handler: JWTHandler | None = None,
+    blocklist: TokenBlocklist | None = None,
+    user_lookup: UserLookupFunc | None = None,
     prefix: str = "/auth",
-    tags: Optional[list[str]] = None,
+    tags: list[str] | None = None,
 ) -> APIRouter:
     """
     Create authentication router.
@@ -130,19 +128,18 @@ def create_auth_router(
         """
         if token_request.grant_type == "password":
             return await _handle_password_grant(
-                token_request, jwt_handler, user_lookup
+                token_request, jwt_handler, user_lookup,
             )
-        elif token_request.grant_type == "refresh_token":
+        if token_request.grant_type == "refresh_token":
             return await _handle_refresh_grant(token_request, jwt_handler)
-        elif token_request.grant_type == "client_credentials":
+        if token_request.grant_type == "client_credentials":
             return await _handle_client_credentials_grant(
-                token_request, jwt_handler, user_lookup
+                token_request, jwt_handler, user_lookup,
             )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"error": "unsupported_grant_type", "error_description": f"Grant type '{token_request.grant_type}' not supported"},
-            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "unsupported_grant_type", "error_description": f"Grant type '{token_request.grant_type}' not supported"},
+        )
 
     @router.post(
         "/refresh",
@@ -181,12 +178,12 @@ def create_auth_router(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "invalid_grant", "error_description": "Refresh token has expired"},
-            )
+            ) from None
         except (TokenInvalidError, TokenRevokedError) as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "invalid_grant", "error_description": str(e)},
-            )
+            ) from e
 
     @router.post(
         "/logout",
@@ -197,7 +194,7 @@ def create_auth_router(
     async def logout(
         request: Request,
         response: Response,
-        revocation: Optional[TokenRevocationRequest] = None,
+        revocation: TokenRevocationRequest | None = None,
     ) -> LogoutResponse:
         """Revoke tokens and logout."""
         # Get token from request body, header, or cookie
@@ -235,7 +232,7 @@ def create_auth_router(
     )
     async def introspect_token(
         token: str,
-        token_type_hint: Optional[str] = None,
+        token_type_hint: str | None = None,
     ) -> TokenIntrospectionResponse:
         """
         Introspect a token (RFC 7662).
@@ -274,7 +271,7 @@ def create_auth_router(
 async def _handle_password_grant(
     request: TokenRequest,
     handler: JWTHandler,
-    user_lookup: Optional[UserLookupFunc],
+    user_lookup: UserLookupFunc | None,
 ) -> AuthResponse:
     """Handle password grant type."""
     if not request.username or not request.password:
@@ -342,18 +339,18 @@ async def _handle_refresh_grant(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "invalid_grant", "error_description": "Refresh token has expired"},
-        )
+        ) from None
     except (TokenInvalidError, TokenRevokedError) as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "invalid_grant", "error_description": str(e)},
-        )
+        ) from e
 
 
 async def _handle_client_credentials_grant(
     request: TokenRequest,
     handler: JWTHandler,
-    user_lookup: Optional[UserLookupFunc],
+    user_lookup: UserLookupFunc | None,
 ) -> AuthResponse:
     """Handle client_credentials grant type for service-to-service auth."""
     if not request.client_id or not request.client_secret:

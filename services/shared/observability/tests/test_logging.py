@@ -4,8 +4,7 @@ Tests for structured logging module.
 
 import json
 import logging
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 
 class TestLoggingConfig:
@@ -267,9 +266,9 @@ class TestContextManagement:
     def test_set_request_context(self):
         """Test setting request context."""
         from shared.observability.logging.context import (
-            set_request_context,
-            get_request_context,
             clear_request_context,
+            get_request_context,
+            set_request_context,
         )
 
         set_request_context(
@@ -308,8 +307,8 @@ class TestContextManagement:
         """Test ContextInjectorFilter."""
         from shared.observability.logging.context import (
             ContextInjectorFilter,
-            set_request_context,
             clear_request_context,
+            set_request_context,
         )
 
         filter_ = ContextInjectorFilter()
@@ -341,8 +340,8 @@ class TestLoggerAdapter:
         """Test that adapter includes request context."""
         from shared.observability.logging.context import (
             LoggerAdapter,
-            set_request_context,
             clear_request_context,
+            set_request_context,
         )
 
         logger = logging.getLogger("test.adapter")
@@ -405,11 +404,10 @@ class TestSetupLogging:
 
     def test_setup_logging_initializes(self):
         """Test that setup_logging initializes correctly."""
-        from shared.observability.logging.logger import setup_logging
-        from shared.observability.logging.config import LoggingConfig
-
         # Reset global state
         import shared.observability.logging.logger as logger_module
+        from shared.observability.logging.config import LoggingConfig
+        from shared.observability.logging.logger import setup_logging
         logger_module._logging_initialized = False
         logger_module._logging_config = None
 
@@ -426,11 +424,10 @@ class TestSetupLogging:
 
     def test_get_logger_returns_adapter(self):
         """Test get_logger returns LoggerAdapter."""
-        from shared.observability.logging.logger import get_logger
-        from shared.observability.logging.context import LoggerAdapter
-
         # Reset global state
         import shared.observability.logging.logger as logger_module
+        from shared.observability.logging.context import LoggerAdapter
+        from shared.observability.logging.logger import get_logger
         logger_module._logging_initialized = False
         logger_module._logging_config = None
 

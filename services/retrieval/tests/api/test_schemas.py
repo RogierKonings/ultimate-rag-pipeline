@@ -1,11 +1,9 @@
 """Tests for API schemas."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
-
 from api.schemas.common import (
     ComponentHealth,
     ErrorResponse,
@@ -22,6 +20,7 @@ from api.schemas.retrieve import (
     SearchMetrics,
     SearchMode,
 )
+from pydantic import ValidationError
 
 
 class TestRetrieveRequest:
@@ -162,7 +161,7 @@ class TestRetrievedDocument:
         """Test document with all fields."""
         chunk_id = uuid4()
         doc_id = uuid4()
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
 
         doc = RetrievedDocument(
             chunk_id=chunk_id,
@@ -261,14 +260,14 @@ class TestRetrieveResponse:
                     document_id=doc_id,
                     content="test content",
                     score=0.85,
-                )
+                ),
             ],
             total_results=1,
             query="test query",
             mode=SearchMode.HYBRID,
             metrics=SearchMetrics(total_ms=100.0),
             query_id=query_id,
-            processed_at=datetime.utcnow(),
+            processed_at=datetime.now(tz=UTC),
         )
 
         assert len(response.results) == 1
@@ -286,7 +285,7 @@ class TestHealthResponse:
             status="healthy",
             version="1.0.0",
             components={"qdrant": True, "opensearch": True},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
         )
 
         assert response.status == "healthy"
@@ -298,7 +297,7 @@ class TestHealthResponse:
             status="degraded",
             version="1.0.0",
             components={"qdrant": True, "opensearch": False},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
         )
 
         assert response.status == "degraded"
@@ -309,7 +308,7 @@ class TestHealthResponse:
             status="unhealthy",
             version="1.0.0",
             components={"qdrant": False, "opensearch": False},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(tz=UTC),
         )
 
         assert response.status == "unhealthy"

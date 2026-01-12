@@ -1,7 +1,6 @@
 """Parser registry for automatic parser selection by MIME type."""
 
 import logging
-from typing import Optional
 
 from .base import BaseParser, ParsedDocument
 
@@ -37,7 +36,7 @@ class ParserRegistry:
         if mime_type in self._parsers:
             del self._parsers[mime_type]
 
-    def get_parser(self, mime_type: str) -> Optional[BaseParser]:
+    def get_parser(self, mime_type: str) -> BaseParser | None:
         """Get parser for a MIME type.
 
         Args:
@@ -68,7 +67,7 @@ class ParserRegistry:
         return list(self._parsers.keys())
 
     async def parse(
-        self, content: bytes, mime_type: str, metadata: Optional[dict] = None
+        self, content: bytes, mime_type: str, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse document content using the appropriate parser.
 

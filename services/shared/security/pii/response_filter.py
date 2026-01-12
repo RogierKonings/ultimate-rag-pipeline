@@ -6,11 +6,11 @@ from search results and LLM responses before returning to users.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .config import PIIHandlingMode, PIISettings
 from .detector import PIIDetector
-from .models import PIIEntity, PIIResult
+from .models import PIIResult
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,8 @@ class PIIResponseFilter:
 
     def __init__(
         self,
-        settings: Optional[PIISettings] = None,
-        detector: Optional[PIIDetector] = None,
+        settings: PIISettings | None = None,
+        detector: PIIDetector | None = None,
     ):
         """
         Initialize response filter.
@@ -61,7 +61,7 @@ class PIIResponseFilter:
     async def filter_text(
         self,
         text: str,
-        handling_mode: Optional[PIIHandlingMode] = None,
+        handling_mode: PIIHandlingMode | None = None,
     ) -> str:
         """
         Filter PII from text.
@@ -83,19 +83,18 @@ class PIIResponseFilter:
 
         if mode == PIIHandlingMode.REDACT:
             return await self._detector.redact(text)
-        elif mode == PIIHandlingMode.MASK:
+        if mode == PIIHandlingMode.MASK:
             return await self._detector.mask(text)
-        elif mode == PIIHandlingMode.FLAG:
+        if mode == PIIHandlingMode.FLAG:
             # For FLAG mode, we don't modify the text
             return text
-        else:
-            return await self._detector.redact(text)
+        return await self._detector.redact(text)
 
     async def filter_search_results(
         self,
         results: list[dict[str, Any]],
         content_field: str = "content",
-        handling_mode: Optional[PIIHandlingMode] = None,
+        handling_mode: PIIHandlingMode | None = None,
         include_pii_metadata: bool = False,
     ) -> list[dict[str, Any]]:
         """
@@ -130,7 +129,7 @@ class PIIResponseFilter:
 
                 # Filter content
                 filtered[content_field] = await self.filter_text(
-                    content, handling_mode
+                    content, handling_mode,
                 )
 
             filtered_results.append(filtered)
@@ -141,7 +140,7 @@ class PIIResponseFilter:
         self,
         chunks: list[dict[str, Any]],
         text_field: str = "text",
-        handling_mode: Optional[PIIHandlingMode] = None,
+        handling_mode: PIIHandlingMode | None = None,
     ) -> list[dict[str, Any]]:
         """
         Filter PII from document chunks.
@@ -163,7 +162,7 @@ class PIIResponseFilter:
     async def filter_llm_response(
         self,
         response: str,
-        handling_mode: Optional[PIIHandlingMode] = None,
+        handling_mode: PIIHandlingMode | None = None,
     ) -> tuple[str, PIIResult]:
         """
         Filter PII from LLM response.
@@ -202,7 +201,7 @@ class PIIResponseFilter:
         self,
         text: str,
         block_on_high_sensitivity: bool = True,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Check if response should be blocked due to PII.
 
@@ -255,8 +254,8 @@ class PIIQueryFilter:
 
     def __init__(
         self,
-        settings: Optional[PIISettings] = None,
-        detector: Optional[PIIDetector] = None,
+        settings: PIISettings | None = None,
+        detector: PIIDetector | None = None,
     ):
         """
         Initialize query filter.
@@ -291,10 +290,9 @@ class PIIQueryFilter:
 
         if handling_mode == PIIHandlingMode.REDACT:
             return await self._detector.redact(query)
-        elif handling_mode == PIIHandlingMode.MASK:
+        if handling_mode == PIIHandlingMode.MASK:
             return await self._detector.mask(query)
-        else:
-            return await self._detector.redact(query)
+        return await self._detector.redact(query)
 
     async def extract_query_pii(self, query: str) -> PIIResult:
         """

@@ -1,7 +1,7 @@
 """Unit tests for the web scraper connector."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -9,7 +9,6 @@ from services.ingestion.connectors.web import (
     WebConnector,
     WebConnectorConfig,
 )
-
 
 # ============================================================================
 # Configuration Tests
@@ -80,11 +79,11 @@ class TestWebConnectorConnection:
         """Test successful connection."""
         connector = WebConnector(config)
         await connector.connect()
-        
+
         assert connector._connected is True
         assert connector._session is not None
         assert connector._rate_semaphore is not None
-        
+
         await connector.disconnect()
 
     @pytest.mark.asyncio
@@ -93,7 +92,7 @@ class TestWebConnectorConnection:
         connector = WebConnector(config)
         await connector.connect()
         await connector.disconnect()
-        
+
         assert connector._connected is False
         assert connector._session is None
 
@@ -102,7 +101,7 @@ class TestWebConnectorConnection:
         """Test async context manager."""
         async with WebConnector(config) as connector:
             assert connector._connected is True
-        
+
         assert connector._connected is False
 
 
@@ -124,27 +123,27 @@ class TestURLHandling:
     def test_normalize_url(self, config):
         """Test URL normalization."""
         connector = WebConnector(config)
-        
+
         # Remove trailing slash
         assert connector._normalize_url("https://example.com/") == "https://example.com"
-        
+
         # Preserve path
         assert connector._normalize_url("https://example.com/path/") == "https://example.com/path"
-        
+
         # Preserve query string
         assert connector._normalize_url("https://example.com/path?q=1") == "https://example.com/path?q=1"
 
     def test_get_domain(self, config):
         """Test domain extraction."""
         connector = WebConnector(config)
-        
+
         assert connector._get_domain("https://example.com/path") == "example.com"
         assert connector._get_domain("https://sub.example.com/") == "sub.example.com"
 
     def test_is_allowed_domain(self, config):
         """Test domain allowlist checking."""
         connector = WebConnector(config)
-        
+
         assert connector._is_allowed_domain("https://example.com/page") is True
         assert connector._is_allowed_domain("https://docs.example.com/") is True
         assert connector._is_allowed_domain("https://other.com/") is False
@@ -156,7 +155,7 @@ class TestURLHandling:
             allowed_domains=None,
         )
         connector = WebConnector(config)
-        
+
         assert connector._is_allowed_domain("https://any-domain.com/") is True
 
 
@@ -186,7 +185,7 @@ class TestLinkExtraction:
         </html>
         """
         links = connector._extract_links(html, "https://example.com/")
-        
+
         assert len(links) == 2
         assert "https://example.com/page1" in links
         assert "https://example.com/page2" in links
@@ -204,7 +203,7 @@ class TestLinkExtraction:
         </html>
         """
         links = connector._extract_links(html, "https://example.com/docs/")
-        
+
         assert "https://example.com/page1" in links
         assert "https://example.com/docs/page2" in links
         assert "https://example.com/other" in links
@@ -223,7 +222,7 @@ class TestLinkExtraction:
         </html>
         """
         links = connector._extract_links(html, "https://example.com/")
-        
+
         assert len(links) == 0
 
 
@@ -326,19 +325,19 @@ class TestCrawling:
                 {"Content-Type": "text/html"},
             ),
         }
-        
+
         connector = WebConnector(config)
-        
+
         # Mock _fetch_page
         async def mock_fetch(url):
             normalized = connector._normalize_url(url)
             return pages.get(normalized)
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         docs = [doc async for doc in connector.stream_documents()]
-        
+
         assert len(docs) == 2
         assert any(b"Page 1 Content" in doc.content for doc in docs)
 
@@ -346,21 +345,21 @@ class TestCrawling:
     async def test_max_pages_limit(self, config):
         """Test that max_pages limit is respected."""
         connector = WebConnector(config)
-        
+
         # Mock to return same page always with many links
-        html = b'<html><body>' + b''.join(
+        html = b"<html><body>" + b"".join(
             f'<a href="/page{i}">Link {i}</a>'.encode()
             for i in range(100)
-        ) + b'</body></html>'
-        
+        ) + b"</body></html>"
+
         async def mock_fetch(url):
             return (html, {"Content-Type": "text/html"})
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         docs = [doc async for doc in connector.stream_documents()]
-        
+
         # Should stop at max_pages
         assert len(docs) <= config.max_pages
 
@@ -375,28 +374,28 @@ class TestCrawling:
             rate_limit=100.0,
             respect_robots_txt=False,
         )
-        
+
         connector = WebConnector(config)
-        
-        html = b'''<html><body>
+
+        html = b"""<html><body>
             <a href="https://example.com/page1">Internal</a>
             <a href="https://external.com/page">External</a>
-        </body></html>'''
-        
+        </body></html>"""
+
         pages = {
             "https://example.com": (html, {"Content-Type": "text/html"}),
             "https://example.com/page1": (b"<html>Page 1</html>", {"Content-Type": "text/html"}),
         }
-        
+
         async def mock_fetch(url):
             normalized = connector._normalize_url(url)
             return pages.get(normalized)
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         docs = [doc async for doc in connector.stream_documents()]
-        
+
         # Only example.com pages should be crawled
         for doc in docs:
             assert "example.com" in doc.metadata.source_id
@@ -465,17 +464,17 @@ class TestFetchDocument:
     async def test_fetch_document_success(self, config):
         """Test fetching a single document by URL."""
         html_content = b"<html><body>Test Content</body></html>"
-        
+
         connector = WebConnector(config)
-        
+
         async def mock_fetch(url):
             return (html_content, {"Content-Type": "text/html; charset=utf-8"})
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         doc = await connector.fetch_document("https://example.com/page")
-        
+
         assert doc.content == html_content
         assert doc.metadata.source_id == "https://example.com/page"
         assert doc.metadata.source_type == "web"
@@ -485,13 +484,13 @@ class TestFetchDocument:
     async def test_fetch_document_not_found(self, config):
         """Test fetching nonexistent document."""
         connector = WebConnector(config)
-        
+
         async def mock_fetch(url):
             return None
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         with pytest.raises(FileNotFoundError, match="Failed to fetch"):
             await connector.fetch_document("https://example.com/notfound")
 
@@ -500,7 +499,7 @@ class TestFetchDocument:
         """Test fetching from disallowed domain."""
         connector = WebConnector(config)
         connector._connected = True
-        
+
         with pytest.raises(FileNotFoundError, match="Domain not allowed"):
             await connector.fetch_document("https://other-domain.com/page")
 
@@ -508,7 +507,7 @@ class TestFetchDocument:
     async def test_fetch_document_not_connected(self, config):
         """Test fetching without connection."""
         connector = WebConnector(config)
-        
+
         with pytest.raises(ConnectionError, match="not connected"):
             await connector.fetch_document("https://example.com/page")
 
@@ -532,22 +531,22 @@ class TestMetadata:
     async def test_metadata_extraction(self, config):
         """Test metadata extraction from crawled pages."""
         connector = WebConnector(config)
-        
+
         html = b"<html><body>Content</body></html>"
         headers = {
             "Content-Type": "text/html; charset=utf-8",
             "Last-Modified": "Mon, 01 Jan 2024 00:00:00 GMT",
             "ETag": '"abc123"',
         }
-        
+
         async def mock_fetch(url):
             return (html, headers)
-        
+
         connector._fetch_page = mock_fetch
         connector._connected = True
-        
+
         doc = await connector.fetch_document("https://example.com/docs/page.html")
-        
+
         assert doc.metadata.source_type == "web"
         assert doc.metadata.filename == "page.html"
         assert doc.metadata.mime_type == "text/html"

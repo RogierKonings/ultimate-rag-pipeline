@@ -2,8 +2,8 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
-from uuid import UUID, uuid4
+from typing import Any
+from uuid import UUID
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -19,19 +19,19 @@ class SearchResultItem(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     # Document info
-    title: Optional[str] = None
-    source: Optional[str] = None
+    title: str | None = None
+    source: str | None = None
 
     # Position info
     chunk_index: int = 0
     total_chunks: int = 1
 
     # Timestamps
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     # Highlighting (for keyword search)
-    highlights: Optional[dict[str, list[str]]] = None
+    highlights: dict[str, list[str]] | None = None
 
 
 class SemanticSearchRequest(BaseModel):
@@ -40,7 +40,7 @@ class SemanticSearchRequest(BaseModel):
     query_embedding: list[float]
     top_k: int = Field(default=10, ge=1, le=100)
     score_threshold: float = Field(default=0.0, ge=0.0, le=1.0)
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     include_metadata: bool = True
     include_vectors: bool = False
 
@@ -51,7 +51,7 @@ class SemanticSearchResponse(BaseModel):
     results: list[SearchResultItem]
     total_found: int
     search_time_ms: float
-    query_id: Optional[UUID] = None
+    query_id: UUID | None = None
 
 
 class KeywordSearchRequest(BaseModel):
@@ -59,10 +59,10 @@ class KeywordSearchRequest(BaseModel):
 
     query: str
     top_k: int = Field(default=10, ge=1, le=100)
-    filters: Optional[dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     fields: list[str] = Field(default_factory=lambda: ["content", "title"])
     field_boosts: dict[str, float] = Field(
-        default_factory=lambda: {"title": 2.0, "content": 1.0}
+        default_factory=lambda: {"title": 2.0, "content": 1.0},
     )
     highlight: bool = True
     min_score: float = 0.0
@@ -74,14 +74,14 @@ class KeywordSearchResponse(BaseModel):
     results: list[SearchResultItem]
     total_found: int
     search_time_ms: float
-    query_id: Optional[UUID] = None
+    query_id: UUID | None = None
 
 
 class QdrantConfig(BaseModel):
     """Qdrant connection configuration."""
 
     url: str = "http://localhost:6333"
-    api_key: Optional[str] = None
+    api_key: str | None = None
     collection_name: str = "documents"
     timeout: float = 30.0
 
@@ -98,8 +98,8 @@ class OpenSearchConfig(BaseModel):
     """OpenSearch connection configuration."""
 
     url: str = "http://localhost:9200"
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
     index_name: str = "documents"
     timeout: float = 30.0
 
@@ -188,7 +188,7 @@ class ScoreNormalizer:
 
     @staticmethod
     def normalize_results(
-        results: list[SearchResultItem], method: str = "min_max"
+        results: list[SearchResultItem], method: str = "min_max",
     ) -> list[SearchResultItem]:
         """
         Normalize scores in a list of results.
@@ -207,7 +207,7 @@ class ScoreNormalizer:
         else:
             raise ValueError(f"Unknown normalization method: {method}")
 
-        for result, norm_score in zip(results, normalized):
+        for result, norm_score in zip(results, normalized, strict=True):
             result.score = norm_score
 
         return results
@@ -251,7 +251,7 @@ class AnalyzerConfig:
                             "min_gram": 2,
                             "max_gram": 20,
                             "token_chars": ["letter", "digit"],
-                        }
+                        },
                     },
                     "filter": {
                         "technical_synonyms": {
@@ -264,9 +264,9 @@ class AnalyzerConfig:
                                 "ml, machine learning",
                                 "ai, artificial intelligence",
                             ],
-                        }
+                        },
                     },
-                }
+                },
             },
             "mappings": {
                 "properties": {
@@ -290,6 +290,6 @@ class AnalyzerConfig:
                     "updated_at": {"type": "date"},
                     "chunk_index": {"type": "integer"},
                     "total_chunks": {"type": "integer"},
-                }
+                },
             },
         }

@@ -1,41 +1,40 @@
 # Processors module for document processing
 
 from .chunking import (
-    # Data models
-    Chunk,
-    ChunkingResult,
-    # Configuration
-    ChunkingConfig,
-    SemanticChunkerConfig,
-    HierarchicalChunkerConfig,
-    ChunkingStrategyType,
     # Strategies
     BaseChunkingStrategy,
-    RecursiveCharacterSplitter,
-    SemanticChunker,
-    HierarchicalChunker,
+    # Data models
+    Chunk,
+    # Configuration
+    ChunkingConfig,
     # Engine
     ChunkingEngine,
+    ChunkingResult,
+    ChunkingStrategyType,
+    HierarchicalChunker,
+    HierarchicalChunkerConfig,
+    RecursiveCharacterSplitter,
+    SemanticChunker,
+    SemanticChunkerConfig,
 )
-
 from .enrichment import (
-    # Data Models
-    PIIType,
-    PIIEntity,
-    PIIResult,
-    LanguageResult,
     DocumentMetadataEnriched,
-    EnrichmentContext,
     EnrichmentConfig,
-    # Detectors
-    LanguageDetector,
-    PIIDetector,
-    PIIDetectorConfig,
-    PIIAnonymizer,
+    EnrichmentContext,
     # Pipeline
     EnrichmentPipeline,
+    # Detectors
+    LanguageDetector,
+    LanguageResult,
     # Utilities
     MetadataExtractor,
+    PIIAnonymizer,
+    PIIDetector,
+    PIIDetectorConfig,
+    PIIEntity,
+    PIIResult,
+    # Data Models
+    PIIType,
 )
 
 __all__ = [

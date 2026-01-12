@@ -1,10 +1,9 @@
 """Tests for index writer data models."""
 
-import pytest
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
 
-from ..models import IndexedChunk, DocumentRecord, WriteResult, DocumentStatus
+from ..models import DocumentRecord, DocumentStatus, IndexedChunk, WriteResult
 
 
 class TestIndexedChunk:

@@ -1,7 +1,6 @@
 """Classification utilities for query routing."""
 
 import re
-from typing import Optional
 
 
 class KeywordClassifier:
@@ -225,8 +224,8 @@ class ComplexityScorer:
     def score(
         self,
         query: str,
-        history: Optional[list[dict]] = None,
-        weights: Optional[dict] = None,
+        history: list[dict] | None = None,
+        weights: dict | None = None,
     ) -> float:
         """
         Calculate overall complexity score for a query.
@@ -280,14 +279,13 @@ class ComplexityScorer:
         # Normalize: 1 clause = 0, 5+ clauses = 1.0
         if clause_count <= 1:
             return 0.0
-        elif clause_count == 2:
+        if clause_count == 2:
             return 0.3
-        elif clause_count == 3:
+        if clause_count == 3:
             return 0.5
-        elif clause_count == 4:
+        if clause_count == 4:
             return 0.7
-        else:
-            return min(0.7 + (clause_count - 4) * 0.1, 1.0)
+        return min(0.7 + (clause_count - 4) * 0.1, 1.0)
 
     def _score_length(self, query: str) -> float:
         """
@@ -316,16 +314,15 @@ class ComplexityScorer:
 
         if modifier_count == 0:
             return 0.0
-        elif modifier_count == 1:
+        if modifier_count == 1:
             return 0.3
-        elif modifier_count == 2:
+        if modifier_count == 2:
             return 0.5
-        elif modifier_count == 3:
+        if modifier_count == 3:
             return 0.7
-        else:
-            return min(0.7 + (modifier_count - 3) * 0.1, 1.0)
+        return min(0.7 + (modifier_count - 3) * 0.1, 1.0)
 
-    def _score_history(self, history: Optional[list[dict]]) -> float:
+    def _score_history(self, history: list[dict] | None) -> float:
         """
         Score based on conversation history complexity.
 
@@ -341,11 +338,10 @@ class ComplexityScorer:
 
         if history_length == 0:
             return 0.0
-        elif history_length <= 2:
+        if history_length <= 2:
             return 0.2
-        elif history_length <= 4:
+        if history_length <= 4:
             return 0.4
-        elif history_length <= 6:
+        if history_length <= 6:
             return 0.6
-        else:
-            return min(0.6 + (history_length - 6) * 0.05, 1.0)
+        return min(0.6 + (history_length - 6) * 0.05, 1.0)

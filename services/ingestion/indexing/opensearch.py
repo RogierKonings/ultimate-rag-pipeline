@@ -1,8 +1,7 @@
 """OpenSearch writer for keyword index."""
 
 import time
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from opensearchpy import AsyncOpenSearch
@@ -16,8 +15,8 @@ class OpenSearchWriterConfig(BaseModel):
     """Configuration for OpenSearchWriter."""
 
     hosts: list[str] = ["http://localhost:9200"]
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
     index_name: str = "documents"
 
     # Index settings
@@ -38,14 +37,14 @@ class OpenSearchWriter(BaseIndexWriter):
     search with appropriate text mappings.
     """
 
-    def __init__(self, config: Optional[OpenSearchWriterConfig] = None):
+    def __init__(self, config: OpenSearchWriterConfig | None = None):
         """Initialize OpenSearchWriter.
 
         Args:
             config: Configuration for the writer. Uses defaults if not provided.
         """
         self.config = config or OpenSearchWriterConfig()
-        self._client: Optional[AsyncOpenSearch] = None
+        self._client: AsyncOpenSearch | None = None
 
     async def connect(self) -> None:
         """Establish connection to OpenSearch."""
@@ -80,7 +79,7 @@ class OpenSearchWriter(BaseIndexWriter):
                     "analysis": {
                         "analyzer": {
                             "default": {"type": "standard"},
-                        }
+                        },
                     },
                 },
                 "mappings": {
@@ -102,7 +101,7 @@ class OpenSearchWriter(BaseIndexWriter):
                         "source_section": {"type": "keyword"},
                         "parent_chunk_id": {"type": "keyword"},
                         "created_at": {"type": "date"},
-                    }
+                    },
                 },
             }
 
@@ -131,7 +130,7 @@ class OpenSearchWriter(BaseIndexWriter):
         actions: list[dict] = []
         for chunk in chunks:
             action = {
-                "index": {"_index": self.config.index_name, "_id": str(chunk.chunk_id)}
+                "index": {"_index": self.config.index_name, "_id": str(chunk.chunk_id)},
             }
             doc = {
                 "chunk_id": str(chunk.chunk_id),
@@ -143,7 +142,7 @@ class OpenSearchWriter(BaseIndexWriter):
                 "visibility": chunk.visibility,
                 "allowed_groups": chunk.allowed_groups,
                 "allowed_users": chunk.allowed_users,
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(tz=UTC).isoformat(),
                 **chunk.metadata,
             }
 
@@ -206,7 +205,7 @@ class OpenSearchWriter(BaseIndexWriter):
         actions = []
         for chunk_id in chunk_ids:
             actions.append(
-                {"delete": {"_index": self.config.index_name, "_id": str(chunk_id)}}
+                {"delete": {"_index": self.config.index_name, "_id": str(chunk_id)}},
             )
 
         try:

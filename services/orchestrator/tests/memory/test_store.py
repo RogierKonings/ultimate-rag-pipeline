@@ -1,15 +1,11 @@
 """Unit tests for RedisSessionStore."""
 
-import json
-from datetime import datetime
-from unittest.mock import AsyncMock
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from memory.models import ConversationSession, MemoryConfig
 from memory.store import RedisSessionStore
-
 
 # ============================================================================
 # Fixtures
@@ -285,11 +281,11 @@ async def test_get_user_sessions(redis_store, mock_redis):
     user_id = uuid4()
     session1 = ConversationSession(
         user_id=user_id,
-        updated_at=datetime(2024, 1, 1, 12, 0, 0),
+        updated_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
     )
     session2 = ConversationSession(
         user_id=user_id,
-        updated_at=datetime(2024, 1, 2, 12, 0, 0),
+        updated_at=datetime(2024, 1, 2, 12, 0, 0, tzinfo=UTC),
     )
 
     mock_redis.smembers.return_value = {str(session1.id), str(session2.id)}
@@ -298,7 +294,7 @@ async def test_get_user_sessions(redis_store, mock_redis):
     async def mock_get(key):
         if str(session1.id) in key:
             return session1.model_dump_json()
-        elif str(session2.id) in key:
+        if str(session2.id) in key:
             return session2.model_dump_json()
         return None
 
@@ -359,7 +355,7 @@ async def test_enforce_session_limit(redis_store, mock_redis):
     sessions = [
         ConversationSession(
             user_id=user_id,
-            updated_at=datetime(2024, 1, i + 1, 12, 0, 0),
+            updated_at=datetime(2024, 1, i + 1, 12, 0, 0, tzinfo=UTC),
         )
         for i in range(3)
     ]

@@ -4,9 +4,7 @@ Unit tests for Monitoring Models (US-5.6).
 Tests Pydantic models for health, metrics, alerts, and anomaly detection config.
 """
 
-from datetime import datetime
-
-import pytest
+from datetime import UTC, datetime
 
 from monitoring.models import (
     Alert,
@@ -349,8 +347,8 @@ class TestAlert:
             service_name="vllm",
             firing=False,
             message="P95 latency returned to normal",
-            started_at=datetime(2024, 1, 1, 12, 0, 0),
-            resolved_at=datetime(2024, 1, 1, 12, 15, 0),
+            started_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
+            resolved_at=datetime(2024, 1, 1, 12, 15, 0, tzinfo=UTC),
         )
 
         assert alert.firing is False

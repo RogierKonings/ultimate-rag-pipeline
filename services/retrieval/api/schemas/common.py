@@ -1,8 +1,7 @@
 """Common shared schemas for the Retrieval API."""
 
 from datetime import datetime
-from typing import Any, Literal, Optional
-from uuid import UUID
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,8 +10,8 @@ class ErrorResponse(BaseModel):
     """Standard error response."""
 
     error: str
-    detail: Optional[str] = None
-    code: Optional[str] = None
+    detail: str | None = None
+    code: str | None = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -37,8 +36,8 @@ class ComponentHealth(BaseModel):
 
     name: str
     healthy: bool
-    latency_ms: Optional[float] = None
-    error: Optional[str] = None
+    latency_ms: float | None = None
+    error: str | None = None
 
 
 class MetadataFilter(BaseModel):

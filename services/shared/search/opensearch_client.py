@@ -2,7 +2,7 @@
 
 import os
 import ssl
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 
@@ -12,13 +12,13 @@ class OpenSearchClient:
 
     def __init__(
         self,
-        url: Optional[str] = None,
-        index_name: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        use_ssl: Optional[bool] = None,
-        verify_certs: Optional[bool] = None,
-        ca_cert_path: Optional[str] = None,
+        url: str | None = None,
+        index_name: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        use_ssl: bool | None = None,
+        verify_certs: bool | None = None,
+        ca_cert_path: str | None = None,
     ):
         """Initialize OpenSearch client.
 
@@ -33,11 +33,11 @@ class OpenSearchClient:
         """
         self.url = url or os.getenv("OPENSEARCH_URL", "http://localhost:9200")
         self.index_name = index_name or os.getenv("OPENSEARCH_INDEX", "documents")
-        
+
         # Authentication configuration
         self._username = username or os.getenv("OPENSEARCH_USERNAME")
         self._password = password or os.getenv("OPENSEARCH_PASSWORD")
-        
+
         # SSL configuration
         self._use_ssl = use_ssl if use_ssl is not None else (
             os.getenv("OPENSEARCH_USE_SSL", "false").lower() == "true"
@@ -46,27 +46,27 @@ class OpenSearchClient:
             os.getenv("OPENSEARCH_VERIFY_CERTS", "true").lower() == "true"
         )
         self._ca_cert_path = ca_cert_path or os.getenv("OPENSEARCH_CA_CERT")
-        
-        self._client: Optional[OpenSearch] = None
 
-    def _create_ssl_context(self) -> Optional[ssl.SSLContext]:
+        self._client: OpenSearch | None = None
+
+    def _create_ssl_context(self) -> ssl.SSLContext | None:
         """Create SSL context for secure connections.
-        
+
         Returns:
             SSL context configured for OpenSearch, or None if SSL disabled.
         """
         if not self._use_ssl:
             return None
-            
+
         ssl_context = ssl.create_default_context()
-        
+
         if self._ca_cert_path and os.path.exists(self._ca_cert_path):
             ssl_context.load_verify_locations(self._ca_cert_path)
-        
+
         if not self._verify_certs:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
-            
+
         return ssl_context
 
     @property
@@ -77,10 +77,10 @@ class OpenSearchClient:
             http_auth = None
             if self._username and self._password:
                 http_auth = (self._username, self._password)
-            
+
             # Build SSL context
             ssl_context = self._create_ssl_context()
-            
+
             self._client = OpenSearch(
                 hosts=[self.url],
                 http_auth=http_auth,
@@ -95,7 +95,7 @@ class OpenSearchClient:
             )
         return self._client
 
-    async def bulk_index(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def bulk_index(self, documents: list[dict[str, Any]]) -> dict[str, Any]:
         """Bulk index documents.
 
         Args:
@@ -125,8 +125,8 @@ class OpenSearchClient:
         self,
         query: str,
         top_k: int = 10,
-        filter_conditions: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_conditions: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """BM25 keyword search.
 
         Args:
@@ -143,8 +143,8 @@ class OpenSearchClient:
                     "query": query,
                     "fields": ["content^1.0", "title^2.0"],
                     "type": "best_fields",
-                }
-            }
+                },
+            },
         ]
 
         filter_clauses = []
@@ -158,7 +158,7 @@ class OpenSearchClient:
                 "bool": {
                     "must": must,
                     "filter": filter_clauses,
-                }
+                },
             },
             "_source": True,
         }
@@ -174,7 +174,7 @@ class OpenSearchClient:
             for hit in response["hits"]["hits"]
         ]
 
-    async def delete_by_document_id(self, document_id: str) -> Dict[str, Any]:
+    async def delete_by_document_id(self, document_id: str) -> dict[str, Any]:
         """Delete all chunks for a document.
 
         Args:
@@ -212,15 +212,15 @@ class OpenSearchClient:
 
 
 def get_opensearch_client(
-    url: Optional[str] = None,
-    index_name: Optional[str] = None,
+    url: str | None = None,
+    index_name: str | None = None,
 ) -> OpenSearchClient:
     """Factory function to get an OpenSearch client with security configuration.
-    
+
     Args:
         url: Optional OpenSearch URL override.
         index_name: Optional index name override.
-        
+
     Returns:
         Configured OpenSearchClient instance.
     """

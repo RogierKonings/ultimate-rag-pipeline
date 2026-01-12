@@ -20,7 +20,7 @@ EMBEDDING_DIM = 1024  # BGE-large-en-v1.5 dimension
 
 def init_collection() -> bool:
     """Initialize the documents collection with optimized settings.
-    
+
     Returns:
         True if collection was created, False if it already exists.
     """

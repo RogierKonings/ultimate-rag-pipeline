@@ -9,11 +9,11 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import SecretsBackend, SecretsSettings
+from .k8s_secrets import K8sSecretsClient
 from .vault import VaultClient, VaultError
-from .k8s_secrets import K8sSecretsClient, K8sSecretsError
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class SecretsError(Exception):
     """Base exception for secrets service errors."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -61,7 +61,7 @@ class SecretsService:
         ```
     """
 
-    def __init__(self, settings: Optional[SecretsSettings] = None):
+    def __init__(self, settings: SecretsSettings | None = None):
         """
         Initialize secrets service.
 
@@ -69,8 +69,8 @@ class SecretsService:
             settings: Service settings. If None, uses defaults.
         """
         self.settings = settings or SecretsSettings()
-        self._vault_client: Optional[VaultClient] = None
-        self._k8s_client: Optional[K8sSecretsClient] = None
+        self._vault_client: VaultClient | None = None
+        self._k8s_client: K8sSecretsClient | None = None
         self._cache: dict[str, tuple[Any, float]] = {}
 
     def _get_vault_client(self) -> VaultClient:
@@ -85,7 +85,7 @@ class SecretsService:
             self._k8s_client = K8sSecretsClient(self.settings.kubernetes)
         return self._k8s_client
 
-    def _cache_get(self, key: str) -> Optional[Any]:
+    def _cache_get(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         if not self.settings.cache_enabled:
             return None
@@ -109,7 +109,7 @@ class SecretsService:
         """Clear the secrets cache."""
         self._cache.clear()
 
-    async def get_secret(self, key: str, default: Optional[str] = None) -> Optional[str]:
+    async def get_secret(self, key: str, default: str | None = None) -> str | None:
         """
         Get a secret value.
 
@@ -147,31 +147,30 @@ class SecretsService:
             raise SecretsError(
                 f"Failed to get secret '{key}': {str(e)}",
                 {"key": key, "backend": self.settings.backend},
-            )
+            ) from e
 
-    async def _get_secret_from_backend(self, key: str) -> Optional[str]:
+    async def _get_secret_from_backend(self, key: str) -> str | None:
         """Get secret from configured backend."""
         if self.settings.backend == SecretsBackend.ENVIRONMENT:
             return self._get_from_environment(key)
 
-        elif self.settings.backend == SecretsBackend.VAULT:
+        if self.settings.backend == SecretsBackend.VAULT:
             return await self._get_from_vault(key)
 
-        elif self.settings.backend == SecretsBackend.KUBERNETES:
+        if self.settings.backend == SecretsBackend.KUBERNETES:
             return await self._get_from_kubernetes(key)
 
-        elif self.settings.backend == SecretsBackend.FILE:
+        if self.settings.backend == SecretsBackend.FILE:
             return self._get_from_file(key)
 
-        else:
-            raise SecretsError(f"Unknown backend: {self.settings.backend}")
+        raise SecretsError(f"Unknown backend: {self.settings.backend}")
 
-    def _get_from_environment(self, key: str) -> Optional[str]:
+    def _get_from_environment(self, key: str) -> str | None:
         """Get secret from environment variable."""
         env_key = f"{self.settings.prefix}{key}"
         return os.getenv(env_key)
 
-    async def _get_from_vault(self, key: str) -> Optional[str]:
+    async def _get_from_vault(self, key: str) -> str | None:
         """Get secret from Vault."""
         client = self._get_vault_client()
 
@@ -187,12 +186,12 @@ class SecretsService:
         except VaultError:
             return None
 
-    async def _get_from_kubernetes(self, key: str) -> Optional[str]:
+    async def _get_from_kubernetes(self, key: str) -> str | None:
         """Get secret from Kubernetes Secrets."""
         client = self._get_k8s_client()
         return await client.read_secret(key)
 
-    def _get_from_file(self, key: str) -> Optional[str]:
+    def _get_from_file(self, key: str) -> str | None:
         """Get secret from file."""
         secrets_dir = Path(self.settings.file.secrets_dir)
         ext = self.settings.file.file_extension
@@ -228,7 +227,7 @@ class SecretsService:
             raise SecretsError(
                 f"Failed to set secret '{key}': {str(e)}",
                 {"key": key, "backend": self.settings.backend},
-            )
+            ) from e
 
     async def _set_secret_in_backend(self, key: str, value: str) -> None:
         """Set secret in configured backend."""
@@ -283,7 +282,7 @@ class SecretsService:
             raise SecretsError(
                 f"Failed to delete secret '{key}': {str(e)}",
                 {"key": key, "backend": self.settings.backend},
-            )
+            ) from e
 
     async def _delete_secret_from_backend(self, key: str) -> None:
         """Delete secret from configured backend."""
@@ -466,17 +465,17 @@ class SecretsService:
                 client = self._get_vault_client()
                 return await client.health_check()
 
-            elif self.settings.backend == SecretsBackend.KUBERNETES:
+            if self.settings.backend == SecretsBackend.KUBERNETES:
                 client = self._get_k8s_client()
                 return await client.health_check()
 
-            elif self.settings.backend == SecretsBackend.ENVIRONMENT:
+            if self.settings.backend == SecretsBackend.ENVIRONMENT:
                 return {
                     "healthy": True,
                     "backend": "environment",
                 }
 
-            elif self.settings.backend == SecretsBackend.FILE:
+            if self.settings.backend == SecretsBackend.FILE:
                 secrets_dir = Path(self.settings.file.secrets_dir)
                 return {
                     "healthy": secrets_dir.exists(),
@@ -495,11 +494,11 @@ class SecretsService:
 
 
 # Module-level convenience
-_default_service: Optional[SecretsService] = None
+_default_service: SecretsService | None = None
 
 
 def get_secrets_service(
-    settings: Optional[SecretsSettings] = None,
+    settings: SecretsSettings | None = None,
 ) -> SecretsService:
     """
     Get or create default secrets service.
@@ -524,7 +523,7 @@ def get_secrets_service(
     return _default_service
 
 
-async def get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
+async def get_secret(key: str, default: str | None = None) -> str | None:
     """Convenience function to get a secret with default service."""
     service = get_secrets_service()
     return await service.get_secret(key, default)

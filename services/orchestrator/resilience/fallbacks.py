@@ -10,10 +10,9 @@ primary services are unavailable or failing.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import FallbackConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 class FallbackError(Exception):
     """Raised when a fallback operation fails."""
 
-    def __init__(self, service: str, message: str, original_error: Optional[Exception] = None):
+    def __init__(self, service: str, message: str, original_error: Exception | None = None):
         self.service = service
         self.original_error = original_error
         super().__init__(f"Fallback for '{service}' failed: {message}")
@@ -43,7 +42,7 @@ class FallbackHandlers:
     """
 
     _config: FallbackConfig = FallbackConfig()
-    _cache: Dict[str, Any] = {}
+    _cache: dict[str, Any] = {}
 
     @classmethod
     def configure(cls, config: FallbackConfig) -> None:
@@ -70,7 +69,7 @@ class FallbackHandlers:
         )
 
     @classmethod
-    def get_cached_response(cls, key: str) -> Optional[Any]:
+    def get_cached_response(cls, key: str) -> Any | None:
         """Retrieve a value from the fallback cache.
 
         Args:
@@ -90,8 +89,8 @@ class FallbackHandlers:
     @staticmethod
     async def llm_fallback(
         *args: Any,
-        error: Optional[Exception] = None,
-        cache_key: Optional[str] = None,
+        error: Exception | None = None,
+        cache_key: str | None = None,
         **kwargs: Any,
     ) -> str:
         """Return cached or default response on LLM failure.
@@ -143,9 +142,9 @@ class FallbackHandlers:
     @staticmethod
     async def retrieval_fallback(
         *args: Any,
-        error: Optional[Exception] = None,
+        error: Exception | None = None,
         **kwargs: Any,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return empty results on retrieval failure.
 
         This fallback returns an empty document list, allowing the
@@ -169,10 +168,10 @@ class FallbackHandlers:
     @staticmethod
     async def embedding_fallback(
         *args: Any,
-        error: Optional[Exception] = None,
-        cache_key: Optional[str] = None,
+        error: Exception | None = None,
+        cache_key: str | None = None,
         **kwargs: Any,
-    ) -> List[float]:
+    ) -> list[float]:
         """Return cached embedding or raise on failure.
 
         Unlike other fallbacks, embedding fallback is more strict:
@@ -214,10 +213,10 @@ class FallbackHandlers:
     @staticmethod
     async def guardrails_fallback(
         *args: Any,
-        error: Optional[Exception] = None,
+        error: Exception | None = None,
         strict_mode: bool = False,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fallback for guardrails service failure.
 
         In non-strict mode, allows content through when guardrails fail.
@@ -271,7 +270,7 @@ def create_fallback_response(
         Async fallback function
     """
 
-    async def fallback(*args: Any, error: Optional[Exception] = None, **kwargs: Any) -> Any:
+    async def fallback(*args: Any, error: Exception | None = None, **kwargs: Any) -> Any:
         log_func = getattr(logger, log_level)
         log_func(
             f"{service_name} fallback: returning default value",

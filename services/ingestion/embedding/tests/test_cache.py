@@ -1,7 +1,8 @@
 """Tests for the embedding cache."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from ..cache import EmbeddingCache
 from ..models import EmbeddingCacheConfig
@@ -33,7 +34,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_get_returns_none_when_not_found(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that get returns None when key not found."""
         cache = EmbeddingCache(cache_config)
@@ -44,7 +45,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_get_returns_embedding_when_found(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that get returns embedding when found."""
         cache = EmbeddingCache(cache_config)
@@ -57,7 +58,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_set_stores_embedding(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that set stores embedding correctly."""
         cache = EmbeddingCache(cache_config)
@@ -74,7 +75,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_set_uses_default_ttl(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that set uses default TTL when not specified."""
         cache = EmbeddingCache(cache_config)
@@ -88,7 +89,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_delete_removes_key(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that delete removes key."""
         cache = EmbeddingCache(cache_config)
@@ -100,7 +101,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_clear_all_removes_all_keys(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that clear_all removes all keys with prefix."""
         cache = EmbeddingCache(cache_config)
@@ -116,7 +117,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_get_stats_returns_statistics(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that get_stats returns cache statistics."""
         cache = EmbeddingCache(cache_config)
@@ -134,7 +135,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_context_manager(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test async context manager."""
         with patch("redis.asyncio.from_url", return_value=mock_redis):
@@ -145,7 +146,7 @@ class TestEmbeddingCache:
 
     @pytest.mark.asyncio
     async def test_key_prefix_applied(
-        self, cache_config: EmbeddingCacheConfig, mock_redis
+        self, cache_config: EmbeddingCacheConfig, mock_redis,
     ):
         """Test that key prefix is applied to all operations."""
         cache_config.key_prefix = "custom_prefix:"

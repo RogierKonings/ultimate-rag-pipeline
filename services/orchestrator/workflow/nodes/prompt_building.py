@@ -5,7 +5,7 @@ query, context, and conversation history.
 """
 
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
@@ -36,8 +36,8 @@ def _build_messages(
     query: str,
     context: str,
     strategy: str,
-    history: List[dict] | None = None,
-) -> List[dict]:
+    history: list[dict] | None = None,
+) -> list[dict]:
     """
     Build the message list for LLM generation.
 
@@ -92,7 +92,7 @@ async def prompt_building_node(state: "RAGState") -> "RAGState":
     timing = dict(state.get("timing", {}))
 
     # Note: History handling would come from session/memory in production
-    history: List[dict] = []
+    history: list[dict] = []
 
     # Build messages for LLM
     messages = _build_messages(query, context, strategy, history)

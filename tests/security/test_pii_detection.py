@@ -5,19 +5,20 @@ This module tests PII detection, handling modes,
 and response filtering capabilities.
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+
 from services.shared.security.pii import (
+    PIIChunkResult,
     PIIDetector,
+    PIIDocumentResult,
     PIIEntityType,
     PIIHandlingMode,
     PIIQueryFilter,
     PIIResponseFilter,
     PIIResult,
     PIISettings,
-    PIIDocumentResult,
-    PIIChunkResult,
 )
 
 
@@ -375,7 +376,6 @@ class TestPIIDocumentResult:
 
     def test_aggregate_from_chunks(self):
         """Test aggregating chunk results."""
-        from services.shared.security.pii.config import PIISensitivity
 
         chunk_results = [
             PIIChunkResult(
@@ -470,7 +470,7 @@ class TestPIIResponseFilter:
         ]
 
         filtered = await filter.filter_search_results(
-            results, include_pii_metadata=True
+            results, include_pii_metadata=True,
         )
 
         assert filtered[0]["pii_detected"] is True

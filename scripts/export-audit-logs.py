@@ -22,9 +22,8 @@ import hashlib
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
 from uuid import UUID
 
 # Add the project root to the path
@@ -49,16 +48,16 @@ async def get_database_session():
 
 async def fetch_audit_logs(
     session,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    tenant_id: Optional[UUID] = None,
-    user_id: Optional[UUID] = None,
-    action: Optional[str] = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    tenant_id: UUID | None = None,
+    user_id: UUID | None = None,
+    action: str | None = None,
     limit: int = 10000,
     offset: int = 0,
 ) -> list[dict]:
     """Fetch audit logs from database with filters."""
-    from sqlalchemy import select, and_
+    from sqlalchemy import and_, select
 
     try:
         from services.shared.database.models.audit_log import AuditLog
@@ -66,7 +65,7 @@ async def fetch_audit_logs(
         # Fallback for when running standalone
         print("Warning: Could not import AuditLog model, using raw SQL")
         return await fetch_audit_logs_raw(
-            session, start_date, end_date, tenant_id, user_id, action, limit, offset
+            session, start_date, end_date, tenant_id, user_id, action, limit, offset,
         )
 
     conditions = []
@@ -119,11 +118,11 @@ async def fetch_audit_logs(
 
 async def fetch_audit_logs_raw(
     session,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    tenant_id: Optional[UUID] = None,
-    user_id: Optional[UUID] = None,
-    action: Optional[str] = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    tenant_id: UUID | None = None,
+    user_id: UUID | None = None,
+    action: str | None = None,
     limit: int = 10000,
     offset: int = 0,
 ) -> list[dict]:
@@ -155,7 +154,7 @@ async def fetch_audit_logs_raw(
         WHERE {' AND '.join(conditions)}
         ORDER BY timestamp ASC
         LIMIT :limit OFFSET :offset
-    """
+    """,
     )
 
     result = await session.execute(query, params)
@@ -164,7 +163,7 @@ async def fetch_audit_logs_raw(
     return [dict(row._mapping) for row in rows]
 
 
-def compute_hash(entry: dict, previous_hash: Optional[str] = None) -> str:
+def compute_hash(entry: dict, previous_hash: str | None = None) -> str:
     """Compute SHA-256 hash of an audit entry."""
     hash_input = json.dumps(
         {
@@ -185,8 +184,8 @@ def compute_hash(entry: dict, previous_hash: Optional[str] = None) -> str:
 
 
 async def validate_hash_chain(
-    session, start_id: Optional[UUID] = None, limit: int = 1000
-) -> tuple[bool, Optional[str], int]:
+    session, start_id: UUID | None = None, limit: int = 1000,
+) -> tuple[bool, str | None, int]:
     """
     Validate the hash chain of audit logs.
 
@@ -211,7 +210,7 @@ async def validate_hash_chain(
             SELECT * FROM audit_logs
             ORDER BY timestamp ASC
             LIMIT :limit
-        """
+        """,
         )
         result = await session.execute(sql, {"limit": limit})
         logs = [dict(row._mapping) for row in result.fetchall()]
@@ -271,7 +270,7 @@ def export_to_json(logs: list[dict], output_path: Path) -> None:
     """Export logs to JSON format."""
     export_data = {
         "metadata": {
-            "exported_at": datetime.now().isoformat(),
+            "exported_at": datetime.now(tz=UTC).isoformat(),
             "total_entries": len(logs),
             "format_version": "1.0",
         },
@@ -325,7 +324,7 @@ def parse_date(date_str: str) -> datetime:
 
     for fmt in formats:
         try:
-            return datetime.strptime(date_str, fmt)
+            return datetime.strptime(date_str, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
 
@@ -335,7 +334,7 @@ def parse_date(date_str: str) -> datetime:
 async def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Export audit logs from the RAG Pipeline database"
+        description="Export audit logs from the RAG Pipeline database",
     )
 
     parser.add_argument(
@@ -400,8 +399,8 @@ async def main():
 
     # Handle date shortcuts
     if args.last_days:
-        args.end_date = datetime.now().isoformat()
-        args.start_date = (datetime.now() - timedelta(days=args.last_days)).isoformat()
+        args.end_date = datetime.now(tz=UTC).isoformat()
+        args.start_date = (datetime.now(tz=UTC) - timedelta(days=args.last_days)).isoformat()
 
     print("Connecting to database...")
     session = await get_database_session()
@@ -411,7 +410,7 @@ async def main():
             print("Validating hash chain...")
             start_id = UUID(args.start_id) if args.start_id else None
             is_valid, error, count = await validate_hash_chain(
-                session, start_id, args.limit
+                session, start_id, args.limit,
             )
 
             if is_valid:
@@ -449,7 +448,7 @@ async def main():
         if args.output:
             output_path = args.output
         else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
             output_path = Path(f"audit-export-{timestamp}.{args.format}")
 
         # Export

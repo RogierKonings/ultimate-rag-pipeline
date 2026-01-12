@@ -1,11 +1,12 @@
 """Tests for OpenSearchWriter."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
-from ..opensearch import OpenSearchWriter, OpenSearchWriterConfig
+import pytest
+
 from ..models import IndexedChunk
+from ..opensearch import OpenSearchWriter, OpenSearchWriterConfig
 
 
 class TestOpenSearchWriterConfig:
@@ -170,7 +171,7 @@ class TestOpenSearchWriter:
         mock_client.bulk.return_value = {
             "errors": True,
             "items": [
-                {"index": {"error": {"type": "mapper_parsing_exception", "reason": "failed"}}}
+                {"index": {"error": {"type": "mapper_parsing_exception", "reason": "failed"}}},
             ],
         }
 

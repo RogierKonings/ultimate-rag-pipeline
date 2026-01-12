@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -72,7 +72,7 @@ class EnrichmentConfig(BaseModel):
             PIIType.SSN,
             PIIType.CREDIT_CARD,
             PIIType.MEDICAL,
-        ]
+        ],
     )
 
 
@@ -80,14 +80,14 @@ class DocumentMetadataEnriched(BaseModel):
     """Enriched document metadata."""
 
     # Extracted from document
-    title: Optional[str] = None
-    author: Optional[str] = None
-    created_date: Optional[datetime] = None
-    modified_date: Optional[datetime] = None
+    title: str | None = None
+    author: str | None = None
+    created_date: datetime | None = None
+    modified_date: datetime | None = None
 
     # Detected
-    language: Optional[LanguageResult] = None
-    pii: Optional[PIIResult] = None
+    language: LanguageResult | None = None
+    pii: PIIResult | None = None
 
     # Injected (from request/config)
     tenant_id: str

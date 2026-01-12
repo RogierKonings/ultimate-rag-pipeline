@@ -5,18 +5,16 @@ This module tests audit log creation, hashing, middleware,
 and repository functionality.
 """
 
-import json
-from datetime import datetime, timedelta, timezone
-from io import StringIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 
 from services.shared.security.audit import (
     AuditAction,
-    AuditLogger,
     AuditLogEntry,
+    AuditLogger,
     AuditMiddleware,
     AuditOutcome,
     AuditQuery,
@@ -332,8 +330,8 @@ class TestAuditQuery:
     def test_filtered_query(self):
         """Test query with filters."""
         user_id = uuid4()
-        start = datetime.now(timezone.utc) - timedelta(days=7)
-        end = datetime.now(timezone.utc)
+        start = datetime.now(UTC) - timedelta(days=7)
+        end = datetime.now(UTC)
 
         query = AuditQuery(
             user_id=user_id,
@@ -470,13 +468,13 @@ class TestAuditMiddleware:
         middleware = AuditMiddleware(app, service_name="test")
 
         resource_type, resource_id = middleware._extract_resource(
-            "/api/v1/documents/abc-123-def"
+            "/api/v1/documents/abc-123-def",
         )
         assert resource_type == "document"
         assert resource_id == "abc-123-def"
 
         resource_type, resource_id = middleware._extract_resource(
-            "/api/v1/users/456"
+            "/api/v1/users/456",
         )
         assert resource_type == "user"
         assert resource_id == "456"
@@ -571,7 +569,7 @@ class TestAuditIntegration:
         user_id = uuid4()
 
         # Failed login attempts
-        for i in range(3):
+        for _i in range(3):
             await logger.log_login(
                 username="attacker@example.com",
                 success=False,

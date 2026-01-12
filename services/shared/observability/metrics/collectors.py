@@ -8,10 +8,10 @@ Provides collectors for external systems:
 """
 
 import logging
-from typing import Any, Callable, Optional, List
+from collections.abc import Callable
+from typing import Any
 
-from prometheus_client import Gauge, REGISTRY
-from prometheus_client.core import GaugeMetricFamily, CounterMetricFamily
+from prometheus_client import REGISTRY, Gauge
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class VectorDatabaseCollector:
         self,
         client_factory: Callable[[], Any],
         service_name: str = "rag_service",
-        collections: Optional[List[str]] = None,
+        collections: list[str] | None = None,
     ):
         """
         Initialize the collector.
@@ -451,7 +451,7 @@ class OpenSearchCollector:
         self,
         client_factory: Callable[[], Any],
         service_name: str = "rag_service",
-        indices: Optional[List[str]] = None,
+        indices: list[str] | None = None,
     ):
         """
         Initialize the collector.

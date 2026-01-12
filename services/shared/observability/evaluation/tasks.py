@@ -11,18 +11,18 @@ OpenTelemetry instrumentation is included for distributed tracing.
 
 import logging
 import time
-from typing import Any, Optional
+from datetime import UTC
+from typing import Any
 
 from celery import shared_task
 from opentelemetry import trace
-from opentelemetry.trace import Status, StatusCode, SpanKind
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from .config import EvaluationConfig
 from .datasets import EvaluationDataset
 from .pipeline import EvaluationPipeline, ScheduledEvaluationRunner
 from .ragas_evaluator import RagasEvaluator
 from .reporters import (
-    CompositeReporter,
     GrafanaAnnotationReporter,
     JSONFileReporter,
     PostgreSQLReporter,
@@ -42,14 +42,14 @@ def _get_reporters(config: EvaluationConfig) -> list:
             JSONFileReporter(
                 output_dir=config.result_dir,
                 include_individual=True,
-            )
+            ),
         )
 
     if "postgres" in config.result_storage and config.postgres_url:
         reporters.append(
             PostgreSQLReporter(
                 connection_url=config.postgres_url,
-            )
+            ),
         )
 
     if "grafana" in config.result_storage and config.grafana_url and config.grafana_api_key:
@@ -57,7 +57,7 @@ def _get_reporters(config: EvaluationConfig) -> list:
             GrafanaAnnotationReporter(
                 grafana_url=config.grafana_url,
                 api_key=config.grafana_api_key,
-            )
+            ),
         )
 
     if config.slack_webhook_url:
@@ -65,7 +65,7 @@ def _get_reporters(config: EvaluationConfig) -> list:
             SlackReporter(
                 webhook_url=config.slack_webhook_url,
                 mention_on_failure="@oncall",
-            )
+            ),
         )
 
     return reporters
@@ -80,10 +80,10 @@ def _get_reporters(config: EvaluationConfig) -> list:
 )
 def run_scheduled_evaluation(
     self,
-    dataset_path: Optional[str] = None,
-    run_name: Optional[str] = None,
+    dataset_path: str | None = None,
+    run_name: str | None = None,
     live_rag: bool = True,
-    config_overrides: Optional[dict[str, Any]] = None,
+    config_overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Run a scheduled evaluation task.
@@ -206,8 +206,8 @@ def run_scheduled_evaluation(
 def run_on_demand_evaluation(
     self,
     samples: list[dict[str, Any]],
-    run_name: Optional[str] = None,
-    metrics: Optional[list[str]] = None,
+    run_name: str | None = None,
+    metrics: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Run an on-demand evaluation on provided samples.
@@ -248,7 +248,7 @@ def run_on_demand_evaluation(
 
             eval_samples = [EvaluationSample.from_dict(s) for s in samples]
             dataset = EvaluationDataset(
-                name=f"on_demand_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                name=f"on_demand_{datetime.now(tz=UTC).strftime('%Y%m%d_%H%M%S')}",
                 samples=eval_samples,
                 description="On-demand evaluation dataset",
             )
@@ -264,7 +264,7 @@ def run_on_demand_evaluation(
                 JSONFileReporter(
                     output_dir=config.result_dir,
                     include_individual=True,
-                )
+                ),
             )
 
             # Run evaluation
@@ -373,10 +373,10 @@ def compare_evaluation_runs(
 
                 async with pool.acquire() as conn:
                     current_row = await conn.fetchrow(
-                        "SELECT * FROM eval_runs WHERE id = $1", current_run_id
+                        "SELECT * FROM eval_runs WHERE id = $1", current_run_id,
                     )
                     baseline_row = await conn.fetchrow(
-                        "SELECT * FROM eval_runs WHERE id = $1", baseline_run_id
+                        "SELECT * FROM eval_runs WHERE id = $1", baseline_run_id,
                     )
 
                     if not current_row or not baseline_row:
@@ -384,10 +384,10 @@ def compare_evaluation_runs(
 
                     # Get metrics for both runs
                     current_metrics = await conn.fetch(
-                        "SELECT * FROM eval_metrics WHERE run_id = $1", current_run_id
+                        "SELECT * FROM eval_metrics WHERE run_id = $1", current_run_id,
                     )
                     baseline_metrics = await conn.fetch(
-                        "SELECT * FROM eval_metrics WHERE run_id = $1", baseline_run_id
+                        "SELECT * FROM eval_metrics WHERE run_id = $1", baseline_run_id,
                     )
 
                 # Build comparison

@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from dateutil import parser as date_parser
 from dateutil.parser import ParserError
@@ -13,8 +13,8 @@ class MetadataExtractor:
 
     @staticmethod
     def extract_title_from_text(
-        text: str, max_length: int = 200
-    ) -> Optional[str]:
+        text: str, max_length: int = 200,
+    ) -> str | None:
         """
         Extract title from text if not provided by parser.
 
@@ -109,7 +109,7 @@ class MetadataExtractor:
         return result
 
     @staticmethod
-    def parse_date(date_str: Optional[str]) -> Optional[datetime]:
+    def parse_date(date_str: str | None) -> datetime | None:
         """
         Parse date string to datetime.
 
@@ -172,6 +172,6 @@ class MetadataExtractor:
 
         # Sort by frequency and return top keywords
         sorted_words = sorted(
-            word_counts.items(), key=lambda x: x[1], reverse=True
+            word_counts.items(), key=lambda x: x[1], reverse=True,
         )
         return [word for word, _ in sorted_words[:max_keywords]]

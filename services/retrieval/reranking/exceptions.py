@@ -13,16 +13,13 @@ class RerankerError(Exception):
 class RerankerConnectionError(RerankerError):
     """Raised when connection to reranker service fails."""
 
-    pass
 
 
 class RerankerTimeoutError(RerankerError):
     """Raised when reranker request times out."""
 
-    pass
 
 
 class RerankerValidationError(RerankerError):
     """Raised when input validation fails."""
 
-    pass

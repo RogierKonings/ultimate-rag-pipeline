@@ -8,30 +8,28 @@ Provides configuration and setup for distributed tracing with:
 - BatchSpanProcessor for efficient export
 """
 
-import os
 import logging
+import os
 from dataclasses import dataclass, field
-from typing import Optional, Any
 
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, Tracer
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import Tracer, TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from opentelemetry.sdk.trace.sampling import (
+    ALWAYS_ON,
+    ParentBased,
     Sampler,
     TraceIdRatioBased,
-    ParentBased,
-    ALWAYS_ON,
-    ALWAYS_OFF,
 )
+from opentelemetry.semconv.resource import ResourceAttributes
 
 logger = logging.getLogger(__name__)
 
 # Global state
-_tracer_provider: Optional[TracerProvider] = None
-_tracer: Optional[Tracer] = None
+_tracer_provider: TracerProvider | None = None
+_tracer: Tracer | None = None
 _initialized: bool = False
 
 
@@ -55,16 +53,16 @@ class OTELConfig:
     service_name: str
     service_version: str = "1.0.0"
     otlp_endpoint: str = field(
-        default_factory=lambda: os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+        default_factory=lambda: os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317"),
     )
     environment: str = field(
-        default_factory=lambda: os.getenv("ENVIRONMENT", "development")
+        default_factory=lambda: os.getenv("ENVIRONMENT", "development"),
     )
     sample_rate: float = field(
-        default_factory=lambda: float(os.getenv("OTEL_TRACES_SAMPLER_ARG", "1.0"))
+        default_factory=lambda: float(os.getenv("OTEL_TRACES_SAMPLER_ARG", "1.0")),
     )
     enable_console_export: bool = field(
-        default_factory=lambda: os.getenv("OTEL_CONSOLE_EXPORT", "false").lower() == "true"
+        default_factory=lambda: os.getenv("OTEL_CONSOLE_EXPORT", "false").lower() == "true",
     )
     batch_export_delay_ms: int = 5000
     max_export_batch_size: int = 512
@@ -105,20 +103,19 @@ class OTELConfig:
             # In production, use configured sample rate (default 10%)
             rate = self.sample_rate if self.sample_rate < 1.0 else 0.1
             return ParentBased(root=TraceIdRatioBased(rate))
-        elif self.environment == "staging":
+        if self.environment == "staging":
             # In staging, sample 50%
             return ParentBased(root=TraceIdRatioBased(0.5))
-        else:
-            # In development, sample everything
-            return ALWAYS_ON
+        # In development, sample everything
+        return ALWAYS_ON
 
 
 def setup_tracing(
     service_name: str,
     service_version: str = "1.0.0",
-    otlp_endpoint: Optional[str] = None,
+    otlp_endpoint: str | None = None,
     environment: str = "development",
-    config: Optional[OTELConfig] = None,
+    config: OTELConfig | None = None,
 ) -> TracerProvider:
     """
     Initialize OpenTelemetry tracing.
@@ -151,7 +148,7 @@ def setup_tracing(
 
     logger.info(
         f"Setting up tracing for {config.service_name} "
-        f"(env={config.environment}, endpoint={config.otlp_endpoint})"
+        f"(env={config.environment}, endpoint={config.otlp_endpoint})",
     )
 
     # Create resource with service attributes
@@ -161,7 +158,7 @@ def setup_tracing(
             ResourceAttributes.SERVICE_VERSION: config.service_version,
             ResourceAttributes.DEPLOYMENT_ENVIRONMENT: config.environment,
             "service.namespace": "rag-pipeline",
-        }
+        },
     )
 
     # Create provider with sampler
@@ -198,15 +195,15 @@ def setup_tracing(
 
     logger.info(
         f"Tracing initialized: service={config.service_name}, "
-        f"sampler={type(sampler).__name__}"
+        f"sampler={type(sampler).__name__}",
     )
 
     return _tracer_provider
 
 
 def get_tracer(
-    name: Optional[str] = None,
-    version: Optional[str] = None,
+    name: str | None = None,
+    version: str | None = None,
 ) -> Tracer:
     """
     Get a tracer instance.
@@ -233,7 +230,7 @@ def get_tracer(
     )
 
 
-def get_tracer_provider() -> Optional[TracerProvider]:
+def get_tracer_provider() -> TracerProvider | None:
     """
     Get the current TracerProvider.
 

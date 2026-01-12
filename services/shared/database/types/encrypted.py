@@ -7,10 +7,8 @@ encrypt/decrypt data when storing/retrieving from the database.
 
 import json
 import logging
-from typing import Any, Optional, Union
 
 from sqlalchemy import Text, TypeDecorator
-from sqlalchemy.dialects.postgresql import JSONB
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,7 @@ def get_field_encryption():
     """Get the configured encryption instance."""
     if _field_encryption is None:
         raise RuntimeError(
-            "Encryption not configured. Call configure_encryption() first."
+            "Encryption not configured. Call configure_encryption() first.",
         )
     return _field_encryption
 
@@ -74,7 +72,7 @@ class EncryptedString(TypeDecorator):
     impl = Text
     cache_ok = True
 
-    def __init__(self, length: Optional[int] = None, **kwargs):
+    def __init__(self, length: int | None = None, **kwargs):
         """
         Initialize encrypted string type.
 
@@ -85,7 +83,7 @@ class EncryptedString(TypeDecorator):
         super().__init__(**kwargs)
         self.length = length
 
-    def process_bind_param(self, value: Optional[str], dialect) -> Optional[str]:
+    def process_bind_param(self, value: str | None, dialect) -> str | None:
         """Encrypt value before storing in database."""
         if value is None:
             return None
@@ -99,11 +97,11 @@ class EncryptedString(TypeDecorator):
         except RuntimeError:
             # Encryption not configured, store as-is (for migrations, etc.)
             logger.warning(
-                "Encryption not configured, storing value unencrypted"
+                "Encryption not configured, storing value unencrypted",
             )
             return value
 
-    def process_result_value(self, value: Optional[str], dialect) -> Optional[str]:
+    def process_result_value(self, value: str | None, dialect) -> str | None:
         """Decrypt value when retrieving from database."""
         if value is None:
             return None
@@ -128,7 +126,6 @@ class EncryptedText(EncryptedString):
     Same as EncryptedString but semantically indicates larger content.
     """
 
-    pass
 
 
 class EncryptedJSON(TypeDecorator):
@@ -156,9 +153,9 @@ class EncryptedJSON(TypeDecorator):
 
     def process_bind_param(
         self,
-        value: Optional[Union[dict, list]],
+        value: dict | list | None,
         dialect,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Serialize and encrypt JSON value before storing."""
         if value is None:
             return None
@@ -173,7 +170,7 @@ class EncryptedJSON(TypeDecorator):
                 return encryption.encrypt(json_str)
             except RuntimeError:
                 logger.warning(
-                    "Encryption not configured, storing JSON unencrypted"
+                    "Encryption not configured, storing JSON unencrypted",
                 )
                 return json_str
 
@@ -183,9 +180,9 @@ class EncryptedJSON(TypeDecorator):
 
     def process_result_value(
         self,
-        value: Optional[str],
+        value: str | None,
         dialect,
-    ) -> Optional[Union[dict, list]]:
+    ) -> dict | list | None:
         """Decrypt and deserialize JSON value when retrieving."""
         if value is None:
             return None
@@ -226,9 +223,9 @@ class EncryptedBytes(TypeDecorator):
 
     def process_bind_param(
         self,
-        value: Optional[bytes],
+        value: bytes | None,
         dialect,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Encrypt bytes and encode as base64 for storage."""
         if value is None:
             return None
@@ -246,9 +243,9 @@ class EncryptedBytes(TypeDecorator):
 
     def process_result_value(
         self,
-        value: Optional[str],
+        value: str | None,
         dialect,
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """Decode base64 and decrypt bytes."""
         if value is None:
             return None

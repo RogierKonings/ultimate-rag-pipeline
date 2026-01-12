@@ -6,10 +6,11 @@ by collecting multiple requests and processing them together.
 """
 
 import asyncio
+import contextlib
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Optional
 from uuid import UUID, uuid4
 
 from ..api.models import BatchEmbeddingResult
@@ -23,7 +24,7 @@ class PendingRequest:
 
     request_id: UUID
     texts: list[str]
-    input_type: Optional[str]
+    input_type: str | None
     future: asyncio.Future
     timestamp: float
 
@@ -39,11 +40,11 @@ class DynamicBatcher:
 
     def __init__(
         self,
-        embed_fn: Callable[[list[str], Optional[str]], Awaitable[BatchEmbeddingResult]],
+        embed_fn: Callable[[list[str], str | None], Awaitable[BatchEmbeddingResult]],
         max_batch_size: int = 32,
         max_batch_tokens: int = 8192,
         batch_timeout_ms: float = 50.0,
-        max_queue_size: int = 1000
+        max_queue_size: int = 1000,
     ):
         """
         Initialize the dynamic batcher.
@@ -62,7 +63,7 @@ class DynamicBatcher:
         self.max_queue_size = max_queue_size
 
         self._queue: asyncio.Queue[PendingRequest] = asyncio.Queue(maxsize=max_queue_size)
-        self._processing_task: Optional[asyncio.Task] = None
+        self._processing_task: asyncio.Task | None = None
         self._running = False
 
         # Metrics
@@ -81,16 +82,14 @@ class DynamicBatcher:
         self._running = False
         if self._processing_task:
             self._processing_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._processing_task
-            except asyncio.CancelledError:
-                pass
         logger.info("Dynamic batcher stopped")
 
     async def submit(
         self,
         texts: list[str],
-        input_type: Optional[str] = None
+        input_type: str | None = None,
     ) -> list[list[float]]:
         """
         Submit texts for embedding.
@@ -109,7 +108,7 @@ class DynamicBatcher:
             texts=texts,
             input_type=input_type,
             future=future,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         await self._queue.put(request)
@@ -135,7 +134,7 @@ class DynamicBatcher:
         batch: list[PendingRequest] = []
         total_texts = 0
         total_tokens = 0
-        batch_input_type: Optional[str] = None
+        batch_input_type: str | None = None
 
         deadline = time.time() + self.batch_timeout
 
@@ -144,7 +143,7 @@ class DynamicBatcher:
                 timeout = max(0, deadline - time.time())
                 request = await asyncio.wait_for(
                     self._queue.get(),
-                    timeout=timeout if batch else None  # Wait indefinitely for first request
+                    timeout=timeout if batch else None,  # Wait indefinitely for first request
                 )
 
                 # Estimate tokens
@@ -169,7 +168,7 @@ class DynamicBatcher:
                 if total_texts >= self.max_batch_size:
                     break
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Timeout expired, process what we have
                 break
 
@@ -195,7 +194,7 @@ class DynamicBatcher:
 
             # Distribute results back to requests
             offset = 0
-            for request, count in zip(batch, text_counts):
+            for request, count in zip(batch, text_counts, strict=True):
                 request_embeddings = result.embeddings[offset:offset + count]
                 request.future.set_result(request_embeddings)
                 offset += count
@@ -222,5 +221,5 @@ class DynamicBatcher:
             "avg_wait_time_ms": (
                 self._total_wait_time_ms / self._requests_processed
                 if self._requests_processed > 0 else 0
-            )
+            ),
         }

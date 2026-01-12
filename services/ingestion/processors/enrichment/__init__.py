@@ -6,19 +6,19 @@
 # - Metadata extraction utilities
 # - Enrichment pipeline orchestration
 
+from .enrichment import EnrichmentPipeline
+from .language_detector import LanguageDetector
+from .metadata_extractor import MetadataExtractor
 from .models import (
-    PIIType,
+    DocumentMetadataEnriched,
+    EnrichmentConfig,
+    EnrichmentContext,
+    LanguageResult,
     PIIEntity,
     PIIResult,
-    LanguageResult,
-    DocumentMetadataEnriched,
-    EnrichmentContext,
-    EnrichmentConfig,
+    PIIType,
 )
-from .language_detector import LanguageDetector
-from .pii_detector import PIIDetector, PIIDetectorConfig, PIIAnonymizer
-from .enrichment import EnrichmentPipeline
-from .metadata_extractor import MetadataExtractor
+from .pii_detector import PIIAnonymizer, PIIDetector, PIIDetectorConfig
 
 __all__ = [
     # Data Models

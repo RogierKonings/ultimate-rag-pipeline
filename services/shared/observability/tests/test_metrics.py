@@ -2,9 +2,10 @@
 Tests for Prometheus metrics module.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from prometheus_client import REGISTRY, CollectorRegistry
+from prometheus_client import CollectorRegistry
 
 
 class TestRAGMetrics:
@@ -133,7 +134,7 @@ class TestMetricsSetup:
 
     def test_setup_metrics(self):
         """Test setup_metrics function."""
-        from shared.observability.metrics.registry import setup_metrics, get_metrics
+        from shared.observability.metrics.registry import setup_metrics
 
         # Reset global state by creating new instance
         metrics = setup_metrics(
@@ -221,9 +222,9 @@ class TestMetricDefinitions:
     def test_metric_definition_structure(self):
         """Test MetricDefinition dataclass."""
         from shared.observability.metrics.definitions import (
+            Label,
             MetricDefinition,
             MetricType,
-            Label,
         )
 
         metric = MetricDefinition(
@@ -283,7 +284,7 @@ class TestSLI:
 
     def test_sli_query_rendering(self):
         """Test SLI query rendering."""
-        from shared.observability.metrics.definitions.sli import render_sli_query, SLI_CATALOG
+        from shared.observability.metrics.definitions.sli import SLI_CATALOG, render_sli_query
 
         sli = SLI_CATALOG["query_availability"]
         query = render_sli_query(sli, "5m")
@@ -352,8 +353,8 @@ class TestSLO:
         """Test SLO burn rate alert generation."""
         from shared.observability.metrics.definitions import (
             SLO_CATALOG,
-            generate_slo_burn_rate_alerts,
         )
+        from shared.observability.metrics.definitions.slo import generate_slo_recording_rules
 
         slo = SLO_CATALOG["query_availability"]
         alerts = generate_slo_recording_rules(slo)

@@ -11,9 +11,9 @@ Implements US-3.9 requirements:
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 try:
@@ -30,7 +30,7 @@ class CacheConfig:
 
     enabled: bool = True
     redis_url: str = "redis://localhost:6379"
-    redis_password: Optional[str] = None
+    redis_password: str | None = None
     default_ttl_seconds: int = 3600  # 1 hour per US-3.9
     key_prefix: str = "rag:query"
     max_cached_results: int = 100  # Max results to cache per query
@@ -72,14 +72,14 @@ class RetrievalCache:
     Hash is SHA-256 of: query + filters + options (stable JSON)
     """
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         """Initialize retrieval cache.
 
         Args:
             config: Cache configuration. Uses defaults if not provided.
         """
         self.config = config or CacheConfig()
-        self._redis: Optional[Any] = None
+        self._redis: Any | None = None
         self._stats = CacheStats()
         self._connected = False
 
@@ -145,14 +145,14 @@ class RetrievalCache:
         self,
         query: str,
         tenant_id: UUID,
-        user_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
         mode: str = "hybrid",
         top_k: int = 10,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         rerank: bool = True,
-        min_score: Optional[float] = None,
+        min_score: float | None = None,
     ) -> str:
         """Generate a unique cache key for a query.
 
@@ -197,7 +197,7 @@ class RetrievalCache:
         # Add user ID hash if provided (for ACL-scoped caching)
         if user_id:
             params["user_id_hash"] = hashlib.sha256(
-                str(user_id).encode()
+                str(user_id).encode(),
             ).hexdigest()[:16]
 
         # Generate stable JSON (sorted keys for consistency)
@@ -212,15 +212,15 @@ class RetrievalCache:
         self,
         query: str,
         tenant_id: UUID,
-        user_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
         mode: str = "hybrid",
         top_k: int = 10,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         rerank: bool = True,
-        min_score: Optional[float] = None,
-    ) -> Optional[dict[str, Any]]:
+        min_score: float | None = None,
+    ) -> dict[str, Any] | None:
         """Get cached retrieval results.
 
         Args:
@@ -265,10 +265,9 @@ class RetrievalCache:
                 self._stats.hits += 1
                 self._stats.total_hit_time_ms += elapsed_ms
                 return json.loads(result)
-            else:
-                self._stats.misses += 1
-                self._stats.total_miss_time_ms += elapsed_ms
-                return None
+            self._stats.misses += 1
+            self._stats.total_miss_time_ms += elapsed_ms
+            return None
 
         except Exception:
             self._stats.misses += 1
@@ -280,15 +279,15 @@ class RetrievalCache:
         query: str,
         tenant_id: UUID,
         results: dict[str, Any],
-        user_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
         mode: str = "hybrid",
         top_k: int = 10,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         rerank: bool = True,
-        min_score: Optional[float] = None,
-        ttl_seconds: Optional[int] = None,
+        min_score: float | None = None,
+        ttl_seconds: int | None = None,
     ) -> bool:
         """Cache retrieval results.
 
@@ -328,7 +327,7 @@ class RetrievalCache:
 
             # Add cache metadata
             cache_entry = {
-                "cached_at": datetime.utcnow().isoformat(),
+                "cached_at": datetime.now(tz=UTC).isoformat(),
                 "data": results,
             }
 
@@ -351,14 +350,14 @@ class RetrievalCache:
         self,
         query: str,
         tenant_id: UUID,
-        user_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
         mode: str = "hybrid",
         top_k: int = 10,
-        filters: Optional[dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         rerank: bool = True,
-        min_score: Optional[float] = None,
+        min_score: float | None = None,
     ) -> bool:
         """Delete cached results for a specific query.
 

@@ -8,15 +8,11 @@ using the Presidio analyzer and anonymizer engines.
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional
 
 import yaml
 
 from .config import (
-    DEFAULT_SENSITIVITY_MAP,
-    PIIEntityConfig,
     PIIHandlingMode,
-    PIISensitivity,
     PIISettings,
 )
 from .models import (
@@ -32,7 +28,7 @@ logger = logging.getLogger(__name__)
 class PIIDetectionError(Exception):
     """Raised when PII detection fails."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -72,7 +68,7 @@ class PIIDetector:
         ```
     """
 
-    def __init__(self, settings: Optional[PIISettings] = None):
+    def __init__(self, settings: PIISettings | None = None):
         """
         Initialize PII detector.
 
@@ -103,7 +99,7 @@ class PIIDetector:
             raise PIIDetectionError(
                 "Presidio not installed. Install with: pip install presidio-analyzer",
                 {"error": str(e)},
-            )
+            ) from e
 
         # Configure NLP engine with spaCy models
         configuration = {
@@ -121,9 +117,9 @@ class PIIDetector:
         except OSError as e:
             # spaCy model not installed
             raise PIIDetectionError(
-                f"spaCy model not installed. Run: python -m spacy download en_core_web_sm",
+                "spaCy model not installed. Run: python -m spacy download en_core_web_sm",
                 {"error": str(e)},
-            )
+            ) from e
 
         # Load custom recognizers if configured
         if self.settings.custom_recognizers_path:
@@ -158,7 +154,7 @@ class PIIDetector:
                             name=pattern_config["name"],
                             regex=pattern_config["regex"],
                             score=pattern_config.get("score", 0.8),
-                        )
+                        ),
                     )
 
                 if patterns:
@@ -187,15 +183,15 @@ class PIIDetector:
                 raise PIIDetectionError(
                     "Presidio anonymizer not installed. Install with: pip install presidio-anonymizer",
                     {"error": str(e)},
-                )
+                ) from e
         return self._anonymizer
 
     async def detect(
         self,
         text: str,
-        entities: Optional[list[str]] = None,
-        language: Optional[str] = None,
-        score_threshold: Optional[float] = None,
+        entities: list[str] | None = None,
+        language: str | None = None,
+        score_threshold: float | None = None,
     ) -> PIIResult:
         """
         Detect PII entities in text.
@@ -233,7 +229,7 @@ class PIIDetector:
             raise PIIDetectionError(
                 f"PII detection failed: {str(e)}",
                 {"text_length": len(text), "language": lang},
-            )
+            ) from e
 
         # Convert to our models
         detected_entities: list[PIIEntity] = []
@@ -296,8 +292,8 @@ class PIIDetector:
     async def redact(
         self,
         text: str,
-        entities: Optional[list[str]] = None,
-        language: Optional[str] = None,
+        entities: list[str] | None = None,
+        language: str | None = None,
     ) -> str:
         """
         Redact PII from text with placeholder tags.
@@ -330,8 +326,8 @@ class PIIDetector:
     async def mask(
         self,
         text: str,
-        entities: Optional[list[str]] = None,
-        language: Optional[str] = None,
+        entities: list[str] | None = None,
+        language: str | None = None,
         mask_char: str = "*",
         chars_to_keep: int = 4,
     ) -> str:
@@ -378,9 +374,9 @@ class PIIDetector:
     async def process(
         self,
         text: str,
-        handling_mode: Optional[PIIHandlingMode] = None,
-        entities: Optional[list[str]] = None,
-        language: Optional[str] = None,
+        handling_mode: PIIHandlingMode | None = None,
+        entities: list[str] | None = None,
+        language: str | None = None,
     ) -> PIIProcessedText:
         """
         Process text according to configured handling mode.
@@ -424,7 +420,7 @@ class PIIDetector:
                         "start": entity.start,
                         "end": entity.end,
                         "replacement": f"[{entity.entity_type}]",
-                    }
+                    },
                 )
 
         elif mode == PIIHandlingMode.MASK:
@@ -436,7 +432,7 @@ class PIIDetector:
                         "entity_type": entity.entity_type,
                         "start": entity.start,
                         "end": entity.end,
-                    }
+                    },
                 )
 
         elif mode == PIIHandlingMode.FLAG:
@@ -450,7 +446,7 @@ class PIIDetector:
                         "start": entity.start,
                         "end": entity.end,
                         "score": entity.score,
-                    }
+                    },
                 )
 
         elif mode == PIIHandlingMode.ENCRYPT:
@@ -464,7 +460,7 @@ class PIIDetector:
                         "entity_type": entity.entity_type,
                         "start": entity.start,
                         "end": entity.end,
-                    }
+                    },
                 )
 
         else:
@@ -482,7 +478,7 @@ class PIIDetector:
         self,
         chunk_id: str,
         text: str,
-        handling_mode: Optional[PIIHandlingMode] = None,
+        handling_mode: PIIHandlingMode | None = None,
     ) -> PIIChunkResult:
         """
         Process a document chunk for PII.
@@ -537,10 +533,10 @@ class PIIDetector:
 
 
 # Module-level convenience functions
-_default_detector: Optional[PIIDetector] = None
+_default_detector: PIIDetector | None = None
 
 
-def get_detector(settings: Optional[PIISettings] = None) -> PIIDetector:
+def get_detector(settings: PIISettings | None = None) -> PIIDetector:
     """
     Get or create default PII detector.
 

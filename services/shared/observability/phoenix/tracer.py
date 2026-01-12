@@ -4,14 +4,13 @@ Phoenix Tracer.
 Provides LLM call tracing with Phoenix integration.
 """
 
-import asyncio
 import logging
 import random
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -26,13 +25,13 @@ class LLMSpan:
 
     id: str = field(default_factory=lambda: str(uuid4()))
     trace_id: str = ""
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     name: str = ""
     span_type: str = "llm"  # llm, embedding, retrieval, chain
 
     # Timing
     start_time: datetime = field(default_factory=datetime.utcnow)
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     latency_ms: float = 0.0
 
     # LLM specific
@@ -56,14 +55,14 @@ class LLMSpan:
 
     # Status
     status: str = "ok"  # ok, error
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
     # Metadata
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def finish(self, error: Optional[str] = None) -> None:
+    def finish(self, error: str | None = None) -> None:
         """Mark span as finished."""
-        self.end_time = datetime.utcnow()
+        self.end_time = datetime.now(tz=UTC)
         self.latency_ms = (
             (self.end_time - self.start_time).total_seconds() * 1000
         )
@@ -110,7 +109,7 @@ class PhoenixTracer:
 
     _instance: Optional["PhoenixTracer"] = None
 
-    def __init__(self, config: Optional[PhoenixConfig] = None):
+    def __init__(self, config: PhoenixConfig | None = None):
         """
         Initialize Phoenix tracer.
 
@@ -120,7 +119,7 @@ class PhoenixTracer:
         self.config = config or PhoenixConfig.from_env()
         self._queue: deque[LLMSpan] = deque(maxlen=self.config.max_queue_size)
         self._lock = threading.Lock()
-        self._flush_thread: Optional[threading.Thread] = None
+        self._flush_thread: threading.Thread | None = None
         self._running = False
         self._tokenizer = None
 
@@ -128,7 +127,7 @@ class PhoenixTracer:
             self._start_flush_thread()
 
     @classmethod
-    def get_instance(cls, config: Optional[PhoenixConfig] = None) -> "PhoenixTracer":
+    def get_instance(cls, config: PhoenixConfig | None = None) -> "PhoenixTracer":
         """Get or create singleton instance."""
         if cls._instance is None:
             cls._instance = cls(config)
@@ -283,7 +282,7 @@ class PhoenixTracer:
         name: str,
         trace_id: str,
         span_type: str = "llm",
-        parent_id: Optional[str] = None,
+        parent_id: str | None = None,
         **kwargs: Any,
     ) -> LLMSpan:
         """
@@ -299,16 +298,15 @@ class PhoenixTracer:
         Returns:
             LLMSpan instance
         """
-        span = LLMSpan(
+        return LLMSpan(
             trace_id=trace_id,
             parent_id=parent_id,
             name=name,
             span_type=span_type,
             **kwargs,
         )
-        return span
 
-    def end_span(self, span: LLMSpan, error: Optional[str] = None) -> None:
+    def end_span(self, span: LLMSpan, error: str | None = None) -> None:
         """
         End a span and queue for export.
 
@@ -345,9 +343,9 @@ class PhoenixTracer:
         prompt_tokens: int = 0,
         completion_tokens: int = 0,
         latency_ms: float = 0.0,
-        parent_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
-        error: Optional[str] = None,
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        error: str | None = None,
     ) -> LLMSpan:
         """
         Record a complete LLM call.
@@ -395,8 +393,8 @@ class PhoenixTracer:
         num_embeddings: int,
         dimensions: int = 0,
         latency_ms: float = 0.0,
-        parent_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LLMSpan:
         """
         Record an embedding call.
@@ -437,8 +435,8 @@ class PhoenixTracer:
         num_results: int,
         strategy: str = "",
         latency_ms: float = 0.0,
-        parent_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> LLMSpan:
         """
         Record a retrieval operation.

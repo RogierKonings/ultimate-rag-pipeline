@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Optional
 
 from .base import BaseParser, ContentBlock, ContentType, ParsedDocument
 
@@ -21,7 +20,7 @@ class TextParser(BaseParser):
         return ["text/plain"]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse plain text document.
 
@@ -71,14 +70,14 @@ class TextParser(BaseParser):
                     content_type=ContentType.TEXT,
                     content=text,
                     position=0,
-                )
+                ),
             ],
             tables=[],
             language=language,
             metadata=result_metadata,
         )
 
-    def _detect_language(self, text: str) -> Optional[str]:
+    def _detect_language(self, text: str) -> str | None:
         """Simple language detection heuristic.
 
         Args:

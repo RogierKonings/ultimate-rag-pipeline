@@ -5,9 +5,8 @@ This module defines the data models for JWT tokens, claims,
 and token-related requests/responses.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -46,27 +45,27 @@ class TokenClaims(BaseModel):
 
     # Standard claims
     sub: UUID = Field(..., description="Subject (user ID)")
-    iss: Optional[str] = Field(default=None, description="Issuer")
-    aud: Optional[str] = Field(default=None, description="Audience")
-    exp: Optional[datetime] = Field(default=None, description="Expiration time")
-    iat: Optional[datetime] = Field(default=None, description="Issued at")
-    nbf: Optional[datetime] = Field(default=None, description="Not before")
-    jti: Optional[str] = Field(default=None, description="JWT ID")
+    iss: str | None = Field(default=None, description="Issuer")
+    aud: str | None = Field(default=None, description="Audience")
+    exp: datetime | None = Field(default=None, description="Expiration time")
+    iat: datetime | None = Field(default=None, description="Issued at")
+    nbf: datetime | None = Field(default=None, description="Not before")
+    jti: str | None = Field(default=None, description="JWT ID")
 
     # Custom claims
     tenant_id: UUID = Field(..., description="Tenant identifier")
     roles: list[str] = Field(default_factory=list, description="User roles")
     groups: list[str] = Field(default_factory=list, description="User groups")
     permissions: list[str] = Field(
-        default_factory=list, description="Explicit permissions"
+        default_factory=list, description="Explicit permissions",
     )
     token_type: TokenType = Field(
-        default=TokenType.ACCESS, description="Token type (access/refresh)"
+        default=TokenType.ACCESS, description="Token type (access/refresh)",
     )
 
     # Optional user metadata
-    email: Optional[str] = Field(default=None, description="User email")
-    name: Optional[str] = Field(default=None, description="User display name")
+    email: str | None = Field(default=None, description="User email")
+    name: str | None = Field(default=None, description="User display name")
 
     def to_dict(self) -> dict:
         """
@@ -121,15 +120,15 @@ class TokenClaims(BaseModel):
         # Convert timestamps back to datetime
         exp = None
         if "exp" in data:
-            exp = datetime.fromtimestamp(data["exp"])
+            exp = datetime.fromtimestamp(data["exp"], tz=UTC)
 
         iat = None
         if "iat" in data:
-            iat = datetime.fromtimestamp(data["iat"])
+            iat = datetime.fromtimestamp(data["iat"], tz=UTC)
 
         nbf = None
         if "nbf" in data:
-            nbf = datetime.fromtimestamp(data["nbf"])
+            nbf = datetime.fromtimestamp(data["nbf"], tz=UTC)
 
         # Parse token type
         token_type = TokenType.ACCESS
@@ -182,7 +181,7 @@ class TokenPair(BaseModel):
     token_type: str = Field(default="Bearer", description="Token type for Authorization header")
     expires_in: int = Field(..., description="Access token expiration in seconds")
     refresh_expires_in: int = Field(
-        ..., description="Refresh token expiration in seconds"
+        ..., description="Refresh token expiration in seconds",
     )
 
 
@@ -203,28 +202,28 @@ class TokenRequest(BaseModel):
     )
 
     # For password grant
-    username: Optional[str] = Field(default=None, description="Username for password grant")
-    password: Optional[str] = Field(default=None, description="Password for password grant")
+    username: str | None = Field(default=None, description="Username for password grant")
+    password: str | None = Field(default=None, description="Password for password grant")
 
     # For refresh_token grant
-    refresh_token: Optional[str] = Field(
-        default=None, description="Refresh token for token refresh"
+    refresh_token: str | None = Field(
+        default=None, description="Refresh token for token refresh",
     )
 
     # For client_credentials grant
-    client_id: Optional[str] = Field(
-        default=None, description="Client ID for service auth"
+    client_id: str | None = Field(
+        default=None, description="Client ID for service auth",
     )
-    client_secret: Optional[str] = Field(
-        default=None, description="Client secret for service auth"
+    client_secret: str | None = Field(
+        default=None, description="Client secret for service auth",
     )
 
     # Common fields
-    scope: Optional[str] = Field(
-        default=None, description="Requested scopes (space-separated)"
+    scope: str | None = Field(
+        default=None, description="Requested scopes (space-separated)",
     )
-    tenant_id: Optional[UUID] = Field(
-        default=None, description="Tenant ID for multi-tenant auth"
+    tenant_id: UUID | None = Field(
+        default=None, description="Tenant ID for multi-tenant auth",
     )
 
 
@@ -236,22 +235,22 @@ class TokenIntrospectionResponse(BaseModel):
     """
 
     active: bool = Field(..., description="Whether the token is active")
-    sub: Optional[str] = Field(default=None, description="Subject")
-    client_id: Optional[str] = Field(default=None, description="Client ID")
-    username: Optional[str] = Field(default=None, description="Username")
-    token_type: Optional[str] = Field(default=None, description="Token type")
-    exp: Optional[int] = Field(default=None, description="Expiration timestamp")
-    iat: Optional[int] = Field(default=None, description="Issued at timestamp")
-    nbf: Optional[int] = Field(default=None, description="Not before timestamp")
-    aud: Optional[str] = Field(default=None, description="Audience")
-    iss: Optional[str] = Field(default=None, description="Issuer")
-    jti: Optional[str] = Field(default=None, description="JWT ID")
-    scope: Optional[str] = Field(default=None, description="Token scopes")
+    sub: str | None = Field(default=None, description="Subject")
+    client_id: str | None = Field(default=None, description="Client ID")
+    username: str | None = Field(default=None, description="Username")
+    token_type: str | None = Field(default=None, description="Token type")
+    exp: int | None = Field(default=None, description="Expiration timestamp")
+    iat: int | None = Field(default=None, description="Issued at timestamp")
+    nbf: int | None = Field(default=None, description="Not before timestamp")
+    aud: str | None = Field(default=None, description="Audience")
+    iss: str | None = Field(default=None, description="Issuer")
+    jti: str | None = Field(default=None, description="JWT ID")
+    scope: str | None = Field(default=None, description="Token scopes")
 
     # Custom claims
-    tenant_id: Optional[str] = Field(default=None, description="Tenant ID")
-    roles: Optional[list[str]] = Field(default=None, description="User roles")
-    groups: Optional[list[str]] = Field(default=None, description="User groups")
+    tenant_id: str | None = Field(default=None, description="Tenant ID")
+    roles: list[str] | None = Field(default=None, description="User roles")
+    groups: list[str] | None = Field(default=None, description="User groups")
 
 
 class TokenRevocationRequest(BaseModel):
@@ -262,7 +261,7 @@ class TokenRevocationRequest(BaseModel):
     """
 
     token: str = Field(..., description="Token to revoke")
-    token_type_hint: Optional[str] = Field(
+    token_type_hint: str | None = Field(
         default=None,
         description="Type of token: access_token or refresh_token",
         pattern="^(access_token|refresh_token)$",

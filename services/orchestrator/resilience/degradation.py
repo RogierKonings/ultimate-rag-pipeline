@@ -11,11 +11,9 @@ Degradation Levels:
 
 import logging
 from enum import Enum
-from typing import Dict, List, Optional
 
 from .circuit_breaker import CircuitBreaker, CircuitState
 from .config import CircuitBreakerConfig, ResilienceConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -53,20 +51,20 @@ class DegradationManager:
         status = manager.get_status()
     """
 
-    def __init__(self, config: Optional[ResilienceConfig] = None):
+    def __init__(self, config: ResilienceConfig | None = None):
         """Initialize degradation manager.
 
         Args:
             config: Resilience configuration, uses defaults if not provided
         """
         self.config = config or ResilienceConfig()
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self._critical_circuits: List[str] = []
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._critical_circuits: list[str] = []
 
     def register_circuit(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
         critical: bool = False,
     ) -> CircuitBreaker:
         """Register a circuit breaker for a service.
@@ -188,7 +186,7 @@ class DegradationManager:
         return DegradationLevel.NORMAL
 
     @property
-    def healthy_circuits(self) -> List[str]:
+    def healthy_circuits(self) -> list[str]:
         """Get list of healthy (CLOSED) circuits.
 
         Returns:
@@ -201,7 +199,7 @@ class DegradationManager:
         ]
 
     @property
-    def unhealthy_circuits(self) -> List[str]:
+    def unhealthy_circuits(self) -> list[str]:
         """Get list of unhealthy (OPEN or HALF_OPEN) circuits.
 
         Returns:
@@ -213,7 +211,7 @@ class DegradationManager:
             if circuit.state != CircuitState.CLOSED
         ]
 
-    def get_status(self) -> Dict:
+    def get_status(self) -> dict:
         """Get comprehensive status of all circuits.
 
         Returns:
@@ -276,7 +274,7 @@ class DegradationManager:
 
     def reset_all_circuits(self) -> None:
         """Reset all circuits to CLOSED state."""
-        for name, circuit in self._circuit_breakers.items():
+        for _name, circuit in self._circuit_breakers.items():
             circuit.reset()
         logger.info(
             "Reset all %d circuits",
@@ -284,7 +282,7 @@ class DegradationManager:
             extra={"circuit_count": len(self._circuit_breakers)},
         )
 
-    def get_available_features(self) -> Dict[str, bool]:
+    def get_available_features(self) -> dict[str, bool]:
         """Get map of features to availability based on circuit states.
 
         Returns:
@@ -311,7 +309,7 @@ class DegradationManager:
 
 
 # Global degradation manager instance
-_manager: Optional[DegradationManager] = None
+_manager: DegradationManager | None = None
 
 
 def get_degradation_manager() -> DegradationManager:

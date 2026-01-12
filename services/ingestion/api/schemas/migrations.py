@@ -1,7 +1,6 @@
 """Pydantic schemas for migration API endpoints."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -42,9 +41,9 @@ class ValidationConfigSchema(BaseModel):
                     "sample_size": 100,
                     "recall_threshold": 0.95,
                     "latency_threshold_ms": 100,
-                }
-            ]
-        }
+                },
+            ],
+        },
     }
 
 
@@ -52,34 +51,34 @@ class MigrationRequestSchema(BaseModel):
     """Request schema for starting an embedding migration."""
 
     target_model: str = Field(..., description="Target embedding model name")
-    target_dimensions: Optional[int] = Field(
-        None, description="Target dimensions (auto-detected if not specified)"
+    target_dimensions: int | None = Field(
+        None, description="Target dimensions (auto-detected if not specified)",
     )
 
     # Scope
-    tenant_ids: Optional[list[str]] = Field(
-        None, description="Limit migration to specific tenants"
+    tenant_ids: list[str] | None = Field(
+        None, description="Limit migration to specific tenants",
     )
 
     # Options
     batch_size: int = Field(
-        default=100, ge=10, le=1000, description="Documents per batch"
+        default=100, ge=10, le=1000, description="Documents per batch",
     )
     max_concurrent_batches: int = Field(
-        default=4, ge=1, le=16, description="Max concurrent batches"
+        default=4, ge=1, le=16, description="Max concurrent batches",
     )
     validate_before_switch: bool = Field(
-        default=True, description="Run validation before switching"
+        default=True, description="Run validation before switching",
     )
     auto_switch: bool = Field(
-        default=False, description="Auto-switch on validation pass"
+        default=False, description="Auto-switch on validation pass",
     )
     preserve_source: bool = Field(
-        default=True, description="Keep source collection for rollback"
+        default=True, description="Keep source collection for rollback",
     )
 
     # Validation configuration
-    validation_config: Optional[ValidationConfigSchema] = Field(
+    validation_config: ValidationConfigSchema | None = Field(
         None,
         description="Configuration for migration validation (sample_size, recall_threshold, latency_threshold_ms)",
     )
@@ -99,9 +98,9 @@ class MigrationRequestSchema(BaseModel):
                         "recall_threshold": 0.95,
                         "latency_threshold_ms": 100,
                     },
-                }
-            ]
-        }
+                },
+            ],
+        },
     }
 
 
@@ -124,16 +123,16 @@ class MigrationResponseSchema(BaseModel):
     progress_percentage: float
 
     created_at: datetime
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
-    validation_score: Optional[float] = None
+    validation_score: float | None = None
     validation_passed: bool = False
-    validation_config: Optional[dict] = Field(
-        None, description="Stored validation configuration"
+    validation_config: dict | None = Field(
+        None, description="Stored validation configuration",
     )
     rollback_enabled: bool = True
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
 
 class ValidationRequestSchema(BaseModel):
@@ -143,13 +142,13 @@ class ValidationRequestSchema(BaseModel):
     validation config (set when starting the migration) will be used.
     """
 
-    sample_size: Optional[int] = Field(
+    sample_size: int | None = Field(
         default=None,
         ge=10,
         le=1000,
         description="Number of queries to sample (overrides stored config if provided)",
     )
-    overlap_threshold: Optional[float] = Field(
+    overlap_threshold: float | None = Field(
         default=None,
         ge=0.0,
         le=1.0,
@@ -173,7 +172,7 @@ class SwitchRequestSchema(BaseModel):
     """Request schema for switching collections."""
 
     force: bool = Field(
-        default=False, description="Force switch even if validation failed"
+        default=False, description="Force switch even if validation failed",
     )
 
 
@@ -190,4 +189,4 @@ class StatusResponseSchema(BaseModel):
 
     status: str
     message: str
-    migration_id: Optional[UUID] = None
+    migration_id: UUID | None = None

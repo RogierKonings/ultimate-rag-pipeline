@@ -5,7 +5,6 @@ Tests OpenAI-compatible request/response models.
 """
 
 import pytest
-
 from gateway.models import (
     ChatCompletionChoice,
     ChatCompletionRequest,
@@ -325,7 +324,7 @@ class TestCommonModels:
             data=[
                 ModelInfo(id="gpt-4", owned_by="openai"),
                 ModelInfo(id="gpt-3.5-turbo", owned_by="openai"),
-            ]
+            ],
         )
 
         assert response.object == "list"

@@ -4,10 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from api.routes.query import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from api.routes.query import router
 from guardrails.models import GuardrailResult, Violation, ViolationType
 
 
@@ -28,8 +27,7 @@ def client(app):
 @pytest.fixture
 def mock_session_manager():
     """Create mock session manager."""
-    manager = AsyncMock()
-    return manager
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -37,10 +35,10 @@ def mock_guardrail_pipeline():
     """Create mock guardrail pipeline."""
     pipeline = MagicMock()
     pipeline.check_input = AsyncMock(
-        return_value=GuardrailResult(passed=True, violations=[])
+        return_value=GuardrailResult(passed=True, violations=[]),
     )
     pipeline.check_output = AsyncMock(
-        return_value=GuardrailResult(passed=True, violations=[])
+        return_value=GuardrailResult(passed=True, violations=[]),
     )
     pipeline.sanitize_output = MagicMock(return_value="Sanitized response")
     return pipeline
@@ -66,14 +64,14 @@ def mock_model_gateway():
                         content="This is a test response.",
                     ),
                     finish_reason="stop",
-                )
+                ),
             ],
             usage=UsageStats(
                 prompt_tokens=10,
                 completion_tokens=8,
                 total_tokens=18,
             ),
-        )
+        ),
     )
     return gateway
 
@@ -81,7 +79,7 @@ def mock_model_gateway():
 @pytest.fixture
 def mock_stream_manager():
     """Create mock stream manager."""
-    from streaming.models import StreamEvent, StreamEventType
+    from streaming.models import StreamEvent
 
     manager = MagicMock()
 
@@ -113,12 +111,12 @@ def mock_workflow():
                     "source": "docs/python.md",
                     "score": 0.95,
                     "metadata": {"title": "Python Guide"},
-                }
+                },
             ],
             "model_used": "llama",
             "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30},
             "strategy_used": "simple",
-        }
+        },
     )
     return workflow
 
@@ -146,7 +144,7 @@ class TestSynchronousQuery:
     """Tests for POST /api/v1/query endpoint."""
 
     def test_query_success_with_workflow(
-        self, client, configured_app
+        self, client, configured_app,
     ):
         """Test successful query with workflow."""
         response = client.post(
@@ -219,7 +217,7 @@ class TestSynchronousQuery:
         assert response.status_code == 200
 
     def test_query_input_validation_failure(
-        self, client, app, mock_session_manager, mock_model_gateway
+        self, client, app, mock_session_manager, mock_model_gateway,
     ):
         """Test query rejection when input fails guardrails."""
         app.state.session_manager = mock_session_manager
@@ -234,9 +232,9 @@ class TestSynchronousQuery:
                         type=ViolationType.INJECTION_ATTEMPT,
                         severity="high",
                         description="Prompt injection detected",
-                    )
+                    ),
                 ],
-            )
+            ),
         )
         app.state.guardrail_pipeline = pipeline
 
@@ -267,7 +265,7 @@ class TestSynchronousQuery:
         # Input passes, output fails
         pipeline = MagicMock()
         pipeline.check_input = AsyncMock(
-            return_value=GuardrailResult(passed=True, violations=[])
+            return_value=GuardrailResult(passed=True, violations=[]),
         )
         pipeline.check_output = AsyncMock(
             return_value=GuardrailResult(
@@ -277,9 +275,9 @@ class TestSynchronousQuery:
                         type=ViolationType.HARMFUL_CONTENT,
                         severity="high",
                         description="Harmful content detected",
-                    )
+                    ),
                 ],
-            )
+            ),
         )
         pipeline.sanitize_output = MagicMock(return_value="[Content removed]")
         app.state.guardrail_pipeline = pipeline
@@ -389,7 +387,7 @@ class TestStreamingQuery:
         assert "event: done" in content
 
     def test_stream_query_input_validation_failure(
-        self, client, app, mock_session_manager, mock_model_gateway, mock_stream_manager
+        self, client, app, mock_session_manager, mock_model_gateway, mock_stream_manager,
     ):
         """Test streaming query rejection when input fails guardrails."""
         app.state.session_manager = mock_session_manager
@@ -405,9 +403,9 @@ class TestStreamingQuery:
                         type=ViolationType.INJECTION_ATTEMPT,
                         severity="high",
                         description="Prompt injection detected",
-                    )
+                    ),
                 ],
-            )
+            ),
         )
         app.state.guardrail_pipeline = pipeline
 
@@ -562,7 +560,7 @@ class TestSourceDocumentTransformation:
         assert "snippet" in source
 
     def test_source_documents_truncate_content(
-        self, client, app, mock_session_manager, mock_guardrail_pipeline, mock_model_gateway
+        self, client, app, mock_session_manager, mock_guardrail_pipeline, mock_model_gateway,
     ):
         """Test that source document snippets are truncated."""
         workflow = AsyncMock()
@@ -575,12 +573,12 @@ class TestSourceDocumentTransformation:
                         "content": "x" * 500,  # Long content
                         "source": "test.md",
                         "score": 0.9,
-                    }
+                    },
                 ],
                 "model_used": "llama",
                 "usage": {},
                 "strategy_used": "simple",
-            }
+            },
         )
 
         app.state.session_manager = mock_session_manager

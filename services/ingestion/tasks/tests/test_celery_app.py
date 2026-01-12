@@ -1,6 +1,5 @@
 """Tests for Celery application configuration."""
 
-import pytest
 
 from ..celery_app import CeleryConfig, create_celery_app
 

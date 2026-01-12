@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Optional
 
 from .base import BaseParser, ContentBlock, ContentType, ParsedDocument
 
@@ -18,8 +17,8 @@ class JSONParser(BaseParser):
 
     def __init__(
         self,
-        content_fields: Optional[list[str]] = None,
-        metadata_fields: Optional[list[str]] = None,
+        content_fields: list[str] | None = None,
+        metadata_fields: list[str] | None = None,
     ):
         """Initialize JSON parser.
 
@@ -51,7 +50,7 @@ class JSONParser(BaseParser):
         return ["application/json", "text/json"]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse JSON document content.
 
@@ -70,12 +69,12 @@ class JSONParser(BaseParser):
         try:
             text_content = content.decode("utf-8")
         except UnicodeDecodeError as e:
-            raise ValueError(f"Failed to decode JSON content as UTF-8: {e}")
+            raise ValueError(f"Failed to decode JSON content as UTF-8: {e}") from e
 
         try:
             data = json.loads(text_content)
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON: {e}")
+            raise ValueError(f"Invalid JSON: {e}") from e
 
         # Handle array of objects
         if isinstance(data, list):
@@ -201,7 +200,7 @@ class JSONParser(BaseParser):
                             content_type=ContentType.TEXT,
                             content=text,
                             position=block_position,
-                        )
+                        ),
                     )
                     block_position += 1
 
@@ -213,7 +212,7 @@ class JSONParser(BaseParser):
                         content_type=ContentType.TEXT,
                         content=item,
                         position=block_position,
-                    )
+                    ),
                 )
                 block_position += 1
 
@@ -226,7 +225,7 @@ class JSONParser(BaseParser):
                         content_type=ContentType.TEXT,
                         content=text,
                         position=block_position,
-                    )
+                    ),
                 )
                 block_position += 1
 
@@ -261,7 +260,7 @@ class JSONParser(BaseParser):
                     content_type=ContentType.TEXT,
                     content=text,
                     position=0,
-                )
+                ),
             ]
             if text
             else [],

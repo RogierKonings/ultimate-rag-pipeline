@@ -6,7 +6,6 @@ and secret access patterns.
 """
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -46,7 +45,7 @@ class VaultSettings(BaseModel):
         default="http://localhost:8200",
         description="Vault server URL",
     )
-    namespace: Optional[str] = Field(
+    namespace: str | None = Field(
         default=None,
         description="Vault namespace (enterprise feature)",
     )
@@ -56,7 +55,7 @@ class VaultSettings(BaseModel):
     )
 
     # Token auth
-    token: Optional[str] = Field(
+    token: str | None = Field(
         default=None,
         description="Vault token (for token auth)",
     )
@@ -66,7 +65,7 @@ class VaultSettings(BaseModel):
     )
 
     # Kubernetes auth
-    kubernetes_role: Optional[str] = Field(
+    kubernetes_role: str | None = Field(
         default=None,
         description="Kubernetes auth role name",
     )
@@ -80,11 +79,11 @@ class VaultSettings(BaseModel):
     )
 
     # AppRole auth
-    approle_role_id: Optional[str] = Field(
+    approle_role_id: str | None = Field(
         default=None,
         description="AppRole role ID",
     )
-    approle_secret_id: Optional[str] = Field(
+    approle_secret_id: str | None = Field(
         default=None,
         description="AppRole secret ID",
     )
@@ -128,7 +127,7 @@ class VaultSettings(BaseModel):
         default=True,
         description="Verify SSL certificates",
     )
-    ca_cert_path: Optional[str] = Field(
+    ca_cert_path: str | None = Field(
         default=None,
         description="Path to CA certificate",
     )
@@ -147,7 +146,7 @@ class KubernetesSecretsSettings(BaseModel):
         ```
     """
 
-    namespace: Optional[str] = Field(
+    namespace: str | None = Field(
         default=None,
         description="Kubernetes namespace (None = use current)",
     )
@@ -155,7 +154,7 @@ class KubernetesSecretsSettings(BaseModel):
         default="rag-pipeline-secrets",
         description="Name of the Kubernetes Secret",
     )
-    kubeconfig_path: Optional[str] = Field(
+    kubeconfig_path: str | None = Field(
         default=None,
         description="Path to kubeconfig (None = in-cluster config)",
     )

@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 import numpy as np
@@ -27,13 +27,13 @@ class FusedResult(BaseModel):
     document_id: UUID
     content: str
     fused_score: float
-    semantic_score: Optional[float] = None
-    semantic_rank: Optional[int] = None
-    keyword_score: Optional[float] = None
-    keyword_rank: Optional[int] = None
+    semantic_score: float | None = None
+    semantic_rank: int | None = None
+    keyword_score: float | None = None
+    keyword_rank: int | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    title: Optional[str] = None
-    source: Optional[str] = None
+    title: str | None = None
+    source: str | None = None
 
 
 class HybridSearchConfig(BaseModel):
@@ -182,7 +182,7 @@ class ReciprocalRankFusion:
                     metadata=item["metadata"],
                     title=item["title"],
                     source=item["source"],
-                )
+                ),
             )
 
         return results
@@ -268,7 +268,7 @@ class LinearFusion:
                     metadata=item["metadata"],
                     title=item["title"],
                     source=item["source"],
-                )
+                ),
             )
 
         return results
@@ -387,7 +387,7 @@ class DistributionBasedScoreFusion:
                     metadata=item["metadata"],
                     title=item["title"],
                     source=item["source"],
-                )
+                ),
             )
 
         return results

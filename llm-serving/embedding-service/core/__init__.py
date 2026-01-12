@@ -1,6 +1,6 @@
 """Embedding service core module."""
 
-from .embedder import EmbeddingService
 from .batching import DynamicBatcher
+from .embedder import EmbeddingService
 
 __all__ = ["EmbeddingService", "DynamicBatcher"]

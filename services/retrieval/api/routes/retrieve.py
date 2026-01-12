@@ -1,14 +1,17 @@
 """Retrieval endpoints for the Retrieval Service."""
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Request, status
-
 from acl.filter import ACLFilter
-from acl.models import UserContext
+from fastapi import APIRouter, HTTPException, Request, status
+from query.preprocessor import QueryPreprocessor
+from reranking.reranker import RerankerService
+from search.fusion import HybridSearchConfig
+from search.hybrid import HybridSearcher
+
 from api.dependencies import UserContextDep
 from api.schemas.retrieve import (
     ExplainResponse,
@@ -19,10 +22,6 @@ from api.schemas.retrieve import (
     SearchMetrics,
     SearchMode,
 )
-from query.preprocessor import QueryPreprocessor
-from reranking.reranker import RerankerService
-from search.fusion import HybridSearchConfig
-from search.hybrid import HybridSearcher
 
 router = APIRouter()
 
@@ -147,7 +146,7 @@ async def retrieve(
 
     # Convert to response format
     response_results = _convert_to_response_documents(
-        results, body.include_metadata, body.include_highlights
+        results, body.include_metadata, body.include_highlights,
     )
 
     total_time = (time.time() - start_time) * 1000
@@ -171,7 +170,7 @@ async def retrieve(
             final_results_count=len(response_results),
         ),
         query_id=query_id,
-        processed_at=datetime.utcnow(),
+        processed_at=datetime.now(tz=UTC),
     )
 
 
@@ -240,7 +239,7 @@ async def retrieve_multi(
         rrf_k = 60
         rrf_scores: dict[UUID, float] = {}
 
-        for i, query in enumerate(body.queries):
+        for _i, query in enumerate(body.queries):
             processed = await preprocessor.process(query)
             search_response = await hybrid.search(
                 query=query,
@@ -288,7 +287,7 @@ async def retrieve_multi(
             final_results_count=len(response_results),
         ),
         query_id=query_id,
-        processed_at=datetime.utcnow(),
+        processed_at=datetime.now(tz=UTC),
     )
 
 
@@ -404,7 +403,7 @@ def _convert_to_response_documents(
                 rerank_score=rerank_score,
                 metadata=metadata_dict if include_metadata else {},
                 highlights=None,  # TODO: Implement highlights extraction
-            )
+            ),
         )
 
     return response_results

@@ -1,7 +1,6 @@
 """Input guardrails for validating user input."""
 
 import time
-from typing import Optional
 
 from .detection import detect_injection, detect_pii
 from .models import GuardrailConfig, GuardrailResult, Violation, ViolationType
@@ -16,7 +15,7 @@ class InputGuardrail:
     - PII detection (email, phone, SSN patterns)
     """
 
-    def __init__(self, config: Optional[GuardrailConfig] = None):
+    def __init__(self, config: GuardrailConfig | None = None):
         """Initialize the input guardrail.
 
         Args:
@@ -44,7 +43,7 @@ class InputGuardrail:
                     severity=self.config.length_severity,
                     description=f"Input exceeds maximum length of {self.config.max_input_length} characters",
                     location=f"0-{len(text)}",
-                )
+                ),
             )
 
         # Check for prompt injection
@@ -57,7 +56,7 @@ class InputGuardrail:
                         severity=self.config.injection_severity,
                         description=f"Potential prompt injection detected: '{match.matched_text}'",
                         location=f"{match.start}-{match.end}",
-                    )
+                    ),
                 )
 
         # Check for PII
@@ -71,7 +70,7 @@ class InputGuardrail:
                         severity=self.config.pii_severity,
                         description=f"PII detected ({pii_type}): '{match.matched_text}'",
                         location=f"{match.start}-{match.end}",
-                    )
+                    ),
                 )
 
         # Determine if check passed based on config

@@ -5,7 +5,6 @@ functions to ensure SSE events conform to the streaming contract.
 """
 
 import pytest
-
 from streaming.models import StreamEvent, StreamEventType
 from streaming.validation import (
     EventSequenceValidator,
@@ -16,7 +15,6 @@ from streaming.validation import (
     validate_error_event,
     validate_start_event,
 )
-
 
 # ============================================================================
 # EventValidationError Tests
@@ -258,7 +256,7 @@ class TestValidateErrorEvent:
     def test_valid_error_event_recoverable(self):
         """Test validation with recoverable flag."""
         event = StreamEvent.error(
-            "req-123", "Rate limited", "RATE_LIMIT", recoverable=True
+            "req-123", "Rate limited", "RATE_LIMIT", recoverable=True,
         )
         assert validate_error_event(event) is True
 
@@ -683,7 +681,7 @@ class TestEventSequenceValidatorIntegration:
                 "Model timeout exceeded",
                 "MODEL_TIMEOUT",
                 recoverable=True,
-            )
+            ),
         )
 
         assert validator.validate_sequence() is True
@@ -701,7 +699,7 @@ class TestEventSequenceValidatorIntegration:
                 "Rate limit exceeded",
                 "RATE_LIMIT_ERROR",
                 recoverable=True,
-            )
+            ),
         )
 
         assert validator.validate_sequence() is True

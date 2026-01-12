@@ -1,9 +1,9 @@
 """Query cache for storing search results."""
 
-from typing import Any, Optional
+from typing import Any
 
+from .key_builder import KeyBuilder, KeyType, ServicePrefix
 from .redis_client import RedisCache
-from .key_builder import KeyBuilder, ServicePrefix, KeyType
 
 
 class QueryCache:
@@ -56,7 +56,7 @@ class QueryCache:
         tenant_id: str,
         top_k: int = 10,
         **kwargs: Any,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get cached query results.
 
         Args:
@@ -78,7 +78,7 @@ class QueryCache:
         tenant_id: str,
         results: dict[str, Any],
         top_k: int = 10,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
         **kwargs: Any,
     ) -> None:
         """Cache query results.

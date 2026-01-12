@@ -8,9 +8,9 @@ These tests validate that:
 Run with: pytest tests/ingest/test_schema_alignment.py
 """
 
+
 import pytest
 from sqlalchemy import inspect
-from uuid import uuid4
 
 # Architecture-defined constants from docs/architecture.md
 ARCHITECTURE_EMBEDDING_DIMENSIONS = 1024
@@ -148,6 +148,7 @@ class TestEmbeddingConfigAlignment:
     def test_embedding_dimensions_validation_rejects_wrong_value(self):
         """Verify config validation rejects non-1024 dimensions."""
         from pydantic import ValidationError
+
         from config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
@@ -205,6 +206,7 @@ class TestChunkingConfigAlignment:
     def test_chunking_target_validation_rejects_wrong_value(self):
         """Verify config validation rejects non-300 target tokens."""
         from pydantic import ValidationError
+
         from config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
@@ -216,6 +218,7 @@ class TestChunkingConfigAlignment:
     def test_chunking_max_validation_rejects_wrong_value(self):
         """Verify config validation rejects non-512 max tokens."""
         from pydantic import ValidationError
+
         from config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
@@ -227,6 +230,7 @@ class TestChunkingConfigAlignment:
     def test_chunking_overlap_validation_rejects_wrong_value(self):
         """Verify config validation rejects non-50 overlap tokens."""
         from pydantic import ValidationError
+
         from config import Settings
 
         with pytest.raises(ValidationError) as exc_info:
@@ -318,7 +322,7 @@ class TestDocumentModelConstraints:
         relationships = mapper.relationships
 
         # Should have document relationship
-        assert "document" in relationships.keys()
+        assert "document" in relationships
 
         # Get the document_id column and check foreign key
         doc_id_col = mapper.columns.get("document_id")

@@ -3,8 +3,7 @@ Base model class and common mixins for SQLAlchemy models.
 """
 
 import uuid
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -67,7 +66,7 @@ class SoftDeleteMixin:
     def soft_delete(self) -> None:
         """Mark this record as deleted."""
         self.status = "deleted"
-        self.deleted_at = datetime.utcnow()
+        self.deleted_at = datetime.now(tz=UTC)
 
     @property
     def is_deleted(self) -> bool:

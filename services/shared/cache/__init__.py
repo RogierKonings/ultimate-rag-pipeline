@@ -7,10 +7,10 @@ This module provides:
 - QueryCache: Cache for query results (5-minute TTL)
 """
 
-from .redis_client import RedisCache
-from .key_builder import KeyBuilder, ServicePrefix, KeyType
 from .embedding_cache import EmbeddingCache
+from .key_builder import KeyBuilder, KeyType, ServicePrefix
 from .query_cache import QueryCache
+from .redis_client import RedisCache
 
 __all__ = [
     "RedisCache",

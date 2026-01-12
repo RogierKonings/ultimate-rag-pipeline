@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -33,10 +33,10 @@ class FilesystemSourceConfig(BaseModel):
 
     path: str
     storage_type: Literal["local", "s3"] = "local"
-    s3_endpoint: Optional[str] = None
-    s3_bucket: Optional[str] = None
+    s3_endpoint: str | None = None
+    s3_bucket: str | None = None
     recursive: bool = True
-    file_extensions: Optional[list[str]] = None
+    file_extensions: list[str] | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -54,8 +54,8 @@ class FilesystemSourceConfig(BaseModel):
                     "s3_bucket": "rag-documents",
                     "recursive": True,
                 },
-            ]
-        }
+            ],
+        },
     )
 
 
@@ -79,9 +79,9 @@ class DatabaseSourceConfig(BaseModel):
                     "content_column": "content",
                     "id_column": "id",
                     "metadata_columns": ["title", "author"],
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -89,7 +89,7 @@ class WebSourceConfig(BaseModel):
     """Configuration for web crawler source."""
 
     start_urls: list[str]
-    allowed_domains: Optional[list[str]] = None
+    allowed_domains: list[str] | None = None
     max_depth: int = 2
     max_pages: int = 100
 
@@ -101,9 +101,9 @@ class WebSourceConfig(BaseModel):
                     "allowed_domains": ["docs.example.com"],
                     "max_depth": 3,
                     "max_pages": 500,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -114,7 +114,7 @@ class APISourceConfig(BaseModel):
     list_endpoint: str
     fetch_endpoint: str
     auth_type: Literal["none", "bearer", "api_key", "basic"] = "none"
-    auth_token: Optional[str] = None
+    auth_token: str | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -125,9 +125,9 @@ class APISourceConfig(BaseModel):
                     "fetch_endpoint": "/documents/{id}",
                     "auth_type": "bearer",
                     "auth_token": "your-api-token",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -152,9 +152,9 @@ class ProcessingOptions(BaseModel):
                     "chunk_overlap": 50,
                     "enable_pii_detection": True,
                     "custom_metadata": {"department": "Engineering"},
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -177,9 +177,9 @@ class ACLContext(BaseModel):
                         "550e8400-e29b-41d4-a716-446655440002",
                     ],
                     "allowed_users": [],
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -220,9 +220,9 @@ class IngestRequest(BaseModel):
                             "550e8400-e29b-41d4-a716-446655440002",
                         ],
                     },
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
     @field_validator("source_config")
@@ -260,9 +260,9 @@ class IngestResponse(BaseModel):
                     "status": "queued",
                     "message": "Ingestion job started",
                     "created_at": "2025-12-18T12:00:00Z",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -293,9 +293,9 @@ class SingleIngestRequest(BaseModel):
                         "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
                         "visibility": "private",
                     },
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -318,9 +318,9 @@ class JobProgress(BaseModel):
                     "total": 150,
                     "stage": "embedding",
                     "percentage": 50.0,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -340,13 +340,13 @@ class JobStatusResponse(BaseModel):
 
     job_id: UUID
     status: JobStatus
-    progress: Optional[JobProgress] = None
+    progress: JobProgress | None = None
     documents_processed: int = 0
     chunks_created: int = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    duration_seconds: Optional[float] = None
-    error_message: Optional[str] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration_seconds: float | None = None
+    error_message: str | None = None
     errors: list[str] = []
 
     model_config = ConfigDict(
@@ -386,8 +386,8 @@ class JobStatusResponse(BaseModel):
                     "error_message": None,
                     "errors": [],
                 },
-            ]
-        }
+            ],
+        },
     )
 
 
@@ -407,12 +407,12 @@ class ActiveJobsResponse(BaseModel):
                             "status": "progress",
                             "documents_processed": 75,
                             "chunks_created": 450,
-                        }
+                        },
                     ],
                     "total": 1,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -428,9 +428,9 @@ class CancelJobResponse(BaseModel):
                 {
                     "job_id": "550e8400-e29b-41d4-a716-446655440000",
                     "cancelled": True,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -440,16 +440,16 @@ class CancelJobResponse(BaseModel):
 class SyncSourceConfig(BaseModel):
     """Configuration for incremental sync source."""
 
-    connection_string: Optional[str] = Field(
-        None, description="Database connection string for DATABASE source"
+    connection_string: str | None = Field(
+        None, description="Database connection string for DATABASE source",
     )
-    table: Optional[str] = Field(None, description="Table to sync for DATABASE source")
-    updated_since: Optional[datetime] = Field(
-        None, description="Sync documents updated since this timestamp"
+    table: str | None = Field(None, description="Table to sync for DATABASE source")
+    updated_since: datetime | None = Field(
+        None, description="Sync documents updated since this timestamp",
     )
-    path: Optional[str] = Field(None, description="Path for FILESYSTEM source")
-    start_urls: Optional[list[str]] = Field(None, description="URLs for WEB source")
-    base_url: Optional[str] = Field(None, description="Base URL for API source")
+    path: str | None = Field(None, description="Path for FILESYSTEM source")
+    start_urls: list[str] | None = Field(None, description="URLs for WEB source")
+    base_url: str | None = Field(None, description="Base URL for API source")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -463,8 +463,8 @@ class SyncSourceConfig(BaseModel):
                     "path": "/data/documents",
                     "updated_since": "2025-12-01T00:00:00Z",
                 },
-            ]
-        }
+            ],
+        },
     )
 
 
@@ -498,21 +498,21 @@ class SyncRequest(BaseModel):
                         "updated_since": "2025-12-01T00:00:00Z",
                     },
                 },
-            ]
-        }
+            ],
+        },
     )
 
     @field_validator("source_config")
     @classmethod
     def validate_source_config(
-        cls, v: SyncSourceConfig, info
+        cls, v: SyncSourceConfig, info,
     ) -> SyncSourceConfig:
         """Validate that required fields are present for source type."""
         source_type = info.data.get("source_type")
         if source_type == SourceType.DATABASE:
             if not v.connection_string or not v.table:
                 raise ValueError(
-                    "DATABASE source requires connection_string and table"
+                    "DATABASE source requires connection_string and table",
                 )
         return v
 
@@ -522,8 +522,8 @@ class SyncResponse(BaseModel):
 
     job_id: UUID = Field(..., description="Job identifier for tracking")
     status: str = Field(default="queued", description="Initial job status")
-    estimated_completion: Optional[datetime] = Field(
-        None, description="Estimated completion time"
+    estimated_completion: datetime | None = Field(
+        None, description="Estimated completion time",
     )
     message: str = Field(default="Sync job started", description="Status message")
 
@@ -535,9 +535,9 @@ class SyncResponse(BaseModel):
                     "status": "queued",
                     "estimated_completion": "2025-12-18T12:05:00Z",
                     "message": "Sync job started",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -547,12 +547,12 @@ class ReembedTargetScope(BaseModel):
     Filters which documents to re-embed with new model.
     """
 
-    tenant_id: Optional[str] = Field(None, description="Limit to specific tenant")
-    source_types: Optional[list[SourceType]] = Field(
-        None, description="Limit to specific source types"
+    tenant_id: str | None = Field(None, description="Limit to specific tenant")
+    source_types: list[SourceType] | None = Field(
+        None, description="Limit to specific source types",
     )
-    document_ids: Optional[list[UUID]] = Field(
-        None, description="Limit to specific document IDs"
+    document_ids: list[UUID] | None = Field(
+        None, description="Limit to specific document IDs",
     )
 
     model_config = ConfigDict(
@@ -569,8 +569,8 @@ class ReembedTargetScope(BaseModel):
                         "550e8400-e29b-41d4-a716-446655440002",
                     ],
                 },
-            ]
-        }
+            ],
+        },
     )
 
 
@@ -581,13 +581,13 @@ class ReembedRequest(BaseModel):
     """
 
     embedding_model: str = Field(
-        ..., description="New embedding model name (e.g., BAAI/bge-m3)"
+        ..., description="New embedding model name (e.g., BAAI/bge-m3)",
     )
     target_scope: ReembedTargetScope = Field(
-        ..., description="Scope filter for documents to re-embed"
+        ..., description="Scope filter for documents to re-embed",
     )
     batch_size: int = Field(
-        default=100, ge=10, le=1000, description="Batch size for processing"
+        default=100, ge=10, le=1000, description="Batch size for processing",
     )
 
     model_config = ConfigDict(
@@ -600,9 +600,9 @@ class ReembedRequest(BaseModel):
                         "source_types": ["filesystem", "web"],
                     },
                     "batch_size": 100,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -611,14 +611,14 @@ class ReembedResponse(BaseModel):
 
     job_id: UUID = Field(..., description="Celery job ID for task tracking")
     embedding_job_id: UUID = Field(
-        ..., description="Embedding job record ID in database"
+        ..., description="Embedding job record ID in database",
     )
     status: str = Field(default="pending", description="Initial job status")
-    estimated_completion: Optional[datetime] = Field(
-        None, description="Estimated completion time"
+    estimated_completion: datetime | None = Field(
+        None, description="Estimated completion time",
     )
     message: str = Field(
-        default="Re-embedding job started", description="Status message"
+        default="Re-embedding job started", description="Status message",
     )
 
     model_config = ConfigDict(
@@ -630,8 +630,8 @@ class ReembedResponse(BaseModel):
                     "status": "pending",
                     "estimated_completion": "2025-12-18T14:00:00Z",
                     "message": "Re-embedding job started",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 

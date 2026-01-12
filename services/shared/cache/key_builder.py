@@ -1,7 +1,7 @@
 """Redis key builder for namespaced key generation."""
 
-from enum import Enum
 import hashlib
+from enum import Enum
 
 
 class ServicePrefix(str, Enum):

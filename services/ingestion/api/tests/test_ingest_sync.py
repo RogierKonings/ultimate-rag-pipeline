@@ -5,7 +5,6 @@ Tests for:
 - POST /ingest/reembed - re-embedding with new model
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 

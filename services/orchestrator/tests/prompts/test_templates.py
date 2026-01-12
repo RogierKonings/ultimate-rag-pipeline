@@ -1,14 +1,13 @@
 """Tests for prompt templates."""
 
 import pytest
-from jinja2 import Environment, BaseLoader
-
+from jinja2 import BaseLoader, Environment
 from prompts.templates import (
-    RAG_SYSTEM_PROMPT,
-    NO_CONTEXT_PROMPT,
-    FOLLOW_UP_PROMPT,
-    RAG_CITATIONS_PROMPT,
     CLARIFICATION_PROMPT,
+    FOLLOW_UP_PROMPT,
+    NO_CONTEXT_PROMPT,
+    RAG_CITATIONS_PROMPT,
+    RAG_SYSTEM_PROMPT,
     SUMMARY_PROMPT,
     TEMPLATES,
     get_template,

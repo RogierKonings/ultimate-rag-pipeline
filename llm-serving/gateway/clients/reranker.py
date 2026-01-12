@@ -6,7 +6,6 @@ Handles communication with the reranker service for document ranking.
 
 import logging
 import time
-from typing import Optional, Union
 
 import httpx
 
@@ -35,7 +34,7 @@ class RerankerClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.default_model = default_model
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -61,7 +60,7 @@ class RerankerClient:
             logger.warning(f"Reranker health check failed: {e}")
             return False
 
-    async def get_model_info(self) -> Optional[dict]:
+    async def get_model_info(self) -> dict | None:
         """Get model information."""
         try:
             client = await self._get_client()
@@ -73,7 +72,7 @@ class RerankerClient:
             logger.error(f"Failed to get model info: {e}")
             return None
 
-    def _extract_document_text(self, doc: Union[str, dict]) -> str:
+    def _extract_document_text(self, doc: str | dict) -> str:
         """Extract text from document (string or dict with 'text' field)."""
         if isinstance(doc, str):
             return doc
@@ -84,7 +83,7 @@ class RerankerClient:
     async def rerank(
         self,
         request: RerankRequest,
-        context_headers: Optional[dict[str, str]] = None,
+        context_headers: dict[str, str] | None = None,
     ) -> RerankResponse:
         """
         Rerank documents against a query.
@@ -156,7 +155,7 @@ class RerankerClient:
 
             latency_ms = (time.time() - start_time) * 1000
             logger.debug(
-                f"Reranked {len(request.documents)} documents in {latency_ms:.1f}ms"
+                f"Reranked {len(request.documents)} documents in {latency_ms:.1f}ms",
             )
 
             return RerankResponse(
@@ -170,7 +169,7 @@ class RerankerClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"Rerank request failed: {e.response.status_code} - {e.response.text}"
+                f"Rerank request failed: {e.response.status_code} - {e.response.text}",
             )
             raise
         except Exception as e:
@@ -181,8 +180,8 @@ class RerankerClient:
         self,
         query: str,
         documents: list[str],
-        top_n: Optional[int] = None,
-        context_headers: Optional[dict[str, str]] = None,
+        top_n: int | None = None,
+        context_headers: dict[str, str] | None = None,
     ) -> list[tuple[int, float]]:
         """
         Simple rerank interface returning (index, score) tuples.

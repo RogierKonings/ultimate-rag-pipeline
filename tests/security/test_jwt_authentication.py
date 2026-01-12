@@ -6,8 +6,8 @@ and middleware functionality.
 """
 
 import time
-from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 
@@ -22,7 +22,6 @@ from services.shared.security.jwt import (
     TokenRevokedError,
     TokenType,
 )
-
 
 # Test data
 TEST_USER_ID = uuid4()
@@ -196,7 +195,7 @@ class TestJWTHandler:
         """Test that expired tokens are rejected."""
         # Create token that expires immediately
         token = jwt_handler.create_access_token(
-            sample_claims, expires_delta=timedelta(seconds=-1)
+            sample_claims, expires_delta=timedelta(seconds=-1),
         )
 
         with pytest.raises(TokenExpiredError):
@@ -265,7 +264,7 @@ class TestTokenBlocklist:
         handler, blocklist = jwt_handler_with_blocklist
 
         token = handler.create_access_token(sample_claims)
-        verified = handler.verify_token(token)  # Should work
+        handler.verify_token(token)  # Should work
 
         # Revoke the token
         assert handler.revoke_token(token) is True
@@ -280,7 +279,7 @@ class TestTokenBlocklist:
 
         # Create token with short expiry
         token = handler.create_access_token(
-            sample_claims, expires_delta=timedelta(seconds=1)
+            sample_claims, expires_delta=timedelta(seconds=1),
         )
         payload = handler.decode_token_unverified(token)
         jti = payload["jti"]
@@ -374,8 +373,8 @@ class TestCustomExpiration:
         token = jwt_handler.create_access_token(sample_claims, expires_delta=custom_delta)
 
         payload = jwt_handler.decode_token_unverified(token)
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        iat = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        iat = datetime.fromtimestamp(payload["iat"], tz=UTC)
 
         # Check expiration is approximately 5 minutes from issue time
         diff = exp - iat
@@ -387,8 +386,8 @@ class TestCustomExpiration:
         token = jwt_handler.create_refresh_token(sample_claims, expires_delta=custom_delta)
 
         payload = jwt_handler.decode_token_unverified(token)
-        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
-        iat = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+        exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
+        iat = datetime.fromtimestamp(payload["iat"], tz=UTC)
 
         # Check expiration is approximately 1 day from issue time
         diff = exp - iat

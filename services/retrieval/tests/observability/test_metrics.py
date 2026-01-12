@@ -1,7 +1,6 @@
 """Tests for RetrievalMetrics."""
 
 import pytest
-
 from observability.metrics import RetrievalMetrics, get_metrics_output
 
 

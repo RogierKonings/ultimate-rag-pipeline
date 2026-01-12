@@ -1,11 +1,11 @@
 """Tests for job status tracking."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import MagicMock, patch
 
-from ..status import JobStatusTracker
+import pytest
+
 from ..models import JobStatus
+from ..status import JobStatusTracker
 
 # Module path for patching
 STATUS_MODULE = "services.ingestion.tasks.status"

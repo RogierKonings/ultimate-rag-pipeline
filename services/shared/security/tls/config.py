@@ -8,8 +8,6 @@ mTLS support, and integration with various services.
 import logging
 import ssl
 from enum import Enum
-from pathlib import Path
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -39,22 +37,22 @@ class TLSSettings(BaseSettings):
     )
 
     # Certificate paths
-    cert_file: Optional[str] = Field(
+    cert_file: str | None = Field(
         default=None,
         alias="TLS_CERT_FILE",
         description="Path to certificate file (PEM)",
     )
-    key_file: Optional[str] = Field(
+    key_file: str | None = Field(
         default=None,
         alias="TLS_KEY_FILE",
         description="Path to private key file (PEM)",
     )
-    ca_file: Optional[str] = Field(
+    ca_file: str | None = Field(
         default=None,
         alias="TLS_CA_FILE",
         description="Path to CA certificate file (for verification)",
     )
-    ca_path: Optional[str] = Field(
+    ca_path: str | None = Field(
         default=None,
         alias="TLS_CA_PATH",
         description="Path to directory of CA certificates",
@@ -71,7 +69,7 @@ class TLSSettings(BaseSettings):
     )
 
     # Cipher configuration
-    ciphers: Optional[str] = Field(
+    ciphers: str | None = Field(
         default=None,
         description="Cipher suite string (OpenSSL format)",
     )
@@ -87,12 +85,12 @@ class TLSSettings(BaseSettings):
     )
 
     # Client certificate (for mTLS)
-    client_cert_file: Optional[str] = Field(
+    client_cert_file: str | None = Field(
         default=None,
         alias="TLS_CLIENT_CERT_FILE",
         description="Path to client certificate for mTLS",
     )
-    client_key_file: Optional[str] = Field(
+    client_key_file: str | None = Field(
         default=None,
         alias="TLS_CLIENT_KEY_FILE",
         description="Path to client private key for mTLS",
@@ -137,12 +135,12 @@ def _get_ssl_version(version_str: str) -> int:
 
 
 def create_server_ssl_context(
-    settings: Optional[TLSSettings] = None,
-    cert_file: Optional[str] = None,
-    key_file: Optional[str] = None,
-    ca_file: Optional[str] = None,
+    settings: TLSSettings | None = None,
+    cert_file: str | None = None,
+    key_file: str | None = None,
+    ca_file: str | None = None,
     require_client_cert: bool = False,
-) -> Optional[ssl.SSLContext]:
+) -> ssl.SSLContext | None:
     """
     Create SSL context for server-side TLS.
 
@@ -181,7 +179,7 @@ def create_server_ssl_context(
     if not cert or not key:
         logger.warning(
             "TLS enabled but no certificate/key provided. "
-            "Set TLS_CERT_FILE and TLS_KEY_FILE."
+            "Set TLS_CERT_FILE and TLS_KEY_FILE.",
         )
         return None
 
@@ -225,13 +223,13 @@ def create_server_ssl_context(
 
 
 def create_client_ssl_context(
-    settings: Optional[TLSSettings] = None,
-    ca_file: Optional[str] = None,
-    client_cert_file: Optional[str] = None,
-    client_key_file: Optional[str] = None,
+    settings: TLSSettings | None = None,
+    ca_file: str | None = None,
+    client_cert_file: str | None = None,
+    client_key_file: str | None = None,
     verify: bool = True,
     check_hostname: bool = True,
-) -> Optional[ssl.SSLContext]:
+) -> ssl.SSLContext | None:
     """
     Create SSL context for client-side TLS.
 
@@ -304,11 +302,11 @@ def create_client_ssl_context(
 
 
 def create_postgres_ssl_context(
-    settings: Optional[TLSSettings] = None,
-    ca_file: Optional[str] = None,
-    client_cert_file: Optional[str] = None,
-    client_key_file: Optional[str] = None,
-) -> Optional[ssl.SSLContext]:
+    settings: TLSSettings | None = None,
+    ca_file: str | None = None,
+    client_cert_file: str | None = None,
+    client_key_file: str | None = None,
+) -> ssl.SSLContext | None:
     """
     Create SSL context for PostgreSQL connections.
 
@@ -347,11 +345,11 @@ def create_postgres_ssl_context(
 
 
 def create_redis_ssl_context(
-    settings: Optional[TLSSettings] = None,
-    ca_file: Optional[str] = None,
-    client_cert_file: Optional[str] = None,
-    client_key_file: Optional[str] = None,
-) -> Optional[ssl.SSLContext]:
+    settings: TLSSettings | None = None,
+    ca_file: str | None = None,
+    client_cert_file: str | None = None,
+    client_key_file: str | None = None,
+) -> ssl.SSLContext | None:
     """
     Create SSL context for Redis connections.
 

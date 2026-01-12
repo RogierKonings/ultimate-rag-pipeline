@@ -2,7 +2,7 @@
 Pydantic models for the Embedding Service API.
 """
 
-from typing import Literal, Optional, Union
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -16,19 +16,19 @@ class EmbeddingRequest(BaseModel):
     """
 
     model: str = "BAAI/bge-large-en-v1.5"
-    input: Union[str, list[str]]
+    input: str | list[str]
     encoding_format: Literal["float", "base64"] = "float"
 
     # Extension: prefix for BGE models
-    input_type: Optional[Literal["query", "passage"]] = None
+    input_type: Literal["query", "passage"] | None = None
 
     # Request metadata
-    user: Optional[str] = None
+    user: str | None = None
     request_id: UUID = Field(default_factory=uuid4)
 
     @field_validator("input")
     @classmethod
-    def validate_input(cls, v: Union[str, list[str]]) -> Union[str, list[str]]:
+    def validate_input(cls, v: str | list[str]) -> str | list[str]:
         """Validate that input is not empty."""
         if isinstance(v, str):
             if not v.strip():
@@ -69,7 +69,7 @@ class BatchEmbeddingRequest(BaseModel):
     """Batch embedding request for internal use."""
 
     texts: list[str]
-    input_type: Optional[Literal["query", "passage"]] = None
+    input_type: Literal["query", "passage"] | None = None
     request_ids: list[UUID] = Field(default_factory=list)
 
 
@@ -91,7 +91,7 @@ class HealthResponse(BaseModel):
     embedding_dim: int
     device: str
     gpu_available: bool
-    gpu_memory_used_mb: Optional[float] = None
+    gpu_memory_used_mb: float | None = None
     queue_size: int
     uptime_seconds: float
 

@@ -12,7 +12,7 @@ Requires services to be running via docker-compose.
 
 import asyncio
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import httpx
 import numpy as np
@@ -282,7 +282,7 @@ async def test_reranker_pairs(http_client: httpx.AsyncClient):
             "pairs": [
                 {"query": "What is AI?", "document": "AI is artificial intelligence."},
                 {"query": "What is ML?", "document": "ML is machine learning."},
-            ]
+            ],
         },
     )
 

@@ -5,7 +5,7 @@ TypedDict-based state definitions rather than Pydantic models for proper
 state management and graph compilation.
 """
 
-from typing import TypedDict, Optional, List
+from typing import TypedDict
 
 
 class RAGState(TypedDict, total=False):
@@ -29,9 +29,9 @@ class RAGState(TypedDict, total=False):
     # =========================================================================
     request_id: str  # Unique identifier for this request
     query: str  # User's original query
-    session_id: Optional[str]  # Conversation session ID
-    user_id: Optional[str]  # User identifier for ACL
-    tenant_id: Optional[str]  # Tenant identifier for ACL
+    session_id: str | None  # Conversation session ID
+    user_id: str | None  # User identifier for ACL
+    tenant_id: str | None  # Tenant identifier for ACL
 
     # =========================================================================
     # Routing Fields
@@ -41,35 +41,35 @@ class RAGState(TypedDict, total=False):
     # =========================================================================
     # Retrieval Fields
     # =========================================================================
-    documents: List[dict]  # Retrieved documents with scores and metadata
+    documents: list[dict]  # Retrieved documents with scores and metadata
     context: str  # Formatted context string for prompt
 
     # =========================================================================
     # Generation Fields
     # =========================================================================
-    messages: List[dict]  # Conversation messages for LLM
-    response: Optional[str]  # Generated response from LLM
+    messages: list[dict]  # Conversation messages for LLM
+    response: str | None  # Generated response from LLM
 
     # =========================================================================
     # Metadata Fields
     # =========================================================================
-    model_used: Optional[str]  # Model identifier used for generation
-    usage: Optional[dict]  # Token usage statistics
+    model_used: str | None  # Model identifier used for generation
+    usage: dict | None  # Token usage statistics
     timing: dict  # Timing metrics per stage
 
     # =========================================================================
     # Error Handling Fields
     # =========================================================================
-    error: Optional[str]  # Error message if workflow failed
-    fallbacks_used: List[str]  # List of fallback strategies applied
+    error: str | None  # Error message if workflow failed
+    fallbacks_used: list[str]  # List of fallback strategies applied
 
 
 def create_initial_state(
     request_id: str,
     query: str,
-    session_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
+    session_id: str | None = None,
+    user_id: str | None = None,
+    tenant_id: str | None = None,
 ) -> RAGState:
     """
     Create an initial RAGState with default values.

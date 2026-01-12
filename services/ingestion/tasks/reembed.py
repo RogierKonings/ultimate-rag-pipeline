@@ -9,8 +9,8 @@ import asyncio
 import logging
 import os
 import time
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from .celery_app import celery_app
@@ -29,7 +29,7 @@ def reembed_collection(
     collection_name: str,
     new_model: str,
     batch_size: int = 100,
-    tenant_id: Optional[str] = None,
+    tenant_id: str | None = None,
 ) -> dict[str, Any]:
     """Re-embed all documents in a collection with a new model.
 
@@ -45,21 +45,20 @@ def reembed_collection(
         Summary of re-embedding results.
     """
     try:
-        result = asyncio.run(
+        return asyncio.run(
             _reembed_collection_async(
                 task=self,
                 collection_name=collection_name,
                 new_model=new_model,
                 batch_size=batch_size,
                 tenant_id=tenant_id,
-            )
+            ),
         )
-        return result
 
     except Exception as e:
         logger.error(f"Re-embedding failed: {e}")
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e)
+            raise self.retry(exc=e) from e
         raise
 
 
@@ -68,7 +67,7 @@ async def _reembed_collection_async(
     collection_name: str,
     new_model: str,
     batch_size: int,
-    tenant_id: Optional[str],
+    tenant_id: str | None,
 ) -> dict[str, Any]:
     """Async implementation of re-embedding.
 
@@ -82,15 +81,16 @@ async def _reembed_collection_async(
     Returns:
         Results dict.
     """
+    from sqlalchemy import select
+
     from services.ingestion.embedding.service import (
         EmbeddingService,
         EmbeddingServiceConfig,
     )
     from services.shared.database.connection import get_session
     from services.shared.database.models import Chunk
-    from sqlalchemy import select
 
-    start_time = datetime.utcnow()
+    start_time = datetime.now(tz=UTC)
 
     # Get all chunks from PostgreSQL
     task.update_state(
@@ -158,7 +158,7 @@ async def _reembed_collection_async(
                 },
             )
 
-    end_time = datetime.utcnow()
+    end_time = datetime.now(tz=UTC)
     duration = (end_time - start_time).total_seconds()
 
     return {
@@ -189,7 +189,7 @@ async def _update_embeddings_in_qdrant(
 
     try:
         points = []
-        for chunk, emb_result in zip(chunks, embeddings.results):
+        for chunk, emb_result in zip(chunks, embeddings.results, strict=True):
             points.append(
                 PointStruct(
                     id=str(chunk.chunk_id),
@@ -199,7 +199,7 @@ async def _update_embeddings_in_qdrant(
                         "content": chunk.content,
                         "tenant_id": chunk.tenant_id,
                     },
-                )
+                ),
             )
 
         if points:
@@ -245,7 +245,7 @@ def reembed_migration_batch(
         Batch processing results.
     """
     try:
-        result = asyncio.run(
+        return asyncio.run(
             _reembed_migration_batch_async(
                 task=self,
                 migration_id=migration_id,
@@ -254,14 +254,13 @@ def reembed_migration_batch(
                 target_collection=target_collection,
                 target_model=target_model,
                 batch_index=batch_index,
-            )
+            ),
         )
-        return result
 
     except Exception as e:
         logger.error(f"Migration batch {batch_index} failed: {e}")
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e)
+            raise self.retry(exc=e) from e
         # Record failure in progress tracker
         asyncio.run(
             _record_batch_failure(
@@ -269,7 +268,7 @@ def reembed_migration_batch(
                 batch_index=batch_index,
                 failed_count=len(chunk_ids),
                 error=str(e),
-            )
+            ),
         )
         raise
 
@@ -304,11 +303,11 @@ async def _reembed_migration_batch_async(
         EmbeddingService,
         EmbeddingServiceConfig,
     )
+    from services.ingestion.migrations.models import MigrationProgress
     from services.ingestion.migrations.progress_tracker import (
         MigrationProgressStore,
         MigrationProgressStoreConfig,
     )
-    from services.ingestion.migrations.models import MigrationProgress
 
     start_time = time.time()
     processed = 0
@@ -320,7 +319,7 @@ async def _reembed_migration_batch_async(
 
     qdrant = AsyncQdrantClient(url=qdrant_url)
     progress_store = MigrationProgressStore(
-        config=MigrationProgressStoreConfig(redis_url=redis_url)
+        config=MigrationProgressStoreConfig(redis_url=redis_url),
     )
 
     try:
@@ -378,7 +377,7 @@ async def _reembed_migration_batch_async(
         # Build points for target collection
         new_points = []
         for (point_id, source_point), emb_result in zip(
-            point_map.items(), embeddings_result.results
+            point_map.items(), embeddings_result.results,
         ):
             try:
                 new_points.append(
@@ -386,7 +385,7 @@ async def _reembed_migration_batch_async(
                         id=point_id,
                         vector=emb_result.embedding,
                         payload=source_point.payload,
-                    )
+                    ),
                 )
                 processed += 1
             except Exception as e:
@@ -418,7 +417,7 @@ async def _reembed_migration_batch_async(
 
         logger.info(
             f"Migration {migration_id} batch {batch_index}: "
-            f"processed={processed}, failed={failed}, duration={duration_ms:.0f}ms"
+            f"processed={processed}, failed={failed}, duration={duration_ms:.0f}ms",
         )
 
         return {
@@ -458,7 +457,7 @@ async def _record_batch_failure(
 
     try:
         async with MigrationProgressStore(
-            config=MigrationProgressStoreConfig(redis_url=redis_url)
+            config=MigrationProgressStoreConfig(redis_url=redis_url),
         ) as store:
             progress = MigrationProgress(
                 migration_id=UUID(migration_id),

@@ -28,7 +28,6 @@ Indexes:
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -54,13 +53,13 @@ class Message(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     # Token count for management
-    token_count: Optional[int] = None
+    token_count: int | None = None
 
     # Source tracking for assistant messages
-    sources: Optional[list[str]] = None
+    sources: list[str] | None = None
 
     # For function messages
-    name: Optional[str] = None
+    name: str | None = None
 
     def to_dict(self) -> dict:
         """Convert to dict for LLM API.
@@ -80,14 +79,14 @@ class ConversationSession(BaseModel):
     id: UUID = Field(default_factory=uuid4)
 
     # User/tenant info
-    user_id: Optional[UUID] = None
-    tenant_id: Optional[UUID] = None
+    user_id: UUID | None = None
+    tenant_id: UUID | None = None
 
     # Messages
     messages: list[Message] = Field(default_factory=list)
 
     # Summary of older messages
-    summary: Optional[str] = None
+    summary: str | None = None
     summarized_count: int = 0  # Number of messages included in summary
 
     # Metadata
@@ -100,7 +99,7 @@ class ConversationSession(BaseModel):
     total_tokens: int = 0
 
     # Configuration
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
 
 
 class MemoryConfig(BaseModel):

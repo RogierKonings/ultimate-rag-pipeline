@@ -3,9 +3,9 @@
 import hashlib
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -34,17 +34,17 @@ class RetrievalLogEntry(BaseModel):
 
     # Identifiers
     query_id: UUID
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
     # Request info
     query: str
-    query_type: Optional[str] = None
+    query_type: str | None = None
     mode: str  # hybrid, semantic, keyword
 
     # User context (anonymized)
     tenant_id: UUID
-    user_id_hash: Optional[str] = None  # Hashed for privacy
+    user_id_hash: str | None = None  # Hashed for privacy
 
     # Results
     result_count: int
@@ -54,7 +54,7 @@ class RetrievalLogEntry(BaseModel):
     total_ms: float
     preprocessing_ms: float
     search_ms: float
-    rerank_ms: Optional[float] = None
+    rerank_ms: float | None = None
 
     # Components used
     used_semantic: bool = False
@@ -65,8 +65,8 @@ class RetrievalLogEntry(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     # Error info
-    error: Optional[str] = None
-    error_type: Optional[str] = None
+    error: str | None = None
+    error_type: str | None = None
 
 
 class RetrievalLogger:
@@ -120,7 +120,7 @@ class RetrievalLogger:
         structlog.configure(
             processors=processors,
             wrapper_class=structlog.make_filtering_bound_logger(
-                getattr(logging, self.log_level.upper())
+                getattr(logging, self.log_level.upper()),
             ),
             context_class=dict,
             logger_factory=structlog.PrintLoggerFactory(),
@@ -138,7 +138,7 @@ class RetrievalLogger:
             class JsonFormatter(logging.Formatter):
                 def format(self, record: logging.LogRecord) -> str:
                     log_data = {
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(tz=UTC).isoformat(),
                         "level": record.levelname.lower(),
                         "message": record.getMessage(),
                         "service": self.service_name,
@@ -151,7 +151,7 @@ class RetrievalLogger:
             formatter.service_name = self.service_name
         else:
             formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             )
 
         handler.setFormatter(formatter)
@@ -166,20 +166,20 @@ class RetrievalLogger:
         query: str,
         mode: str,
         tenant_id: UUID,
-        user_id: Optional[UUID],
+        user_id: UUID | None,
         result_count: int,
         top_scores: list[float],
         total_ms: float,
         preprocessing_ms: float,
         search_ms: float,
-        rerank_ms: Optional[float] = None,
+        rerank_ms: float | None = None,
         used_semantic: bool = False,
         used_keyword: bool = False,
         used_reranking: bool = False,
-        error: Optional[str] = None,
-        trace_id: Optional[str] = None,
-        span_id: Optional[str] = None,
-        extra: Optional[dict] = None,
+        error: str | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
+        extra: dict | None = None,
     ) -> None:
         """
         Log a retrieval operation.
@@ -283,7 +283,7 @@ class RetrievalLogger:
         self,
         error: Exception,
         context: dict[str, Any],
-        query_id: Optional[UUID] = None,
+        query_id: UUID | None = None,
     ) -> None:
         """Log error with context."""
         self._log(

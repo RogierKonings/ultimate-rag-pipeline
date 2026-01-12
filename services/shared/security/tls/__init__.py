@@ -6,12 +6,12 @@ communication between services and external clients.
 """
 
 from .config import (
-    TLSSettings,
     TLSMode,
-    create_server_ssl_context,
+    TLSSettings,
     create_client_ssl_context,
     create_postgres_ssl_context,
     create_redis_ssl_context,
+    create_server_ssl_context,
 )
 
 __all__ = [

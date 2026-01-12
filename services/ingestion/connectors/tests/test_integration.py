@@ -4,8 +4,6 @@ These tests require Docker to be running and will spin up real
 instances of MinIO, PostgreSQL, and HTTP servers for testing.
 """
 
-import asyncio
-import os
 import tempfile
 from pathlib import Path
 
@@ -14,18 +12,19 @@ import pytest
 # Skip all integration tests if testcontainers is not available
 pytest.importorskip("testcontainers")
 
+import contextlib
+
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
 
-from services.ingestion.connectors.filesystem import (
-    FilesystemConnector,
-    FilesystemConnectorConfig,
-)
 from services.ingestion.connectors.database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
 )
-
+from services.ingestion.connectors.filesystem import (
+    FilesystemConnector,
+    FilesystemConnectorConfig,
+)
 
 # Mark all tests in this module as integration tests
 pytestmark = [
@@ -58,7 +57,7 @@ class TestFilesystemConnectorMinIO:
         """Create a test bucket with sample files."""
         import boto3
         from botocore.config import Config
-        
+
         s3_client = boto3.client(
             "s3",
             endpoint_url=minio_container["endpoint"],
@@ -66,15 +65,13 @@ class TestFilesystemConnectorMinIO:
             aws_secret_access_key=minio_container["secret_key"],
             config=Config(signature_version="s3v4"),
         )
-        
+
         bucket_name = "test-bucket"
-        
+
         # Create bucket
-        try:
+        with contextlib.suppress(s3_client.exceptions.BucketAlreadyOwnedByYou):
             s3_client.create_bucket(Bucket=bucket_name)
-        except s3_client.exceptions.BucketAlreadyOwnedByYou:
-            pass
-        
+
         # Upload test files
         test_files = {
             "documents/file1.txt": b"Content of file 1",
@@ -82,12 +79,12 @@ class TestFilesystemConnectorMinIO:
             "documents/subdir/file3.txt": b"Nested file content",
             "images/image.png": b"\x89PNG\r\n\x1a\n" + b"\x00" * 100,
         }
-        
+
         for key, content in test_files.items():
             s3_client.put_object(Bucket=bucket_name, Key=key, Body=content)
-        
+
         yield bucket_name, test_files
-        
+
         # Cleanup
         response = s3_client.list_objects_v2(Bucket=bucket_name)
         for obj in response.get("Contents", []):
@@ -98,7 +95,7 @@ class TestFilesystemConnectorMinIO:
     async def test_connect_to_minio(self, minio_container, test_bucket):
         """Test connecting to MinIO."""
         bucket_name, _ = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -107,7 +104,7 @@ class TestFilesystemConnectorMinIO:
             s3_secret_key=minio_container["secret_key"],
             s3_bucket=bucket_name,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             assert connector._connected is True
 
@@ -115,7 +112,7 @@ class TestFilesystemConnectorMinIO:
     async def test_list_documents_minio(self, minio_container, test_bucket):
         """Test listing documents from MinIO."""
         bucket_name, test_files = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -124,10 +121,10 @@ class TestFilesystemConnectorMinIO:
             s3_secret_key=minio_container["secret_key"],
             s3_bucket=bucket_name,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == len(test_files)
             source_ids = {doc.source_id for doc in docs}
             assert "documents/file1.txt" in source_ids
@@ -136,7 +133,7 @@ class TestFilesystemConnectorMinIO:
     async def test_list_documents_with_prefix(self, minio_container, test_bucket):
         """Test listing documents with prefix filter."""
         bucket_name, _ = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -145,17 +142,17 @@ class TestFilesystemConnectorMinIO:
             s3_secret_key=minio_container["secret_key"],
             s3_bucket=bucket_name,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents("documents/")]
-            
+
             assert len(docs) == 3  # Only documents/ prefix
 
     @pytest.mark.asyncio
     async def test_fetch_document_minio(self, minio_container, test_bucket):
         """Test fetching a single document from MinIO."""
         bucket_name, test_files = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -164,10 +161,10 @@ class TestFilesystemConnectorMinIO:
             s3_secret_key=minio_container["secret_key"],
             s3_bucket=bucket_name,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             doc = await connector.fetch_document("documents/file1.txt")
-            
+
             assert doc.content == test_files["documents/file1.txt"]
             assert doc.metadata.source_id == "documents/file1.txt"
             assert doc.metadata.source_type == "s3"
@@ -176,7 +173,7 @@ class TestFilesystemConnectorMinIO:
     async def test_stream_documents_minio(self, minio_container, test_bucket):
         """Test streaming all documents from MinIO."""
         bucket_name, test_files = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -185,10 +182,10 @@ class TestFilesystemConnectorMinIO:
             s3_secret_key=minio_container["secret_key"],
             s3_bucket=bucket_name,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.stream_documents()]
-            
+
             assert len(docs) == len(test_files)
             # Verify content matches
             for doc in docs:
@@ -199,7 +196,7 @@ class TestFilesystemConnectorMinIO:
     async def test_file_extension_filter_minio(self, minio_container, test_bucket):
         """Test file extension filtering."""
         bucket_name, _ = test_bucket
-        
+
         config = FilesystemConnectorConfig(
             base_path=bucket_name,
             storage_type="s3",
@@ -209,10 +206,10 @@ class TestFilesystemConnectorMinIO:
             s3_bucket=bucket_name,
             file_extensions=[".txt"],
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 3  # Only .txt files
             for doc in docs:
                 assert doc.filename.endswith(".txt")
@@ -232,7 +229,7 @@ class TestDatabaseConnectorPostgres:
         with PostgresContainer("postgres:16") as postgres:
             yield {
                 "connection_string": postgres.get_connection_url().replace(
-                    "postgresql+psycopg2://", "postgresql://"
+                    "postgresql+psycopg2://", "postgresql://",
                 ),
                 "host": postgres.get_container_host_ip(),
                 "port": postgres.get_exposed_port(5432),
@@ -245,10 +242,10 @@ class TestDatabaseConnectorPostgres:
     def test_data(self, postgres_container):
         """Create test table and data."""
         import psycopg2
-        
+
         conn = psycopg2.connect(postgres_container["connection_string"])
         cursor = conn.cursor()
-        
+
         # Create test table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS documents (
@@ -258,26 +255,26 @@ class TestDatabaseConnectorPostgres:
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        
+
         # Insert test data
         test_docs = [
             ("Content of document 1", "Document 1"),
             ("Content of document 2", "Document 2"),
             ("Content of document 3", "Document 3"),
         ]
-        
+
         for content, title in test_docs:
             cursor.execute(
                 "INSERT INTO documents (content, title) VALUES (%s, %s)",
-                (content, title)
+                (content, title),
             )
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         yield test_docs
-        
+
         # Cleanup
         conn = psycopg2.connect(postgres_container["connection_string"])
         cursor = conn.cursor()
@@ -296,7 +293,7 @@ class TestDatabaseConnectorPostgres:
             content_column="content",
             id_column="id",
         )
-        
+
         async with DatabaseConnector(config) as connector:
             assert connector._connected is True
 
@@ -311,12 +308,12 @@ class TestDatabaseConnectorPostgres:
             id_column="id",
             metadata_columns=["title"],
         )
-        
+
         async with DatabaseConnector(config) as connector:
             docs = [doc async for doc in connector.stream_documents()]
-            
+
             assert len(docs) == len(test_data)
-            
+
             # Verify content
             for i, doc in enumerate(docs):
                 expected_content, expected_title = test_data[i]
@@ -333,10 +330,10 @@ class TestDatabaseConnectorPostgres:
             content_column="content",
             id_column="id",
         )
-        
+
         async with DatabaseConnector(config) as connector:
             doc = await connector.fetch_document("1")
-            
+
             assert doc.content == test_data[0][0].encode("utf-8")
             assert doc.metadata.source_id == "1"
 
@@ -344,21 +341,21 @@ class TestDatabaseConnectorPostgres:
     async def test_batch_streaming_postgres(self, postgres_container):
         """Test batch streaming with larger dataset."""
         import psycopg2
-        
+
         # Insert more data
         conn = psycopg2.connect(postgres_container["connection_string"])
         cursor = conn.cursor()
-        
+
         for i in range(100):
             cursor.execute(
                 "INSERT INTO documents (content, title) VALUES (%s, %s)",
-                (f"Batch content {i}", f"Batch Doc {i}")
+                (f"Batch content {i}", f"Batch Doc {i}"),
             )
-        
+
         conn.commit()
         cursor.close()
         conn.close()
-        
+
         config = DatabaseConnectorConfig(
             connection_string=postgres_container["connection_string"],
             db_type="postgresql",
@@ -367,10 +364,10 @@ class TestDatabaseConnectorPostgres:
             id_column="id",
             batch_size=20,  # Small batches
         )
-        
+
         async with DatabaseConnector(config) as connector:
             docs = [doc async for doc in connector.stream_documents()]
-            
+
             # 3 original + 100 new
             assert len(docs) >= 100
 
@@ -388,18 +385,18 @@ class TestFilesystemConnectorLocal:
         """Create a temporary directory with test files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir)
-            
+
             # Create directory structure
             (base / "docs").mkdir()
             (base / "docs" / "subdir").mkdir()
             (base / "images").mkdir()
-            
+
             # Create test files
             (base / "docs" / "readme.txt").write_text("README content")
             (base / "docs" / "manual.pdf").write_bytes(b"%PDF-1.4 fake pdf")
             (base / "docs" / "subdir" / "nested.txt").write_text("Nested content")
             (base / "images" / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-            
+
             yield tmpdir
 
     @pytest.mark.asyncio
@@ -409,7 +406,7 @@ class TestFilesystemConnectorLocal:
             base_path=test_directory,
             storage_type="local",
         )
-        
+
         async with FilesystemConnector(config) as connector:
             assert connector._connected is True
 
@@ -421,10 +418,10 @@ class TestFilesystemConnectorLocal:
             storage_type="local",
             recursive=True,
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 4
             filenames = {doc.filename for doc in docs}
             assert "readme.txt" in filenames
@@ -438,10 +435,10 @@ class TestFilesystemConnectorLocal:
             storage_type="local",
             file_extensions=[".txt"],
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-            
+
             assert len(docs) == 2  # Only .txt files
             for doc in docs:
                 assert doc.filename.endswith(".txt")
@@ -453,10 +450,10 @@ class TestFilesystemConnectorLocal:
             base_path=test_directory,
             storage_type="local",
         )
-        
+
         async with FilesystemConnector(config) as connector:
             doc = await connector.fetch_document("docs/readme.txt")
-            
+
             assert doc.content == b"README content"
             assert doc.metadata.filename == "readme.txt"
 
@@ -467,12 +464,12 @@ class TestFilesystemConnectorLocal:
             base_path=test_directory,
             storage_type="local",
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.stream_documents()]
-            
+
             assert len(docs) == 4
-            
+
             # Check that content is loaded
             contents = {doc.content for doc in docs}
             assert b"README content" in contents
@@ -484,10 +481,10 @@ class TestFilesystemConnectorLocal:
             base_path=test_directory,
             storage_type="local",
         )
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents("docs")]
-            
+
             assert len(docs) == 3  # Files in docs/ and docs/subdir/
 
 
@@ -504,13 +501,13 @@ class TestPerformance:
         """Create a directory with many files for performance testing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             base = Path(tmpdir)
-            
+
             # Create 1000+ files
             for i in range(1100):
                 subdir = base / f"dir_{i // 100}"
                 subdir.mkdir(exist_ok=True)
                 (subdir / f"file_{i}.txt").write_text(f"Content of file {i}")
-            
+
             yield tmpdir
 
     @pytest.mark.asyncio
@@ -518,19 +515,19 @@ class TestPerformance:
     async def test_list_1000_files_performance(self, large_test_directory):
         """Test listing 1000+ files completes in reasonable time."""
         import time
-        
+
         config = FilesystemConnectorConfig(
             base_path=large_test_directory,
             storage_type="local",
         )
-        
+
         start_time = time.time()
-        
+
         async with FilesystemConnector(config) as connector:
             docs = [doc async for doc in connector.list_documents()]
-        
+
         elapsed = time.time() - start_time
-        
+
         assert len(docs) >= 1000
         assert elapsed < 30  # Should complete within 30 seconds
 
@@ -539,23 +536,23 @@ class TestPerformance:
     async def test_stream_1000_files_performance(self, large_test_directory):
         """Test streaming 1000+ files completes in reasonable time."""
         import time
-        
+
         config = FilesystemConnectorConfig(
             base_path=large_test_directory,
             storage_type="local",
         )
-        
+
         start_time = time.time()
         count = 0
-        
+
         async with FilesystemConnector(config) as connector:
             async for doc in connector.stream_documents():
                 count += 1
                 # Simulate some processing
                 _ = len(doc.content)
-        
+
         elapsed = time.time() - start_time
-        
+
         assert count >= 1000
         assert elapsed < 60  # Should complete within 60 seconds
 
@@ -568,8 +565,8 @@ class TestPerformance:
 def pytest_configure(config):
     """Add custom markers for integration tests."""
     config.addinivalue_line(
-        "markers", "integration: mark test as integration test"
+        "markers", "integration: mark test as integration test",
     )
     config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
+        "markers", "slow: mark test as slow running",
     )

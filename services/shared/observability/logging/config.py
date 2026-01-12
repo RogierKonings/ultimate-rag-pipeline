@@ -4,9 +4,9 @@ Logging Configuration.
 Provides configuration dataclass for structured logging setup.
 """
 
+import contextlib
 import os
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -77,7 +77,7 @@ class LoggingConfig:
     async_logging: bool = True
 
     @classmethod
-    def from_env(cls, service_name: Optional[str] = None) -> "LoggingConfig":
+    def from_env(cls, service_name: str | None = None) -> "LoggingConfig":
         """
         Create configuration from environment variables.
 
@@ -102,13 +102,13 @@ class LoggingConfig:
         name = service_name or os.getenv("SERVICE_NAME", "unknown-service")
 
         # Parse boolean env vars
-        def parse_bool(value: Optional[str], default: bool) -> bool:
+        def parse_bool(value: str | None, default: bool) -> bool:
             if value is None:
                 return default
             return value.lower() in ("true", "1", "yes")
 
         # Parse list env vars
-        def parse_list(value: Optional[str], default: list[str]) -> list[str]:
+        def parse_list(value: str | None, default: list[str]) -> list[str]:
             if value is None:
                 return default
             return [item.strip() for item in value.split(",") if item.strip()]
@@ -139,10 +139,8 @@ class LoggingConfig:
         # Override max body length if provided
         max_body = os.getenv("LOG_MAX_BODY_LENGTH")
         if max_body:
-            try:
+            with contextlib.suppress(ValueError):
                 config.max_body_length = int(max_body)
-            except ValueError:
-                pass
 
         return config
 

@@ -7,10 +7,10 @@ Validates that traces and logs are properly correlated.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from .otlp import OTLPValidator
 from .loki import LokiValidator
+from .otlp import OTLPValidator
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +60,11 @@ class TraceLogValidator:
 
     def __init__(
         self,
-        otlp_validator: Optional[OTLPValidator] = None,
-        loki_validator: Optional[LokiValidator] = None,
+        otlp_validator: OTLPValidator | None = None,
+        loki_validator: LokiValidator | None = None,
         jaeger_url: str = "http://jaeger:16686",
         loki_url: str = "http://loki:3100",
-        expected_services: Optional[list[str]] = None,
+        expected_services: list[str] | None = None,
     ):
         """
         Initialize trace-log validator.
@@ -120,7 +120,7 @@ class TraceLogValidator:
         # Check trace_id labeling
         if not loki_result.trace_correlation_enabled:
             recommendations.append(
-                "Enable trace_id label extraction in Promtail/OTEL log pipeline"
+                "Enable trace_id label extraction in Promtail/OTEL log pipeline",
             )
 
         # Sample correlation checks
@@ -139,7 +139,7 @@ class TraceLogValidator:
 
         if not correlation_valid:
             recommendations.append(
-                "Ensure trace context is propagated to logging framework"
+                "Ensure trace context is propagated to logging framework",
             )
 
         return TraceLogValidationResult(
@@ -155,7 +155,7 @@ class TraceLogValidator:
     async def validate_correlation(
         self,
         trace_id: str,
-        expected_services: Optional[list[str]] = None,
+        expected_services: list[str] | None = None,
     ) -> CorrelationResult:
         """
         Validate correlation for a specific trace.
@@ -172,11 +172,11 @@ class TraceLogValidator:
 
         # Check trace exists
         trace_result = await self.otlp_validator.validate_trace_propagation(
-            trace_id, expected
+            trace_id, expected,
         )
 
         trace_found = trace_result.get("valid", False) or len(
-            trace_result.get("services_found", [])
+            trace_result.get("services_found", []),
         ) > 0
         trace_services = trace_result.get("services_found", [])
         span_count = trace_result.get("span_count", 0)
@@ -188,7 +188,7 @@ class TraceLogValidator:
         logs = await self.loki_validator.query_logs_by_trace_id(trace_id)
         logs_found = len(logs) > 0
 
-        log_services = list(set(log.get("service") for log in logs if log.get("service")))
+        log_services = list({log.get("service") for log in logs if log.get("service")})
         log_count = len(logs)
 
         # Determine correlation method
@@ -293,7 +293,7 @@ class TraceLogValidator:
 
 
 async def run_correlation_check(
-    trace_id: Optional[str] = None,
+    trace_id: str | None = None,
     jaeger_url: str = "http://jaeger:16686",
     loki_url: str = "http://loki:3100",
 ) -> dict[str, Any]:
@@ -316,14 +316,13 @@ async def run_correlation_check(
     if trace_id:
         result = await validator.validate_correlation(trace_id)
         return result.__dict__
-    else:
-        result = await validator.validate()
-        return {
-            "is_valid": result.is_valid,
-            "otlp_valid": result.otlp_valid,
-            "loki_valid": result.loki_valid,
-            "correlation_valid": result.correlation_valid,
-            "sample_count": len(result.sample_correlations),
-            "errors": result.errors,
-            "recommendations": result.recommendations,
-        }
+    result = await validator.validate()
+    return {
+        "is_valid": result.is_valid,
+        "otlp_valid": result.otlp_valid,
+        "loki_valid": result.loki_valid,
+        "correlation_valid": result.correlation_valid,
+        "sample_count": len(result.sample_correlations),
+        "errors": result.errors,
+        "recommendations": result.recommendations,
+    }

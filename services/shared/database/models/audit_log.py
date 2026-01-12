@@ -4,8 +4,8 @@ Audit log database model.
 This module defines the SQLAlchemy model for audit log entries.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -16,7 +16,8 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..base import Base
@@ -40,12 +41,12 @@ class AuditLog(Base):
     )
 
     # Correlation
-    trace_id: Mapped[Optional[str]] = mapped_column(
+    trace_id: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
         index=True,
     )
-    span_id: Mapped[Optional[str]] = mapped_column(
+    span_id: Mapped[str | None] = mapped_column(
         String(32),
         nullable=True,
     )
@@ -53,35 +54,35 @@ class AuditLog(Base):
     # Timing
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         nullable=False,
         index=True,
     )
-    duration_ms: Mapped[Optional[float]] = mapped_column(
+    duration_ms: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
     )
 
     # Actor
-    user_id: Mapped[Optional[UUID]] = mapped_column(
+    user_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         nullable=True,
         index=True,
     )
-    username: Mapped[Optional[str]] = mapped_column(
+    username: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    tenant_id: Mapped[Optional[UUID]] = mapped_column(
+    tenant_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         nullable=True,
         index=True,
     )
-    service_name: Mapped[Optional[str]] = mapped_column(
+    service_name: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
-    api_key_id: Mapped[Optional[str]] = mapped_column(
+    api_key_id: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
     )
@@ -104,74 +105,74 @@ class AuditLog(Base):
     )
 
     # Resource
-    resource_type: Mapped[Optional[str]] = mapped_column(
+    resource_type: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
         index=True,
     )
-    resource_id: Mapped[Optional[str]] = mapped_column(
+    resource_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         index=True,
     )
-    resource_name: Mapped[Optional[str]] = mapped_column(
+    resource_name: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
 
     # Request context
-    client_ip: Mapped[Optional[str]] = mapped_column(
+    client_ip: Mapped[str | None] = mapped_column(
         String(45),  # IPv6 max length
         nullable=True,
         index=True,
     )
-    user_agent: Mapped[Optional[str]] = mapped_column(
+    user_agent: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
-    request_method: Mapped[Optional[str]] = mapped_column(
+    request_method: Mapped[str | None] = mapped_column(
         String(10),
         nullable=True,
     )
-    request_path: Mapped[Optional[str]] = mapped_column(
+    request_path: Mapped[str | None] = mapped_column(
         String(2000),
         nullable=True,
     )
-    request_id: Mapped[Optional[str]] = mapped_column(
+    request_id: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
     )
 
     # Response
-    status_code: Mapped[Optional[int]] = mapped_column(
+    status_code: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
     )
-    error_message: Mapped[Optional[str]] = mapped_column(
+    error_message: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
-    error_code: Mapped[Optional[str]] = mapped_column(
+    error_code: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
     )
 
     # Additional context
-    details: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    details: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
-    changes: Mapped[Optional[dict[str, Any]]] = mapped_column(
+    changes: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )
 
     # Tamper evidence
-    previous_hash: Mapped[Optional[str]] = mapped_column(
+    previous_hash: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
     )
-    entry_hash: Mapped[Optional[str]] = mapped_column(
+    entry_hash: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
     )

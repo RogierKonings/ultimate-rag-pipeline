@@ -7,16 +7,15 @@ Follows naming convention: rag_<subsystem>_<metric>_<unit>
 
 import logging
 import os
-from typing import Optional, List
+from typing import Optional
 
 from prometheus_client import (
+    REGISTRY,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     Info,
-    Summary,
-    CollectorRegistry,
-    REGISTRY,
     multiprocess,
 )
 
@@ -58,7 +57,7 @@ class RAGMetrics:
     def __init__(
         self,
         service_name: str = "rag_service",
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
     ):
         """
         Initialize RAG metrics.
@@ -360,7 +359,7 @@ class RAGMetrics:
         duration: float,
         result_count: int,
         status: str = "success",
-        top_score: Optional[float] = None,
+        top_score: float | None = None,
     ) -> None:
         """
         Record a query execution.
@@ -490,7 +489,7 @@ class RAGMetrics:
         output_tokens: int,
         status: str = "success",
         provider: str = "default",
-        ttft: Optional[float] = None,
+        ttft: float | None = None,
     ) -> None:
         """
         Record an LLM inference.

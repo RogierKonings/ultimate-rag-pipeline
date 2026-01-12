@@ -28,12 +28,12 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from services.ingestion.tasks.celery_app import celery_app
+import services.ingestion.tasks.callbacks  # noqa: F401
 
 # Import tasks to register them
 import services.ingestion.tasks.ingest  # noqa: F401
 import services.ingestion.tasks.reembed  # noqa: F401
-import services.ingestion.tasks.callbacks  # noqa: F401
+from services.ingestion.tasks.celery_app import celery_app
 
 # Configure logging with trace context format (US-2.12)
 logging.basicConfig(
@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     # Initialize telemetry before starting worker (US-2.12)
-    from services.ingestion.telemetry import setup_telemetry, instrument_celery
+    from services.ingestion.telemetry import instrument_celery, setup_telemetry
 
     logger.info("Initializing OpenTelemetry and Prometheus metrics...")
     setup_telemetry()
@@ -80,5 +80,5 @@ if __name__ == "__main__":
             "worker",
             f"--queues={queues}",
             "--loglevel=info",
-        ]
+        ],
     )

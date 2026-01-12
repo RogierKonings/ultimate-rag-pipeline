@@ -2,13 +2,11 @@
 Tests for OpenTelemetry tracing module.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 import asyncio
+from unittest.mock import Mock, patch
 
-from opentelemetry import trace
+import pytest
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.trace import SpanKind, StatusCode
 
 
 class TestOTELConfig:
@@ -43,8 +41,9 @@ class TestOTELConfig:
 
     def test_sampler_for_environments(self):
         """Test sampler selection based on environment."""
-        from shared.observability.otel.tracer import OTELConfig
         from opentelemetry.sdk.trace.sampling import ALWAYS_ON, ParentBased
+
+        from shared.observability.otel.tracer import OTELConfig
 
         # Development - always sample
         dev_config = OTELConfig(service_name="test", environment="development")
@@ -54,7 +53,7 @@ class TestOTELConfig:
         prod_config = OTELConfig(
             service_name="test",
             environment="production",
-            sample_rate=0.1
+            sample_rate=0.1,
         )
         sampler = prod_config.get_sampler()
         assert isinstance(sampler, ParentBased)
@@ -111,9 +110,9 @@ class TestRAGAttributes:
     def test_set_rag_attributes(self):
         """Test setting RAG attributes on a span."""
         from shared.observability.otel.attributes import (
-            set_rag_attributes,
-            RAGOperation,
             RAGAttributes,
+            RAGOperation,
+            set_rag_attributes,
         )
 
         mock_span = Mock()
@@ -134,7 +133,7 @@ class TestRAGAttributes:
 
     def test_set_retrieval_results(self):
         """Test setting retrieval result attributes."""
-        from shared.observability.otel.attributes import set_retrieval_results, RAGAttributes
+        from shared.observability.otel.attributes import RAGAttributes, set_retrieval_results
 
         mock_span = Mock()
         mock_span.is_recording.return_value = True
@@ -149,7 +148,7 @@ class TestRAGAttributes:
 
     def test_set_llm_usage(self):
         """Test setting LLM usage attributes."""
-        from shared.observability.otel.attributes import set_llm_usage, RAGAttributes
+        from shared.observability.otel.attributes import RAGAttributes, set_llm_usage
 
         mock_span = Mock()
         mock_span.is_recording.return_value = True
@@ -175,8 +174,8 @@ class TestSpanDecorators:
 
     def test_traced_decorator_sync(self):
         """Test @traced decorator with sync function."""
-        from shared.observability.otel.spans import traced
         from shared.observability.otel.attributes import RAGOperation
+        from shared.observability.otel.spans import traced
 
         @traced("test_operation", operation=RAGOperation.QUERY)
         def test_function(x: int, y: int) -> int:
@@ -188,8 +187,8 @@ class TestSpanDecorators:
     @pytest.mark.asyncio
     async def test_traced_decorator_async(self):
         """Test @traced decorator with async function."""
-        from shared.observability.otel.spans import traced
         from shared.observability.otel.attributes import RAGOperation
+        from shared.observability.otel.spans import traced
 
         @traced("async_test", operation=RAGOperation.EMBEDDING)
         async def async_function(x: int) -> int:
@@ -212,8 +211,8 @@ class TestSpanDecorators:
 
     def test_rag_span_context_manager(self):
         """Test rag_span context manager."""
-        from shared.observability.otel.spans import rag_span
         from shared.observability.otel.attributes import RAGOperation
+        from shared.observability.otel.spans import rag_span
 
         with rag_span("test_span", RAGOperation.VECTOR_SEARCH) as span:
             assert span is not None
@@ -227,7 +226,7 @@ class TestSpanDecorators:
         assert get_current_span() is None or not get_current_span().is_recording()
 
         # Inside span context
-        with rag_span("test") as span:
+        with rag_span("test"):
             current = get_current_span()
             assert current is not None
 
@@ -235,7 +234,7 @@ class TestSpanDecorators:
         """Test add_span_event helper."""
         from shared.observability.otel.spans import add_span_event, rag_span
 
-        with rag_span("test") as span:
+        with rag_span("test"):
             add_span_event("test_event", {"key": "value"})
             # Event is added (no error)
 
@@ -266,7 +265,7 @@ class TestContextPropagation:
         from shared.observability.otel.spans import rag_span
 
         # Outside span - may be None
-        outside_id = get_current_trace_id()
+        get_current_trace_id()
 
         # Inside span - should have ID
         with rag_span("test"):

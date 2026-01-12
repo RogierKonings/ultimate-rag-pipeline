@@ -1,7 +1,6 @@
 """Pytest configuration for schema alignment tests."""
 
 import sys
-import os
 from pathlib import Path
 
 import pytest
@@ -19,7 +18,6 @@ sys.path.insert(0, str(shared_dir))
 @pytest.fixture(autouse=True)
 def reset_settings():
     """Reset global settings instance before each test."""
-    from config import _settings
     import config
 
     # Reset the cached settings

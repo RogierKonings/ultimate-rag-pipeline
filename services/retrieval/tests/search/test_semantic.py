@@ -1,12 +1,12 @@
 """Tests for semantic search."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from search.semantic import SemanticSearcher
-from search.models import QdrantConfig, SearchResultItem
+import pytest
 from search.exceptions import SearchFilterError
+from search.models import QdrantConfig, SearchResultItem
+from search.semantic import SemanticSearcher
 
 
 class MockQdrantResult:
@@ -37,8 +37,7 @@ def searcher(config):
 @pytest.fixture
 def mock_client():
     """Create mock Qdrant client."""
-    mock = AsyncMock()
-    return mock
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -227,7 +226,7 @@ class TestSemanticSearcherFilterBuilding:
             "must": [
                 {"key": "tenant_id", "match": {"value": "tenant-123"}},
                 {"key": "visibility", "match": {"value": "public"}},
-            ]
+            ],
         }
         result = searcher._build_filter(filter_dict)
 
@@ -240,7 +239,7 @@ class TestSemanticSearcherFilterBuilding:
             "should": [
                 {"key": "group", "match": {"value": "engineering"}},
                 {"key": "group", "match": {"value": "ml-team"}},
-            ]
+            ],
         }
         result = searcher._build_filter(filter_dict)
 
@@ -250,7 +249,7 @@ class TestSemanticSearcherFilterBuilding:
     def test_build_filter_must_not_conditions(self, searcher):
         """Test must_not conditions."""
         filter_dict = {
-            "must_not": [{"key": "visibility", "match": {"value": "private"}}]
+            "must_not": [{"key": "visibility", "match": {"value": "private"}}],
         }
         result = searcher._build_filter(filter_dict)
 
@@ -260,7 +259,7 @@ class TestSemanticSearcherFilterBuilding:
     def test_build_filter_match_any(self, searcher):
         """Test match any condition."""
         filter_dict = {
-            "must": [{"key": "allowed_groups", "match": {"any": ["group-1", "group-2"]}}]
+            "must": [{"key": "allowed_groups", "match": {"any": ["group-1", "group-2"]}}],
         }
         result = searcher._build_filter(filter_dict)
 
@@ -270,7 +269,7 @@ class TestSemanticSearcherFilterBuilding:
     def test_build_filter_range(self, searcher):
         """Test range condition."""
         filter_dict = {
-            "must": [{"key": "created_at", "range": {"gte": "2024-01-01"}}]
+            "must": [{"key": "created_at", "range": {"gte": "2024-01-01"}}],
         }
         result = searcher._build_filter(filter_dict)
 

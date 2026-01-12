@@ -6,8 +6,8 @@ access permissions across the RAG pipeline.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional, Protocol
+from datetime import UTC, datetime
+from typing import Any, Protocol
 from uuid import UUID
 
 from .models import (
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class ACLError(Exception):
     """Base exception for ACL errors."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -33,7 +33,7 @@ class ACLError(Exception):
 class DocumentNotFoundError(ACLError):
     """Raised when a document is not found."""
 
-    def __init__(self, document_id: UUID, details: Optional[dict] = None):
+    def __init__(self, document_id: UUID, details: dict | None = None):
         super().__init__(f"Document not found: {document_id}", details)
         self.document_id = document_id
 
@@ -46,7 +46,7 @@ class AccessDeniedError(ACLError):
         document_id: UUID,
         user_id: UUID,
         action: str = "access",
-        details: Optional[dict] = None,
+        details: dict | None = None,
     ):
         super().__init__(
             f"Access denied: user {user_id} cannot {action} document {document_id}",
@@ -60,7 +60,7 @@ class AccessDeniedError(ACLError):
 class ACLRepository(Protocol):
     """Protocol for ACL data storage."""
 
-    async def get_acl(self, document_id: UUID) -> Optional[DocumentACL]:
+    async def get_acl(self, document_id: UUID) -> DocumentACL | None:
         """Get ACL for a document."""
         ...
 
@@ -73,7 +73,7 @@ class ACLRepository(Protocol):
         ...
 
     async def get_acls_for_documents(
-        self, document_ids: list[UUID]
+        self, document_ids: list[UUID],
     ) -> dict[UUID, DocumentACL]:
         """Get ACLs for multiple documents."""
         ...
@@ -83,13 +83,13 @@ class VectorStoreUpdater(Protocol):
     """Protocol for updating vector store ACL metadata."""
 
     async def update_document_acl(
-        self, document_id: UUID, acl_payload: dict[str, Any]
+        self, document_id: UUID, acl_payload: dict[str, Any],
     ) -> None:
         """Update ACL payload in vector store."""
         ...
 
     async def update_documents_acl(
-        self, document_acls: dict[UUID, dict[str, Any]]
+        self, document_acls: dict[UUID, dict[str, Any]],
     ) -> None:
         """Bulk update ACL payloads in vector store."""
         ...
@@ -131,8 +131,8 @@ class ACLService:
 
     def __init__(
         self,
-        repository: Optional[ACLRepository] = None,
-        vector_updater: Optional[VectorStoreUpdater] = None,
+        repository: ACLRepository | None = None,
+        vector_updater: VectorStoreUpdater | None = None,
         admin_bypass: bool = True,
     ):
         """
@@ -150,7 +150,7 @@ class ACLService:
         # In-memory fallback storage
         self._acl_cache: dict[UUID, DocumentACL] = {}
 
-    async def get_document_acl(self, document_id: UUID) -> Optional[DocumentACL]:
+    async def get_document_acl(self, document_id: UUID) -> DocumentACL | None:
         """
         Get ACL for a document.
 
@@ -170,8 +170,8 @@ class ACLService:
         tenant_id: UUID,
         owner_id: UUID,
         visibility: Visibility = Visibility.PRIVATE,
-        allowed_users: Optional[list[UUID]] = None,
-        allowed_groups: Optional[list[str]] = None,
+        allowed_users: list[UUID] | None = None,
+        allowed_groups: list[str] | None = None,
     ) -> DocumentACL:
         """
         Create a new ACL for a document.
@@ -244,7 +244,7 @@ class ACLService:
         if update.denied_groups is not None:
             acl.denied_groups = update.denied_groups
 
-        acl.updated_at = datetime.now(timezone.utc)
+        acl.updated_at = datetime.now(UTC)
         acl.updated_by = requester_id
 
         await self._save_acl(acl)
@@ -381,7 +381,7 @@ class ACLService:
         logger.info(
             f"Document {document_id} shared by {requester_id} "
             f"with {len(share_request.user_ids)} users "
-            f"and {len(share_request.group_names)} groups"
+            f"and {len(share_request.group_names)} groups",
         )
 
         return acl
@@ -512,7 +512,7 @@ class ACLService:
                 for group in bulk_request.remove_groups:
                     acl.remove_group(group)
 
-                acl.updated_at = datetime.now(timezone.utc)
+                acl.updated_at = datetime.now(UTC)
                 acl.updated_by = requester_id
 
                 await self._save_acl(acl)

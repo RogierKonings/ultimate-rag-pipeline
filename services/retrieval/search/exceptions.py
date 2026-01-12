@@ -13,22 +13,18 @@ class SearchError(Exception):
 class SearchConnectionError(SearchError):
     """Error connecting to search backend."""
 
-    pass
 
 
 class SearchTimeoutError(SearchError):
     """Search operation timed out."""
 
-    pass
 
 
 class SearchFilterError(SearchError):
     """Error building or applying search filters."""
 
-    pass
 
 
 class SearchConfigError(SearchError):
     """Invalid search configuration."""
 
-    pass

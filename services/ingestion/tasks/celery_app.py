@@ -11,7 +11,6 @@ Queue configuration:
 """
 
 import os
-from typing import Optional
 
 from celery import Celery
 from kombu import Exchange, Queue
@@ -50,7 +49,7 @@ class CeleryConfig(BaseModel):
     model_config = {"frozen": True}
 
 
-def create_celery_app(config: Optional[CeleryConfig] = None) -> Celery:
+def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     """Create and configure Celery application.
 
     Args:

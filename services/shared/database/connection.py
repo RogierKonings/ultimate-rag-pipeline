@@ -6,17 +6,18 @@ for database operations in the RAG Pipeline.
 """
 
 import os
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
+)
+from sqlalchemy.ext.asyncio import (
     create_async_engine as sa_create_async_engine,
 )
-from sqlalchemy import text
-
 
 # Default database URL for local development
 DEFAULT_DATABASE_URL = "postgresql+asyncpg://raguser:ragpass@localhost:5432/ragpipeline"
@@ -48,7 +49,7 @@ def create_async_engine(
         Configured AsyncEngine instance.
     """
     url = database_url or get_database_url()
-    
+
     return sa_create_async_engine(
         url,
         echo=echo,

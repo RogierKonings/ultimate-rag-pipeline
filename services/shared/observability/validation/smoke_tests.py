@@ -7,14 +7,12 @@ End-to-end smoke tests for the observability stack.
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 import httpx
 
-from .otlp import OTLPValidator
-from .loki import LokiValidator
 from .trace_log import TraceLogValidator
 
 logger = logging.getLogger(__name__)
@@ -29,7 +27,7 @@ class SmokeTestResult:
     duration_ms: float
     message: str = ""
     details: dict[str, Any] = field(default_factory=dict)
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -67,7 +65,7 @@ async def run_smoke_tests(
     Returns:
         SmokeTestSuite with all results
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(tz=UTC)
     results = []
 
     # Test 1: OTEL Collector health
@@ -111,7 +109,7 @@ async def run_smoke_tests(
     results.append(result)
 
     # Calculate summary
-    end_time = datetime.utcnow()
+    end_time = datetime.now(tz=UTC)
     duration_ms = (end_time - start_time).total_seconds() * 1000
 
     passed_tests = sum(1 for r in results if r.passed)
@@ -129,7 +127,7 @@ async def run_smoke_tests(
 
 async def _test_otel_collector_health(collector_url: str) -> SmokeTestResult:
     """Test OTEL Collector is healthy."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "OTEL Collector Health"
 
     try:
@@ -137,7 +135,7 @@ async def _test_otel_collector_health(collector_url: str) -> SmokeTestResult:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{health_url}/")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 return SmokeTestResult(
@@ -146,16 +144,15 @@ async def _test_otel_collector_health(collector_url: str) -> SmokeTestResult:
                     duration_ms=duration_ms,
                     message="OTEL Collector is healthy",
                 )
-            else:
-                return SmokeTestResult(
-                    name=name,
-                    passed=False,
-                    duration_ms=duration_ms,
-                    message=f"Collector returned status {response.status_code}",
-                )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Collector returned status {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -166,14 +163,14 @@ async def _test_otel_collector_health(collector_url: str) -> SmokeTestResult:
 
 async def _test_trace_backend_health(jaeger_url: str) -> SmokeTestResult:
     """Test Jaeger/Tempo is healthy."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Trace Backend Health"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{jaeger_url}/api/services")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 data = response.json()
@@ -185,16 +182,15 @@ async def _test_trace_backend_health(jaeger_url: str) -> SmokeTestResult:
                     message=f"Jaeger healthy, {len(services)} services found",
                     details={"services": services},
                 )
-            else:
-                return SmokeTestResult(
-                    name=name,
-                    passed=False,
-                    duration_ms=duration_ms,
-                    message=f"Jaeger returned status {response.status_code}",
-                )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Jaeger returned status {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -205,14 +201,14 @@ async def _test_trace_backend_health(jaeger_url: str) -> SmokeTestResult:
 
 async def _test_loki_health(loki_url: str) -> SmokeTestResult:
     """Test Loki is healthy."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Loki Health"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{loki_url}/ready")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 return SmokeTestResult(
@@ -221,16 +217,15 @@ async def _test_loki_health(loki_url: str) -> SmokeTestResult:
                     duration_ms=duration_ms,
                     message="Loki is ready",
                 )
-            else:
-                return SmokeTestResult(
-                    name=name,
-                    passed=False,
-                    duration_ms=duration_ms,
-                    message=f"Loki returned status {response.status_code}",
-                )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Loki returned status {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -241,14 +236,14 @@ async def _test_loki_health(loki_url: str) -> SmokeTestResult:
 
 async def _test_prometheus_health(prometheus_url: str) -> SmokeTestResult:
     """Test Prometheus is healthy."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Prometheus Health"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{prometheus_url}/-/healthy")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 return SmokeTestResult(
@@ -257,16 +252,15 @@ async def _test_prometheus_health(prometheus_url: str) -> SmokeTestResult:
                     duration_ms=duration_ms,
                     message="Prometheus is healthy",
                 )
-            else:
-                return SmokeTestResult(
-                    name=name,
-                    passed=False,
-                    duration_ms=duration_ms,
-                    message=f"Prometheus returned status {response.status_code}",
-                )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Prometheus returned status {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -277,14 +271,14 @@ async def _test_prometheus_health(prometheus_url: str) -> SmokeTestResult:
 
 async def _test_grafana_health(grafana_url: str) -> SmokeTestResult:
     """Test Grafana is healthy."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Grafana Health"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{grafana_url}/api/health")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 data = response.json()
@@ -295,16 +289,15 @@ async def _test_grafana_health(grafana_url: str) -> SmokeTestResult:
                     message=f"Grafana healthy: {data.get('database', 'ok')}",
                     details=data,
                 )
-            else:
-                return SmokeTestResult(
-                    name=name,
-                    passed=False,
-                    duration_ms=duration_ms,
-                    message=f"Grafana returned status {response.status_code}",
-                )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Grafana returned status {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -318,7 +311,7 @@ async def _test_request_creates_trace(
     jaeger_url: str,
 ) -> SmokeTestResult:
     """Test that a request creates a trace in Jaeger."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Request Creates Trace"
 
     try:
@@ -339,7 +332,7 @@ async def _test_request_creates_trace(
             )
 
             if response.status_code not in [200, 201]:
-                duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+                duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
                 return SmokeTestResult(
                     name=name,
                     passed=False,
@@ -361,7 +354,7 @@ async def _test_request_creates_trace(
                 },
             )
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if search_response.status_code == 200:
                 data = search_response.json()
@@ -381,24 +374,22 @@ async def _test_request_creates_trace(
                             "request_id": request_id,
                         },
                     )
-                else:
-                    return SmokeTestResult(
-                        name=name,
-                        passed=False,
-                        duration_ms=duration_ms,
-                        message="No trace found after request",
-                        details={"request_id": request_id},
-                    )
-            else:
                 return SmokeTestResult(
                     name=name,
                     passed=False,
                     duration_ms=duration_ms,
-                    message=f"Jaeger search failed: {search_response.status_code}",
+                    message="No trace found after request",
+                    details={"request_id": request_id},
                 )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Jaeger search failed: {search_response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -409,7 +400,7 @@ async def _test_request_creates_trace(
 
 async def _test_logs_in_loki(loki_url: str) -> SmokeTestResult:
     """Test that logs are being ingested in Loki."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Logs in Loki"
 
     try:
@@ -423,7 +414,7 @@ async def _test_logs_in_loki(loki_url: str) -> SmokeTestResult:
                 },
             )
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 data = response.json()
@@ -443,23 +434,21 @@ async def _test_logs_in_loki(loki_url: str) -> SmokeTestResult:
                         message=f"Found logs from {len(services)} services",
                         details={"services": list(services)},
                     )
-                else:
-                    return SmokeTestResult(
-                        name=name,
-                        passed=False,
-                        duration_ms=duration_ms,
-                        message="No logs found in Loki",
-                    )
-            else:
                 return SmokeTestResult(
                     name=name,
                     passed=False,
                     duration_ms=duration_ms,
-                    message=f"Loki query failed: {response.status_code}",
+                    message="No logs found in Loki",
                 )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Loki query failed: {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -473,14 +462,14 @@ async def _test_trace_log_correlation(
     loki_url: str,
 ) -> SmokeTestResult:
     """Test trace-log correlation works."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Trace-Log Correlation"
 
     try:
         validator = TraceLogValidator(jaeger_url=jaeger_url, loki_url=loki_url)
         result = await validator.validate()
 
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
         if result.correlation_valid:
             return SmokeTestResult(
@@ -492,20 +481,19 @@ async def _test_trace_log_correlation(
                     "samples_checked": len(result.sample_correlations),
                 },
             )
-        else:
-            return SmokeTestResult(
-                name=name,
-                passed=False,
-                duration_ms=duration_ms,
-                message="Trace-log correlation issues found",
-                details={
-                    "errors": result.errors,
-                    "recommendations": result.recommendations,
-                },
-            )
+        return SmokeTestResult(
+            name=name,
+            passed=False,
+            duration_ms=duration_ms,
+            message="Trace-log correlation issues found",
+            details={
+                "errors": result.errors,
+                "recommendations": result.recommendations,
+            },
+        )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -516,14 +504,14 @@ async def _test_trace_log_correlation(
 
 async def _test_prometheus_scrapes(prometheus_url: str) -> SmokeTestResult:
     """Test Prometheus is scraping all targets."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Prometheus Scrapes"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{prometheus_url}/api/v1/targets")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 data = response.json()
@@ -540,31 +528,29 @@ async def _test_prometheus_scrapes(prometheus_url: str) -> SmokeTestResult:
                         message=f"All {len(up_targets)} targets up",
                         details={"up_count": len(up_targets)},
                     )
-                else:
-                    return SmokeTestResult(
-                        name=name,
-                        passed=False,
-                        duration_ms=duration_ms,
-                        message=f"{len(down_targets)} targets down",
-                        details={
-                            "up_count": len(up_targets),
-                            "down_count": len(down_targets),
-                            "down_targets": [
-                                t.get("labels", {}).get("job")
-                                for t in down_targets
-                            ],
-                        },
-                    )
-            else:
                 return SmokeTestResult(
                     name=name,
                     passed=False,
                     duration_ms=duration_ms,
-                    message=f"Prometheus API failed: {response.status_code}",
+                    message=f"{len(down_targets)} targets down",
+                    details={
+                        "up_count": len(up_targets),
+                        "down_count": len(down_targets),
+                        "down_targets": [
+                            t.get("labels", {}).get("job")
+                            for t in down_targets
+                        ],
+                    },
                 )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Prometheus API failed: {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,
@@ -575,14 +561,14 @@ async def _test_prometheus_scrapes(prometheus_url: str) -> SmokeTestResult:
 
 async def _test_grafana_datasources(grafana_url: str) -> SmokeTestResult:
     """Test Grafana datasources are configured."""
-    start = datetime.utcnow()
+    start = datetime.now(tz=UTC)
     name = "Grafana Datasources"
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(f"{grafana_url}/api/datasources")
 
-            duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+            duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
 
             if response.status_code == 200:
                 datasources = response.json()
@@ -599,30 +585,28 @@ async def _test_grafana_datasources(grafana_url: str) -> SmokeTestResult:
                         duration_ms=duration_ms,
                         message=f"All {len(datasources)} datasources configured",
                         details={
-                            "datasources": [ds.get("name") for ds in datasources]
+                            "datasources": [ds.get("name") for ds in datasources],
                         },
                     )
-                else:
-                    return SmokeTestResult(
-                        name=name,
-                        passed=False,
-                        duration_ms=duration_ms,
-                        message=f"Missing datasources: {missing}",
-                        details={
-                            "found": list(found),
-                            "missing": list(missing),
-                        },
-                    )
-            else:
                 return SmokeTestResult(
                     name=name,
                     passed=False,
                     duration_ms=duration_ms,
-                    message=f"Grafana API failed: {response.status_code}",
+                    message=f"Missing datasources: {missing}",
+                    details={
+                        "found": list(found),
+                        "missing": list(missing),
+                    },
                 )
+            return SmokeTestResult(
+                name=name,
+                passed=False,
+                duration_ms=duration_ms,
+                message=f"Grafana API failed: {response.status_code}",
+            )
 
     except Exception as e:
-        duration_ms = (datetime.utcnow() - start).total_seconds() * 1000
+        duration_ms = (datetime.now(tz=UTC) - start).total_seconds() * 1000
         return SmokeTestResult(
             name=name,
             passed=False,

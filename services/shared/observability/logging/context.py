@@ -7,7 +7,7 @@ Provides context variables for request-scoped logging with automatic injection.
 import logging
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -18,13 +18,13 @@ class RequestContext:
     Contains request-scoped information that should be included in logs.
     """
 
-    request_id: Optional[str] = None
-    tenant_id: Optional[str] = None
-    user_id: Optional[str] = None
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
-    method: Optional[str] = None
-    path: Optional[str] = None
+    request_id: str | None = None
+    tenant_id: str | None = None
+    user_id: str | None = None
+    trace_id: str | None = None
+    span_id: str | None = None
+    method: str | None = None
+    path: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -49,19 +49,19 @@ class RequestContext:
 
 
 # Context variable for request context
-_request_context: ContextVar[Optional[RequestContext]] = ContextVar(
-    "request_context", default=None
+_request_context: ContextVar[RequestContext | None] = ContextVar(
+    "request_context", default=None,
 )
 
 
 def set_request_context(
-    request_id: Optional[str] = None,
-    tenant_id: Optional[str] = None,
-    user_id: Optional[str] = None,
-    trace_id: Optional[str] = None,
-    span_id: Optional[str] = None,
-    method: Optional[str] = None,
-    path: Optional[str] = None,
+    request_id: str | None = None,
+    tenant_id: str | None = None,
+    user_id: str | None = None,
+    trace_id: str | None = None,
+    span_id: str | None = None,
+    method: str | None = None,
+    path: str | None = None,
     **extra: Any,
 ) -> RequestContext:
     """
@@ -94,7 +94,7 @@ def set_request_context(
     return context
 
 
-def get_request_context() -> Optional[RequestContext]:
+def get_request_context() -> RequestContext | None:
     """Get the current request context."""
     return _request_context.get()
 
@@ -104,7 +104,7 @@ def clear_request_context() -> None:
     _request_context.set(None)
 
 
-def update_request_context(**updates: Any) -> Optional[RequestContext]:
+def update_request_context(**updates: Any) -> RequestContext | None:
     """
     Update the current request context with additional fields.
 
@@ -157,7 +157,7 @@ class LoggerAdapter(logging.LoggerAdapter):
     def __init__(
         self,
         logger: logging.Logger,
-        extra: Optional[dict[str, Any]] = None,
+        extra: dict[str, Any] | None = None,
     ):
         """
         Initialize the adapter.

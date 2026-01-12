@@ -4,13 +4,12 @@ Document and Chunk models for storing document metadata and chunked content.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models.base import Base, TimestampMixin, SoftDeleteMixin
+from database.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
 class Document(Base, TimestampMixin, SoftDeleteMixin):

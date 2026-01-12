@@ -1,9 +1,9 @@
 """Cache module for the Retrieval Service."""
 
 from .retrieval_cache import (
-    RetrievalCache,
     CacheConfig,
     CacheStats,
+    RetrievalCache,
 )
 
 __all__ = [

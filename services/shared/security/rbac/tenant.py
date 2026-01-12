@@ -8,15 +8,15 @@ ensuring all operations are scoped to the correct tenant.
 import logging
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional, Any
+from datetime import UTC, datetime
+from typing import Any, Optional
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
 # Context variable for tenant context
 _current_tenant: ContextVar[Optional["TenantContext"]] = ContextVar(
-    "current_tenant", default=None
+    "current_tenant", default=None,
 )
 
 
@@ -43,17 +43,17 @@ class TenantContext:
     """
 
     tenant_id: UUID
-    tenant_name: Optional[str] = None
+    tenant_name: str | None = None
     is_super_tenant: bool = False
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Tenant-specific settings
     settings: dict[str, Any] = field(default_factory=dict)
 
     # Tenant limits and quotas
-    max_documents: Optional[int] = None
-    max_storage_bytes: Optional[int] = None
-    max_users: Optional[int] = None
+    max_documents: int | None = None
+    max_storage_bytes: int | None = None
+    max_users: int | None = None
 
     # Feature flags for tenant
     features: set[str] = field(default_factory=set)
@@ -96,8 +96,8 @@ class TenantContextManager:
 
     def __init__(
         self,
-        default_tenant_id: Optional[UUID] = None,
-        super_tenant_id: Optional[UUID] = None,
+        default_tenant_id: UUID | None = None,
+        super_tenant_id: UUID | None = None,
     ):
         """
         Initialize tenant context manager.
@@ -119,7 +119,7 @@ class TenantContextManager:
         _current_tenant.set(context)
         logger.debug(f"Set tenant context: {context.tenant_id}")
 
-    def get_tenant(self) -> Optional[TenantContext]:
+    def get_tenant(self) -> TenantContext | None:
         """
         Get the current tenant context.
 
@@ -128,7 +128,7 @@ class TenantContextManager:
         """
         return _current_tenant.get()
 
-    def get_tenant_id(self) -> Optional[UUID]:
+    def get_tenant_id(self) -> UUID | None:
         """
         Get the current tenant ID.
 
@@ -161,9 +161,9 @@ class TenantContextManager:
     def tenant_scope(
         self,
         tenant_id: UUID,
-        tenant_name: Optional[str] = None,
-        settings: Optional[dict] = None,
-        features: Optional[set[str]] = None,
+        tenant_name: str | None = None,
+        settings: dict | None = None,
+        features: set[str] | None = None,
     ):
         """
         Context manager for scoped tenant operations.
@@ -206,7 +206,7 @@ class _TenantScope:
     def __init__(self, manager: TenantContextManager, context: TenantContext):
         self._manager = manager
         self._context = context
-        self._previous: Optional[TenantContext] = None
+        self._previous: TenantContext | None = None
 
     def __enter__(self) -> TenantContext:
         self._previous = self._manager.get_tenant()
@@ -227,7 +227,7 @@ class _TenantScope:
 
 
 # Global tenant context manager
-_tenant_manager: Optional[TenantContextManager] = None
+_tenant_manager: TenantContextManager | None = None
 
 
 def get_tenant_manager() -> TenantContextManager:
@@ -239,8 +239,8 @@ def get_tenant_manager() -> TenantContextManager:
 
 
 def configure_tenant_manager(
-    default_tenant_id: Optional[UUID] = None,
-    super_tenant_id: Optional[UUID] = None,
+    default_tenant_id: UUID | None = None,
+    super_tenant_id: UUID | None = None,
 ) -> TenantContextManager:
     """
     Configure the global tenant context manager.
@@ -260,7 +260,7 @@ def configure_tenant_manager(
     return _tenant_manager
 
 
-def get_current_tenant() -> Optional[TenantContext]:
+def get_current_tenant() -> TenantContext | None:
     """
     Get the current tenant context.
 
@@ -272,7 +272,7 @@ def get_current_tenant() -> Optional[TenantContext]:
     return get_tenant_manager().get_tenant()
 
 
-def get_current_tenant_id() -> Optional[UUID]:
+def get_current_tenant_id() -> UUID | None:
     """
     Get the current tenant ID.
 
@@ -330,7 +330,7 @@ async def get_tenant_from_request(request) -> TenantContext:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid tenant_id format",
-            )
+            ) from None
 
     # Try query parameter
     tenant_id_str = request.query_params.get("tenant_id")
@@ -341,7 +341,7 @@ async def get_tenant_from_request(request) -> TenantContext:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid tenant_id format",
-            )
+            ) from None
 
     # Try header
     tenant_id_str = request.headers.get("X-Tenant-ID")
@@ -352,7 +352,7 @@ async def get_tenant_from_request(request) -> TenantContext:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid X-Tenant-ID header",
-            )
+            ) from None
 
     raise HTTPException(
         status_code=400,

@@ -1,14 +1,13 @@
 """Tests for session management endpoints."""
 
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from api.routes.sessions import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from api.routes.sessions import router
 from memory.models import ConversationSession, Message, MessageRole
 
 
@@ -32,7 +31,7 @@ def sample_session():
     session_id = uuid4()
     user_id = uuid4()
     tenant_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
 
     return ConversationSession(
         id=session_id,
@@ -91,7 +90,7 @@ class TestCreateSession:
         assert data["message"] == "Session created successfully"
 
     def test_create_session_with_user_and_tenant(
-        self, client, app, mock_session_manager
+        self, client, app, mock_session_manager,
     ):
         """Test session creation with user_id and tenant_id."""
         app.state.session_manager = mock_session_manager
@@ -211,8 +210,8 @@ class TestGetSessionHistory:
             id=uuid4(),
             messages=[],
             summary="Previous conversation about Python.",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
         mock_session_manager.get_session = AsyncMock(return_value=session)
         app.state.session_manager = mock_session_manager
@@ -239,8 +238,8 @@ class TestGetSessionHistory:
         session = ConversationSession(
             id=uuid4(),
             messages=[],
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
         mock_session_manager.get_session = AsyncMock(return_value=session)
         app.state.session_manager = mock_session_manager
@@ -257,7 +256,7 @@ class TestDeleteSession:
     """Tests for DELETE /api/v1/sessions/{id} endpoint."""
 
     def test_delete_session_success(
-        self, client, app, mock_session_manager, sample_session
+        self, client, app, mock_session_manager, sample_session,
     ):
         """Test successful session deletion."""
         app.state.session_manager = mock_session_manager
@@ -293,7 +292,7 @@ class TestClearSession:
     """Tests for POST /api/v1/sessions/{id}/clear endpoint."""
 
     def test_clear_session_success(
-        self, client, app, mock_session_manager, sample_session
+        self, client, app, mock_session_manager, sample_session,
     ):
         """Test successful session clearing."""
         app.state.session_manager = mock_session_manager
@@ -325,7 +324,7 @@ class TestClearSession:
         assert response.status_code == 503
 
     def test_clear_session_verifies_clear_was_called(
-        self, client, app, mock_session_manager, sample_session
+        self, client, app, mock_session_manager, sample_session,
     ):
         """Test that clear_session is called with correct arguments."""
         app.state.session_manager = mock_session_manager
@@ -339,7 +338,7 @@ class TestSessionResponseModel:
     """Tests for session response model structure."""
 
     def test_session_response_includes_all_fields(
-        self, client, app, mock_session_manager, sample_session
+        self, client, app, mock_session_manager, sample_session,
     ):
         """Test that session response includes all expected fields."""
         app.state.session_manager = mock_session_manager
@@ -358,7 +357,7 @@ class TestSessionResponseModel:
         assert "total_tokens" in session
 
     def test_session_response_datetime_format(
-        self, client, app, mock_session_manager, sample_session
+        self, client, app, mock_session_manager, sample_session,
     ):
         """Test that datetime fields are properly formatted."""
         app.state.session_manager = mock_session_manager

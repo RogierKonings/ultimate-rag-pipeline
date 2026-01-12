@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import math
 import time
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from .cache import EmbeddingCache
@@ -29,7 +29,7 @@ class EmbeddingService:
     def __init__(
         self,
         config: EmbeddingServiceConfig = EmbeddingServiceConfig(),
-        cache: Optional[EmbeddingCache] = None,
+        cache: EmbeddingCache | None = None,
     ):
         """
         Initialize the embedding service.
@@ -46,7 +46,7 @@ class EmbeddingService:
         self,
         texts: list[str],
         chunk_ids: list[UUID],
-        prefix: Optional[str] = "passage: ",  # BGE prefix for documents
+        prefix: str | None = "passage: ",  # BGE prefix for documents
     ) -> BatchEmbeddingResult:
         """
         Generate embeddings for a list of texts.
@@ -73,7 +73,7 @@ class EmbeddingService:
         cached_results: dict[int, EmbeddingResult] = {}
 
         if self.cache and self.config.cache_enabled:
-            for i, (text, chunk_id) in enumerate(zip(prefixed_texts, chunk_ids)):
+            for i, (text, chunk_id) in enumerate(zip(prefixed_texts, chunk_ids, strict=True)):
                 cache_key = self._get_cache_key(text)
                 cached = await self.cache.get(cache_key)
                 if cached is not None:
@@ -103,7 +103,7 @@ class EmbeddingService:
                 total_tokens += tokens
 
                 for j, ((original_idx, chunk_id), embedding) in enumerate(
-                    zip(batch_ids, embeddings)
+                    zip(batch_ids, embeddings, strict=True),
                 ):
                     # Normalize if configured
                     if self.config.normalize_embeddings:
@@ -122,7 +122,7 @@ class EmbeddingService:
                     if self.cache and self.config.cache_enabled:
                         cache_key = self._get_cache_key(batch_texts[j])
                         await self.cache.set(
-                            cache_key, embedding, ttl=self.config.cache_ttl_seconds
+                            cache_key, embedding, ttl=self.config.cache_ttl_seconds,
                         )
 
         # Reconstruct results in original order
@@ -139,7 +139,7 @@ class EmbeddingService:
         )
 
     def _create_batches(
-        self, texts: list[str], chunk_ids: list[tuple[int, UUID]]
+        self, texts: list[str], chunk_ids: list[tuple[int, UUID]],
     ) -> list[tuple[list[str], list[tuple[int, UUID]]]]:
         """
         Split texts into batches respecting size limits.
@@ -156,7 +156,7 @@ class EmbeddingService:
         current_batch_ids: list[tuple[int, UUID]] = []
         current_tokens = 0
 
-        for text, chunk_id in zip(texts, chunk_ids):
+        for text, chunk_id in zip(texts, chunk_ids, strict=True):
             # Estimate tokens (rough: 4 chars per token)
             text_tokens = len(text) // 4
 
@@ -264,7 +264,7 @@ class ParallelEmbedder:
         self.semaphore = asyncio.Semaphore(max_concurrent)
 
     async def embed_chunks_parallel(
-        self, chunks: list
+        self, chunks: list,
     ) -> AsyncIterator[EmbeddingResult]:
         """
         Embed chunks in parallel with concurrency control.
@@ -299,8 +299,8 @@ class ParallelEmbedder:
 
 
 async def create_embedding_service(
-    config: Optional[EmbeddingServiceConfig] = None,
-    cache_config: Optional[EmbeddingCacheConfig] = None,
+    config: EmbeddingServiceConfig | None = None,
+    cache_config: EmbeddingCacheConfig | None = None,
     enable_cache: bool = True,
 ) -> EmbeddingService:
     """

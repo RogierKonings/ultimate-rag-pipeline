@@ -1,7 +1,7 @@
 """Cross-encoder reranking service."""
 
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import httpx
@@ -30,7 +30,7 @@ class RerankerService:
     simultaneously, which captures fine-grained relevance signals.
     """
 
-    def __init__(self, config: Optional[RerankerConfig] = None):
+    def __init__(self, config: RerankerConfig | None = None):
         """
         Initialize reranker service.
 
@@ -38,7 +38,7 @@ class RerankerService:
             config: Reranker configuration
         """
         self.config = config or RerankerConfig()
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
@@ -54,7 +54,7 @@ class RerankerService:
         query: str,
         documents: list[str],
         document_ids: list[UUID],
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
         return_documents: bool = False,
     ) -> RerankResponse:
         """
@@ -105,7 +105,7 @@ class RerankerService:
         all_scores: list[float] = []
         for batch_start in range(0, len(truncated_docs), self.config.max_batch_size):
             batch_end = min(
-                batch_start + self.config.max_batch_size, len(truncated_docs)
+                batch_start + self.config.max_batch_size, len(truncated_docs),
             )
             batch_docs = truncated_docs[batch_start:batch_end]
 
@@ -114,7 +114,7 @@ class RerankerService:
 
         # Build results with original indices
         results = []
-        for idx, (doc_id, score) in enumerate(zip(document_ids, all_scores)):
+        for idx, (doc_id, score) in enumerate(zip(document_ids, all_scores, strict=True)):
             if score >= self.config.score_threshold:
                 results.append(
                     RerankResult(
@@ -122,7 +122,7 @@ class RerankerService:
                         index=idx,
                         relevance_score=score,
                         document=documents[idx] if return_documents else None,
-                    )
+                    ),
                 )
 
         # Sort by score descending
@@ -182,12 +182,12 @@ class RerankerService:
             raise RerankerTimeoutError(
                 f"Reranker request timed out: {e}",
                 details={"timeout": self.config.timeout_seconds},
-            )
+            ) from None
         except httpx.ConnectError as e:
             raise RerankerConnectionError(
                 f"Failed to connect to reranker: {e}",
                 details={"url": self.config.llm_gateway_url},
-            )
+            ) from None
 
     def _truncate(self, text: str, max_length: int) -> str:
         """
@@ -204,7 +204,7 @@ class RerankerService:
         self,
         query: str,
         fused_results: list["FusedResult"],
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
     ) -> list["FusedResult"]:
         """
         Convenience method to rerank FusedResult objects.

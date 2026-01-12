@@ -7,7 +7,7 @@ the SSE protocol for real-time token delivery to clients.
 import json
 import time
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -41,7 +41,7 @@ class StartEventData(BaseModel):
 
     request_id: str
     model: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 class DeltaEventData(BaseModel):
@@ -154,7 +154,7 @@ class StreamEvent(BaseModel):
         cls,
         request_id: str,
         model: str,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
     ) -> "StreamEvent":
         """Create a start event.
 

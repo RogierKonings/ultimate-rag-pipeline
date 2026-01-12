@@ -25,40 +25,39 @@ Usage:
 
 import logging
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any
 from uuid import UUID
 
 from opentelemetry import metrics, trace
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.prometheus import PrometheusMetricReader
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Span, Status, StatusCode
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from prometheus_client import REGISTRY, Counter, Histogram, start_http_server
+from opentelemetry.trace import Status, StatusCode
+from prometheus_client import Counter, Histogram, start_http_server
 
 from config import get_settings
 
 logger = logging.getLogger(__name__)
 
 # Global tracer and meter instances
-_tracer: Optional[trace.Tracer] = None
-_meter: Optional[metrics.Meter] = None
+_tracer: trace.Tracer | None = None
+_meter: metrics.Meter | None = None
 _initialized: bool = False
 
 # Prometheus metrics (will be created on setup)
-INGEST_DOCUMENTS_TOTAL: Optional[Counter] = None
-INGEST_CHUNKS_TOTAL: Optional[Counter] = None
-INGEST_LATENCY_SECONDS: Optional[Histogram] = None
-EMBEDDING_LATENCY_SECONDS: Optional[Histogram] = None
-INDEXING_LATENCY_SECONDS: Optional[Histogram] = None
+INGEST_DOCUMENTS_TOTAL: Counter | None = None
+INGEST_CHUNKS_TOTAL: Counter | None = None
+INGEST_LATENCY_SECONDS: Histogram | None = None
+EMBEDDING_LATENCY_SECONDS: Histogram | None = None
+INDEXING_LATENCY_SECONDS: Histogram | None = None
 
 
 def setup_telemetry() -> None:
@@ -265,7 +264,7 @@ def get_structured_logger(name: str) -> StructuredLogger:
 
 
 @contextmanager
-def timed_span(name: str, attributes: Optional[dict] = None):
+def timed_span(name: str, attributes: dict | None = None):
     """Context manager for creating a timed span.
 
     Args:
@@ -294,7 +293,7 @@ def timed_span(name: str, attributes: Optional[dict] = None):
             span.set_attribute("duration_seconds", duration)
 
 
-def traced(name: Optional[str] = None, record_args: bool = False):
+def traced(name: str | None = None, record_args: bool = False):
     """Decorator for tracing function calls.
 
     Args:
@@ -341,12 +340,12 @@ def traced(name: Optional[str] = None, record_args: bool = False):
 def log_ingest_event(
     event_type: str,
     tenant_id: UUID,
-    document_id: Optional[UUID] = None,
-    job_id: Optional[UUID] = None,
+    document_id: UUID | None = None,
+    job_id: UUID | None = None,
     status: str = "success",
-    latency_ms: Optional[int] = None,
+    latency_ms: int | None = None,
     chunks_created: int = 0,
-    source_type: Optional[str] = None,
+    source_type: str | None = None,
     **extra_metadata: Any,
 ) -> None:
     """Log an ingestion event with full context.

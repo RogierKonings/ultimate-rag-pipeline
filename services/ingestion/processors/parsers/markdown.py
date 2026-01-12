@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Optional
 
 import yaml
 
@@ -23,7 +22,7 @@ class MarkdownParser(BaseParser):
         return ["text/markdown", "text/x-markdown"]
 
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse Markdown document.
 
@@ -61,7 +60,7 @@ class MarkdownParser(BaseParser):
                     content_type=ContentType.TABLE,
                     content=self._table_to_text(table),
                     position=len(blocks),
-                )
+                ),
             )
 
         return ParsedDocument(
@@ -105,7 +104,7 @@ class MarkdownParser(BaseParser):
             # Ensure frontmatter is a dict (could be a scalar or list if invalid)
             if not isinstance(frontmatter, dict):
                 logger.warning(
-                    f"Frontmatter is not a mapping (got {type(frontmatter).__name__}), ignoring"
+                    f"Frontmatter is not a mapping (got {type(frontmatter).__name__}), ignoring",
                 )
                 return {}, text
             return frontmatter, remaining_text
@@ -113,7 +112,7 @@ class MarkdownParser(BaseParser):
             logger.warning(f"Failed to parse YAML frontmatter: {e}")
             return {}, text
 
-    def _extract_title(self, text: str) -> Optional[str]:
+    def _extract_title(self, text: str) -> str | None:
         """Extract title from first H1 heading.
 
         Args:
@@ -148,7 +147,7 @@ class MarkdownParser(BaseParser):
 
         # Pattern for fenced code blocks
         code_pattern = re.compile(
-            r"```(\w*)\n(.*?)```", re.DOTALL | re.MULTILINE
+            r"```(\w*)\n(.*?)```", re.DOTALL | re.MULTILINE,
         )
 
         # Find all code blocks first
@@ -162,7 +161,7 @@ class MarkdownParser(BaseParser):
                     "end": match.end(),
                     "language": language,
                     "content": code_content,
-                }
+                },
             )
 
         # Process text, separating code blocks from other content
@@ -184,7 +183,7 @@ class MarkdownParser(BaseParser):
                     content=code_block["content"],
                     position=position,
                     metadata={"language": code_block["language"]},
-                )
+                ),
             )
             position += 1
             last_end = code_block["end"]
@@ -237,7 +236,7 @@ class MarkdownParser(BaseParser):
                         content_type=ContentType.TEXT,
                         content=para,
                         metadata=block_metadata,
-                    )
+                    ),
                 )
 
         return blocks
@@ -297,8 +296,7 @@ class MarkdownParser(BaseParser):
         if line.endswith("|"):
             line = line[:-1]
 
-        cells = [cell.strip() for cell in line.split("|")]
-        return cells
+        return [cell.strip() for cell in line.split("|")]
 
     def _table_to_text(self, table: TableContent) -> str:
         """Convert TableContent to plain text.

@@ -1,17 +1,17 @@
 """Tests for individual workflow nodes."""
 
-import pytest
 from uuid import uuid4
 
+import pytest
 from workflow.nodes import (
-    input_validation_node,
-    routing_node,
-    retrieval_node,
-    prompt_building_node,
     generation_node,
+    input_validation_node,
     output_validation_node,
+    prompt_building_node,
+    retrieval_node,
+    routing_node,
 )
-from workflow.state import RAGState, create_initial_state
+from workflow.state import create_initial_state
 
 
 class TestInputValidationNode:

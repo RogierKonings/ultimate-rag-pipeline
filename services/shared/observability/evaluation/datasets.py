@@ -8,10 +8,11 @@ import hashlib
 import json
 import logging
 import random
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any
 from uuid import uuid4
 
 from .config import SamplingStrategy
@@ -36,7 +37,7 @@ class EvaluationSample:
     question: str
     contexts: list[str]
     answer: str = ""
-    ground_truth: Optional[str] = None
+    ground_truth: str | None = None
     id: str = field(default_factory=lambda: str(uuid4()))
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -131,10 +132,10 @@ class EvaluationDataset:
 
     def sample(
         self,
-        n: Optional[int] = None,
+        n: int | None = None,
         strategy: SamplingStrategy = SamplingStrategy.RANDOM,
         seed: int = 42,
-        stratify_by: Optional[str] = None,
+        stratify_by: str | None = None,
     ) -> "EvaluationDataset":
         """
         Sample from the dataset.
@@ -181,7 +182,7 @@ class EvaluationDataset:
                 # Sample proportionally from each group
                 selected = []
                 total = len(self.samples)
-                for key, group_samples in groups.items():
+                for _key, group_samples in groups.items():
                     group_n = max(1, int(n * len(group_samples) / total))
                     group_n = min(group_n, len(group_samples))
                     selected.extend(random.sample(group_samples, group_n))
@@ -229,7 +230,7 @@ class EvaluationDataset:
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
         elif created_at is None:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(tz=UTC)
 
         return cls(
             name=data["name"],
@@ -272,12 +273,12 @@ class EvaluationDataset:
         cls,
         dataset_name: str,
         split: str = "test",
-        name: Optional[str] = None,
+        name: str | None = None,
         question_column: str = "question",
         contexts_column: str = "contexts",
         answer_column: str = "answer",
         ground_truth_column: str = "ground_truth",
-        max_samples: Optional[int] = None,
+        max_samples: int | None = None,
     ) -> "EvaluationDataset":
         """
         Load dataset from HuggingFace datasets.

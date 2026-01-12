@@ -8,7 +8,7 @@ This module defines Pydantic models for:
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -47,8 +47,8 @@ class IngestJobResult(BaseModel):
 
     job_id: str = Field(..., description="Unique job identifier")
     status: JobStatus = Field(..., description="Current job status")
-    progress: Optional[JobProgress] = Field(
-        default=None, description="Progress info if in progress"
+    progress: JobProgress | None = Field(
+        default=None, description="Progress info if in progress",
     )
 
     # Results
@@ -57,13 +57,13 @@ class IngestJobResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
     # Timing
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    duration_seconds: Optional[float] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration_seconds: float | None = None
 
     # Error info
-    error_message: Optional[str] = None
-    traceback: Optional[str] = None
+    error_message: str | None = None
+    traceback: str | None = None
 
 
 class IngestJobRequest(BaseModel):
@@ -73,15 +73,15 @@ class IngestJobRequest(BaseModel):
 
     # Source configuration
     source_type: str = Field(
-        ..., description="Source type: filesystem, database, web, api"
+        ..., description="Source type: filesystem, database, web, api",
     )
     source_config: dict[str, Any] = Field(
-        ..., description="Source-specific configuration"
+        ..., description="Source-specific configuration",
     )
 
     # Processing options
     chunking_strategy: str = Field(
-        default="recursive", description="Chunking strategy to use"
+        default="recursive", description="Chunking strategy to use",
     )
     chunk_size: int = Field(default=300, ge=50, le=2048, description="Target chunk size in tokens")
     chunk_overlap: int = Field(default=50, ge=0, le=500, description="Chunk overlap in tokens")
@@ -104,10 +104,10 @@ class ReembedJobRequest(BaseModel):
     collection_name: str = Field(..., description="Collection to re-embed")
     new_model: str = Field(..., description="New embedding model to use")
     batch_size: int = Field(
-        default=100, ge=1, le=1000, description="Batch size for processing"
+        default=100, ge=1, le=1000, description="Batch size for processing",
     )
-    tenant_id: Optional[str] = Field(
-        default=None, description="Optional tenant filter"
+    tenant_id: str | None = Field(
+        default=None, description="Optional tenant filter",
     )
 
 
@@ -118,7 +118,7 @@ class DLQEntry(BaseModel):
     args: list[Any] = Field(default_factory=list, description="Task arguments")
     kwargs: dict[str, Any] = Field(default_factory=dict, description="Task keyword arguments")
     error: str = Field(..., description="Error message")
-    traceback: Optional[str] = Field(default=None, description="Full traceback")
+    traceback: str | None = Field(default=None, description="Full traceback")
     retries: int = Field(default=0, ge=0, description="Number of retries attempted")
     failed_at: datetime = Field(default_factory=datetime.utcnow)
-    job_id: Optional[str] = Field(default=None, description="Associated job ID")
+    job_id: str | None = Field(default=None, description="Associated job ID")

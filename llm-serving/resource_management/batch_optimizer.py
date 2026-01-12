@@ -9,7 +9,6 @@ to recommend optimal batch sizes and timeouts.
 import logging
 import statistics
 from dataclasses import dataclass, field
-from typing import Optional
 
 from prometheus_client import Gauge, Histogram
 
@@ -141,16 +140,16 @@ class BatchOptimizer:
 
         # Record Prometheus metrics
         BATCH_PROCESSING_TIME.labels(service_name=self.service_name).observe(
-            processing_time_ms
+            processing_time_ms,
         )
 
         # Update efficiency metrics
         metrics = self.get_metrics()
         BATCH_FILL_RATE.labels(service_name=self.service_name).set(
-            metrics.batch_fill_rate
+            metrics.batch_fill_rate,
         )
         BATCH_EFFICIENCY.labels(service_name=self.service_name).set(
-            metrics.efficiency_score
+            metrics.efficiency_score,
         )
 
     def get_metrics(self) -> BatchingMetrics:
@@ -230,7 +229,7 @@ class BatchOptimizer:
         if len(self._throughputs) > 1:
             try:
                 cv = statistics.stdev(self._throughputs) / statistics.mean(
-                    self._throughputs
+                    self._throughputs,
                 )
                 stability_score = max(0, 1 - cv) * 0.3
             except (ZeroDivisionError, statistics.StatisticsError):
@@ -268,22 +267,21 @@ class BatchOptimizer:
                     "confidence": 0.7,
                     "reason": f"Low fill rate ({metrics.batch_fill_rate:.2f}), increasing timeout",
                 }
-            else:
-                # Decrease batch size
-                new_batch_size = max(
-                    int(self.current_batch_size * 0.75), self.min_batch_size
-                )
-                return {
-                    "batch_size": new_batch_size,
-                    "timeout_ms": self.current_timeout_ms,
-                    "confidence": 0.8,
-                    "reason": f"Low fill rate ({metrics.batch_fill_rate:.2f}), decreasing batch size",
-                }
+            # Decrease batch size
+            new_batch_size = max(
+                int(self.current_batch_size * 0.75), self.min_batch_size,
+            )
+            return {
+                "batch_size": new_batch_size,
+                "timeout_ms": self.current_timeout_ms,
+                "confidence": 0.8,
+                "reason": f"Low fill rate ({metrics.batch_fill_rate:.2f}), decreasing batch size",
+            }
 
         # High fill rate and quick processing: increase batch size
         if metrics.batch_fill_rate > 0.9 and metrics.avg_batch_processing_ms < 100:
             new_batch_size = min(
-                int(self.current_batch_size * 1.25), self.max_batch_size
+                int(self.current_batch_size * 1.25), self.max_batch_size,
             )
             return {
                 "batch_size": new_batch_size,
@@ -330,10 +328,10 @@ class BatchOptimizer:
         logger.info(
             f"Applied batch optimization for {self.service_name}: "
             f"batch_size={self.current_batch_size}, timeout={self.current_timeout_ms}ms "
-            f"(reason: {recommendation['reason']})"
+            f"(reason: {recommendation['reason']})",
         )
 
-    def auto_tune(self) -> Optional[dict]:
+    def auto_tune(self) -> dict | None:
         """
         Automatically tune parameters if confidence is high enough.
 

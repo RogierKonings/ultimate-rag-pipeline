@@ -1,10 +1,11 @@
 """Test fixtures for API tests."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import jwt
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -155,9 +156,9 @@ def sample_document_response():
         total_tokens=1500,
         tenant_id="tenant-123",
         visibility="private",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
-        indexed_at=datetime.utcnow(),
+        created_at=datetime.now(tz=UTC),
+        updated_at=datetime.now(tz=UTC),
+        indexed_at=datetime.now(tz=UTC),
         status="indexed",
     )
 

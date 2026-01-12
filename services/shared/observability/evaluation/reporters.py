@@ -11,9 +11,8 @@ Provides various reporters for evaluation results:
 import json
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -34,7 +33,6 @@ class BaseReporter(ABC):
         Args:
             run: The evaluation run to report
         """
-        pass
 
 
 class JSONFileReporter(BaseReporter):
@@ -199,7 +197,7 @@ class PostgreSQLReporter(BaseReporter):
     async def get_recent_runs(
         self,
         limit: int = 10,
-        dataset_name: Optional[str] = None,
+        dataset_name: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get recent evaluation runs.
@@ -240,7 +238,7 @@ class PostgreSQLReporter(BaseReporter):
     async def get_metrics_trend(
         self,
         metric_name: str,
-        dataset_name: Optional[str] = None,
+        dataset_name: str | None = None,
         limit: int = 30,
     ) -> list[dict[str, Any]]:
         """
@@ -284,8 +282,8 @@ class GrafanaAnnotationReporter(BaseReporter):
         self,
         grafana_url: str,
         api_key: str,
-        dashboard_uid: Optional[str] = None,
-        panel_id: Optional[int] = None,
+        dashboard_uid: str | None = None,
+        panel_id: int | None = None,
     ):
         """
         Initialize Grafana annotation reporter.
@@ -315,7 +313,7 @@ class GrafanaAnnotationReporter(BaseReporter):
 
         if run.results:
             text_parts.append(
-                f"Samples: {run.results.successful_samples}/{run.results.total_samples}"
+                f"Samples: {run.results.successful_samples}/{run.results.total_samples}",
             )
             # Add key metrics
             for metric, stats in run.results.aggregated_metrics.items():
@@ -362,8 +360,8 @@ class SlackReporter(BaseReporter):
     def __init__(
         self,
         webhook_url: str,
-        channel: Optional[str] = None,
-        mention_on_failure: Optional[str] = None,
+        channel: str | None = None,
+        mention_on_failure: str | None = None,
     ):
         """
         Initialize Slack reporter.
@@ -399,7 +397,7 @@ class SlackReporter(BaseReporter):
                     "title": "Samples",
                     "value": f"{run.results.successful_samples}/{run.results.total_samples}",
                     "short": True,
-                }
+                },
             )
 
             # Add key metrics
@@ -409,7 +407,7 @@ class SlackReporter(BaseReporter):
                         "title": metric.replace("_", " ").title(),
                         "value": f"{stats['mean']:.3f} (±{stats['std']:.3f})",
                         "short": True,
-                    }
+                    },
                 )
 
         # Build message

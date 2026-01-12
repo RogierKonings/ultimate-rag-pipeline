@@ -1,11 +1,12 @@
 """Tests for QdrantWriter."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from ..qdrant import QdrantWriter, QdrantWriterConfig
+import pytest
+
 from ..models import IndexedChunk
+from ..qdrant import QdrantWriter, QdrantWriterConfig
 
 
 class TestQdrantWriterConfig:
@@ -101,7 +102,7 @@ class TestQdrantWriter:
         existing_collection = MagicMock()
         existing_collection.name = "documents"
         mock_client.get_collections.return_value = MagicMock(
-            collections=[existing_collection]
+            collections=[existing_collection],
         )
 
         await writer.ensure_index()

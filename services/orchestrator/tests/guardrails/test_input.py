@@ -1,7 +1,6 @@
 """Tests for input guardrails."""
 
 import pytest
-
 from guardrails.input import InputGuardrail
 from guardrails.models import GuardrailConfig, ViolationType
 

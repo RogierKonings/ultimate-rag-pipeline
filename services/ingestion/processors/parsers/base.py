@@ -2,7 +2,6 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,8 +20,8 @@ class ContentBlock(BaseModel):
 
     content_type: ContentType
     content: str
-    page_number: Optional[int] = None
-    position: Optional[int] = None  # Position in document
+    page_number: int | None = None
+    position: int | None = None  # Position in document
     metadata: dict = Field(default_factory=dict)
 
 
@@ -31,7 +30,7 @@ class TableContent(BaseModel):
 
     headers: list[str]
     rows: list[list[str]]
-    caption: Optional[str] = None
+    caption: str | None = None
 
 
 class ParsedDocument(BaseModel):
@@ -40,12 +39,12 @@ class ParsedDocument(BaseModel):
     text: str  # Full extracted text
     blocks: list[ContentBlock]  # Structured content blocks
     tables: list[TableContent]  # Extracted tables
-    title: Optional[str] = None
-    author: Optional[str] = None
-    created_date: Optional[str] = None
-    modified_date: Optional[str] = None
-    page_count: Optional[int] = None
-    language: Optional[str] = None
+    title: str | None = None
+    author: str | None = None
+    created_date: str | None = None
+    modified_date: str | None = None
+    page_count: int | None = None
+    language: str | None = None
     metadata: dict = Field(default_factory=dict)
 
 
@@ -56,11 +55,10 @@ class BaseParser(ABC):
     @abstractmethod
     def supported_mime_types(self) -> list[str]:
         """Return list of MIME types this parser handles."""
-        pass
 
     @abstractmethod
     async def parse(
-        self, content: bytes, metadata: Optional[dict] = None
+        self, content: bytes, metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse document content and return structured output.
 
@@ -71,7 +69,6 @@ class BaseParser(ABC):
         Returns:
             ParsedDocument with extracted text, blocks, and tables.
         """
-        pass
 
     def can_parse(self, mime_type: str) -> bool:
         """Check if this parser can handle the given MIME type.

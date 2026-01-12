@@ -1,7 +1,6 @@
 """Response models for the Orchestrator API."""
 
 from datetime import datetime
-from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -19,10 +18,10 @@ class SourceDocument(BaseModel):
     """
 
     id: str = Field(..., description="Document/chunk identifier")
-    title: Optional[str] = Field(default=None, description="Document title")
-    uri: Optional[str] = Field(default=None, description="Source URI or path")
-    score: Optional[float] = Field(default=None, description="Relevance score")
-    snippet: Optional[str] = Field(default=None, description="Content snippet")
+    title: str | None = Field(default=None, description="Document title")
+    uri: str | None = Field(default=None, description="Source URI or path")
+    score: float | None = Field(default=None, description="Relevance score")
+    snippet: str | None = Field(default=None, description="Content snippet")
 
 
 class UsageInfo(BaseModel):
@@ -59,7 +58,7 @@ class QueryResponse(BaseModel):
         default_factory=list,
         description="Source documents used in response",
     )
-    session_id: Optional[UUID] = Field(
+    session_id: UUID | None = Field(
         default=None,
         description="Session ID for conversation tracking",
     )
@@ -69,7 +68,7 @@ class QueryResponse(BaseModel):
         description="Token usage statistics",
     )
     latency_ms: float = Field(default=0.0, description="Response latency in milliseconds")
-    strategy_used: Optional[str] = Field(
+    strategy_used: str | None = Field(
         default=None,
         description="Retrieval strategy used",
     )
@@ -89,8 +88,8 @@ class SessionInfo(BaseModel):
     """
 
     id: UUID = Field(..., description="Session identifier")
-    user_id: Optional[UUID] = Field(default=None, description="User identifier")
-    tenant_id: Optional[UUID] = Field(default=None, description="Tenant identifier")
+    user_id: UUID | None = Field(default=None, description="User identifier")
+    tenant_id: UUID | None = Field(default=None, description="Tenant identifier")
     created_at: datetime = Field(..., description="Session creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
     message_count: int = Field(default=0, description="Number of messages")
@@ -106,7 +105,7 @@ class SessionResponse(BaseModel):
     """
 
     session: SessionInfo = Field(..., description="Session information")
-    message: Optional[str] = Field(default=None, description="Status message")
+    message: str | None = Field(default=None, description="Status message")
 
 
 class MessageInfo(BaseModel):
@@ -124,7 +123,7 @@ class MessageInfo(BaseModel):
     role: str = Field(..., description="Message role")
     content: str = Field(..., description="Message content")
     timestamp: datetime = Field(..., description="Message timestamp")
-    sources: Optional[list[str]] = Field(
+    sources: list[str] | None = Field(
         default=None,
         description="Source references for assistant messages",
     )
@@ -146,7 +145,7 @@ class HistoryResponse(BaseModel):
         description="Messages in the session",
     )
     has_summary: bool = Field(default=False, description="Whether session is summarized")
-    summary: Optional[str] = Field(
+    summary: str | None = Field(
         default=None,
         description="Summary of earlier messages",
     )
@@ -164,8 +163,8 @@ class ComponentHealth(BaseModel):
 
     name: str = Field(..., description="Component name")
     status: str = Field(..., description="Health status")
-    latency_ms: Optional[float] = Field(default=None, description="Latency in ms")
-    message: Optional[str] = Field(default=None, description="Status message")
+    latency_ms: float | None = Field(default=None, description="Latency in ms")
+    message: str | None = Field(default=None, description="Status message")
 
 
 class HealthResponse(BaseModel):
@@ -203,9 +202,9 @@ class ErrorDetail(BaseModel):
         code: Error code.
     """
 
-    field: Optional[str] = Field(default=None, description="Field causing error")
+    field: str | None = Field(default=None, description="Field causing error")
     message: str = Field(..., description="Error message")
-    code: Optional[str] = Field(default=None, description="Error code")
+    code: str | None = Field(default=None, description="Error code")
 
 
 class ErrorResponse(BaseModel):
@@ -221,8 +220,8 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(..., description="Error type/name")
     message: str = Field(..., description="Human-readable error message")
-    request_id: Optional[str] = Field(default=None, description="Request identifier")
-    details: Optional[list[ErrorDetail]] = Field(
+    request_id: str | None = Field(default=None, description="Request identifier")
+    details: list[ErrorDetail] | None = Field(
         default=None,
         description="Detailed error information",
     )
@@ -243,7 +242,7 @@ class FeedbackResponse(BaseModel):
 
     success: bool = Field(..., description="Whether feedback was recorded")
     message: str = Field(..., description="Status message")
-    feedback_id: Optional[str] = Field(
+    feedback_id: str | None = Field(
         default=None,
         description="Identifier for recorded feedback",
     )

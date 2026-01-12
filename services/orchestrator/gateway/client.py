@@ -5,10 +5,10 @@ supporting multiple providers with retry logic, streaming, and health checks.
 """
 
 import asyncio
-import json
 import random
 import time
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 
@@ -31,8 +31,8 @@ from .models import (
     GatewayConfig,
     HealthStatus,
     ModelConfig,
-    StreamChunk,
     StreamChoice,
+    StreamChunk,
     StreamDelta,
     UsageStats,
 )
@@ -78,7 +78,7 @@ class ModelGateway:
         """
         self.config = config
         self._gateway_config = self._create_gateway_config(config)
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
         self._initialized = False
 
     def _create_gateway_config(self, config: OrchestratorConfig) -> GatewayConfig:
@@ -97,7 +97,7 @@ class ModelGateway:
                 base_url=f"{config.llm_gateway_url}/v1",
                 timeout=config.stream_timeout,
                 max_tokens=config.max_tokens,
-            )
+            ),
         }
 
         # Add fallback model if different from default
@@ -181,14 +181,13 @@ class ModelGateway:
 
         if status == 429:
             return RateLimitError("Rate limit exceeded")
-        elif status == 401:
+        if status == 401:
             return AuthenticationError("Invalid API key")
-        elif status == 404:
+        if status == 404:
             return ModelNotFoundError("Model not found")
-        elif status >= 500:
+        if status >= 500:
             return ModelError(f"Server error: {status}")
-        else:
-            return ModelError(f"Request failed: {status}")
+        return ModelError(f"Request failed: {status}")
 
     async def chat_completion(
         self,
@@ -249,7 +248,7 @@ class ModelGateway:
         if request.presence_penalty != 0.0:
             payload["presence_penalty"] = request.presence_penalty
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for attempt in range(model_config.max_retries + 1):
             try:
@@ -276,7 +275,7 @@ class ModelGateway:
                 # Don't retry on client errors (4xx) except rate limit (429)
                 if 400 <= e.response.status_code < 500:
                     if e.response.status_code != 429:
-                        raise last_error
+                        raise last_error from None
                 # For 429 and 5xx, continue to retry logic below
 
             except httpx.TimeoutException as e:
@@ -307,7 +306,7 @@ class ModelGateway:
         raise ModelError("Request failed after retries")
 
     def _parse_completion_response(
-        self, data: dict[str, Any]
+        self, data: dict[str, Any],
     ) -> ChatCompletionResponse:
         """Parse raw API response into ChatCompletionResponse.
 
@@ -330,7 +329,7 @@ class ModelGateway:
                     index=choice_data.get("index", 0),
                     message=message,
                     finish_reason=choice_data.get("finish_reason"),
-                )
+                ),
             )
 
         usage_data = data.get("usage", {})
@@ -432,11 +431,11 @@ class ModelGateway:
                             return
 
         except httpx.HTTPStatusError as e:
-            raise self._map_http_error(e)
+            raise self._map_http_error(e) from None
         except httpx.TimeoutException as e:
-            raise ModelTimeoutError(str(e))
+            raise ModelTimeoutError(str(e)) from None
         except httpx.ConnectError as e:
-            raise ModelError(f"Connection failed: {e}")
+            raise ModelError(f"Connection failed: {e}") from None
 
     async def chat_completion_stream_chunks(
         self,
@@ -490,9 +489,9 @@ class ModelGateway:
                     yield chunk
 
         except httpx.HTTPStatusError as e:
-            raise self._map_http_error(e)
+            raise self._map_http_error(e) from None
         except httpx.TimeoutException as e:
-            raise ModelTimeoutError(str(e))
+            raise ModelTimeoutError(str(e)) from None
 
     def _parse_stream_chunk(self, data: dict[str, Any]) -> StreamChunk:
         """Parse raw chunk data into StreamChunk.
@@ -515,7 +514,7 @@ class ModelGateway:
                     index=choice_data.get("index", 0),
                     delta=delta,
                     finish_reason=choice_data.get("finish_reason"),
-                )
+                ),
             )
 
         return StreamChunk(
@@ -526,7 +525,7 @@ class ModelGateway:
             choices=choices,
         )
 
-    def _should_fallback(self, error: Optional[Exception]) -> bool:
+    def _should_fallback(self, error: Exception | None) -> bool:
         """Check if should try fallback model.
 
         Args:
@@ -547,18 +546,12 @@ class ModelGateway:
         ):
             return True
 
-        if (
-            isinstance(error, ModelTimeoutError)
-            and self._gateway_config.fallback_on_timeout
-        ):
-            return True
-
-        return False
+        return bool(isinstance(error, ModelTimeoutError) and self._gateway_config.fallback_on_timeout)
 
     async def _execute_fallback(
         self,
         request: ChatCompletionRequest,
-        original_error: Optional[Exception],
+        original_error: Exception | None,
     ) -> ChatCompletionResponse:
         """Execute request with fallback model.
 
@@ -597,7 +590,7 @@ class ModelGateway:
         except Exception:
             # If fallback fails, raise original error
             if original_error:
-                raise original_error
+                raise original_error from None
             raise
 
     async def health_check(self) -> dict[str, HealthStatus]:

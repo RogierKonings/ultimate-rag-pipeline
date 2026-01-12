@@ -11,24 +11,23 @@ Provides automatic tracing for FastAPI applications with:
 
 import logging
 import time
-from typing import Callable, Optional, Set, Any
+from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from opentelemetry import trace
-from opentelemetry.trace import SpanKind, Status, StatusCode
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-from ..tracer import get_tracer
-from ..context import extract_trace_context, get_current_trace_id, get_current_span_id
 from ..attributes import RAGAttributes
+from ..context import extract_trace_context, get_current_span_id, get_current_trace_id
+from ..tracer import get_tracer
 
 logger = logging.getLogger(__name__)
 
 # Default paths to exclude from tracing
-DEFAULT_EXCLUDED_PATHS: Set[str] = {
+DEFAULT_EXCLUDED_PATHS: set[str] = {
     "/health",
     "/healthz",
     "/ready",
@@ -67,7 +66,7 @@ class OTELMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         service_name: str = "rag-service",
-        excluded_paths: Optional[Set[str]] = None,
+        excluded_paths: set[str] | None = None,
         tenant_header: str = "X-Tenant-ID",
         user_header: str = "X-User-ID",
         request_id_header: str = "X-Request-ID",
@@ -167,7 +166,7 @@ class OTELMiddleware(BaseHTTPMiddleware):
 
         # Prefix match for paths with trailing content
         for excluded in self.excluded_paths:
-            if path.startswith(excluded + "/") or path.startswith(excluded + "?"):
+            if path.startswith((excluded + "/", excluded + "?")):
                 return True
 
         return False
@@ -277,7 +276,7 @@ class OTELMiddleware(BaseHTTPMiddleware):
 def instrument_fastapi_app(
     app: FastAPI,
     service_name: str = "rag-service",
-    excluded_urls: Optional[str] = None,
+    excluded_urls: str | None = None,
 ) -> None:
     """
     Instrument a FastAPI app with OpenTelemetry auto-instrumentation.
@@ -293,7 +292,7 @@ def instrument_fastapi_app(
     # Default exclusions
     if excluded_urls is None:
         excluded_urls = ",".join(
-            [f".*{path}.*" for path in DEFAULT_EXCLUDED_PATHS]
+            [f".*{path}.*" for path in DEFAULT_EXCLUDED_PATHS],
         )
 
     try:
@@ -317,7 +316,7 @@ def get_trace_context_dependency():
             logger.info(f"Processing request", extra=trace_ctx)
     """
 
-    async def _get_context(request: Request) -> dict[str, Optional[str]]:
+    async def _get_context(request: Request) -> dict[str, str | None]:
         return {
             "trace_id": get_current_trace_id(),
             "span_id": get_current_span_id(),

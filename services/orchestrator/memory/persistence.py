@@ -2,8 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 import asyncpg
@@ -35,7 +34,7 @@ class PostgresConversationStore:
                          Example: postgresql://user:pass@localhost:5432/dbname
         """
         self._database_url = database_url
-        self._pool: Optional[asyncpg.Pool] = None
+        self._pool: asyncpg.Pool | None = None
 
     async def connect(self) -> None:
         """Initialize database connection pool."""
@@ -65,7 +64,7 @@ class PostgresConversationStore:
         """
         if self._pool is None:
             raise RuntimeError(
-                "Database not connected. Call connect() first."
+                "Database not connected. Call connect() first.",
             )
 
     async def save_conversation(self, session: ConversationSession) -> None:
@@ -88,11 +87,10 @@ class PostgresConversationStore:
             "system_prompt": session.system_prompt,
         }
 
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                # Upsert conversation
-                await conn.execute(
-                    """
+        async with self._pool.acquire() as conn, conn.transaction():
+            # Upsert conversation
+            await conn.execute(
+                """
                     INSERT INTO conversations (
                         id, tenant_id, user_id, created_at, updated_at, metadata
                     ) VALUES ($1, $2, $3, $4, $5, $6)
@@ -100,45 +98,45 @@ class PostgresConversationStore:
                         updated_at = EXCLUDED.updated_at,
                         metadata = EXCLUDED.metadata
                     """,
-                    session.id,
-                    session.tenant_id,
-                    session.user_id,
-                    session.created_at,
-                    session.updated_at,
-                    json.dumps(metadata),
-                )
+                session.id,
+                session.tenant_id,
+                session.user_id,
+                session.created_at,
+                session.updated_at,
+                json.dumps(metadata),
+            )
 
-                # Delete existing messages and re-insert all
-                # This ensures consistency with the in-memory state
-                await conn.execute(
-                    "DELETE FROM messages WHERE conversation_id = $1",
-                    session.id,
-                )
+            # Delete existing messages and re-insert all
+            # This ensures consistency with the in-memory state
+            await conn.execute(
+                "DELETE FROM messages WHERE conversation_id = $1",
+                session.id,
+            )
 
-                # Insert all messages
-                if session.messages:
-                    message_records = [
-                        (
-                            msg.id,
-                            session.id,
-                            msg.role.value,
-                            msg.content,
-                            json.dumps(msg.sources) if msg.sources else None,
-                            msg.token_count,
-                            msg.timestamp,
-                        )
-                        for msg in session.messages
-                    ]
+            # Insert all messages
+            if session.messages:
+                message_records = [
+                    (
+                        msg.id,
+                        session.id,
+                        msg.role.value,
+                        msg.content,
+                        json.dumps(msg.sources) if msg.sources else None,
+                        msg.token_count,
+                        msg.timestamp,
+                    )
+                    for msg in session.messages
+                ]
 
-                    await conn.executemany(
-                        """
+                await conn.executemany(
+                    """
                         INSERT INTO messages (
                             id, conversation_id, role, content, citations,
                             token_count, created_at
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
                         """,
-                        message_records,
-                    )
+                    message_records,
+                )
 
         logger.debug(
             "Saved conversation %s with %d messages",
@@ -168,7 +166,7 @@ class PostgresConversationStore:
                 """
                 UPDATE conversations SET updated_at = $1 WHERE id = $2
                 """,
-                datetime.utcnow(),
+                datetime.now(tz=UTC),
                 session_id,
             )
 
@@ -200,8 +198,8 @@ class PostgresConversationStore:
         )
 
     async def load_conversation(
-        self, session_id: str
-    ) -> Optional[ConversationSession]:
+        self, session_id: str,
+    ) -> ConversationSession | None:
         """Load conversation from Postgres.
 
         Loads the conversation metadata and all associated messages,
@@ -259,7 +257,7 @@ class PostgresConversationStore:
                     sources=citations,
                     token_count=row["token_count"],
                     timestamp=row["created_at"],
-                )
+                ),
             )
 
         # Reconstruct session
@@ -303,19 +301,18 @@ class PostgresConversationStore:
         if isinstance(session_id, str):
             session_id = UUID(session_id)
 
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                # Delete messages first (foreign key constraint)
-                await conn.execute(
-                    "DELETE FROM messages WHERE conversation_id = $1",
-                    session_id,
-                )
+        async with self._pool.acquire() as conn, conn.transaction():
+            # Delete messages first (foreign key constraint)
+            await conn.execute(
+                "DELETE FROM messages WHERE conversation_id = $1",
+                session_id,
+            )
 
-                # Delete conversation
-                result = await conn.execute(
-                    "DELETE FROM conversations WHERE id = $1",
-                    session_id,
-                )
+            # Delete conversation
+            result = await conn.execute(
+                "DELETE FROM conversations WHERE id = $1",
+                session_id,
+            )
 
         # Check if any row was deleted
         deleted = result.split()[-1] != "0"
@@ -329,8 +326,8 @@ class PostgresConversationStore:
 
     async def list_conversations(
         self,
-        tenant_id: Optional[UUID] = None,
-        user_id: Optional[UUID] = None,
+        tenant_id: UUID | None = None,
+        user_id: UUID | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[ConversationSession]:
@@ -389,7 +386,7 @@ class PostgresConversationStore:
                     total_messages=metadata.get("total_messages", 0),
                     total_tokens=metadata.get("total_tokens", 0),
                     system_prompt=metadata.get("system_prompt"),
-                )
+                ),
             )
 
         return sessions

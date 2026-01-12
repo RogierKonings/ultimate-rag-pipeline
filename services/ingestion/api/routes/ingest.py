@@ -3,11 +3,8 @@
 import logging
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from api.dependencies import get_current_user, get_job_tracker
 from api.schemas import (
-    ACLContext,
     ActiveJobsResponse,
     CancelJobResponse,
     IngestRequest,
@@ -15,13 +12,13 @@ from api.schemas import (
     JobProgress,
     JobStatus,
     JobStatusResponse,
-    ProcessingOptions,
     ReembedRequest,
     ReembedResponse,
     SingleIngestRequest,
     SyncRequest,
     SyncResponse,
 )
+from fastapi import APIRouter, Depends, HTTPException
 from tasks.ingest import batch_ingest, process_document
 from tasks.models import JobStatus as TaskJobStatus
 from tasks.reembed import reembed_collection
@@ -274,7 +271,7 @@ async def list_active_jobs(
                     duration_seconds=status.duration_seconds,
                     error_message=status.error_message,
                     errors=status.errors,
-                )
+                ),
             )
 
     return ActiveJobsResponse(jobs=jobs, total=len(jobs))

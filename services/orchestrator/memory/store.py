@@ -1,7 +1,7 @@
 """Redis-backed session storage for conversation memory."""
 
 import json
-from typing import Optional
+from datetime import UTC
 from uuid import UUID
 
 import redis.asyncio as redis
@@ -27,7 +27,7 @@ class RedisSessionStore:
             config: Memory configuration with Redis settings.
         """
         self.config = config
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Connect to Redis."""
@@ -66,9 +66,9 @@ class RedisSessionStore:
 
     async def create_session(
         self,
-        user_id: Optional[UUID] = None,
-        tenant_id: Optional[UUID] = None,
-        system_prompt: Optional[str] = None,
+        user_id: UUID | None = None,
+        tenant_id: UUID | None = None,
+        system_prompt: str | None = None,
     ) -> ConversationSession:
         """
         Create a new conversation session.
@@ -96,7 +96,7 @@ class RedisSessionStore:
 
         return session
 
-    async def get_session(self, session_id: UUID) -> Optional[ConversationSession]:
+    async def get_session(self, session_id: UUID) -> ConversationSession | None:
         """
         Get a session by ID.
 
@@ -130,7 +130,7 @@ class RedisSessionStore:
         """
         from datetime import datetime
 
-        session.updated_at = datetime.utcnow()
+        session.updated_at = datetime.now(tz=UTC)
         await self._save_session(session)
 
     async def delete_session(self, session_id: UUID) -> bool:

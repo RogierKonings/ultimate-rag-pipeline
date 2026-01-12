@@ -6,8 +6,8 @@ Validates that logs are being ingested into Loki with proper indexing.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import httpx
 
@@ -56,7 +56,7 @@ class LokiValidator:
     def __init__(
         self,
         loki_url: str = "http://loki:3100",
-        expected_services: Optional[list[str]] = None,
+        expected_services: list[str] | None = None,
     ):
         """
         Initialize Loki validator.
@@ -133,7 +133,7 @@ class LokiValidator:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 # Query logs from this service
-                end_time = datetime.utcnow()
+                end_time = datetime.now(tz=UTC)
                 start_time = end_time - timedelta(hours=1)
 
                 query = f'{{service="{service_name}"}}'
@@ -218,7 +218,7 @@ class LokiValidator:
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                end_time = datetime.utcnow()
+                end_time = datetime.now(tz=UTC)
                 start_time = end_time - timedelta(hours=24)
 
                 # Try label-based query first (more efficient)
@@ -349,7 +349,7 @@ class LokiValidator:
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                end_time = datetime.utcnow()
+                end_time = datetime.now(tz=UTC)
                 start_time = end_time - timedelta(hours=1)
 
                 # Query with JSON extraction
@@ -375,7 +375,7 @@ class LokiValidator:
 
                         # Check for extracted JSON fields
                         json_fields = [
-                            k for k in labels.keys()
+                            k for k in labels
                             if k not in ["service", "namespace", "pod", "container"]
                         ]
 

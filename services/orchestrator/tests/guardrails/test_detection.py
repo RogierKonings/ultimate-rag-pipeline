@@ -1,6 +1,5 @@
 """Tests for guardrails detection utilities."""
 
-import pytest
 
 from guardrails.detection import (
     detect_harmful_content,
@@ -121,7 +120,7 @@ class TestDetectInjection:
 
         assert len(matches) >= 1
         jailbreak_match = next(
-            (m for m in matches if "jailbreak" in m.matched_text.lower()), None
+            (m for m in matches if "jailbreak" in m.matched_text.lower()), None,
         )
         assert jailbreak_match is not None
 

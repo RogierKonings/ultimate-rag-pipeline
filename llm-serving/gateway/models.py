@@ -5,13 +5,12 @@ These models follow the OpenAI API specification for chat completions,
 embeddings, and reranking.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
-
 
 # =============================================================================
 # Common Models
@@ -37,7 +36,7 @@ class ErrorResponse(BaseModel):
                 "message": "Invalid API key",
                 "type": "authentication_error",
                 "code": "invalid_api_key",
-            }
+            },
         ],
     )
 
@@ -46,8 +45,8 @@ class ErrorResponse(BaseModel):
         cls,
         message: str,
         error_type: str = "invalid_request_error",
-        code: Optional[str] = None,
-        param: Optional[str] = None,
+        code: str | None = None,
+        param: str | None = None,
     ) -> "ErrorResponse":
         """Create an error response."""
         error = {
@@ -80,11 +79,11 @@ class ChatMessage(BaseModel):
     """A single chat message."""
 
     role: ChatMessageRole
-    content: Optional[str] = None
-    name: Optional[str] = None
-    function_call: Optional[dict] = None
-    tool_calls: Optional[list[dict]] = None
-    tool_call_id: Optional[str] = None
+    content: str | None = None
+    name: str | None = None
+    function_call: dict | None = None
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -97,21 +96,21 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     n: int = Field(default=1, ge=1, le=10)
-    max_tokens: Optional[int] = Field(default=None, ge=1)
-    stop: Optional[Union[str, list[str]]] = None
+    max_tokens: int | None = Field(default=None, ge=1)
+    stop: str | list[str] | None = None
     presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
-    logit_bias: Optional[dict[str, float]] = None
-    user: Optional[str] = None
+    logit_bias: dict[str, float] | None = None
+    user: str | None = None
 
     # Streaming
     stream: bool = False
 
     # Response format
-    response_format: Optional[dict] = None
+    response_format: dict | None = None
 
     # Seed for reproducibility
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 class ChatCompletionChoice(BaseModel):
@@ -119,8 +118,8 @@ class ChatCompletionChoice(BaseModel):
 
     index: int
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length", "content_filter", "tool_calls"]] = None
-    logprobs: Optional[dict] = None
+    finish_reason: Literal["stop", "length", "content_filter", "tool_calls"] | None = None
+    logprobs: dict | None = None
 
 
 class ChatCompletionResponse(BaseModel):
@@ -128,11 +127,11 @@ class ChatCompletionResponse(BaseModel):
 
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid4().hex[:24]}")
     object: Literal["chat.completion"] = "chat.completion"
-    created: int = Field(default_factory=lambda: int(datetime.utcnow().timestamp()))
+    created: int = Field(default_factory=lambda: int(datetime.now(tz=UTC).timestamp()))
     model: str
     choices: list[ChatCompletionChoice]
-    usage: Optional[Usage] = None
-    system_fingerprint: Optional[str] = None
+    usage: Usage | None = None
+    system_fingerprint: str | None = None
 
 
 class ChatCompletionChunk(BaseModel):
@@ -143,16 +142,16 @@ class ChatCompletionChunk(BaseModel):
     created: int
     model: str
     choices: list[dict]  # Simplified for streaming
-    system_fingerprint: Optional[str] = None
+    system_fingerprint: str | None = None
 
 
 class DeltaMessage(BaseModel):
     """Delta message for streaming."""
 
-    role: Optional[str] = None
-    content: Optional[str] = None
-    function_call: Optional[dict] = None
-    tool_calls: Optional[list[dict]] = None
+    role: str | None = None
+    content: str | None = None
+    function_call: dict | None = None
+    tool_calls: list[dict] | None = None
 
 
 # =============================================================================
@@ -164,12 +163,12 @@ class EmbeddingRequest(BaseModel):
     """Request for embeddings."""
 
     model: str = Field(..., description="Model ID to use")
-    input: Union[str, list[str]] = Field(
-        ..., description="Text(s) to embed"
+    input: str | list[str] = Field(
+        ..., description="Text(s) to embed",
     )
     encoding_format: Literal["float", "base64"] = "float"
-    dimensions: Optional[int] = None
-    user: Optional[str] = None
+    dimensions: int | None = None
+    user: str | None = None
 
 
 class EmbeddingData(BaseModel):
@@ -177,7 +176,7 @@ class EmbeddingData(BaseModel):
 
     object: Literal["embedding"] = "embedding"
     index: int
-    embedding: Union[list[float], str]  # list[float] for float, str for base64
+    embedding: list[float] | str  # list[float] for float, str for base64
 
 
 class EmbeddingResponse(BaseModel):
@@ -199,17 +198,17 @@ class RerankRequest(BaseModel):
 
     model: str = Field(..., description="Model ID to use")
     query: str = Field(..., description="The query to rank documents against")
-    documents: list[Union[str, dict]] = Field(
+    documents: list[str | dict] = Field(
         ...,
         description="Documents to rerank (strings or objects with 'text' field)",
     )
-    top_n: Optional[int] = Field(
-        default=None, description="Number of top results to return"
+    top_n: int | None = Field(
+        default=None, description="Number of top results to return",
     )
     return_documents: bool = Field(
-        default=False, description="Whether to return document text in response"
+        default=False, description="Whether to return document text in response",
     )
-    max_chunks_per_doc: Optional[int] = None
+    max_chunks_per_doc: int | None = None
 
 
 class RerankResult(BaseModel):
@@ -217,8 +216,8 @@ class RerankResult(BaseModel):
 
     index: int = Field(..., description="Original index of the document")
     relevance_score: float = Field(..., description="Relevance score (0-1)")
-    document: Optional[Union[str, dict]] = Field(
-        default=None, description="Document text if return_documents=True"
+    document: str | dict | None = Field(
+        default=None, description="Document text if return_documents=True",
     )
 
 
@@ -228,7 +227,7 @@ class RerankResponse(BaseModel):
     id: str = Field(default_factory=lambda: f"rerank-{uuid4().hex[:24]}")
     results: list[RerankResult]
     model: str
-    usage: Optional[Usage] = None
+    usage: Usage | None = None
 
 
 # =============================================================================
@@ -241,11 +240,11 @@ class ModelInfo(BaseModel):
 
     id: str
     object: Literal["model"] = "model"
-    created: int = Field(default_factory=lambda: int(datetime.utcnow().timestamp()))
+    created: int = Field(default_factory=lambda: int(datetime.now(tz=UTC).timestamp()))
     owned_by: str = "organization"
     permission: list = Field(default_factory=list)
-    root: Optional[str] = None
-    parent: Optional[str] = None
+    root: str | None = None
+    parent: str | None = None
 
 
 class ModelListResponse(BaseModel):

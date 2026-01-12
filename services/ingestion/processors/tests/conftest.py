@@ -2,8 +2,9 @@
 Pytest configuration and fixtures for processor tests.
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 
 @pytest.fixture
@@ -24,5 +25,5 @@ def sample_metadata(tenant_id):
     return {
         "tenant_id": tenant_id,
         "source": "test",
-        "content_type": "text/plain"
+        "content_type": "text/plain",
     }

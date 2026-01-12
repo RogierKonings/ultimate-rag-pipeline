@@ -4,8 +4,8 @@ Health check script for vLLM server.
 Used by Kubernetes probes and monitoring.
 """
 
-import sys
 import os
+import sys
 
 import httpx
 
@@ -36,9 +36,8 @@ def check_health() -> bool:
             if models.get("data"):
                 print(f"Health check passed: {len(models['data'])} model(s) loaded")
                 return True
-            else:
-                print("Health check failed: No models loaded")
-                return False
+            print("Health check failed: No models loaded")
+            return False
 
         print("Health check passed (basic)")
         return True

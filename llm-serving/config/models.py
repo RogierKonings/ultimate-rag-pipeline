@@ -5,9 +5,8 @@ Provides Pydantic models for model endpoints, generation parameters,
 A/B test configuration, and version tracking.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -95,22 +94,22 @@ class ModelEndpoint(BaseModel):
 
     # Version tracking
     version: str = "1.0.0"
-    revision: Optional[str] = None  # Git commit or model revision
+    revision: str | None = None  # Git commit or model revision
 
     # Enabled state
     enabled: bool = True
 
     # Type-specific configuration
-    llm_config: Optional[LLMGenerationConfig] = None
-    embedding_config: Optional[EmbeddingConfig] = None
-    reranker_config: Optional[RerankerConfig] = None
+    llm_config: LLMGenerationConfig | None = None
+    embedding_config: EmbeddingConfig | None = None
+    reranker_config: RerankerConfig | None = None
 
     # Performance settings
     timeout_seconds: float = 60.0
     max_retries: int = 3
 
     # Metadata
-    description: Optional[str] = None
+    description: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 
@@ -119,7 +118,7 @@ class ABTestConfig(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
     # Models in the test
     model_a: str  # Model endpoint name
@@ -138,8 +137,8 @@ class ABTestConfig(BaseModel):
     routing_header: str = "X-Model-Version"
 
     # Time bounds
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
 
     # Status
     active: bool = True
@@ -149,13 +148,10 @@ class ABTestConfig(BaseModel):
         if not self.active:
             return False
 
-        now = datetime.utcnow()
+        now = datetime.now(tz=UTC)
         if self.start_time and now < self.start_time:
             return False
-        if self.end_time and now > self.end_time:
-            return False
-
-        return True
+        return not (self.end_time and now > self.end_time)
 
 
 class ConfigVersion(BaseModel):
@@ -170,11 +166,11 @@ class ConfigVersion(BaseModel):
     ab_tests: list[ABTestConfig] = Field(default_factory=list)
 
     # Metadata
-    description: Optional[str] = None
-    created_by: Optional[str] = None
+    description: str | None = None
+    created_by: str | None = None
 
     # Rollback reference
-    previous_version_id: Optional[UUID] = None
+    previous_version_id: UUID | None = None
 
 
 class ModelConfigurationState(BaseModel):
@@ -193,7 +189,7 @@ class ModelConfigurationState(BaseModel):
     version_history: list[ConfigVersion] = Field(default_factory=list)
     max_history_versions: int = 10
 
-    def get_endpoint(self, name: str) -> Optional[ModelEndpoint]:
+    def get_endpoint(self, name: str) -> ModelEndpoint | None:
         """Get endpoint by name."""
         return self.endpoints.get(name)
 

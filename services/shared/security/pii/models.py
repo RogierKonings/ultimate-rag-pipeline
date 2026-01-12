@@ -5,13 +5,13 @@ This module defines the data structures for PII detection results,
 entities, and processing outcomes.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from .config import PIIEntityType, PIIHandlingMode, PIISensitivity
+from .config import PIIHandlingMode, PIISensitivity
 
 
 class PIIEntity(BaseModel):
@@ -44,7 +44,7 @@ class PIIEntity(BaseModel):
         le=1.0,
         description="Confidence score (0-1)",
     )
-    sensitivity: Optional[PIISensitivity] = Field(
+    sensitivity: PIISensitivity | None = Field(
         default=None,
         description="Sensitivity level of this entity",
     )
@@ -155,7 +155,7 @@ class PIIChunkResult(BaseModel):
         ...,
         description="PII detection results",
     )
-    processed: Optional[PIIProcessedText] = Field(
+    processed: PIIProcessedText | None = Field(
         default=None,
         description="Processed text if transformation was applied",
     )
@@ -163,7 +163,7 @@ class PIIChunkResult(BaseModel):
         default=False,
         description="Whether chunk was rejected due to PII",
     )
-    rejection_reason: Optional[str] = Field(
+    rejection_reason: str | None = Field(
         default=None,
         description="Reason for rejection if applicable",
     )
@@ -213,7 +213,7 @@ class PIIDocumentResult(BaseModel):
         description="Total processing time",
     )
     processed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         description="When processing completed",
     )
 
@@ -291,11 +291,11 @@ class PIIAnalysisRequest(BaseModel):
         default="en",
         description="Language of the text (ISO 639-1)",
     )
-    entities: Optional[list[str]] = Field(
+    entities: list[str] | None = Field(
         default=None,
         description="Specific entity types to detect (None = all configured)",
     )
-    score_threshold: Optional[float] = Field(
+    score_threshold: float | None = Field(
         default=None,
         ge=0.0,
         le=1.0,
@@ -326,7 +326,7 @@ class PIIAnalysisResponse(BaseModel):
         default=False,
         description="Whether high-sensitivity PII was detected",
     )
-    redacted_text: Optional[str] = Field(
+    redacted_text: str | None = Field(
         default=None,
         description="Text with PII redacted (if requested)",
     )

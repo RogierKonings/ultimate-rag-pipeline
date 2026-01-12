@@ -1,11 +1,9 @@
 """Tests for circuit breaker implementation."""
 
 import asyncio
-import time
 from unittest.mock import AsyncMock
 
 import pytest
-
 from resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitOpenError,

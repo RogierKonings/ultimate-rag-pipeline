@@ -1,8 +1,7 @@
 """Tests for degradation manager."""
 
 import pytest
-
-from resilience.circuit_breaker import CircuitBreaker, CircuitState
+from resilience.circuit_breaker import CircuitState
 from resilience.config import CircuitBreakerConfig, ResilienceConfig
 from resilience.degradation import (
     DegradationLevel,
@@ -26,7 +25,7 @@ class TestDegradationManagerInitialization:
     def test_custom_config_initialization(self):
         """Test manager initializes with custom config."""
         config = ResilienceConfig(
-            circuit_breaker=CircuitBreakerConfig(failure_threshold=10)
+            circuit_breaker=CircuitBreakerConfig(failure_threshold=10),
         )
         manager = DegradationManager(config)
 

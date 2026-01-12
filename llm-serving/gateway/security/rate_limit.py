@@ -9,8 +9,7 @@ import asyncio
 import logging
 import os
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from pydantic import BaseModel
 
@@ -42,7 +41,7 @@ class RateLimitConfig(BaseModel):
     window_size_seconds: int = 60
 
     # Redis configuration (for distributed rate limiting)
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
 
 
 @dataclass
@@ -63,7 +62,7 @@ class RateLimitResult:
     remaining: int
     limit: int
     reset_at: float  # Unix timestamp
-    retry_after: Optional[int] = None  # seconds until reset
+    retry_after: int | None = None  # seconds until reset
 
     def to_headers(self) -> dict[str, str]:
         """Convert to response headers."""
@@ -84,7 +83,7 @@ class RateLimiter:
     Supports both in-memory and Redis-backed storage.
     """
 
-    def __init__(self, config: Optional[RateLimitConfig] = None):
+    def __init__(self, config: RateLimitConfig | None = None):
         """
         Initialize rate limiter.
 
@@ -119,7 +118,7 @@ class RateLimiter:
     def _get_bucket_key(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         limit_type: str = "request",
     ) -> str:
         """Generate a bucket key for the given context."""
@@ -130,7 +129,7 @@ class RateLimiter:
     def _get_limit(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         limit_type: str = "rpm",
     ) -> int:
         """Get the rate limit for the given context."""
@@ -142,11 +141,11 @@ class RateLimiter:
             if tenant_id in self.config.tenant_rpm:
                 return self.config.tenant_rpm[tenant_id]
             return self.config.default_rpm
-        elif limit_type == "tpm":
+        if limit_type == "tpm":
             if tenant_id in self.config.tenant_tpm:
                 return self.config.tenant_tpm[tenant_id]
             return self.config.default_tpm
-        elif limit_type == "rpd":
+        if limit_type == "rpd":
             if tenant_id in self.config.tenant_rpd:
                 return self.config.tenant_rpd[tenant_id]
             return self.config.default_rpd
@@ -155,7 +154,7 @@ class RateLimiter:
     async def check_rate_limit(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         tokens: int = 0,
     ) -> RateLimitResult:
         """
@@ -206,19 +205,18 @@ class RateLimiter:
                     limit=limit,
                     reset_at=reset_at,
                 )
-            else:
-                # Calculate retry time
-                tokens_needed = 1 - bucket.tokens
-                retry_after = int((tokens_needed / limit) * window) + 1
-                reset_at = now + retry_after
+            # Calculate retry time
+            tokens_needed = 1 - bucket.tokens
+            retry_after = int((tokens_needed / limit) * window) + 1
+            reset_at = now + retry_after
 
-                return RateLimitResult(
-                    allowed=False,
-                    remaining=0,
-                    limit=limit,
-                    reset_at=reset_at,
-                    retry_after=retry_after,
-                )
+            return RateLimitResult(
+                allowed=False,
+                remaining=0,
+                limit=limit,
+                reset_at=reset_at,
+                retry_after=retry_after,
+            )
 
     async def check_token_limit(
         self,
@@ -268,22 +266,21 @@ class RateLimiter:
                     limit=limit,
                     reset_at=now + window,
                 )
-            else:
-                tokens_needed = tokens - bucket.tokens
-                retry_after = int((tokens_needed / limit) * window) + 1
+            tokens_needed = tokens - bucket.tokens
+            retry_after = int((tokens_needed / limit) * window) + 1
 
-                return RateLimitResult(
-                    allowed=False,
-                    remaining=0,
-                    limit=limit,
-                    reset_at=now + retry_after,
-                    retry_after=retry_after,
-                )
+            return RateLimitResult(
+                allowed=False,
+                remaining=0,
+                limit=limit,
+                reset_at=now + retry_after,
+                retry_after=retry_after,
+            )
 
     async def record_usage(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
         tokens: int = 0,
     ) -> None:
         """
@@ -301,7 +298,7 @@ class RateLimiter:
     def get_usage_stats(
         self,
         tenant_id: str,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ) -> dict:
         """
         Get usage statistics for a tenant/user.
@@ -336,8 +333,8 @@ class RateLimiter:
 
     async def reset_limits(
         self,
-        tenant_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
     ) -> None:
         """
         Reset rate limits for a tenant/user.
@@ -360,7 +357,7 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:

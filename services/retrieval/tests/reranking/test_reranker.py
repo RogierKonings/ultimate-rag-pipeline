@@ -1,11 +1,10 @@
 """Tests for RerankerService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import httpx
-
+import pytest
 from reranking.exceptions import (
     RerankerConnectionError,
     RerankerTimeoutError,
@@ -39,7 +38,7 @@ def mock_rerank_response():
             {"index": 0, "relevance_score": 0.95},
             {"index": 1, "relevance_score": 0.75},
             {"index": 2, "relevance_score": 0.45},
-        ]
+        ],
     }
 
 
@@ -115,7 +114,7 @@ class TestRerankerServiceRerank:
             "results": [
                 {"index": 0, "relevance_score": 0.95},
                 {"index": 1, "relevance_score": 0.3},  # Below threshold
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -172,7 +171,7 @@ class TestRerankerServiceRerank:
         """Test return_documents option."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "results": [{"index": 0, "relevance_score": 0.9}]
+            "results": [{"index": 0, "relevance_score": 0.9}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -207,7 +206,7 @@ class TestRerankerServiceBatching:
                 "results": [
                     {"index": 0, "relevance_score": 0.9},
                     {"index": 1, "relevance_score": 0.8},
-                ]
+                ],
             }
 
         mock_response = MagicMock()
@@ -278,7 +277,7 @@ class TestRerankerServiceFusedResults:
             "results": [
                 {"index": 0, "relevance_score": 0.6},  # First doc now lower
                 {"index": 1, "relevance_score": 0.95},  # Second doc still higher
-            ]
+            ],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -311,12 +310,12 @@ class TestRerankerServiceFusedResults:
                 metadata={"existing": "value"},
                 title="Test Title",
                 source="test.md",
-            )
+            ),
         ]
 
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "results": [{"index": 0, "relevance_score": 0.9}]
+            "results": [{"index": 0, "relevance_score": 0.9}],
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -398,7 +397,7 @@ class TestRerankerServiceLifecycle:
         """Test health check success."""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "results": [{"index": 0, "relevance_score": 0.9}]
+            "results": [{"index": 0, "relevance_score": 0.9}],
         }
         mock_response.raise_for_status = MagicMock()
 

@@ -8,7 +8,6 @@ import asyncio
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 import torch
 from sentence_transformers import SentenceTransformer
@@ -29,7 +28,7 @@ class EmbeddingService:
     def __init__(
         self,
         model_name: str = "BAAI/bge-large-en-v1.5",
-        model_revision: Optional[str] = None,
+        model_revision: str | None = None,
         embedding_dim: int = 1024,
         max_sequence_length: int = 512,
         device: str = "cuda",
@@ -61,8 +60,8 @@ class EmbeddingService:
         self.normalize_embeddings = normalize_embeddings
         self.max_batch_size = max_batch_size
 
-        self._model: Optional[SentenceTransformer] = None
-        self._actual_device: Optional[str] = None
+        self._model: SentenceTransformer | None = None
+        self._actual_device: str | None = None
         self._executor = ThreadPoolExecutor(max_workers=worker_count)
         self._lock = asyncio.Lock()
         self._startup_time = time.time()
@@ -81,7 +80,7 @@ class EmbeddingService:
             model = SentenceTransformer(
                 self.model_name,
                 revision=self.model_revision,
-                device=actual_device
+                device=actual_device,
             )
 
             # Set max sequence length
@@ -103,7 +102,7 @@ class EmbeddingService:
     async def embed(
         self,
         texts: list[str],
-        input_type: Optional[str] = None
+        input_type: str | None = None,
     ) -> BatchEmbeddingResult:
         """
         Generate embeddings for a list of texts.
@@ -129,14 +128,13 @@ class EmbeddingService:
         # Run embedding in thread pool to avoid blocking
         def _embed():
             with torch.no_grad():
-                embeddings = self._model.encode(
+                return self._model.encode(
                     texts,
                     batch_size=self.max_batch_size,
                     normalize_embeddings=self.normalize_embeddings,
                     convert_to_numpy=True,
-                    show_progress_bar=False
+                    show_progress_bar=False,
                 )
-                return embeddings
 
         loop = asyncio.get_event_loop()
         embeddings = await loop.run_in_executor(self._executor, _embed)
@@ -150,13 +148,13 @@ class EmbeddingService:
             embeddings=embeddings.tolist(),
             dimensions=embeddings.shape[1],
             total_tokens=total_tokens,
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
 
     async def embed_single(
         self,
         text: str,
-        input_type: Optional[str] = None
+        input_type: str | None = None,
     ) -> list[float]:
         """Embed a single text."""
         result = await self.embed([text], input_type)
@@ -179,7 +177,7 @@ class EmbeddingService:
             gpu_available=gpu_available,
             gpu_memory_used_mb=gpu_memory,
             queue_size=0,  # Will be updated by batching layer
-            uptime_seconds=time.time() - self._startup_time
+            uptime_seconds=time.time() - self._startup_time,
         )
 
     async def close(self) -> None:

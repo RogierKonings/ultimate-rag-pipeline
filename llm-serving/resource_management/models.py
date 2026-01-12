@@ -6,7 +6,7 @@ cost tracking, and scaling recommendations.
 """
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -50,7 +50,7 @@ class ServiceResourceMetrics(BaseModel):
     namespace: str = "llm-serving"
 
     # GPU metrics
-    gpu_metrics: Optional[GPUMetrics] = None
+    gpu_metrics: GPUMetrics | None = None
 
     # CPU metrics
     cpu_usage_cores: float
@@ -145,7 +145,7 @@ class ResourceRecommendation(BaseModel):
 
     # Recommended state
     recommended_replicas: int
-    recommended_batch_size: Optional[int] = None
+    recommended_batch_size: int | None = None
 
     # Reasoning
     reason: str
@@ -185,4 +185,4 @@ class ScalingPolicy(BaseModel):
     scale_down_step: int = 1
 
     # Cost constraints
-    max_hourly_cost: Optional[float] = None
+    max_hourly_cost: float | None = None

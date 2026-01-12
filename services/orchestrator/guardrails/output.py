@@ -1,7 +1,6 @@
 """Output guardrails for validating LLM responses."""
 
 import time
-from typing import Optional
 
 from .detection import detect_harmful_content
 from .models import GuardrailConfig, GuardrailResult, Violation, ViolationType
@@ -15,7 +14,7 @@ class OutputGuardrail:
     - Harmful content filtering (basic keyword detection)
     """
 
-    def __init__(self, config: Optional[GuardrailConfig] = None):
+    def __init__(self, config: GuardrailConfig | None = None):
         """Initialize the output guardrail.
 
         Args:
@@ -34,7 +33,7 @@ class OutputGuardrail:
         """
         start_time = time.perf_counter()
         violations: list[Violation] = []
-        sanitized_content: Optional[str] = None
+        sanitized_content: str | None = None
 
         # Check length
         if len(text) > self.config.max_output_length:
@@ -44,7 +43,7 @@ class OutputGuardrail:
                     severity=self.config.length_severity,
                     description=f"Output exceeds maximum length of {self.config.max_output_length} characters",
                     location=f"0-{len(text)}",
-                )
+                ),
             )
             # Truncate the content
             sanitized_content = text[: self.config.max_output_length]
@@ -61,7 +60,7 @@ class OutputGuardrail:
                         severity=severity,
                         description=f"Harmful content detected ({category}): '{match.matched_text}'",
                         location=f"{match.start}-{match.end}",
-                    )
+                    ),
                 )
 
         # Determine if check passed based on config

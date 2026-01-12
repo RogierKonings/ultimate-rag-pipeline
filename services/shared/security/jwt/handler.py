@@ -5,13 +5,11 @@ This module provides the main JWTHandler class for creating and validating
 JWT tokens with support for RS256 (RSA) and HS256 (HMAC) algorithms.
 """
 
-import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-import httpx
 import jwt
 from jwt.exceptions import (
     DecodeError,
@@ -22,38 +20,33 @@ from jwt.exceptions import (
     InvalidTokenError,
 )
 
-from .config import JWTAlgorithm, JWTSettings
+from .config import JWTSettings
 from .models import TokenClaims, TokenPair, TokenType
 
 
 class JWTError(Exception):
     """Base exception for JWT errors."""
 
-    pass
 
 
 class TokenExpiredError(JWTError):
     """Token has expired."""
 
-    pass
 
 
 class TokenInvalidError(JWTError):
     """Token is invalid."""
 
-    pass
 
 
 class TokenRevokedError(JWTError):
     """Token has been revoked."""
 
-    pass
 
 
 class KeyLoadError(JWTError):
     """Error loading cryptographic keys."""
 
-    pass
 
 
 class JWTHandler:
@@ -87,7 +80,7 @@ class JWTHandler:
 
     def __init__(
         self,
-        settings: Optional[JWTSettings] = None,
+        settings: JWTSettings | None = None,
         blocklist: Optional["TokenBlocklist"] = None,
     ):
         """
@@ -99,9 +92,9 @@ class JWTHandler:
         """
         self.settings = settings or JWTSettings()
         self.blocklist = blocklist
-        self._private_key: Optional[str] = None
-        self._public_key: Optional[str] = None
-        self._jwks_client: Optional[jwt.PyJWKClient] = None
+        self._private_key: str | None = None
+        self._public_key: str | None = None
+        self._jwks_client: jwt.PyJWKClient | None = None
 
         # Load keys based on algorithm
         self._load_keys()
@@ -142,7 +135,7 @@ class JWTHandler:
 
             try:
                 private_key = load_pem_private_key(
-                    self._private_key.encode(), password=None
+                    self._private_key.encode(), password=None,
                 )
                 public_key = private_key.public_key()
                 self._public_key = public_key.public_bytes(
@@ -150,13 +143,13 @@ class JWTHandler:
                     format=serialization.PublicFormat.SubjectPublicKeyInfo,
                 ).decode()
             except Exception as e:
-                raise KeyLoadError(f"Failed to extract public key: {e}")
+                raise KeyLoadError(f"Failed to extract public key: {e}") from e
 
     def _load_hmac_secret(self) -> None:
         """Load HMAC secret key."""
         if not self.settings.secret_key:
             raise KeyLoadError(
-                f"JWT_SECRET_KEY required for {self.settings.algorithm.value}"
+                f"JWT_SECRET_KEY required for {self.settings.algorithm.value}",
             )
         self._private_key = self.settings.secret_key
         self._public_key = self.settings.secret_key
@@ -177,7 +170,7 @@ class JWTHandler:
             try:
                 return path.read_text()
             except Exception as e:
-                raise KeyLoadError(f"Failed to read key file {path}: {e}")
+                raise KeyLoadError(f"Failed to read key file {path}: {e}") from e
 
         # Check if it looks like a PEM key
         if "-----BEGIN" in key_path_or_content:
@@ -189,7 +182,7 @@ class JWTHandler:
     def create_access_token(
         self,
         claims: TokenClaims,
-        expires_delta: Optional[timedelta] = None,
+        expires_delta: timedelta | None = None,
     ) -> str:
         """
         Create an access token.
@@ -209,7 +202,7 @@ class JWTHandler:
     def create_refresh_token(
         self,
         claims: TokenClaims,
-        expires_delta: Optional[timedelta] = None,
+        expires_delta: timedelta | None = None,
     ) -> str:
         """
         Create a refresh token.
@@ -229,8 +222,8 @@ class JWTHandler:
     def create_token_pair(
         self,
         claims: TokenClaims,
-        access_expires: Optional[timedelta] = None,
-        refresh_expires: Optional[timedelta] = None,
+        access_expires: timedelta | None = None,
+        refresh_expires: timedelta | None = None,
     ) -> TokenPair:
         """
         Create an access/refresh token pair.
@@ -244,10 +237,10 @@ class JWTHandler:
             TokenPair with access and refresh tokens
         """
         access_delta = access_expires or timedelta(
-            minutes=self.settings.access_token_expire_minutes
+            minutes=self.settings.access_token_expire_minutes,
         )
         refresh_delta = refresh_expires or timedelta(
-            days=self.settings.refresh_token_expire_days
+            days=self.settings.refresh_token_expire_days,
         )
 
         access_token = self._create_token(claims, TokenType.ACCESS, access_delta)
@@ -281,7 +274,7 @@ class JWTHandler:
         if not self._private_key:
             raise JWTError("Private key not configured for token creation")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires = now + expires_delta
 
         # Build token claims
@@ -305,7 +298,7 @@ class JWTHandler:
     def verify_token(
         self,
         token: str,
-        expected_type: Optional[TokenType] = None,
+        expected_type: TokenType | None = None,
     ) -> TokenClaims:
         """
         Verify and decode a JWT token.
@@ -331,15 +324,15 @@ class JWTHandler:
             return self._verify_local(token, expected_type)
 
         except ExpiredSignatureError:
-            raise TokenExpiredError("Token has expired")
+            raise TokenExpiredError("Token has expired") from None
         except (InvalidSignatureError, DecodeError):
-            raise TokenInvalidError("Invalid token signature")
+            raise TokenInvalidError("Invalid token signature") from None
         except InvalidAudienceError:
-            raise TokenInvalidError("Invalid token audience")
+            raise TokenInvalidError("Invalid token audience") from None
         except InvalidIssuerError:
-            raise TokenInvalidError("Invalid token issuer")
+            raise TokenInvalidError("Invalid token issuer") from None
         except InvalidTokenError as e:
-            raise TokenInvalidError(f"Invalid token: {e}")
+            raise TokenInvalidError(f"Invalid token: {e}") from e
 
     def _is_external_token(self, token: str) -> bool:
         """Check if token is from external IdP based on issuer."""
@@ -353,7 +346,7 @@ class JWTHandler:
     def _verify_local(
         self,
         token: str,
-        expected_type: Optional[TokenType],
+        expected_type: TokenType | None,
     ) -> TokenClaims:
         """Verify token using local keys."""
         if not self._public_key:
@@ -383,7 +376,7 @@ class JWTHandler:
         # Verify token type
         if expected_type and claims.token_type != expected_type:
             raise TokenInvalidError(
-                f"Expected {expected_type.value} token, got {claims.token_type.value}"
+                f"Expected {expected_type.value} token, got {claims.token_type.value}",
             )
 
         # Check blocklist
@@ -396,7 +389,7 @@ class JWTHandler:
     def _verify_with_jwks(
         self,
         token: str,
-        expected_type: Optional[TokenType],
+        expected_type: TokenType | None,
     ) -> TokenClaims:
         """Verify token using external JWKS endpoint."""
         if not self._jwks_client:
@@ -449,7 +442,7 @@ class JWTHandler:
         # Verify token type if specified
         if expected_type and claims.token_type != expected_type:
             raise TokenInvalidError(
-                f"Expected {expected_type.value} token, got {claims.token_type.value}"
+                f"Expected {expected_type.value} token, got {claims.token_type.value}",
             )
 
         return claims
@@ -474,7 +467,7 @@ class JWTHandler:
         if self.blocklist and claims.jti:
             # Calculate remaining TTL
             if claims.exp:
-                ttl = int((claims.exp - datetime.now(timezone.utc)).total_seconds())
+                ttl = int((claims.exp - datetime.now(UTC)).total_seconds())
                 if ttl > 0:
                     self.blocklist.block(claims.jti, ttl)
 
@@ -520,7 +513,7 @@ class JWTHandler:
             # Calculate TTL (block until token would have expired)
             ttl = None
             if exp:
-                ttl = int(exp - datetime.now(timezone.utc).timestamp())
+                ttl = int(exp - datetime.now(UTC).timestamp())
                 if ttl <= 0:
                     # Token already expired, no need to block
                     return True
@@ -557,7 +550,7 @@ class TokenBlocklist:
     to enable token revocation.
     """
 
-    def block(self, jti: str, ttl: Optional[int] = None) -> None:
+    def block(self, jti: str, ttl: int | None = None) -> None:
         """
         Add a token JTI to the blocklist.
 

@@ -8,7 +8,6 @@ and configuration versioning.
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
 
 from fastapi import FastAPI
 from prometheus_client import Counter, Histogram, generate_latest
@@ -38,16 +37,16 @@ CONFIG_LOAD_TIME = Histogram(
 )
 
 # Global config manager
-_config_manager: Optional[ConfigurationManager] = None
+_config_manager: ConfigurationManager | None = None
 
 
-def get_config_manager() -> Optional[ConfigurationManager]:
+def get_config_manager() -> ConfigurationManager | None:
     """Get the global configuration manager."""
     return _config_manager
 
 
 def init_config_manager(
-    config_path: Optional[Path] = None,
+    config_path: Path | None = None,
     watch_interval: float = 5.0,
 ) -> ConfigurationManager:
     """
@@ -121,7 +120,7 @@ async def metrics():
 
 # Convenience function for standalone running
 def create_app(
-    config_path: Optional[str] = None,
+    config_path: str | None = None,
     watch_interval: float = 5.0,
 ) -> FastAPI:
     """

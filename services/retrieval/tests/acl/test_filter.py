@@ -1,12 +1,11 @@
 """Tests for ACL filter building."""
 
-import pytest
 from uuid import uuid4
 
-from qdrant_client.models import Filter
-
+import pytest
 from acl.filter import ACLFilter, AnonymousAccessFilter
-from acl.models import ACLFilterConfig, UserContext, Visibility
+from acl.models import ACLFilterConfig, UserContext
+from qdrant_client.models import Filter
 
 
 @pytest.fixture

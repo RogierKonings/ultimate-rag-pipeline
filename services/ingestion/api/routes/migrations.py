@@ -9,21 +9,10 @@ Provides REST endpoints for managing the full migration lifecycle:
 """
 
 import os
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from qdrant_client import AsyncQdrantClient
-
-from services.ingestion.migrations.embedding_migrator import EmbeddingMigrator
-from services.ingestion.migrations.models import (
-    MigrationRequest,
-    MigrationStatus,
-)
-from services.ingestion.migrations.progress_tracker import (
-    MigrationProgressStore,
-    MigrationProgressStoreConfig,
-)
 
 from services.ingestion.api.schemas import (
     MigrationListResponseSchema,
@@ -33,6 +22,15 @@ from services.ingestion.api.schemas import (
     SwitchRequestSchema,
     ValidationRequestSchema,
     ValidationResponseSchema,
+)
+from services.ingestion.migrations.embedding_migrator import EmbeddingMigrator
+from services.ingestion.migrations.models import (
+    MigrationRequest,
+    MigrationStatus,
+)
+from services.ingestion.migrations.progress_tracker import (
+    MigrationProgressStore,
+    MigrationProgressStoreConfig,
 )
 
 router = APIRouter(tags=["Migrations"])
@@ -51,7 +49,7 @@ async def get_progress_store() -> MigrationProgressStore:
     """Get migration progress store instance."""
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     store = MigrationProgressStore(
-        config=MigrationProgressStoreConfig(redis_url=redis_url)
+        config=MigrationProgressStoreConfig(redis_url=redis_url),
     )
     await store.connect()
     return store
@@ -140,14 +138,14 @@ async def start_embedding_migration(
         return _migration_to_response(migration)
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Migration start failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Migration start failed: {str(e)}") from e
 
 
 @router.get("/embeddings", response_model=MigrationListResponseSchema)
 async def list_migrations(
-    status: Optional[MigrationStatus] = Query(None, description="Filter by status"),
+    status: MigrationStatus | None = Query(None, description="Filter by status"),
     limit: int = Query(default=50, ge=1, le=200),
     progress: MigrationProgressStore = Depends(get_progress_store),
 ):
@@ -171,7 +169,7 @@ async def list_migrations(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list migrations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list migrations: {str(e)}") from e
 
 
 @router.get("/embeddings/active", response_model=list[MigrationResponseSchema])
@@ -188,7 +186,7 @@ async def get_active_migrations(
         return [_migration_to_response(m) for m in migrations]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get active migrations: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get active migrations: {str(e)}") from e
 
 
 @router.get("/embeddings/{migration_id}", response_model=MigrationResponseSchema)
@@ -240,9 +238,9 @@ async def validate_migration(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}") from e
 
 
 @router.post("/embeddings/{migration_id}/switch", response_model=StatusResponseSchema)
@@ -271,13 +269,12 @@ async def switch_collection(
                 message="Successfully switched to new collection",
                 migration_id=migration_id,
             )
-        else:
-            raise HTTPException(status_code=500, detail="Switch operation failed")
+        raise HTTPException(status_code=500, detail="Switch operation failed")
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Switch failed: {str(e)}") from e
 
 
 @router.post("/embeddings/{migration_id}/rollback", response_model=StatusResponseSchema)
@@ -303,13 +300,12 @@ async def rollback_migration(
                 message="Successfully rolled back to source collection",
                 migration_id=migration_id,
             )
-        else:
-            raise HTTPException(status_code=500, detail="Rollback operation failed")
+        raise HTTPException(status_code=500, detail="Rollback operation failed")
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Rollback failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Rollback failed: {str(e)}") from e
 
 
 @router.post("/embeddings/{migration_id}/cancel", response_model=StatusResponseSchema)
@@ -331,13 +327,12 @@ async def cancel_migration(
                 message="Migration cancelled and cleaned up",
                 migration_id=migration_id,
             )
-        else:
-            raise HTTPException(status_code=500, detail="Cancel operation failed")
+        raise HTTPException(status_code=500, detail="Cancel operation failed")
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cancel failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cancel failed: {str(e)}") from e
 
 
 @router.post("/embeddings/{migration_id}/cleanup", response_model=StatusResponseSchema)
@@ -362,13 +357,12 @@ async def cleanup_old_collection(
                 message="Source collection deleted, rollback disabled",
                 migration_id=migration_id,
             )
-        else:
-            raise HTTPException(status_code=500, detail="Cleanup operation failed")
+        raise HTTPException(status_code=500, detail="Cleanup operation failed")
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}") from e
 
 
 @router.delete("/embeddings/{migration_id}", response_model=StatusResponseSchema)
@@ -398,5 +392,4 @@ async def delete_migration_record(
             message="Migration record deleted",
             migration_id=migration_id,
         )
-    else:
-        raise HTTPException(status_code=500, detail="Delete operation failed")
+    raise HTTPException(status_code=500, detail="Delete operation failed")

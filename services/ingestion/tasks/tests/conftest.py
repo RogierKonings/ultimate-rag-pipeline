@@ -3,11 +3,10 @@
 Provides Celery app configuration for synchronous testing with in-memory backend.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from celery import Celery
+import pytest
 
 
 @pytest.fixture
@@ -27,7 +26,7 @@ def celery_config():
 @pytest.fixture
 def celery_app(celery_config):
     """Celery app configured for testing."""
-    from services.ingestion.tasks.celery_app import create_celery_app, CeleryConfig
+    from services.ingestion.tasks.celery_app import CeleryConfig, create_celery_app
 
     config = CeleryConfig(
         broker_url=celery_config["broker_url"],
@@ -52,7 +51,7 @@ def mock_connector():
 @pytest.fixture
 def mock_raw_document():
     """Mock raw document from connector."""
-    from services.ingestion.connectors.base import RawDocument, DocumentMetadata
+    from services.ingestion.connectors.base import DocumentMetadata, RawDocument
 
     return RawDocument(
         content=b"This is test content for the document.",

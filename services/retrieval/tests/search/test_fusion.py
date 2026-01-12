@@ -1,8 +1,8 @@
 """Tests for hybrid fusion algorithms."""
 
-import pytest
 from uuid import uuid4
 
+import pytest
 from search.fusion import (
     DistributionBasedScoreFusion,
     FusedResult,
@@ -237,13 +237,13 @@ class TestReciprocalRankFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9,
+            ),
         ]
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9,
+            ),
         ]
 
         results = rrf.fuse(semantic, keyword, top_k=10)
@@ -264,18 +264,18 @@ class TestReciprocalRankFusion:
         # B is #2 semantic, #1 keyword
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_a, document_id=doc_id, content="A", score=0.9
+                chunk_id=chunk_a, document_id=doc_id, content="A", score=0.9,
             ),
             SearchResultItem(
-                chunk_id=chunk_b, document_id=doc_id, content="B", score=0.8
+                chunk_id=chunk_b, document_id=doc_id, content="B", score=0.8,
             ),
         ]
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_b, document_id=doc_id, content="B", score=0.9
+                chunk_id=chunk_b, document_id=doc_id, content="B", score=0.9,
             ),
             SearchResultItem(
-                chunk_id=chunk_a, document_id=doc_id, content="A", score=0.7
+                chunk_id=chunk_a, document_id=doc_id, content="A", score=0.7,
             ),
         ]
 
@@ -295,13 +295,13 @@ class TestReciprocalRankFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9,
+            ),
         ]
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.8
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.8,
+            ),
         ]
 
         results = rrf.fuse(semantic, keyword, top_k=10)
@@ -363,13 +363,13 @@ class TestLinearFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0,
+            ),
         ]
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.5
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.5,
+            ),
         ]
 
         results = fusion.fuse(semantic, keyword, top_k=10)
@@ -386,8 +386,8 @@ class TestLinearFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0,
+            ),
         ]
         keyword = []
 
@@ -406,8 +406,8 @@ class TestLinearFusion:
         semantic = []
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=1.0,
+            ),
         ]
 
         results = fusion.fuse(semantic, keyword, top_k=10)
@@ -431,7 +431,7 @@ class TestLinearFusion:
                 metadata={"key": "value"},
                 title="Test",
                 source="test.md",
-            )
+            ),
         ]
 
         results = fusion.fuse(semantic, [], top_k=10)
@@ -495,8 +495,8 @@ class TestDistributionBasedScoreFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9,
+            ),
         ]
 
         results = dbsf.fuse(semantic, [], top_k=10)
@@ -513,13 +513,13 @@ class TestDistributionBasedScoreFusion:
 
         semantic = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=0.9,
+            ),
         ]
         keyword = [
             SearchResultItem(
-                chunk_id=chunk_id, document_id=doc_id, content="A", score=15.5
-            )
+                chunk_id=chunk_id, document_id=doc_id, content="A", score=15.5,
+            ),
         ]
 
         results = dbsf.fuse(semantic, keyword, top_k=10)

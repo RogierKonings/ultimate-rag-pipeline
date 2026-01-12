@@ -10,18 +10,17 @@ Provides automatic HTTP request metrics collection with:
 
 import logging
 import time
-from typing import Callable, Optional, Set
+from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-
-from prometheus_client import Counter, Histogram, Gauge, REGISTRY
 
 logger = logging.getLogger(__name__)
 
 # Default paths to exclude from metrics
-DEFAULT_EXCLUDED_PATHS: Set[str] = {
+DEFAULT_EXCLUDED_PATHS: set[str] = {
     "/health",
     "/healthz",
     "/ready",
@@ -47,17 +46,17 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
     """
 
     # Class-level metrics (shared across instances)
-    _requests_total: Optional[Counter] = None
-    _request_duration: Optional[Histogram] = None
-    _requests_in_progress: Optional[Gauge] = None
+    _requests_total: Counter | None = None
+    _request_duration: Histogram | None = None
+    _requests_in_progress: Gauge | None = None
     _initialized: bool = False
 
     def __init__(
         self,
         app: ASGIApp,
         service_name: str = "rag_service",
-        excluded_paths: Optional[Set[str]] = None,
-        buckets: Optional[tuple] = None,
+        excluded_paths: set[str] | None = None,
+        buckets: tuple | None = None,
     ):
         """
         Initialize the middleware.
@@ -76,7 +75,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         self._init_metrics(buckets)
 
     @classmethod
-    def _init_metrics(cls, buckets: Optional[tuple] = None) -> None:
+    def _init_metrics(cls, buckets: tuple | None = None) -> None:
         """Initialize Prometheus metrics (class method for singleton pattern)."""
         if cls._initialized:
             return
@@ -145,7 +144,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             status_code = response.status_code
             return response
 
-        except Exception as e:
+        except Exception:
             status_code = 500
             raise
 
@@ -177,7 +176,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
             return True
 
         for excluded in self.excluded_paths:
-            if path.startswith(excluded + "/") or path.startswith(excluded + "?"):
+            if path.startswith((excluded + "/", excluded + "?")):
                 return True
 
         return False
@@ -210,18 +209,17 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         """
         if 200 <= status_code < 300:
             return "2xx"
-        elif 300 <= status_code < 400:
+        if 300 <= status_code < 400:
             return "3xx"
-        elif 400 <= status_code < 500:
+        if 400 <= status_code < 500:
             return "4xx"
-        else:
-            return "5xx"
+        return "5xx"
 
 
 def add_prometheus_middleware(
     app: FastAPI,
     service_name: str = "rag_service",
-    excluded_paths: Optional[Set[str]] = None,
+    excluded_paths: set[str] | None = None,
 ) -> None:
     """
     Add Prometheus middleware to FastAPI app.

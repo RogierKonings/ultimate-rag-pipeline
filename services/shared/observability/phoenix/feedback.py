@@ -6,9 +6,9 @@ Provides feedback collection and storage for LLM traces.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from .config import PhoenixConfig
@@ -32,16 +32,16 @@ class Feedback:
 
     id: str = field(default_factory=lambda: str(uuid4()))
     trace_id: str = ""
-    span_id: Optional[str] = None
+    span_id: str | None = None
 
     feedback_type: FeedbackType = FeedbackType.RATING
-    score: Optional[float] = None  # 0.0 - 1.0
-    label: Optional[str] = None  # e.g., "relevant", "irrelevant"
-    correction: Optional[str] = None  # Corrected response
-    comment: Optional[str] = None
+    score: float | None = None  # 0.0 - 1.0
+    label: str | None = None  # e.g., "relevant", "irrelevant"
+    correction: str | None = None  # Corrected response
+    comment: str | None = None
 
-    user_id: Optional[str] = None
-    session_id: Optional[str] = None
+    user_id: str | None = None
+    session_id: str | None = None
 
     created_at: datetime = field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -70,7 +70,7 @@ class Feedback:
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
         elif created_at is None:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(tz=UTC)
 
         return cls(
             id=data.get("id", str(uuid4())),
@@ -95,7 +95,7 @@ class FeedbackCollector:
     Stores feedback in PostgreSQL and optionally sends to Phoenix.
     """
 
-    def __init__(self, config: Optional[PhoenixConfig] = None):
+    def __init__(self, config: PhoenixConfig | None = None):
         """
         Initialize feedback collector.
 
@@ -119,15 +119,15 @@ class FeedbackCollector:
     async def record_feedback(
         self,
         trace_id: str,
-        score: Optional[float] = None,
+        score: float | None = None,
         feedback_type: FeedbackType = FeedbackType.RATING,
-        label: Optional[str] = None,
-        correction: Optional[str] = None,
-        comment: Optional[str] = None,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        span_id: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        label: str | None = None,
+        correction: str | None = None,
+        comment: str | None = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        span_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Feedback:
         """
         Record user feedback for a trace.
@@ -173,8 +173,8 @@ class FeedbackCollector:
     async def record_thumbs_up(
         self,
         trace_id: str,
-        user_id: Optional[str] = None,
-        comment: Optional[str] = None,
+        user_id: str | None = None,
+        comment: str | None = None,
     ) -> Feedback:
         """Record a thumbs up."""
         return await self.record_feedback(
@@ -189,9 +189,9 @@ class FeedbackCollector:
     async def record_thumbs_down(
         self,
         trace_id: str,
-        user_id: Optional[str] = None,
-        comment: Optional[str] = None,
-        correction: Optional[str] = None,
+        user_id: str | None = None,
+        comment: str | None = None,
+        correction: str | None = None,
     ) -> Feedback:
         """Record a thumbs down with optional correction."""
         return await self.record_feedback(
@@ -209,8 +209,8 @@ class FeedbackCollector:
         trace_id: str,
         rating: int,
         max_rating: int = 5,
-        user_id: Optional[str] = None,
-        comment: Optional[str] = None,
+        user_id: str | None = None,
+        comment: str | None = None,
     ) -> Feedback:
         """Record a numeric rating."""
         # Normalize to 0-1 scale
@@ -230,8 +230,8 @@ class FeedbackCollector:
         self,
         trace_id: str,
         correction: str,
-        user_id: Optional[str] = None,
-        comment: Optional[str] = None,
+        user_id: str | None = None,
+        comment: str | None = None,
     ) -> Feedback:
         """Record a correction to the response."""
         return await self.record_feedback(
@@ -333,8 +333,8 @@ class FeedbackCollector:
 
     async def get_feedback_summary(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> dict[str, Any]:
         """
         Get feedback summary statistics.

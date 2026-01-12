@@ -5,9 +5,9 @@ context strings, creating citation references, and truncating content
 to fit within token limits.
 """
 
-from typing import Any, Optional
-import tiktoken
+from typing import Any
 
+import tiktoken
 
 # Default encoding for token counting
 DEFAULT_ENCODING = "cl100k_base"
@@ -205,7 +205,7 @@ def truncate_documents(
             remaining_tokens = max_tokens - current_tokens
             if remaining_tokens > 50:  # Only include if meaningful content remains
                 truncated_content, _ = truncate_context(
-                    content, remaining_tokens, model_name
+                    content, remaining_tokens, model_name,
                 )
                 truncated_doc = doc.copy()
                 truncated_doc["content"] = truncated_content
@@ -250,7 +250,7 @@ def format_history_summary(history: list[dict[str, str]], max_messages: int = 10
 
 
 def extract_document_metadata(
-    documents: list[dict[str, Any]]
+    documents: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Extract metadata from documents for citation purposes.
 

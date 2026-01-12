@@ -5,8 +5,7 @@ This module provides repository classes for storing and querying
 audit logs in PostgreSQL.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import and_, desc, func, select
@@ -190,7 +189,7 @@ class AuditRepository:
 
         return [self._to_entry(row) for row in rows]
 
-    async def get_by_id(self, entry_id: UUID) -> Optional[AuditLogEntry]:
+    async def get_by_id(self, entry_id: UUID) -> AuditLogEntry | None:
         """Get audit entry by ID."""
         from services.shared.database.models.audit_log import AuditLog
 
@@ -205,8 +204,8 @@ class AuditRepository:
         user_id: UUID,
         limit: int = 100,
         offset: int = 0,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> list[AuditLogEntry]:
         """
         Get audit entries for a specific user.
@@ -256,9 +255,9 @@ class AuditRepository:
 
     async def get_stats(
         self,
-        tenant_id: Optional[UUID] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        tenant_id: UUID | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> AuditStats:
         """
         Get audit statistics.
@@ -347,9 +346,9 @@ class AuditRepository:
     async def count_by_action(
         self,
         action: AuditAction,
-        tenant_id: Optional[UUID] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        tenant_id: UUID | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
     ) -> int:
         """Count entries for a specific action."""
         from services.shared.database.models.audit_log import AuditLog
@@ -368,9 +367,9 @@ class AuditRepository:
 
     async def validate_hash_chain(
         self,
-        start_id: Optional[UUID] = None,
+        start_id: UUID | None = None,
         limit: int = 1000,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """
         Validate the integrity of the hash chain.
 
@@ -408,7 +407,7 @@ class AuditRepository:
 
         return True, None
 
-    async def get_latest_hash(self) -> Optional[str]:
+    async def get_latest_hash(self) -> str | None:
         """Get the hash of the most recent audit entry."""
         from services.shared.database.models.audit_log import AuditLog
 

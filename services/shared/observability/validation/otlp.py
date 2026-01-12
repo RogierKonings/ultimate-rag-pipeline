@@ -6,8 +6,8 @@ Validates that all services export traces to the OTEL Collector.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -20,7 +20,7 @@ class ServiceExportStatus:
 
     service_name: str
     is_exporting: bool
-    last_span_time: Optional[datetime] = None
+    last_span_time: datetime | None = None
     span_count_1h: int = 0
     error_rate: float = 0.0
     sample_rate: float = 0.0
@@ -56,7 +56,7 @@ class OTLPValidator:
         collector_url: str = "http://otel-collector:4318",
         jaeger_url: str = "http://jaeger:16686",
         prometheus_url: str = "http://prometheus:9090",
-        expected_services: Optional[list[str]] = None,
+        expected_services: list[str] | None = None,
     ):
         """
         Initialize OTLP validator.
@@ -148,7 +148,7 @@ class OTLPValidator:
                         for trace in traces:
                             for span in trace.get("spans", []):
                                 start_time = span.get("startTime", 0)
-                                span_dt = datetime.fromtimestamp(start_time / 1_000_000)
+                                span_dt = datetime.fromtimestamp(start_time / 1_000_000, tz=UTC)
                                 if latest_time is None or span_dt > latest_time:
                                     latest_time = span_dt
 
@@ -202,7 +202,7 @@ class OTLPValidator:
     async def validate_trace_propagation(
         self,
         trace_id: str,
-        expected_services: Optional[list[str]] = None,
+        expected_services: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Validate that a trace propagates across expected services.
@@ -282,10 +282,10 @@ class OTLPValidator:
         metrics = {}
 
         queries = {
-            "spans_exported_1h": 'sum(increase(otelcol_exporter_sent_spans[1h]))',
-            "spans_failed_1h": 'sum(increase(otelcol_exporter_send_failed_spans[1h]))',
-            "queue_size": 'otelcol_exporter_queue_size',
-            "queue_capacity": 'otelcol_exporter_queue_capacity',
+            "spans_exported_1h": "sum(increase(otelcol_exporter_sent_spans[1h]))",
+            "spans_failed_1h": "sum(increase(otelcol_exporter_send_failed_spans[1h]))",
+            "queue_size": "otelcol_exporter_queue_size",
+            "queue_capacity": "otelcol_exporter_queue_capacity",
         }
 
         try:

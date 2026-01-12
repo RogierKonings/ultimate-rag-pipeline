@@ -1,7 +1,5 @@
 """Unit tests for the database connector."""
 
-import asyncio
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,7 +8,6 @@ from services.ingestion.connectors.database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
 )
-
 
 # ============================================================================
 # PostgreSQL Tests (Mocked)
@@ -41,7 +38,7 @@ class TestDatabaseConnectorPostgres:
         with patch.object(
             DatabaseConnector,
             "_connect_postgresql",
-            new_callable=AsyncMock
+            new_callable=AsyncMock,
         ) as mock_connect:
             connector = DatabaseConnector(pg_config)
             connector._pool = mock_pool  # Simulate pool being created
@@ -59,7 +56,7 @@ class TestDatabaseConnectorPostgres:
             DatabaseConnector,
             "_connect_postgresql",
             new_callable=AsyncMock,
-            side_effect=Exception("Connection refused")
+            side_effect=Exception("Connection refused"),
         ):
             connector = DatabaseConnector(pg_config)
             with pytest.raises(ConnectionError, match="Failed to connect"):
@@ -192,7 +189,7 @@ class TestDatabaseConnectorMySQL:
         with patch.object(
             DatabaseConnector,
             "_connect_mysql",
-            new_callable=AsyncMock
+            new_callable=AsyncMock,
         ) as mock_connect:
             connector = DatabaseConnector(mysql_config)
             await connector.connect()
@@ -396,7 +393,7 @@ class TestErrorHandling:
             DatabaseConnector,
             "_connect_postgresql",
             new_callable=AsyncMock,
-            side_effect=ImportError("No module named 'asyncpg'")
+            side_effect=ImportError("No module named 'asyncpg'"),
         ):
             connector = DatabaseConnector(pg_config)
             with pytest.raises(ImportError, match="asyncpg"):
@@ -427,7 +424,7 @@ class TestContextManager:
         with patch.object(
             DatabaseConnector,
             "_connect_postgresql",
-            new_callable=AsyncMock
+            new_callable=AsyncMock,
         ):
             async with DatabaseConnector(pg_config) as connector:
                 assert connector._connected is True

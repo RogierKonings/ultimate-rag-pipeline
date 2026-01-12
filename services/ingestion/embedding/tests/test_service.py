@@ -1,9 +1,10 @@
 """Tests for the embedding service."""
 
 import math
-import pytest
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+
+import pytest
 
 from ..models import EmbeddingServiceConfig
 from ..service import EmbeddingService, ParallelEmbedder
@@ -14,16 +15,16 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_texts_returns_correct_dimensions(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that embeddings have correct dimensions."""
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
             result = await embedding_service.embed_texts(
-                texts=["test text"], chunk_ids=[uuid4()]
+                texts=["test text"], chunk_ids=[uuid4()],
             )
 
             assert len(result.results) == 1
@@ -33,16 +34,16 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_texts_applies_prefix(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that prefix is correctly applied to texts."""
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
             await embedding_service.embed_texts(
-                texts=["test text"], chunk_ids=[uuid4()], prefix="passage: "
+                texts=["test text"], chunk_ids=[uuid4()], prefix="passage: ",
             )
 
             # Check that the text was prefixed
@@ -53,12 +54,12 @@ class TestEmbeddingService:
     async def test_embed_texts_no_prefix(self, embedding_service: EmbeddingService):
         """Test embedding without prefix."""
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
             await embedding_service.embed_texts(
-                texts=["test text"], chunk_ids=[uuid4()], prefix=None
+                texts=["test text"], chunk_ids=[uuid4()], prefix=None,
             )
 
             call_args = mock.call_args[0][0]
@@ -66,21 +67,21 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_cache_prevents_redundant_calls(
-        self, embedding_service_with_cache: EmbeddingService
+        self, embedding_service_with_cache: EmbeddingService,
     ):
         """Test that cache prevents redundant API calls."""
         service = embedding_service_with_cache
         chunk_id = uuid4()
 
         with patch.object(
-            service._client, "embed_batch", new_callable=AsyncMock
+            service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
             # First call - cache miss
             service.cache.get.return_value = None
             result1 = await service.embed_texts(
-                texts=["test text"], chunk_ids=[chunk_id]
+                texts=["test text"], chunk_ids=[chunk_id],
             )
             assert result1.cache_misses == 1
             assert result1.cache_hits == 0
@@ -89,7 +90,7 @@ class TestEmbeddingService:
             # Second call - cache hit
             service.cache.get.return_value = [0.1] * 1024
             result2 = await service.embed_texts(
-                texts=["test text"], chunk_ids=[chunk_id]
+                texts=["test text"], chunk_ids=[chunk_id],
             )
             assert result2.cache_hits == 1
             assert result2.cache_misses == 0
@@ -100,13 +101,13 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_batching_splits_large_requests(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that large requests are split into batches."""
         embedding_service.config.max_batch_size = 2
 
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024, [0.2] * 1024], 200)
 
@@ -121,7 +122,7 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_batching_respects_token_limit(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that batching respects token limits."""
         embedding_service.config.max_batch_size = 100
@@ -131,7 +132,7 @@ class TestEmbeddingService:
         long_text = "a" * 400  # ~100 tokens each
 
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
@@ -144,7 +145,7 @@ class TestEmbeddingService:
             assert mock.call_count == 3
 
     def test_normalization_produces_unit_vectors(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that normalization produces unit vectors."""
         embedding = [3.0, 4.0]  # 3-4-5 triangle
@@ -155,7 +156,7 @@ class TestEmbeddingService:
         assert abs(length - 1.0) < 0.0001
 
     def test_normalization_handles_zero_vector(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that normalization handles zero vectors."""
         embedding = [0.0, 0.0, 0.0]
@@ -182,11 +183,11 @@ class TestEmbeddingService:
 
     @pytest.mark.asyncio
     async def test_embed_query_uses_query_prefix(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that embed_query uses query prefix."""
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024], 100)
 
@@ -199,12 +200,12 @@ class TestEmbeddingService:
     async def test_metrics_tracking(self, embedding_service: EmbeddingService):
         """Test that metrics are correctly tracked."""
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             mock.return_value = ([[0.1] * 1024, [0.2] * 1024], 250)
 
             result = await embedding_service.embed_texts(
-                texts=["text1", "text2"], chunk_ids=[uuid4(), uuid4()]
+                texts=["text1", "text2"], chunk_ids=[uuid4(), uuid4()],
             )
 
             assert result.total_tokens == 250
@@ -218,9 +219,9 @@ class TestEmbeddingService:
         service = EmbeddingService(config=embedding_config)
 
         with patch.object(
-            service._client, "connect", new_callable=AsyncMock
+            service._client, "connect", new_callable=AsyncMock,
         ) as mock_connect, patch.object(
-            service._client, "disconnect", new_callable=AsyncMock
+            service._client, "disconnect", new_callable=AsyncMock,
         ) as mock_disconnect:
             async with service:
                 pass
@@ -245,7 +246,7 @@ class TestParallelEmbedder:
         chunks = [MockChunk(f"text{i}", uuid4()) for i in range(10)]
 
         with patch.object(
-            embedding_service._client, "embed_batch", new_callable=AsyncMock
+            embedding_service._client, "embed_batch", new_callable=AsyncMock,
         ) as mock:
             # Return embeddings for batch size
             mock.return_value = ([[0.1] * 1024] * 10, 1000)
@@ -260,7 +261,7 @@ class TestParallelEmbedder:
 
     @pytest.mark.asyncio
     async def test_parallel_respects_concurrency_limit(
-        self, embedding_service: EmbeddingService
+        self, embedding_service: EmbeddingService,
     ):
         """Test that parallel embedder respects concurrency limit."""
         embedding_service.config.max_batch_size = 2
@@ -287,7 +288,7 @@ class TestParallelEmbedder:
             return [[0.1] * 1024] * len(texts), len(texts) * 100
 
         with patch.object(
-            embedding_service._client, "embed_batch", side_effect=mock_embed_batch
+            embedding_service._client, "embed_batch", side_effect=mock_embed_batch,
         ):
             embedder = ParallelEmbedder(embedding_service, max_concurrent=2)
             results = []

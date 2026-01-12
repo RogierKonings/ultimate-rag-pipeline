@@ -6,7 +6,7 @@ Prometheus recording/alerting rule generation.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from .sli import SLI, SLI_CATALOG
 
@@ -55,7 +55,7 @@ class SLO:
     target: float
     window: str
     description: str
-    burn_rates: List[BurnRate] = field(default_factory=list)
+    burn_rates: list[BurnRate] = field(default_factory=list)
     owner: str = ""
     consequences: str = ""
 
@@ -99,7 +99,7 @@ class SLO:
         """Error budget as percentage."""
         return self.error_budget * 100
 
-    def get_sli(self) -> Optional[SLI]:
+    def get_sli(self) -> SLI | None:
         """Get the associated SLI."""
         return SLI_CATALOG.get(self.sli_name)
 
@@ -108,7 +108,7 @@ class SLO:
 # SLO Catalog
 # =============================================================================
 
-SLO_CATALOG: Dict[str, SLO] = {}
+SLO_CATALOG: dict[str, SLO] = {}
 
 
 def _register_slo(slo: SLO) -> SLO:
@@ -204,7 +204,7 @@ _register_slo(SLO(
 # Rule Generation
 # =============================================================================
 
-def generate_slo_recording_rules(slo: SLO) -> List[Dict[str, Any]]:
+def generate_slo_recording_rules(slo: SLO) -> list[dict[str, Any]]:
     """
     Generate Prometheus recording rules for an SLO.
 
@@ -282,7 +282,7 @@ def generate_slo_recording_rules(slo: SLO) -> List[Dict[str, Any]]:
     return rules
 
 
-def generate_slo_burn_rate_alerts(slo: SLO) -> List[Dict[str, Any]]:
+def generate_slo_burn_rate_alerts(slo: SLO) -> list[dict[str, Any]]:
     """
     Generate Prometheus alerting rules for SLO burn rates.
 
@@ -370,7 +370,7 @@ def generate_slo_burn_rate_alerts(slo: SLO) -> List[Dict[str, Any]]:
     return alerts
 
 
-def generate_all_slo_rules() -> Dict[str, Any]:
+def generate_all_slo_rules() -> dict[str, Any]:
     """
     Generate all SLO recording and alerting rules.
 
@@ -399,7 +399,7 @@ def generate_all_slo_rules() -> Dict[str, Any]:
     }
 
 
-def get_slo(name: str) -> Optional[SLO]:
+def get_slo(name: str) -> SLO | None:
     """
     Get an SLO by name.
 

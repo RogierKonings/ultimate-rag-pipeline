@@ -323,9 +323,7 @@ class TestJSONParser:
     @pytest.mark.asyncio
     async def test_unicode_content(self, parser: JSONParser):
         """Test parsing JSON with unicode characters."""
-        content = '{"content": "Hello, \u4e16\u754c! \u041f\u0440\u0438\u0432\u0435\u0442!"}'.encode(
-            "utf-8"
-        )
+        content = '{"content": "Hello, \u4e16\u754c! \u041f\u0440\u0438\u0432\u0435\u0442!"}'.encode()
         result = await parser.parse(content)
 
         assert "\u4e16\u754c" in result.text  # Chinese characters

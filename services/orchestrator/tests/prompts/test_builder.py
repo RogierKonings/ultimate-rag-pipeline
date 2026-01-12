@@ -1,13 +1,11 @@
 """Tests for the PromptBuilder class."""
 
 import pytest
-
 from prompts.builder import PromptBuilder, create_prompt_builder
 from prompts.models import (
     PromptConfig,
     PromptStrategy,
     TokenLimits,
-    CitationConfig,
 )
 
 
@@ -181,7 +179,7 @@ class TestPromptBuilderBuildWithMetadata:
                 "content": "Test content for document.",
                 "title": "Test Doc",
                 "metadata": {"title": "Test Document"},
-            }
+            },
         ]
 
     def test_build_with_metadata_returns_dict(self, builder):
@@ -216,7 +214,7 @@ class TestPromptBuilderBuildWithMetadata:
         """Result should include strategy_used."""
         result = builder.build_with_metadata(
             query="Test",
-            strategy="no_context"
+            strategy="no_context",
         )
 
         assert "strategy_used" in result

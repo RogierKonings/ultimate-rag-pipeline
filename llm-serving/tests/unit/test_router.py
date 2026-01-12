@@ -5,7 +5,6 @@ Tests routing strategies and model selection.
 """
 
 import pytest
-
 from config.manager import ConfigurationManager
 from config.models import ABTestConfig, ModelEndpoint, ModelType, RoutingStrategy
 from config.router import ABRouter, RoutingMetrics
@@ -82,7 +81,7 @@ class TestRoutingStrategies:
                 model_a="model-a",
                 model_b="model-b",
                 strategy=RoutingStrategy.SINGLE,
-            )
+            ),
         ]
 
         # Should always return model_a
@@ -99,7 +98,7 @@ class TestRoutingStrategies:
                 model_b="model-b",
                 traffic_split=0.5,
                 strategy=RoutingStrategy.RANDOM,
-            )
+            ),
         ]
 
         results = {"model-a": 0, "model-b": 0}
@@ -120,7 +119,7 @@ class TestRoutingStrategies:
                 model_b="model-b",
                 traffic_split=0.8,  # 80% to model-a
                 strategy=RoutingStrategy.RANDOM,
-            )
+            ),
         ]
 
         results = {"model-a": 0, "model-b": 0}
@@ -141,18 +140,18 @@ class TestRoutingStrategies:
                 model_b="model-b",
                 strategy=RoutingStrategy.HEADER_BASED,
                 routing_header="X-Model-Version",
-            )
+            ),
         ]
 
         # Header value "a" should route to model_a
         result = router.route(
-            ModelType.LLM, request_headers={"X-Model-Version": "a"}
+            ModelType.LLM, request_headers={"X-Model-Version": "a"},
         )
         assert result == "model-a"
 
         # Header value "b" should route to model_b
         result = router.route(
-            ModelType.LLM, request_headers={"X-Model-Version": "b"}
+            ModelType.LLM, request_headers={"X-Model-Version": "b"},
         )
         assert result == "model-b"
 
@@ -169,7 +168,7 @@ class TestRoutingStrategies:
                 model_b="model-b",
                 traffic_split=0.5,
                 strategy=RoutingStrategy.USER_BASED,
-            )
+            ),
         ]
 
         user_id = "user-123"
@@ -190,7 +189,7 @@ class TestRoutingStrategies:
                 model_b="model-b",
                 traffic_split=0.5,
                 strategy=RoutingStrategy.USER_BASED,
-            )
+            ),
         ]
 
         results = {"model-a": 0, "model-b": 0}
@@ -209,7 +208,7 @@ class TestRoutingStrategies:
                 model_a="model-a",
                 model_b="model-b",
                 strategy=RoutingStrategy.ROUND_ROBIN,
-            )
+            ),
         ]
 
         # Round robin is based on timestamp, so we just verify it returns valid models

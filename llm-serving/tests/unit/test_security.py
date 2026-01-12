@@ -4,12 +4,9 @@ Unit tests for Security & Auth (US-5.8).
 Tests JWT authentication, API key validation, and rate limiting.
 """
 
-import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from gateway.security.auth import AuthConfig, AuthContext, JWTAuth
 from gateway.security.rate_limit import RateLimitConfig, RateLimiter, RateLimitResult
 
@@ -124,7 +121,7 @@ class TestJWTAuth:
                     "user_id": "admin",
                     "roles": ["admin", "api"],
                 },
-            }
+            },
         )
         return JWTAuth(config)
 
@@ -350,7 +347,7 @@ class TestRateLimiter:
         # With burst_multiplier=1.5, effective limit is 150000 tokens
         # After using 1000, remaining should be 149000
         burst_adjusted_limit = int(
-            rate_limiter.config.default_tpm * rate_limiter.config.burst_multiplier
+            rate_limiter.config.default_tpm * rate_limiter.config.burst_multiplier,
         )
         assert result.remaining < burst_adjusted_limit
 

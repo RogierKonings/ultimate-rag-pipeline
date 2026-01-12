@@ -7,19 +7,13 @@ Tests for:
 - Tamper-evidence via hash chain
 """
 
-import asyncio
-import hashlib
-import json
 import os
-import subprocess
-import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
-
 
 # ============================================================================
 # Audit Logging Tests
@@ -153,11 +147,11 @@ class TestAuditEntryHashChain:
 
     def test_hash_computation(self):
         """Test that hash is computed correctly."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         entry = AuditLogEntry(
             id=UUID("12345678-1234-1234-1234-123456789abc"),
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
+            timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             user_id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             tenant_id=UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
             action=AuditAction.AUTH_LOGIN,
@@ -174,11 +168,11 @@ class TestAuditEntryHashChain:
 
     def test_hash_chain_linkage(self):
         """Test that hash chain links entries correctly."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         entry1 = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
+            timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             action=AuditAction.AUTH_LOGIN,
             outcome=AuditOutcome.SUCCESS,
         )
@@ -186,7 +180,7 @@ class TestAuditEntryHashChain:
 
         entry2 = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 0, 1),
+            timestamp=datetime(2024, 1, 1, 12, 0, 1, tzinfo=UTC),
             action=AuditAction.DOCUMENT_READ,
             outcome=AuditOutcome.SUCCESS,
             previous_hash=hash1,
@@ -199,11 +193,11 @@ class TestAuditEntryHashChain:
 
     def test_tamper_detection(self):
         """Test that tampering is detected via hash mismatch."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         entry = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
+            timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             user_id=uuid4(),
             action=AuditAction.AUTH_LOGIN,
             outcome=AuditOutcome.SUCCESS,
@@ -246,6 +240,7 @@ class TestAuditMiddleware:
     async def test_middleware_logs_requests(self, mock_app):
         """Test that middleware logs API requests."""
         from fastapi.testclient import TestClient
+
         from services.shared.security.audit import AuditMiddleware
 
         logged_entries = []
@@ -257,7 +252,7 @@ class TestAuditMiddleware:
 
                 return AuditLogEntry(
                     id=uuid4(),
-                    timestamp=datetime.now(),
+                    timestamp=datetime.now(tz=UTC),
                     action=kwargs.get("action"),
                     outcome=kwargs.get("outcome"),
                 )
@@ -467,7 +462,7 @@ class TestHashChainValidation:
 
     def test_valid_chain_passes_validation(self):
         """Test that a valid hash chain passes validation."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         # Create a chain of entries
         entries = []
@@ -476,7 +471,7 @@ class TestHashChainValidation:
         for i in range(5):
             entry = AuditLogEntry(
                 id=uuid4(),
-                timestamp=datetime(2024, 1, 1, 12, i, 0),
+                timestamp=datetime(2024, 1, 1, 12, i, 0, tzinfo=UTC),
                 action=AuditAction.AUTH_LOGIN,
                 outcome=AuditOutcome.SUCCESS,
                 previous_hash=previous_hash,
@@ -495,12 +490,12 @@ class TestHashChainValidation:
 
     def test_broken_chain_detected(self):
         """Test that a broken hash chain is detected."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         # Create entries
         entry1 = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
+            timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             action=AuditAction.AUTH_LOGIN,
             outcome=AuditOutcome.SUCCESS,
         )
@@ -508,7 +503,7 @@ class TestHashChainValidation:
 
         entry2 = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 1, 0),
+            timestamp=datetime(2024, 1, 1, 12, 1, 0, tzinfo=UTC),
             action=AuditAction.DOCUMENT_READ,
             outcome=AuditOutcome.SUCCESS,
             previous_hash="wrong_hash",  # Broken chain
@@ -520,11 +515,11 @@ class TestHashChainValidation:
 
     def test_modified_entry_detected(self):
         """Test that a modified entry is detected via hash mismatch."""
-        from services.shared.security.audit import AuditLogEntry, AuditAction, AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditLogEntry, AuditOutcome
 
         entry = AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 1, 1, 12, 0, 0),
+            timestamp=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             user_id=uuid4(),
             action=AuditAction.AUTH_LOGIN,
             outcome=AuditOutcome.SUCCESS,
@@ -554,7 +549,8 @@ class TestWave4Integration:
         """Test audit middleware with actual FastAPI app."""
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
-        from services.shared.security.audit import AuditMiddleware, AuditLogger
+
+        from services.shared.security.audit import AuditLogger, AuditMiddleware
 
         app = FastAPI()
 
@@ -563,7 +559,7 @@ class TestWave4Integration:
             return {"status": "ok"}
 
         # Note: In a real integration test, we'd use actual DB
-        audit_logger = AuditLogger(service_name="test-integration")
+        AuditLogger(service_name="test-integration")
 
         app.add_middleware(
             AuditMiddleware,
@@ -580,6 +576,7 @@ class TestWave4Integration:
     def test_security_config_consistency(self):
         """Test that security configurations are consistent across files."""
         import tomllib
+
         import yaml
 
         project_root = Path(__file__).parent.parent.parent

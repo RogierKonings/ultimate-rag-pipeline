@@ -1,7 +1,7 @@
 """Keyword search using OpenSearch BM25."""
 
 import time
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from opensearchpy import AsyncOpenSearch
@@ -25,7 +25,7 @@ class KeywordSearcher(BaseSearcher):
 
     def __init__(self, config: OpenSearchConfig | None = None):
         self.config = config or OpenSearchConfig()
-        self._client: Optional[AsyncOpenSearch] = None
+        self._client: AsyncOpenSearch | None = None
 
     async def connect(self) -> None:
         """Establish connection to OpenSearch."""
@@ -45,15 +45,15 @@ class KeywordSearcher(BaseSearcher):
             raise SearchConnectionError(
                 f"Failed to connect to OpenSearch: {e}",
                 details={"url": self.config.url},
-            )
+            ) from e
 
     async def search(
         self,
         query: str,
         top_k: int = 10,
-        filters: Optional[dict] = None,
-        fields: Optional[list[str]] = None,
-        field_boosts: Optional[dict[str, float]] = None,
+        filters: dict | None = None,
+        fields: list[str] | None = None,
+        field_boosts: dict[str, float] | None = None,
         highlight: bool = True,
         min_score: float = 0.0,
     ) -> KeywordSearchResponse:
@@ -141,7 +141,7 @@ class KeywordSearcher(BaseSearcher):
         self,
         query: str,
         boosted_fields: list[str],
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> dict:
         """
         Build OpenSearch query with bool structure.
@@ -158,7 +158,7 @@ class KeywordSearcher(BaseSearcher):
                 "fuzziness": self.config.fuzziness,
                 "prefix_length": 2,  # Require first 2 chars to match exactly
                 "analyzer": self.config.analyzer,
-            }
+            },
         }
 
         # If no filters, return simple query
@@ -186,7 +186,7 @@ class KeywordSearcher(BaseSearcher):
                 # Wrap should conditions in a bool
                 should_clauses = [self._build_filter_condition(c) for c in value]
                 clauses.append(
-                    {"bool": {"should": should_clauses, "minimum_should_match": 1}}
+                    {"bool": {"should": should_clauses, "minimum_should_match": 1}},
                 )
             elif key == "must_not":
                 must_not_clauses = [self._build_filter_condition(c) for c in value]
@@ -205,7 +205,7 @@ class KeywordSearcher(BaseSearcher):
             match_spec = condition["match"]
             if "value" in match_spec:
                 return {"term": {key: match_spec["value"]}}
-            elif "any" in match_spec:
+            if "any" in match_spec:
                 return {"terms": {key: match_spec["any"]}}
 
         elif "range" in condition:
@@ -230,7 +230,7 @@ class KeywordSearcher(BaseSearcher):
         # Handle UUID conversion
         chunk_id = self._parse_uuid(hit["_id"])
         document_id = self._parse_uuid(
-            source.get("document_id", "00000000-0000-0000-0000-000000000000")
+            source.get("document_id", "00000000-0000-0000-0000-000000000000"),
         )
 
         return SearchResultItem(
@@ -290,7 +290,7 @@ class KeywordSearcher(BaseSearcher):
         self,
         phrase: str,
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
         slop: int = 0,
     ) -> KeywordSearchResponse:
         """
@@ -312,8 +312,8 @@ class KeywordSearcher(BaseSearcher):
 
         query: dict[str, Any] = {
             "bool": {
-                "must": [{"match_phrase": {"content": {"query": phrase, "slop": slop}}}]
-            }
+                "must": [{"match_phrase": {"content": {"query": phrase, "slop": slop}}}],
+            },
         }
 
         if filters:
@@ -343,7 +343,7 @@ class KeywordSearcher(BaseSearcher):
         self,
         queries: list[str],
         top_k: int = 10,
-        filters: Optional[dict] = None,
+        filters: dict | None = None,
     ) -> KeywordSearchResponse:
         """
         Search with multiple query variations (from query expansion).
@@ -365,12 +365,12 @@ class KeywordSearcher(BaseSearcher):
                         "fields": ["content", "title^2"],
                         "type": "best_fields",
                         "fuzziness": self.config.fuzziness,
-                    }
-                }
+                    },
+                },
             )
 
         query: dict[str, Any] = {
-            "bool": {"should": should_clauses, "minimum_should_match": 1}
+            "bool": {"should": should_clauses, "minimum_should_match": 1},
         }
 
         if filters:

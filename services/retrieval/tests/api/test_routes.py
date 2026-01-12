@@ -1,28 +1,27 @@
 """Tests for API routes."""
 
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from acl.context import UserContextExtractor
+from acl.filter import ACLFilter
+from acl.models import ACLFilterConfig
+from api.routes import health, retrieve
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jose import jwt
-
-from acl.context import UserContextExtractor
-from acl.filter import ACLFilter
-from acl.models import ACLFilterConfig, UserContext
-from api.routes import health, retrieve
-from config import RetrievalConfig
 from query.models import ProcessedQuery, QueryType
 from query.preprocessor import QueryPreprocessor
-from reranking.models import RerankerConfig, RerankResponse, RerankResult
+from reranking.models import RerankResponse, RerankResult
 from reranking.reranker import RerankerService
-from search.fusion import FusedResult, FusionMethod, HybridSearchConfig, HybridSearchResponse
+from search.fusion import FusedResult, FusionMethod, HybridSearchResponse
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher
 from search.models import KeywordSearchResponse, SearchResultItem, SemanticSearchResponse
 from search.semantic import SemanticSearcher
+
+from config import RetrievalConfig
 
 
 @pytest.fixture
@@ -72,7 +71,7 @@ def mock_semantic_searcher():
                 title="Doc 1",
                 source="test.md",
                 metadata={},
-            )
+            ),
         ],
         total_found=1,
         search_time_ms=10.0,
@@ -95,7 +94,7 @@ def mock_keyword_searcher():
                 title="Doc 2",
                 source="test2.md",
                 metadata={},
-            )
+            ),
         ],
         total_found=1,
         search_time_ms=8.0,
@@ -128,7 +127,7 @@ def mock_hybrid_searcher(mock_semantic_searcher, mock_keyword_searcher):
                 metadata={"source_type": "test"},
                 title="Test Doc",
                 source="test.md",
-            )
+            ),
         ],
         total_semantic=10,
         total_keyword=8,
@@ -146,7 +145,7 @@ def mock_hybrid_searcher(mock_semantic_searcher, mock_keyword_searcher):
                 semantic_score=0.9,
                 semantic_rank=1,
                 metadata={},
-            )
+            ),
         ],
         total_semantic=10,
         total_keyword=0,
@@ -164,7 +163,7 @@ def mock_hybrid_searcher(mock_semantic_searcher, mock_keyword_searcher):
                 keyword_score=0.8,
                 keyword_rank=1,
                 metadata={},
-            )
+            ),
         ],
         total_semantic=0,
         total_keyword=8,
@@ -195,7 +194,7 @@ def mock_reranker():
                 document_id=uuid4(),
                 index=0,
                 relevance_score=0.92,
-            )
+            ),
         ],
         model="test-model",
         processing_time_ms=50.0,

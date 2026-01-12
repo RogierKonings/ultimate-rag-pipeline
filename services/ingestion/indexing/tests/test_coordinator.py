@@ -1,14 +1,15 @@
 """Tests for IndexCoordinator."""
 
-import pytest
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
+
 from ..coordinator import IndexCoordinator
-from ..qdrant import QdrantWriter, QdrantWriterConfig
-from ..opensearch import OpenSearchWriter, OpenSearchWriterConfig
-from ..postgres import PostgresWriter, PostgresWriterConfig
-from ..models import IndexedChunk, DocumentRecord, WriteResult
+from ..models import DocumentRecord, IndexedChunk, WriteResult
+from ..opensearch import OpenSearchWriter
+from ..postgres import PostgresWriter
+from ..qdrant import QdrantWriter
 
 
 class TestIndexCoordinator:
@@ -23,18 +24,18 @@ class TestIndexCoordinator:
         writer.ensure_index = AsyncMock()
         writer.write = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=1, items_failed=0, duration_ms=10
-            )
+                success=True, items_written=1, items_failed=0, duration_ms=10,
+            ),
         )
         writer.delete = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         writer.delete_by_document = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         return writer
 
@@ -47,18 +48,18 @@ class TestIndexCoordinator:
         writer.ensure_index = AsyncMock()
         writer.write = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=1, items_failed=0, duration_ms=10
-            )
+                success=True, items_written=1, items_failed=0, duration_ms=10,
+            ),
         )
         writer.delete = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         writer.delete_by_document = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         return writer
 
@@ -71,18 +72,18 @@ class TestIndexCoordinator:
         writer.ensure_index = AsyncMock()
         writer.write = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=1, items_failed=0, duration_ms=10
-            )
+                success=True, items_written=1, items_failed=0, duration_ms=10,
+            ),
         )
         writer.delete = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         writer.delete_by_document = AsyncMock(
             return_value=WriteResult(
-                success=True, items_written=0, items_failed=0, duration_ms=5
-            )
+                success=True, items_written=0, items_failed=0, duration_ms=5,
+            ),
         )
         writer.update_status = AsyncMock()
         return writer
@@ -103,7 +104,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_index_document_success(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk,
     ):
         """Test successful document indexing."""
         results = await coordinator.index_document(sample_document, [sample_chunk])
@@ -116,12 +117,12 @@ class TestIndexCoordinator:
         mock_opensearch.write.assert_called_once_with([sample_chunk])
         mock_postgres.write.assert_called_once_with([sample_document])
         mock_postgres.update_status.assert_called_once_with(
-            sample_document.document_id, "indexed", None
+            sample_document.document_id, "indexed", None,
         )
 
     @pytest.mark.asyncio
     async def test_index_document_partial_failure(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk,
     ):
         """Test document indexing with partial failure."""
         mock_qdrant.write.return_value = WriteResult(
@@ -146,7 +147,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_index_document_handles_exception(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk,
     ):
         """Test document indexing handles exceptions."""
         mock_opensearch.write.side_effect = Exception("Connection timeout")
@@ -159,7 +160,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_delete_document(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres,
     ):
         """Test document deletion."""
         document_id = uuid4()
@@ -176,7 +177,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_delete_document_partial_failure(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres,
     ):
         """Test document deletion with partial failure."""
         mock_postgres.delete.return_value = WriteResult(
@@ -195,7 +196,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_reindex_document(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres, sample_document, sample_chunk,
     ):
         """Test document reindexing."""
         results = await coordinator.reindex_document(sample_document, [sample_chunk])
@@ -244,7 +245,7 @@ class TestIndexCoordinator:
 
     @pytest.mark.asyncio
     async def test_index_document_with_multiple_chunks(
-        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres
+        self, coordinator, mock_qdrant, mock_opensearch, mock_postgres,
     ):
         """Test indexing document with multiple chunks."""
         document_id = uuid4()
@@ -271,10 +272,10 @@ class TestIndexCoordinator:
         ]
 
         mock_qdrant.write.return_value = WriteResult(
-            success=True, items_written=5, items_failed=0, duration_ms=50
+            success=True, items_written=5, items_failed=0, duration_ms=50,
         )
         mock_opensearch.write.return_value = WriteResult(
-            success=True, items_written=5, items_failed=0, duration_ms=30
+            success=True, items_written=5, items_failed=0, duration_ms=30,
         )
 
         results = await coordinator.index_document(document, chunks)
@@ -284,5 +285,5 @@ class TestIndexCoordinator:
         assert results["postgres"].items_written == 1
 
         mock_postgres.update_status.assert_called_once_with(
-            document_id, "indexed", None
+            document_id, "indexed", None,
         )

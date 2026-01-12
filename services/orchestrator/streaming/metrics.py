@@ -10,7 +10,6 @@ Contract Requirements:
 """
 
 import time
-from typing import Optional
 
 from prometheus_client import Counter, Histogram
 
@@ -80,8 +79,8 @@ class TTFTTracker:
             request_id: Unique identifier for the request to track.
         """
         self._request_id = request_id
-        self._start_time: Optional[float] = None
-        self._first_token_time: Optional[float] = None
+        self._start_time: float | None = None
+        self._first_token_time: float | None = None
         self._recorded = False
 
     @property
@@ -90,7 +89,7 @@ class TTFTTracker:
         return self._request_id
 
     @property
-    def ttft_ms(self) -> Optional[float]:
+    def ttft_ms(self) -> float | None:
         """Get TTFT in milliseconds.
 
         Returns:
@@ -110,7 +109,7 @@ class TTFTTracker:
         return (self._first_token_time - self._start_time) * 1000
 
     @property
-    def ttft_seconds(self) -> Optional[float]:
+    def ttft_seconds(self) -> float | None:
         """Get TTFT in seconds.
 
         Returns:
@@ -131,7 +130,7 @@ class TTFTTracker:
         return self._first_token_time is not None
 
     @property
-    def meets_target(self) -> Optional[bool]:
+    def meets_target(self) -> bool | None:
         """Check if TTFT meets the <500ms target.
 
         Returns:
@@ -237,7 +236,7 @@ class StreamMetricsRecorder:
         """
         self._request_id = request_id
         self._ttft_tracker = TTFTTracker(request_id)
-        self._stream_start_time: Optional[float] = None
+        self._stream_start_time: float | None = None
         self._token_count = 0
         self._completed = False
 
@@ -247,7 +246,7 @@ class StreamMetricsRecorder:
         return self._request_id
 
     @property
-    def ttft_ms(self) -> Optional[float]:
+    def ttft_ms(self) -> float | None:
         """Get TTFT in milliseconds."""
         return self._ttft_tracker.ttft_ms
 

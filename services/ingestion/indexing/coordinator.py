@@ -3,10 +3,10 @@
 import asyncio
 from uuid import UUID
 
-from .models import IndexedChunk, DocumentRecord, WriteResult
-from .qdrant import QdrantWriter
+from .models import DocumentRecord, IndexedChunk, WriteResult
 from .opensearch import OpenSearchWriter
 from .postgres import PostgresWriter
+from .qdrant import QdrantWriter
 
 
 class IndexCoordinator:
@@ -208,7 +208,7 @@ class IndexCoordinator:
         )
 
         # Log any delete errors but continue with indexing
-        for i, store_name in enumerate(["qdrant", "opensearch"]):
+        for i, _store_name in enumerate(["qdrant", "opensearch"]):
             if isinstance(delete_results[i], Exception):
                 # Log warning but continue
                 pass

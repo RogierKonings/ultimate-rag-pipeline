@@ -17,23 +17,23 @@ Node functions (for testing/extension):
     - output_validation_node
 """
 
-from workflow.state import (
-    RAGState,
-    create_initial_state,
-    add_timing,
-    total_time_ms,
-)
 from workflow.graph import (
     build_rag_workflow,
     get_graph_visualization,
 )
 from workflow.nodes import (
-    input_validation_node,
-    routing_node,
-    retrieval_node,
-    prompt_building_node,
     generation_node,
+    input_validation_node,
     output_validation_node,
+    prompt_building_node,
+    retrieval_node,
+    routing_node,
+)
+from workflow.state import (
+    RAGState,
+    add_timing,
+    create_initial_state,
+    total_time_ms,
 )
 
 __all__ = [

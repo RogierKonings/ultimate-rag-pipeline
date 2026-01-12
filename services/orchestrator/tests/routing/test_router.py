@@ -1,15 +1,13 @@
 """Tests for the QueryRouter class."""
 
 import pytest
-
 from routing import (
-    QueryRouter,
     QueryIntent,
-    RoutingStrategy,
-    RoutingResult,
+    QueryRouter,
     RoutingConfig,
+    RoutingResult,
+    RoutingStrategy,
 )
-
 
 # ============================================================================
 # QueryRouter Basic Tests
@@ -301,12 +299,12 @@ class TestQueryRouterConfiguration:
         """Test that custom complexity threshold affects routing."""
         # Router with low threshold - more queries become complex
         low_threshold_router = QueryRouter(
-            config=RoutingConfig(complexity_threshold=0.2)
+            config=RoutingConfig(complexity_threshold=0.2),
         )
 
         # Router with high threshold - fewer queries become complex
         high_threshold_router = QueryRouter(
-            config=RoutingConfig(complexity_threshold=0.8)
+            config=RoutingConfig(complexity_threshold=0.8),
         )
 
         query = "What is Python and how does it work?"
@@ -324,7 +322,7 @@ class TestQueryRouterConfiguration:
         """Test that custom greeting confidence threshold affects routing."""
         # Router with high greeting confidence threshold
         strict_router = QueryRouter(
-            config=RoutingConfig(min_greeting_confidence=0.99)
+            config=RoutingConfig(min_greeting_confidence=0.99),
         )
 
         # "cool" might match with lower confidence
@@ -344,7 +342,7 @@ class TestQueryRouterConfiguration:
                 length_weight=0.1,
                 modifier_weight=0.05,
                 history_weight=0.05,
-            )
+            ),
         )
 
         query = "What is Python, and how does it work, but why is it popular?"
@@ -455,7 +453,7 @@ class TestQueryRouterStrategySelection:
     async def test_multi_part_routes_to_complex(self, router):
         """Test that multi-part queries route to COMPLEX."""
         result = await router.route(
-            "What is Python and also what are its main features?"
+            "What is Python and also what are its main features?",
         )
         assert result.strategy == RoutingStrategy.COMPLEX
 
@@ -464,7 +462,7 @@ class TestQueryRouterStrategySelection:
         """Test that analytical queries with high complexity route to COMPLEX."""
         result = await router.route(
             "Compare the advantages and disadvantages of Python versus Java, "
-            "considering performance, ecosystem, and ease of learning"
+            "considering performance, ecosystem, and ease of learning",
         )
         assert result.strategy == RoutingStrategy.COMPLEX
         assert result.intent == QueryIntent.ANALYTICAL

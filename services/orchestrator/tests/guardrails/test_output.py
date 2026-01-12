@@ -1,9 +1,8 @@
 """Tests for output guardrails."""
 
 import pytest
-
-from guardrails.output import OutputGuardrail
 from guardrails.models import GuardrailConfig, ViolationType
+from guardrails.output import OutputGuardrail
 
 
 class TestOutputGuardrail:

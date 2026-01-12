@@ -82,7 +82,7 @@ class RoleHierarchy:
     Provides methods to determine effective roles based on hierarchy.
     """
 
-    def __init__(self, hierarchy: Optional[dict[Role, list[Role]]] = None):
+    def __init__(self, hierarchy: dict[Role, list[Role]] | None = None):
         """
         Initialize role hierarchy.
 
@@ -128,7 +128,7 @@ class RoleHierarchy:
         inherited = self.get_inherited_roles(role)
         return parent in inherited
 
-    def get_highest_role(self, roles: list[Role]) -> Optional[Role]:
+    def get_highest_role(self, roles: list[Role]) -> Role | None:
         """
         Get the highest role from a list of roles.
 

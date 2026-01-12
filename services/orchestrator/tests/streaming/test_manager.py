@@ -3,9 +3,9 @@
 This module tests the StreamManager class for orchestrating streaming LLM responses.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
 from gateway.client import ModelGateway
 from gateway.exceptions import (
     ModelGatewayError,
@@ -14,7 +14,7 @@ from gateway.exceptions import (
 )
 from streaming.buffer import TokenBuffer
 from streaming.manager import StreamManager
-from streaming.models import StreamEvent, StreamEventType
+from streaming.models import StreamEventType
 
 
 class TestStreamManagerInit:

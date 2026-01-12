@@ -1,7 +1,8 @@
 """Pytest fixtures for embedding service tests."""
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from ..cache import EmbeddingCache
 from ..client import LLMGatewayClient
@@ -65,7 +66,7 @@ def embedding_service(embedding_config: EmbeddingServiceConfig) -> EmbeddingServ
 
 @pytest.fixture
 def embedding_service_with_cache(
-    embedding_config: EmbeddingServiceConfig, mock_cache: AsyncMock
+    embedding_config: EmbeddingServiceConfig, mock_cache: AsyncMock,
 ) -> EmbeddingService:
     """Create an embedding service with mock cache for testing."""
     return EmbeddingService(config=embedding_config, cache=mock_cache)

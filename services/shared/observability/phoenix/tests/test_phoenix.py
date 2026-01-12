@@ -9,17 +9,16 @@ Tests covering:
 - ExperimentTracker
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
 import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from ..config import PhoenixConfig
-from ..tracer import PhoenixTracer, LLMSpan
+import pytest
+
 from ..callbacks import LangChainCallback, LlamaIndexCallback
-from ..feedback import FeedbackCollector, Feedback, FeedbackType
-from ..experiments import ExperimentTracker, Experiment, ExperimentRun
-
+from ..config import PhoenixConfig
+from ..experiments import Experiment, ExperimentRun, ExperimentTracker
+from ..feedback import Feedback, FeedbackCollector, FeedbackType
+from ..tracer import LLMSpan, PhoenixTracer
 
 # ============================================================================
 # PhoenixConfig Tests
@@ -277,7 +276,7 @@ class TestLangChainCallback:
                 "prompt_tokens": 5,
                 "completion_tokens": 3,
                 "total_tokens": 8,
-            }
+            },
         }
 
         # End LLM
@@ -514,7 +513,7 @@ class TestExperiment:
             hypothesis="Test hypothesis",
         )
         experiment.runs.append(
-            ExperimentRun(experiment_id=experiment.id, name="run-1")
+            ExperimentRun(experiment_id=experiment.id, name="run-1"),
         )
 
         data = experiment.to_dict()

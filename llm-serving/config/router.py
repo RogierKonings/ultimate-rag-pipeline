@@ -10,7 +10,6 @@ import hashlib
 import logging
 import random
 import time
-from typing import Optional
 
 from .manager import ConfigurationManager
 from .models import ABTestConfig, ModelType, RoutingStrategy
@@ -42,8 +41,8 @@ class ABRouter:
     def route(
         self,
         model_type: ModelType,
-        request_headers: Optional[dict[str, str]] = None,
-        user_id: Optional[str] = None,
+        request_headers: dict[str, str] | None = None,
+        user_id: str | None = None,
     ) -> str:
         """
         Determine which model endpoint to use.
@@ -76,9 +75,7 @@ class ABRouter:
             endpoint_a = self.config_manager.get_endpoint(test.model_a)
             endpoint_b = self.config_manager.get_endpoint(test.model_b)
 
-            if endpoint_a and endpoint_a.type == model_type:
-                tests.append(test)
-            elif endpoint_b and endpoint_b.type == model_type:
+            if endpoint_a and endpoint_a.type == model_type or endpoint_b and endpoint_b.type == model_type:
                 tests.append(test)
 
         return tests
@@ -96,28 +93,28 @@ class ABRouter:
     def _select_model(
         self,
         test: ABTestConfig,
-        request_headers: Optional[dict[str, str]],
-        user_id: Optional[str],
+        request_headers: dict[str, str] | None,
+        user_id: str | None,
     ) -> str:
         """Select model based on test strategy."""
 
         if test.strategy == RoutingStrategy.SINGLE:
             return test.model_a
 
-        elif test.strategy == RoutingStrategy.RANDOM:
+        if test.strategy == RoutingStrategy.RANDOM:
             return test.model_a if random.random() < test.traffic_split else test.model_b
 
-        elif test.strategy == RoutingStrategy.ROUND_ROBIN:
+        if test.strategy == RoutingStrategy.ROUND_ROBIN:
             # Simple implementation using timestamp
             return test.model_a if int(time.time()) % 2 == 0 else test.model_b
 
-        elif test.strategy == RoutingStrategy.HEADER_BASED:
+        if test.strategy == RoutingStrategy.HEADER_BASED:
             if request_headers:
                 header_value = request_headers.get(test.routing_header, "a")
                 return test.model_a if header_value.lower() == "a" else test.model_b
             return test.model_a
 
-        elif test.strategy == RoutingStrategy.USER_BASED:
+        if test.strategy == RoutingStrategy.USER_BASED:
             if user_id:
                 # Hash user ID for consistent routing
                 user_hash = int(hashlib.md5(user_id.encode()).hexdigest(), 16)
@@ -135,8 +132,8 @@ class ABRouter:
     def get_selected_model_info(
         self,
         model_type: ModelType,
-        request_headers: Optional[dict[str, str]] = None,
-        user_id: Optional[str] = None,
+        request_headers: dict[str, str] | None = None,
+        user_id: str | None = None,
     ) -> dict:
         """
         Get information about which model was selected and why.
@@ -184,7 +181,7 @@ class RoutingMetrics:
         self,
         model_type: ModelType,
         selected_model: str,
-        test_id: Optional[str] = None,
+        test_id: str | None = None,
     ) -> None:
         """
         Record a routing decision.

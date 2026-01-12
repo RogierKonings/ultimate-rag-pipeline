@@ -9,10 +9,11 @@ Provides centralized configuration management with:
 """
 
 import asyncio
+import contextlib
 import hashlib
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
 import yaml
 
@@ -42,7 +43,7 @@ class ConfigurationManager:
 
     def __init__(
         self,
-        config_path: Optional[Path] = None,
+        config_path: Path | None = None,
         watch_interval: float = 5.0,
     ):
         """
@@ -58,15 +59,15 @@ class ConfigurationManager:
         self._state = ModelConfigurationState()
         self._callbacks: list[Callable[[ModelConfigurationState], None]] = []
         self._lock = asyncio.Lock()
-        self._watcher_task: Optional[asyncio.Task] = None
-        self._last_config_hash: Optional[str] = None
+        self._watcher_task: asyncio.Task | None = None
+        self._last_config_hash: str | None = None
 
     async def load_from_file(self, path: Path) -> None:
         """Load configuration from YAML file."""
         logger.info(f"Loading configuration from {path}")
 
         async with self._lock:
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = yaml.safe_load(f)
 
             await self._apply_config(data)
@@ -83,10 +84,10 @@ class ConfigurationManager:
         for name, endpoint_data in data.get("endpoints", {}).items():
             # Handle nested config objects
             if "llm_config" in endpoint_data and isinstance(
-                endpoint_data["llm_config"], dict
+                endpoint_data["llm_config"], dict,
             ):
                 endpoint_data["llm_config"] = LLMGenerationConfig(
-                    **endpoint_data["llm_config"]
+                    **endpoint_data["llm_config"],
                 )
 
             endpoint = ModelEndpoint(name=name, **endpoint_data)
@@ -153,9 +154,9 @@ class ConfigurationManager:
     async def update_generation_params(
         self,
         endpoint_name: str,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
         **kwargs,
     ) -> None:
         """Update LLM generation parameters dynamically."""
@@ -214,7 +215,7 @@ class ConfigurationManager:
         """Deactivate an A/B test."""
         await self.update_ab_test(test_id, {"active": False})
 
-    async def rollback(self, version: Optional[int] = None) -> None:
+    async def rollback(self, version: int | None = None) -> None:
         """Rollback to a previous configuration version."""
         async with self._lock:
             if not self._state.version_history:
@@ -248,12 +249,12 @@ class ConfigurationManager:
         """Get current configuration state."""
         return self._state
 
-    def get_endpoint(self, name: str) -> Optional[ModelEndpoint]:
+    def get_endpoint(self, name: str) -> ModelEndpoint | None:
         """Get endpoint configuration."""
         return self._state.get_endpoint(name)
 
     def get_all_endpoints(
-        self, type_filter: Optional[ModelType] = None
+        self, type_filter: ModelType | None = None,
     ) -> list[ModelEndpoint]:
         """Get all endpoints, optionally filtered by type."""
         endpoints = list(self._state.endpoints.values())
@@ -266,7 +267,7 @@ class ConfigurationManager:
         return self._state.get_active_tests()
 
     def register_callback(
-        self, callback: Callable[[ModelConfigurationState], None]
+        self, callback: Callable[[ModelConfigurationState], None],
     ) -> None:
         """Register callback for configuration changes."""
         self._callbacks.append(callback)
@@ -295,10 +296,8 @@ class ConfigurationManager:
         """Stop watching configuration file."""
         if self._watcher_task:
             self._watcher_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._watcher_task
-            except asyncio.CancelledError:
-                pass
 
     async def _watch_loop(self) -> None:
         """Watch loop for configuration changes."""
@@ -307,7 +306,7 @@ class ConfigurationManager:
                 await asyncio.sleep(self.watch_interval)
 
                 if self.config_path and self.config_path.exists():
-                    with open(self.config_path, "r") as f:
+                    with open(self.config_path) as f:
                         content = f.read()
 
                     content_hash = hashlib.md5(content.encode()).hexdigest()

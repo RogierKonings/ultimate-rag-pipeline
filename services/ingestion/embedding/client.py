@@ -1,9 +1,8 @@
 """LLM Gateway client for embedding generation."""
 
-from typing import Optional
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 from .models import EmbeddingServiceConfig
 
@@ -11,7 +10,7 @@ from .models import EmbeddingServiceConfig
 class LLMGatewayError(Exception):
     """Exception raised for LLM Gateway errors."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
@@ -32,7 +31,7 @@ class LLMGatewayClient:
             config: Service configuration with gateway URL and retry settings.
         """
         self.config = config
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
         """Create HTTP client connection."""
@@ -99,7 +98,7 @@ class LLMGatewayClient:
             ) from e
         except RetryError as e:
             raise LLMGatewayError(
-                f"LLM Gateway request failed after {self.config.max_retries} retries"
+                f"LLM Gateway request failed after {self.config.max_retries} retries",
             ) from e
 
         embeddings = [item["embedding"] for item in data["data"]]

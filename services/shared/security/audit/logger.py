@@ -8,8 +8,9 @@ audit events to structured logs and optional database storage.
 import json
 import logging
 import sys
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from .models import (
@@ -44,7 +45,7 @@ class AuditLogHandler(logging.Handler):
             else:
                 # Standard log format
                 print(json.dumps({
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "level": record.levelname,
                     "message": record.getMessage(),
                     "logger": record.name,
@@ -96,8 +97,8 @@ class AuditLogger:
     def __init__(
         self,
         service_name: str = "rag-pipeline",
-        persist_callback: Optional[Callable[[AuditLogEntry], None]] = None,
-        get_previous_hash: Optional[Callable[[], Optional[str]]] = None,
+        persist_callback: Callable[[AuditLogEntry], None] | None = None,
+        get_previous_hash: Callable[[], str | None] | None = None,
     ):
         """
         Initialize audit logger.
@@ -110,7 +111,7 @@ class AuditLogger:
         self.service_name = service_name
         self._persist_callback = persist_callback
         self._get_previous_hash = get_previous_hash
-        self._last_hash: Optional[str] = None
+        self._last_hash: str | None = None
 
         # Configure handler if not already configured
         if not audit_logger.handlers:
@@ -123,25 +124,25 @@ class AuditLogger:
         action: AuditAction,
         outcome: AuditOutcome = AuditOutcome.SUCCESS,
         severity: AuditSeverity = AuditSeverity.INFO,
-        user_id: Optional[UUID] = None,
-        username: Optional[str] = None,
-        tenant_id: Optional[UUID] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        resource_name: Optional[str] = None,
-        client_ip: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        request_method: Optional[str] = None,
-        request_path: Optional[str] = None,
-        request_id: Optional[str] = None,
-        trace_id: Optional[str] = None,
-        span_id: Optional[str] = None,
-        status_code: Optional[int] = None,
-        duration_ms: Optional[float] = None,
-        error_message: Optional[str] = None,
-        error_code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
-        changes: Optional[dict[str, Any]] = None,
+        user_id: UUID | None = None,
+        username: str | None = None,
+        tenant_id: UUID | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        resource_name: str | None = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
+        request_method: str | None = None,
+        request_path: str | None = None,
+        request_id: str | None = None,
+        trace_id: str | None = None,
+        span_id: str | None = None,
+        status_code: int | None = None,
+        duration_ms: float | None = None,
+        error_message: str | None = None,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+        changes: dict[str, Any] | None = None,
     ) -> AuditLogEntry:
         """
         Log an audit event.
@@ -250,13 +251,13 @@ class AuditLogger:
 
     async def log_login(
         self,
-        user_id: Optional[UUID] = None,
-        username: Optional[str] = None,
-        tenant_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
+        username: str | None = None,
+        tenant_id: UUID | None = None,
         success: bool = True,
-        client_ip: Optional[str] = None,
-        user_agent: Optional[str] = None,
-        failure_reason: Optional[str] = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
+        failure_reason: str | None = None,
         mfa_used: bool = False,
         **kwargs,
     ) -> AuditLogEntry:
@@ -278,9 +279,9 @@ class AuditLogger:
     async def log_logout(
         self,
         user_id: UUID,
-        username: Optional[str] = None,
-        tenant_id: Optional[UUID] = None,
-        client_ip: Optional[str] = None,
+        username: str | None = None,
+        tenant_id: UUID | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log a logout event."""
@@ -298,8 +299,8 @@ class AuditLogger:
     async def log_token_refresh(
         self,
         user_id: UUID,
-        tenant_id: Optional[UUID] = None,
-        client_ip: Optional[str] = None,
+        tenant_id: UUID | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log a token refresh."""
@@ -318,10 +319,10 @@ class AuditLogger:
         user_id: UUID,
         document_id: UUID,
         action: AuditAction,
-        tenant_id: Optional[UUID] = None,
-        document_name: Optional[str] = None,
+        tenant_id: UUID | None = None,
+        document_name: str | None = None,
         success: bool = True,
-        client_ip: Optional[str] = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log document access."""
@@ -342,10 +343,10 @@ class AuditLogger:
         self,
         user_id: UUID,
         query_text: str,
-        tenant_id: Optional[UUID] = None,
+        tenant_id: UUID | None = None,
         results_count: int = 0,
-        duration_ms: Optional[float] = None,
-        client_ip: Optional[str] = None,
+        duration_ms: float | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log a search/retrieval query."""
@@ -368,13 +369,13 @@ class AuditLogger:
 
     async def log_access_denied(
         self,
-        user_id: Optional[UUID],
+        user_id: UUID | None,
         resource_type: str,
         resource_id: str,
         action: AuditAction,
         reason: str,
-        tenant_id: Optional[UUID] = None,
-        client_ip: Optional[str] = None,
+        tenant_id: UUID | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log an access denied event."""
@@ -394,9 +395,9 @@ class AuditLogger:
 
     async def log_unauthorized(
         self,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        client_ip: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        client_ip: str | None = None,
         reason: str = "Authentication required",
         **kwargs,
     ) -> AuditLogEntry:
@@ -417,12 +418,12 @@ class AuditLogger:
         self,
         action: AuditAction,
         error_message: str,
-        error_code: Optional[str] = None,
-        user_id: Optional[UUID] = None,
-        tenant_id: Optional[UUID] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        client_ip: Optional[str] = None,
+        error_code: str | None = None,
+        user_id: UUID | None = None,
+        tenant_id: UUID | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log a server error."""
@@ -447,8 +448,8 @@ class AuditLogger:
         document_id: UUID,
         action: AuditAction,
         changes: dict[str, Any],
-        tenant_id: Optional[UUID] = None,
-        client_ip: Optional[str] = None,
+        tenant_id: UUID | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log an ACL change."""
@@ -471,10 +472,10 @@ class AuditLogger:
         action: AuditAction,
         target_type: str,
         target_id: str,
-        target_name: Optional[str] = None,
-        tenant_id: Optional[UUID] = None,
-        changes: Optional[dict[str, Any]] = None,
-        client_ip: Optional[str] = None,
+        target_name: str | None = None,
+        tenant_id: UUID | None = None,
+        changes: dict[str, Any] | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log an administrative action."""
@@ -497,8 +498,8 @@ class AuditLogger:
         user_id: UUID,
         export_type: str,
         record_count: int,
-        tenant_id: Optional[UUID] = None,
-        client_ip: Optional[str] = None,
+        tenant_id: UUID | None = None,
+        client_ip: str | None = None,
         **kwargs,
     ) -> AuditLogEntry:
         """Log a data export event."""
@@ -516,7 +517,7 @@ class AuditLogger:
 
 
 # Global audit logger instance
-_audit_logger: Optional[AuditLogger] = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_audit_logger(service_name: str = "rag-pipeline") -> AuditLogger:

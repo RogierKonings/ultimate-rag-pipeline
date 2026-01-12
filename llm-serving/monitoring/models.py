@@ -6,7 +6,6 @@ Provides Pydantic models for health status, metrics, alerts, and anomaly detecti
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -26,12 +25,12 @@ class ComponentHealth(BaseModel):
 
     name: str
     status: HealthStatus
-    message: Optional[str] = None
+    message: str | None = None
     last_check: datetime = Field(default_factory=datetime.utcnow)
-    latency_ms: Optional[float] = None
+    latency_ms: float | None = None
 
     # Component-specific details
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 class ServiceHealth(BaseModel):
@@ -45,13 +44,13 @@ class ServiceHealth(BaseModel):
 
     # Model status
     model_loaded: bool = False
-    model_name: Optional[str] = None
+    model_name: str | None = None
 
     # Resource status
     gpu_available: bool = False
-    gpu_memory_used_mb: Optional[float] = None
-    gpu_memory_total_mb: Optional[float] = None
-    gpu_utilization_percent: Optional[float] = None
+    gpu_memory_used_mb: float | None = None
+    gpu_memory_total_mb: float | None = None
+    gpu_utilization_percent: float | None = None
 
     # Request status
     active_requests: int = 0
@@ -59,7 +58,7 @@ class ServiceHealth(BaseModel):
 
     # Timing
     uptime_seconds: float = 0
-    last_request_time: Optional[datetime] = None
+    last_request_time: datetime | None = None
 
     def is_ready(self) -> bool:
         """Check if service is ready to accept requests."""
@@ -160,8 +159,8 @@ class Alert(BaseModel):
     message: str
 
     # Timing
-    started_at: Optional[datetime] = None
-    resolved_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    resolved_at: datetime | None = None
 
     # Context
     labels: dict[str, str] = Field(default_factory=dict)

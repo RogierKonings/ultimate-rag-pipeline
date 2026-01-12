@@ -1,9 +1,10 @@
 """Pytest fixtures for index writer tests."""
 
-import pytest
 from uuid import uuid4
 
-from ..models import IndexedChunk, DocumentRecord
+import pytest
+
+from ..models import DocumentRecord, IndexedChunk
 
 
 @pytest.fixture
@@ -63,6 +64,6 @@ def sample_chunks(sample_document) -> list[IndexedChunk]:
                 visibility="private",
                 allowed_groups=["group-1"],
                 allowed_users=["user-1"],
-            )
+            ),
         )
     return chunks

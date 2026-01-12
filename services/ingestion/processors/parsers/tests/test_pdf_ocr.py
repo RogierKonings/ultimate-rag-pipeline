@@ -28,7 +28,7 @@ class TestPDFParserOCR:
         but no text content. In a real scenario, this would be a scanned document.
         """
         # Minimal PDF with an empty page (no text objects)
-        pdf_content = b"""%PDF-1.4
+        return b"""%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
@@ -49,11 +49,10 @@ trailer
 startxref
 206
 %%EOF"""
-        return pdf_content
 
     @pytest.mark.asyncio
     async def test_ocr_disabled_returns_empty_for_no_text_pdf(
-        self, ocr_disabled_parser: PDFParser, minimal_pdf_no_text: bytes
+        self, ocr_disabled_parser: PDFParser, minimal_pdf_no_text: bytes,
     ):
         """Test that OCR-disabled parser returns empty text for scanned PDF."""
         result = await ocr_disabled_parser.parse(minimal_pdf_no_text)
@@ -64,12 +63,12 @@ startxref
 
     @pytest.mark.asyncio
     async def test_ocr_enabled_attempts_ocr_for_no_text_page(
-        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes
+        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes,
     ):
         """Test that OCR-enabled parser attempts OCR for pages with no text."""
         # Mock the _ocr_page method to verify it's called
         with patch.object(
-            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock
+            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock,
         ) as mock_ocr:
             mock_ocr.return_value = "OCR extracted text"
 
@@ -83,12 +82,12 @@ startxref
 
     @pytest.mark.asyncio
     async def test_ocr_not_called_when_text_exists(
-        self, ocr_enabled_parser: PDFParser, simple_pdf_content: bytes
+        self, ocr_enabled_parser: PDFParser, simple_pdf_content: bytes,
     ):
         """Test that OCR is not called when page already has text."""
         # Mock the _ocr_page method to verify it's NOT called
         with patch.object(
-            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock
+            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock,
         ) as mock_ocr:
             mock_ocr.return_value = "OCR text"
 
@@ -104,48 +103,46 @@ startxref
         """Test that _ocr_page uses the configured OCR language."""
         parser = PDFParser(PDFParserConfig(ocr_enabled=True, ocr_language="deu"))
 
-        with patch("pytesseract.image_to_string") as mock_tesseract:
-            with patch("fitz.Matrix"):
-                # Create a mock page object
-                mock_page = MagicMock()
-                mock_pixmap = MagicMock()
-                mock_pixmap.width = 100
-                mock_pixmap.height = 100
-                mock_pixmap.samples = b"\x00" * (100 * 100 * 3)  # RGB data
-                mock_page.get_pixmap.return_value = mock_pixmap
+        with patch("pytesseract.image_to_string") as mock_tesseract, patch("fitz.Matrix"):
+            # Create a mock page object
+            mock_page = MagicMock()
+            mock_pixmap = MagicMock()
+            mock_pixmap.width = 100
+            mock_pixmap.height = 100
+            mock_pixmap.samples = b"\x00" * (100 * 100 * 3)  # RGB data
+            mock_page.get_pixmap.return_value = mock_pixmap
 
-                mock_tesseract.return_value = "German text"
+            mock_tesseract.return_value = "German text"
 
-                await parser._ocr_page(mock_page)
+            await parser._ocr_page(mock_page)
 
-                # Verify tesseract was called with German language
-                mock_tesseract.assert_called_once()
-                call_kwargs = mock_tesseract.call_args[1]
-                assert call_kwargs["lang"] == "deu"
+            # Verify tesseract was called with German language
+            mock_tesseract.assert_called_once()
+            call_kwargs = mock_tesseract.call_args[1]
+            assert call_kwargs["lang"] == "deu"
 
     @pytest.mark.asyncio
     async def test_ocr_failure_returns_empty_string(self, ocr_enabled_parser: PDFParser):
         """Test that OCR failure is handled gracefully."""
-        with patch("pytesseract.image_to_string") as mock_tesseract:
-            with patch("fitz.Matrix"):
-                mock_tesseract.side_effect = Exception("OCR engine error")
+        with patch("pytesseract.image_to_string") as mock_tesseract, patch("fitz.Matrix"):
+            mock_tesseract.side_effect = Exception("OCR engine error")
 
-                # Create a mock page object
-                mock_page = MagicMock()
-                mock_pixmap = MagicMock()
-                mock_pixmap.width = 100
-                mock_pixmap.height = 100
-                mock_pixmap.samples = b"\x00" * (100 * 100 * 3)
-                mock_page.get_pixmap.return_value = mock_pixmap
+            # Create a mock page object
+            mock_page = MagicMock()
+            mock_pixmap = MagicMock()
+            mock_pixmap.width = 100
+            mock_pixmap.height = 100
+            mock_pixmap.samples = b"\x00" * (100 * 100 * 3)
+            mock_page.get_pixmap.return_value = mock_pixmap
 
-                result = await ocr_enabled_parser._ocr_page(mock_page)
+            result = await ocr_enabled_parser._ocr_page(mock_page)
 
-                # Should return empty string on failure
-                assert result == ""
+            # Should return empty string on failure
+            assert result == ""
 
     @pytest.mark.asyncio
     async def test_ocr_missing_dependencies_returns_empty_string(
-        self, ocr_enabled_parser: PDFParser
+        self, ocr_enabled_parser: PDFParser,
     ):
         """Test that missing OCR dependencies are handled gracefully.
 
@@ -193,11 +190,11 @@ startxref
 
     @pytest.mark.asyncio
     async def test_ocr_applied_metadata_flag(
-        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes
+        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes,
     ):
         """Test that ocr_applied metadata flag is set correctly."""
         with patch.object(
-            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock
+            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock,
         ) as mock_ocr:
             mock_ocr.return_value = "Extracted via OCR"
 
@@ -207,11 +204,11 @@ startxref
 
     @pytest.mark.asyncio
     async def test_ocr_not_applied_flag_when_ocr_returns_empty(
-        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes
+        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes,
     ):
         """Test that ocr_applied flag is not set when OCR returns no text."""
         with patch.object(
-            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock
+            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock,
         ) as mock_ocr:
             mock_ocr.return_value = ""
 
@@ -222,11 +219,11 @@ startxref
 
     @pytest.mark.asyncio
     async def test_ocr_preserves_existing_metadata(
-        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes
+        self, ocr_enabled_parser: PDFParser, minimal_pdf_no_text: bytes,
     ):
         """Test that OCR doesn't overwrite existing metadata."""
         with patch.object(
-            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock
+            ocr_enabled_parser, "_ocr_page", new_callable=AsyncMock,
         ) as mock_ocr:
             mock_ocr.return_value = "OCR text"
 

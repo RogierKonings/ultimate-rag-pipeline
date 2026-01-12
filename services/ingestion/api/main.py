@@ -7,21 +7,20 @@ This module creates and configures the FastAPI application with:
 """
 
 import logging
-
 from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
 from api.routes import documents_router, ingest_router, migrations_router
-from config import Settings, get_settings
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from telemetry import (
     get_current_trace_context,
     instrument_fastapi,
     setup_telemetry,
 )
+
+from config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,6 @@ Tests Z-score, rate, trend, and threshold detectors.
 """
 
 import pytest
-
 from monitoring.anomaly import (
     Anomaly,
     AnomalyDetectorManager,
@@ -148,7 +147,7 @@ class TestRateDetector:
         for _ in range(95):
             detector.add_value(0.0)
         for _ in range(5):
-            result = detector.add_value(1.0)
+            detector.add_value(1.0)
 
         # 5% error rate is below 10% threshold
         # Last result might not trigger if rate is calculated correctly
@@ -416,7 +415,7 @@ class TestAnomalyDetectorManager:
         manager.check("gpu_temperature", 85)  # Warning
 
         critical_anomalies = manager.get_recent_anomalies(
-            severity=AnomalySeverity.CRITICAL
+            severity=AnomalySeverity.CRITICAL,
         )
 
         assert len(critical_anomalies) == 1

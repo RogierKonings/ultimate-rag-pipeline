@@ -1,16 +1,15 @@
 """Dependency injection for API routes."""
 
-from typing import Annotated, Optional
-
-from fastapi import Depends, Header, HTTPException, Request, status
+from typing import Annotated
 
 from acl.context import UserContextExtractor
 from acl.models import UserContext
+from fastapi import Depends, Header, HTTPException, Request, status
 
 
 async def get_user_context(
     request: Request,
-    authorization: Annotated[Optional[str], Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
 ) -> UserContext:
     """
     Extract user context from JWT in Authorization header.
@@ -51,7 +50,7 @@ async def get_user_context(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid or expired token: {e}",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 # Type alias for dependency

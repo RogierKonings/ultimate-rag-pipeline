@@ -1,8 +1,8 @@
 """Tests for ACL models."""
 
-import pytest
 from uuid import uuid4
 
+import pytest
 from acl.models import (
     ACLFilterConfig,
     DocumentACL,

@@ -1,12 +1,12 @@
 """Tests for PostgresWriter."""
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
-from datetime import datetime
+
+import pytest
 
 from ..postgres import PostgresWriter, PostgresWriterConfig
-from ..models import DocumentRecord
 
 
 class TestPostgresWriterConfig:
@@ -206,8 +206,8 @@ class TestPostgresWriter:
             "visibility": "private",
             "allowed_groups": ["group-1"],
             "allowed_users": ["user-1"],
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
+            "created_at": datetime.now(tz=UTC),
+            "updated_at": datetime.now(tz=UTC),
             "indexed_at": None,
             "status": "pending",
             "error_message": None,

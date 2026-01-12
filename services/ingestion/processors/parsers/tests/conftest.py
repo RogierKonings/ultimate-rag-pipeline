@@ -39,7 +39,7 @@ def simple_pdf_content() -> bytes:
     For more comprehensive PDF testing, use actual PDF files.
     """
     # Minimal PDF with "Hello World" text
-    pdf_content = b"""%PDF-1.4
+    return b"""%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
 endobj
@@ -72,7 +72,6 @@ trailer
 startxref
 434
 %%EOF"""
-    return pdf_content
 
 
 @pytest.fixture

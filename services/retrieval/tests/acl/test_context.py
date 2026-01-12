@@ -1,13 +1,11 @@
 """Tests for user context extraction."""
 
-import pytest
 from uuid import uuid4
 
+import pytest
+from acl.context import UserContextExtractor
 from fastapi import HTTPException
 from jose import jwt
-
-from acl.context import UserContextExtractor
-from acl.models import UserContext
 
 
 class MockRequest:
@@ -65,7 +63,7 @@ class TestUserContextExtractor:
 
     @pytest.mark.asyncio
     async def test_extract_from_token_directly(
-        self, extractor, valid_token, valid_payload
+        self, extractor, valid_token, valid_payload,
     ):
         """Test extraction from token string directly."""
         context = await extractor.extract_from_token(valid_token)

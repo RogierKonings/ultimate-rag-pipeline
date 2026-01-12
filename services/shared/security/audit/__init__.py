@@ -58,16 +58,6 @@ Example:
     ```
 """
 
-from .models import (
-    AuditAction,
-    AuditExportRequest,
-    AuditExportResponse,
-    AuditLogEntry,
-    AuditOutcome,
-    AuditQuery,
-    AuditSeverity,
-    AuditStats,
-)
 from .logger import (
     AuditLogger,
     AuditLogHandler,
@@ -77,6 +67,16 @@ from .logger import (
 from .middleware import (
     AuditMiddleware,
     create_audit_middleware,
+)
+from .models import (
+    AuditAction,
+    AuditExportRequest,
+    AuditExportResponse,
+    AuditLogEntry,
+    AuditOutcome,
+    AuditQuery,
+    AuditSeverity,
+    AuditStats,
 )
 from .repository import (
     AuditRepository,

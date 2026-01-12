@@ -6,7 +6,7 @@ Provides FastAPI middleware for authentication and rate limiting.
 
 import logging
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
@@ -26,7 +26,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
     for downstream use.
     """
 
-    def __init__(self, app, auth: Optional[JWTAuth] = None):
+    def __init__(self, app, auth: JWTAuth | None = None):
         """
         Initialize auth middleware.
 
@@ -75,7 +75,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                         "message": "Authentication required",
                         "type": "authentication_error",
                         "code": "invalid_api_key",
-                    }
+                    },
                 },
                 headers={"WWW-Authenticate": "Bearer"},
             )
@@ -86,7 +86,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Log successful auth
         logger.debug(
             f"Authenticated: tenant={context.tenant_id} "
-            f"user={context.user_id} method={context.auth_method}"
+            f"user={context.user_id} method={context.auth_method}",
         )
 
         return await call_next(request)
@@ -102,8 +102,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app,
-        rate_limiter: Optional[RateLimiter] = None,
-        skip_paths: Optional[list[str]] = None,
+        rate_limiter: RateLimiter | None = None,
+        skip_paths: list[str] | None = None,
     ):
         """
         Initialize rate limit middleware.
@@ -139,8 +139,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
         # Get auth context (set by AuthMiddleware)
-        auth_context: Optional[AuthContext] = getattr(
-            request.state, "auth_context", None
+        auth_context: AuthContext | None = getattr(
+            request.state, "auth_context", None,
         )
 
         if auth_context:
@@ -160,7 +160,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not result.allowed:
             logger.warning(
                 f"Rate limit exceeded: tenant={tenant_id} "
-                f"user={user_id} path={path}"
+                f"user={user_id} path={path}",
             )
             return JSONResponse(
                 status_code=429,
@@ -169,7 +169,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         "message": "Rate limit exceeded",
                         "type": "rate_limit_error",
                         "code": "rate_limit_exceeded",
-                    }
+                    },
                 },
                 headers=result.to_headers(),
             )
@@ -186,7 +186,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Record usage (tokens will be recorded separately after response)
         logger.debug(
             f"Request completed: tenant={tenant_id} user={user_id} "
-            f"path={path} duration={duration:.3f}s remaining={result.remaining}"
+            f"path={path} duration={duration:.3f}s remaining={result.remaining}",
         )
 
         return response
@@ -240,8 +240,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         path = request.url.path
 
         # Get auth context if available
-        auth_context: Optional[AuthContext] = getattr(
-            request.state, "auth_context", None
+        auth_context: AuthContext | None = getattr(
+            request.state, "auth_context", None,
         )
         tenant_id = auth_context.tenant_id if auth_context else "unknown"
         user_id = auth_context.user_id if auth_context else "unknown"
@@ -249,7 +249,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         logger.info(
             f"Request: {method} {path} | "
             f"request_id={request_id} client={client_ip} "
-            f"tenant={tenant_id} user={user_id}"
+            f"tenant={tenant_id} user={user_id}",
         )
 
         # Process request
@@ -262,7 +262,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         logger.info(
             f"Response: {method} {path} | "
             f"status={response.status_code} duration={duration_ms:.1f}ms | "
-            f"request_id={request_id}"
+            f"request_id={request_id}",
         )
 
         # Add request ID to response

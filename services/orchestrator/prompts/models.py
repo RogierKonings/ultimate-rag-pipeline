@@ -5,7 +5,7 @@ for controlling template selection, token limits, and formatting options.
 """
 
 from enum import Enum
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -143,7 +143,7 @@ class PromptBuildRequest(BaseModel):
         max_length=10000,
         description="The user's query",
     )
-    context: Optional[str] = Field(
+    context: str | None = Field(
         default=None,
         description="Retrieved context to include in the prompt",
     )

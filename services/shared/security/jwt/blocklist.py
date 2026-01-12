@@ -6,7 +6,6 @@ for supporting logout and token revocation.
 """
 
 import logging
-from typing import Optional
 
 from .handler import TokenBlocklist
 
@@ -63,7 +62,7 @@ class RedisTokenBlocklist(TokenBlocklist):
         """Create Redis key for JTI."""
         return f"{self._prefix}{jti}"
 
-    def block(self, jti: str, ttl: Optional[int] = None) -> None:
+    def block(self, jti: str, ttl: int | None = None) -> None:
         """
         Add a token JTI to the blocklist.
 
@@ -157,7 +156,7 @@ class AsyncRedisTokenBlocklist(TokenBlocklist):
         """Create Redis key for JTI."""
         return f"{self._prefix}{jti}"
 
-    def block(self, jti: str, ttl: Optional[int] = None) -> None:
+    def block(self, jti: str, ttl: int | None = None) -> None:
         """
         Add a token JTI to the blocklist (sync wrapper).
 
@@ -177,7 +176,7 @@ class AsyncRedisTokenBlocklist(TokenBlocklist):
             # No event loop, create one
             asyncio.run(self.block_async(jti, ttl))
 
-    async def block_async(self, jti: str, ttl: Optional[int] = None) -> None:
+    async def block_async(self, jti: str, ttl: int | None = None) -> None:
         """
         Add a token JTI to the blocklist (async).
 
@@ -213,7 +212,7 @@ class AsyncRedisTokenBlocklist(TokenBlocklist):
 
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     future = pool.submit(
-                        asyncio.run, self.is_blocked_async(jti)
+                        asyncio.run, self.is_blocked_async(jti),
                     )
                     return future.result()
             else:
@@ -292,7 +291,7 @@ class InMemoryTokenBlocklist(TokenBlocklist):
         """Initialize in-memory blocklist."""
         self._blocked: dict[str, float] = {}  # jti -> expiry timestamp
 
-    def block(self, jti: str, ttl: Optional[int] = None) -> None:
+    def block(self, jti: str, ttl: int | None = None) -> None:
         """Add a token JTI to the blocklist."""
         import time
 

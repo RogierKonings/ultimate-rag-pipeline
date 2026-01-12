@@ -10,10 +10,11 @@ Uses W3C Trace Context format by default for maximum compatibility.
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Mapping
+from collections.abc import Callable, Mapping
+from typing import Any
 
 from opentelemetry import trace
-from opentelemetry.context import Context, get_current, attach, detach
+from opentelemetry.context import Context, attach, detach, get_current
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
@@ -27,7 +28,7 @@ _propagator = TraceContextTextMapPropagator()
 class DictGetter(Getter):
     """Getter for extracting context from dictionaries."""
 
-    def get(self, carrier: Mapping[str, str], key: str) -> Optional[list[str]]:
+    def get(self, carrier: Mapping[str, str], key: str) -> list[str] | None:
         value = carrier.get(key)
         if value is not None:
             return [value]
@@ -44,7 +45,7 @@ class DictGetter(Getter):
 class DictSetter(Setter):
     """Setter for injecting context into dictionaries."""
 
-    def set(self, carrier: Dict[str, str], key: str, value: str) -> None:
+    def set(self, carrier: dict[str, str], key: str, value: str) -> None:
         carrier[key] = value
 
 
@@ -67,9 +68,9 @@ class TraceContextPropagator:
 
     def inject_into_headers(
         self,
-        headers: Optional[Dict[str, str]] = None,
-        context: Optional[Context] = None,
-    ) -> Dict[str, str]:
+        headers: dict[str, str] | None = None,
+        context: Context | None = None,
+    ) -> dict[str, str]:
         """
         Inject trace context into HTTP headers.
 
@@ -112,10 +113,10 @@ class TraceContextPropagator:
 
     def inject_into_carrier(
         self,
-        carrier: Dict[str, Any],
-        context: Optional[Context] = None,
+        carrier: dict[str, Any],
+        context: Context | None = None,
         key_prefix: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Inject trace context into a generic carrier (e.g., message headers).
 
@@ -127,7 +128,7 @@ class TraceContextPropagator:
         Returns:
             Carrier with trace context
         """
-        trace_headers: Dict[str, str] = {}
+        trace_headers: dict[str, str] = {}
         inject(trace_headers, context=context, setter=_dict_setter)
 
         for key, value in trace_headers.items():
@@ -166,9 +167,9 @@ _context_propagator = TraceContextPropagator()
 
 
 def inject_trace_context(
-    carrier: Optional[Dict[str, str]] = None,
-    context: Optional[Context] = None,
-) -> Dict[str, str]:
+    carrier: dict[str, str] | None = None,
+    context: Context | None = None,
+) -> dict[str, str]:
     """
     Inject current trace context into a carrier.
 
@@ -216,7 +217,7 @@ def extract_trace_context(
     return _context_propagator.extract_from_headers(carrier)
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     """
     Get the current trace ID as a hex string.
 
@@ -234,7 +235,7 @@ def get_current_trace_id() -> Optional[str]:
     return format(ctx.trace_id, "032x")
 
 
-def get_current_span_id() -> Optional[str]:
+def get_current_span_id() -> str | None:
     """
     Get the current span ID as a hex string.
 
@@ -252,7 +253,7 @@ def get_current_span_id() -> Optional[str]:
     return format(ctx.span_id, "016x")
 
 
-def get_trace_context_dict() -> Dict[str, Optional[str]]:
+def get_trace_context_dict() -> dict[str, str | None]:
     """
     Get current trace context as a dictionary.
 
@@ -325,8 +326,8 @@ class CeleryTracePropagator:
     @classmethod
     def inject_task_headers(
         cls,
-        headers: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        headers: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Inject trace context into Celery task headers.
 
@@ -340,7 +341,7 @@ class CeleryTracePropagator:
             headers = {}
 
         return _context_propagator.inject_into_carrier(
-            headers, key_prefix=cls.HEADER_PREFIX
+            headers, key_prefix=cls.HEADER_PREFIX,
         )
 
     @classmethod
@@ -358,7 +359,7 @@ class CeleryTracePropagator:
             Extracted context
         """
         return _context_propagator.extract_from_carrier(
-            headers, key_prefix=cls.HEADER_PREFIX
+            headers, key_prefix=cls.HEADER_PREFIX,
         )
 
 
@@ -372,7 +373,7 @@ class KafkaTracePropagator:
     @classmethod
     def inject_message_headers(
         cls,
-        headers: Optional[list[tuple[str, bytes]]] = None,
+        headers: list[tuple[str, bytes]] | None = None,
     ) -> list[tuple[str, bytes]]:
         """
         Inject trace context into Kafka message headers.
@@ -387,7 +388,7 @@ class KafkaTracePropagator:
             headers = []
 
         # Inject into dict first
-        trace_dict: Dict[str, str] = {}
+        trace_dict: dict[str, str] = {}
         inject(trace_dict, setter=_dict_setter)
 
         # Convert to Kafka header format
@@ -399,7 +400,7 @@ class KafkaTracePropagator:
     @classmethod
     def extract_message_context(
         cls,
-        headers: Optional[list[tuple[str, bytes]]],
+        headers: list[tuple[str, bytes]] | None,
     ) -> Context:
         """
         Extract trace context from Kafka message headers.

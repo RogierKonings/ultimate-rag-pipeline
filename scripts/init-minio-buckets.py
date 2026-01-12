@@ -16,12 +16,13 @@ Environment Variables:
     MINIO_SECRET_KEY: Secret key (default: minioadmin123)
 """
 
-from minio import Minio
-from minio.error import S3Error
-from minio.lifecycleconfig import LifecycleConfig, Rule, Expiration
-from minio.commonconfig import Filter
 import os
 import sys
+
+from minio import Minio
+from minio.commonconfig import Filter
+from minio.error import S3Error
+from minio.lifecycleconfig import Expiration, LifecycleConfig, Rule
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
@@ -57,8 +58,8 @@ def create_lifecycle_config(days: int) -> LifecycleConfig:
                 rule_filter=Filter(prefix=""),
                 rule_id="expire-rule",
                 expiration=Expiration(days=days),
-            )
-        ]
+            ),
+        ],
     )
 
 

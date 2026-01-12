@@ -1,7 +1,6 @@
 """FastAPI dependencies for dependency injection."""
 
 import logging
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -14,7 +13,7 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(security),
+    credentials: HTTPAuthorizationCredentials | None = Security(security),
 ) -> dict:
     """
     Extract and validate user from JWT token.
@@ -46,12 +45,11 @@ async def get_current_user(
 
         settings = get_settings()
         token = credentials.credentials
-        payload = jwt.decode(
+        return jwt.decode(
             token,
             settings.jwt_secret,
             algorithms=[settings.jwt_algorithm],
         )
-        return payload
 
     except JWTError as e:
         logger.warning(f"JWT validation failed: {e}")
@@ -59,7 +57,7 @@ async def get_current_user(
             status_code=401,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
 
 def require_permission(permission: str):

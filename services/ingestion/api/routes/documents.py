@@ -1,10 +1,7 @@
 """Document management API routes."""
 
 import logging
-from typing import Optional
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.dependencies import get_current_user, get_document_service
 from api.schemas import (
@@ -14,6 +11,7 @@ from api.schemas import (
     IngestResponse,
     ReindexRequest,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +27,9 @@ router = APIRouter()
 async def list_documents(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    source_type: Optional[str] = None,
-    status: Optional[str] = None,
-    search: Optional[str] = None,
+    source_type: str | None = None,
+    status: str | None = None,
+    search: str | None = None,
     document_service=Depends(get_document_service),
     current_user: dict = Depends(get_current_user),
 ) -> DocumentListResponse:
@@ -107,7 +105,7 @@ async def get_document(
 async def delete_document(
     document_id: UUID,
     hard_delete: bool = Query(
-        default=True, description="If False, marks as deleted instead of removing"
+        default=True, description="If False, marks as deleted instead of removing",
     ),
     document_service=Depends(get_document_service),
     current_user: dict = Depends(get_current_user),
@@ -172,7 +170,7 @@ async def delete_document(
 )
 async def reindex_document(
     document_id: UUID,
-    request: Optional[ReindexRequest] = None,
+    request: ReindexRequest | None = None,
     document_service=Depends(get_document_service),
     current_user: dict = Depends(get_current_user),
 ) -> IngestResponse:

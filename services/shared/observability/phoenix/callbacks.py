@@ -6,10 +6,10 @@ Provides callbacks for LangChain and LlamaIndex to integrate with Phoenix tracin
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import uuid4
 
-from .tracer import PhoenixTracer, LLMSpan
+from .tracer import LLMSpan, PhoenixTracer
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ class LangChainCallback:
 
     def __init__(
         self,
-        tracer: Optional[PhoenixTracer] = None,
-        trace_id: Optional[str] = None,
+        tracer: PhoenixTracer | None = None,
+        trace_id: str | None = None,
     ):
         """
         Initialize LangChain callback.
@@ -38,8 +38,8 @@ class LangChainCallback:
         """
         self.tracer = tracer or PhoenixTracer.get_instance()
         self.trace_id = trace_id or str(uuid4())
-        self._spans: Dict[str, LLMSpan] = {}
-        self._start_times: Dict[str, float] = {}
+        self._spans: dict[str, LLMSpan] = {}
+        self._start_times: dict[str, float] = {}
 
     def set_trace_id(self, trace_id: str) -> None:
         """Set the trace ID for subsequent spans."""
@@ -48,11 +48,11 @@ class LangChainCallback:
     # LLM callbacks
     def on_llm_start(
         self,
-        serialized: Dict[str, Any],
-        prompts: List[str],
+        serialized: dict[str, Any],
+        prompts: list[str],
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when LLM starts running."""
@@ -80,7 +80,7 @@ class LangChainCallback:
         response: Any,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when LLM ends running."""
@@ -113,10 +113,10 @@ class LangChainCallback:
 
     def on_llm_error(
         self,
-        error: Union[Exception, KeyboardInterrupt],
+        error: Exception | KeyboardInterrupt,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when LLM encounters an error."""
@@ -129,11 +129,11 @@ class LangChainCallback:
     # Chain callbacks
     def on_chain_start(
         self,
-        serialized: Dict[str, Any],
-        inputs: Dict[str, Any],
+        serialized: dict[str, Any],
+        inputs: dict[str, Any],
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when chain starts running."""
@@ -152,10 +152,10 @@ class LangChainCallback:
 
     def on_chain_end(
         self,
-        outputs: Dict[str, Any],
+        outputs: dict[str, Any],
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when chain ends running."""
@@ -170,10 +170,10 @@ class LangChainCallback:
 
     def on_chain_error(
         self,
-        error: Union[Exception, KeyboardInterrupt],
+        error: Exception | KeyboardInterrupt,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when chain encounters an error."""
@@ -186,11 +186,11 @@ class LangChainCallback:
     # Retriever callbacks
     def on_retriever_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         query: str,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when retriever starts running."""
@@ -207,10 +207,10 @@ class LangChainCallback:
 
     def on_retriever_end(
         self,
-        documents: List[Any],
+        documents: list[Any],
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when retriever ends running."""
@@ -225,10 +225,10 @@ class LangChainCallback:
 
     def on_retriever_error(
         self,
-        error: Union[Exception, KeyboardInterrupt],
+        error: Exception | KeyboardInterrupt,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when retriever encounters an error."""
@@ -241,11 +241,11 @@ class LangChainCallback:
     # Tool callbacks
     def on_tool_start(
         self,
-        serialized: Dict[str, Any],
+        serialized: dict[str, Any],
         input_str: str,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when tool starts running."""
@@ -267,7 +267,7 @@ class LangChainCallback:
         output: str,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when tool ends running."""
@@ -282,10 +282,10 @@ class LangChainCallback:
 
     def on_tool_error(
         self,
-        error: Union[Exception, KeyboardInterrupt],
+        error: Exception | KeyboardInterrupt,
         *,
         run_id: str,
-        parent_run_id: Optional[str] = None,
+        parent_run_id: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Called when tool encounters an error."""
@@ -308,8 +308,8 @@ class LlamaIndexCallback:
 
     def __init__(
         self,
-        tracer: Optional[PhoenixTracer] = None,
-        trace_id: Optional[str] = None,
+        tracer: PhoenixTracer | None = None,
+        trace_id: str | None = None,
     ):
         """
         Initialize LlamaIndex callback.
@@ -320,8 +320,8 @@ class LlamaIndexCallback:
         """
         self.tracer = tracer or PhoenixTracer.get_instance()
         self.trace_id = trace_id or str(uuid4())
-        self._spans: Dict[str, LLMSpan] = {}
-        self._start_times: Dict[str, float] = {}
+        self._spans: dict[str, LLMSpan] = {}
+        self._start_times: dict[str, float] = {}
 
     def set_trace_id(self, trace_id: str) -> None:
         """Set the trace ID for subsequent spans."""
@@ -330,7 +330,7 @@ class LlamaIndexCallback:
     def on_event_start(
         self,
         event_type: str,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         event_id: str = "",
         parent_id: str = "",
         **kwargs: Any,
@@ -399,7 +399,7 @@ class LlamaIndexCallback:
     def on_event_end(
         self,
         event_type: str,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         event_id: str = "",
         **kwargs: Any,
     ) -> None:
@@ -439,15 +439,15 @@ class LlamaIndexCallback:
 
             self.tracer.end_span(span)
 
-    def start_trace(self, trace_id: Optional[str] = None) -> str:
+    def start_trace(self, trace_id: str | None = None) -> str:
         """Start a new trace."""
         self.trace_id = trace_id or str(uuid4())
         return self.trace_id
 
     def end_trace(
         self,
-        trace_id: Optional[str] = None,
-        trace_map: Optional[Dict[str, List[str]]] = None,
+        trace_id: str | None = None,
+        trace_map: dict[str, list[str]] | None = None,
     ) -> None:
         """End the current trace."""
         # Flush any remaining spans

@@ -11,9 +11,9 @@ Verifies:
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 
@@ -51,7 +51,7 @@ class TestIngestionLogEntry:
         tenant_id = uuid4()
         document_id = uuid4()
         job_id = uuid4()
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
         metadata = {"source_type": "file", "file_size": 1024}
 
         entry = IngestionLogEntry(
@@ -113,12 +113,12 @@ class TestIngestionLogEntry:
 
     def test_entry_timestamp_defaults_to_now(self):
         """Timestamp defaults to current UTC time."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         entry = IngestionLogEntry(
             tenant_id=uuid4(),
             event_type="test",
         )
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         assert before <= entry.timestamp <= after
 
@@ -129,8 +129,7 @@ class TestIngestionLogWriterBuffering:
     @pytest.fixture
     def writer(self):
         """Create a writer with test configuration."""
-        writer = IngestionLogWriter(batch_size=5, flush_interval=10.0)
-        return writer
+        return IngestionLogWriter(batch_size=5, flush_interval=10.0)
 
     @pytest.mark.asyncio
     async def test_log_adds_entry_to_buffer(self, writer):
@@ -226,7 +225,7 @@ class TestIngestionLogWriterLifecycle:
         # Add some entries without reaching batch size
         for i in range(3):
             await writer.log(
-                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}")
+                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}"),
             )
 
         assert writer.buffer_size == 3
@@ -262,7 +261,7 @@ class TestIngestionLogWriterPeriodicFlush:
         # Add entries
         for i in range(3):
             await writer.log(
-                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}")
+                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}"),
             )
 
         await writer.start()
@@ -303,7 +302,7 @@ class TestIngestionLogWriterErrorHandling:
         # Add entries
         for i in range(3):
             await writer.log(
-                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}")
+                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}"),
             )
 
         # Trigger flush (will fail)
@@ -322,7 +321,7 @@ class TestIngestionLogWriterErrorHandling:
         # Add entries
         for i in range(3):
             await writer.log(
-                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}")
+                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}"),
             )
 
         # Trigger flush (will fail and drop entries)
@@ -348,7 +347,7 @@ class TestIngestionLogWriterBulkInsert:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=100, flush_interval=10.0, session_factory=mock_factory
+            batch_size=100, flush_interval=10.0, session_factory=mock_factory,
         )
 
         tenant_id = uuid4()
@@ -366,7 +365,7 @@ class TestIngestionLogWriterBulkInsert:
                 metadata={"source_type": "file"},
                 trace_id="trace123",
                 span_id="span456",
-            )
+            ),
         ]
 
         await writer._bulk_insert(entries)
@@ -388,11 +387,11 @@ class TestIngestionLogWriterBulkInsert:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=100, flush_interval=10.0, session_factory=mock_factory
+            batch_size=100, flush_interval=10.0, session_factory=mock_factory,
         )
 
         entries = [
-            IngestionLogEntry(tenant_id=uuid4(), event_type="test")
+            IngestionLogEntry(tenant_id=uuid4(), event_type="test"),
         ]
 
         with pytest.raises(Exception, match="Insert failed"):
@@ -416,13 +415,13 @@ class TestIngestionLogWriterMetrics:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=2, flush_interval=10.0, session_factory=mock_factory
+            batch_size=2, flush_interval=10.0, session_factory=mock_factory,
         )
 
         # Add entries to trigger flush
         for i in range(2):
             await writer.log(
-                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}")
+                IngestionLogEntry(tenant_id=uuid4(), event_type=f"event_{i}"),
             )
 
         assert writer.total_flushed == 2

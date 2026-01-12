@@ -1,8 +1,9 @@
 """Prometheus metrics for the Retrieval Service."""
 
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any
 
 # Try to import prometheus_client, provide stubs if not available
 try:
@@ -165,7 +166,7 @@ class RetrievalMetrics:
         status: str,  # "success", "error"
         duration_seconds: float,
         result_count: int,
-        top_score: Optional[float] = None,
+        top_score: float | None = None,
     ) -> None:
         """
         Record a retrieval request.
@@ -179,7 +180,7 @@ class RetrievalMetrics:
         """
         self.requests_total.labels(mode=mode, status=status).inc()
         self.request_duration.labels(mode=mode, component="total").observe(
-            duration_seconds
+            duration_seconds,
         )
         self.result_count.labels(mode=mode).observe(result_count)
         self.results_total.labels(mode=mode).inc(result_count)
@@ -267,19 +268,16 @@ class RetrievalMetrics:
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 self.active_requests.inc()
                 start_time = time.time()
-                status = "success"
 
                 try:
-                    result = await func(*args, **kwargs)
-                    return result
+                    return await func(*args, **kwargs)
                 except Exception:
-                    status = "error"
                     raise
                 finally:
                     duration = time.time() - start_time
                     self.active_requests.dec()
                     self.request_duration.labels(mode=mode, component="total").observe(
-                        duration
+                        duration,
                     )
 
             return wrapper

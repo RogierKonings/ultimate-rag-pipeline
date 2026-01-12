@@ -9,9 +9,8 @@ import base64
 import logging
 import os
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class KeyProvider(ABC):
     """Abstract base class for key providers."""
 
     @abstractmethod
-    def get_key(self, key_name: str) -> Optional[bytes]:
+    def get_key(self, key_name: str) -> bytes | None:
         """
         Retrieve an encryption key.
 
@@ -33,7 +32,6 @@ class KeyProvider(ABC):
         Returns:
             Key bytes if found, None otherwise.
         """
-        pass
 
     @abstractmethod
     def set_key(self, key_name: str, key: bytes) -> None:
@@ -44,7 +42,6 @@ class KeyProvider(ABC):
             key_name: Name/identifier for the key.
             key: Key bytes to store.
         """
-        pass
 
     @abstractmethod
     def delete_key(self, key_name: str) -> None:
@@ -54,7 +51,6 @@ class KeyProvider(ABC):
         Args:
             key_name: Name/identifier of the key to delete.
         """
-        pass
 
     @abstractmethod
     def list_keys(self) -> list[str]:
@@ -64,7 +60,6 @@ class KeyProvider(ABC):
         Returns:
             List of key names.
         """
-        pass
 
 
 class EnvironmentKeyProvider(KeyProvider):
@@ -94,7 +89,7 @@ class EnvironmentKeyProvider(KeyProvider):
             return f"{self._prefix}_{name}_KEY"
         return f"{name}_KEY"
 
-    def get_key(self, key_name: str) -> Optional[bytes]:
+    def get_key(self, key_name: str) -> bytes | None:
         """Get key from environment variable."""
         env_name = self._env_name(key_name)
         key_b64 = os.environ.get(env_name)
@@ -163,7 +158,7 @@ class FileKeyProvider(KeyProvider):
         safe_name = key_name.replace("/", "_").replace("\\", "_")
         return self._dir / f"{safe_name}.key"
 
-    def get_key(self, key_name: str) -> Optional[bytes]:
+    def get_key(self, key_name: str) -> bytes | None:
         """Get key from file."""
         path = self._key_path(key_name)
 
@@ -226,11 +221,11 @@ class VaultKeyProvider(KeyProvider):
 
     def __init__(
         self,
-        url: Optional[str] = None,
-        token: Optional[str] = None,
+        url: str | None = None,
+        token: str | None = None,
         mount_path: str = "secret",
         path_prefix: str = "encryption",
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
     ):
         """
         Initialize Vault key provider.
@@ -267,8 +262,8 @@ class VaultKeyProvider(KeyProvider):
             except ImportError:
                 raise ImportError(
                     "hvac package required for Vault integration. "
-                    "Install with: pip install hvac"
-                )
+                    "Install with: pip install hvac",
+                ) from None
 
         return self._client
 
@@ -276,7 +271,7 @@ class VaultKeyProvider(KeyProvider):
         """Get Vault path for a key."""
         return f"{self._prefix}/{key_name}"
 
-    def get_key(self, key_name: str) -> Optional[bytes]:
+    def get_key(self, key_name: str) -> bytes | None:
         """Get key from Vault."""
         try:
             client = self._get_client()
@@ -309,7 +304,7 @@ class VaultKeyProvider(KeyProvider):
                 path=path,
                 secret={
                     "key": base64.b64encode(key).decode("utf-8"),
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "algorithm": "AES-256-GCM",
                 },
             )
@@ -404,7 +399,7 @@ class EncryptionKeyManager:
         self._cache_enabled = cache_keys
         self._cache: dict[str, bytes] = {}
 
-    def get_key(self, key_name: str) -> Optional[bytes]:
+    def get_key(self, key_name: str) -> bytes | None:
         """
         Get an encryption key.
 
@@ -436,7 +431,7 @@ class EncryptionKeyManager:
         if len(key) != KEY_SIZE:
             raise ValueError(
                 f"Invalid key size: {len(key)} bytes. "
-                f"Expected {KEY_SIZE} bytes for AES-256."
+                f"Expected {KEY_SIZE} bytes for AES-256.",
             )
 
         self._provider.set_key(key_name, key)
@@ -464,7 +459,7 @@ class EncryptionKeyManager:
 
         return key
 
-    def rotate_key(self, key_name: str) -> tuple[bytes, Optional[bytes]]:
+    def rotate_key(self, key_name: str) -> tuple[bytes, bytes | None]:
         """
         Rotate an encryption key.
 
@@ -499,7 +494,7 @@ class EncryptionKeyManager:
 
         return new_key, old_key
 
-    def get_previous_key(self, key_name: str) -> Optional[bytes]:
+    def get_previous_key(self, key_name: str) -> bytes | None:
         """Get the previous version of a rotated key."""
         return self.get_key(f"{key_name}.previous")
 

@@ -5,8 +5,7 @@ Provides SLI dataclasses with PromQL query templates for
 measuring service quality.
 """
 
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from dataclasses import dataclass
 
 
 @dataclass
@@ -48,7 +47,7 @@ class SLI:
 # SLI Catalog
 # =============================================================================
 
-SLI_CATALOG: Dict[str, SLI] = {}
+SLI_CATALOG: dict[str, SLI] = {}
 
 
 def _register_sli(sli: SLI) -> SLI:
@@ -65,7 +64,7 @@ _register_sli(SLI(
     name="query_availability",
     description="Percentage of successful query requests",
     query_good='sum(rate(rag_query_total{status="success"}[{{window}}]))',
-    query_total='sum(rate(rag_query_total[{{window}}]))',
+    query_total="sum(rate(rag_query_total[{{window}}]))",
     category="availability",
 ))
 
@@ -73,15 +72,15 @@ _register_sli(SLI(
     name="llm_availability",
     description="Percentage of successful LLM requests",
     query_good='sum(rate(rag_llm_requests_total{status="success"}[{{window}}]))',
-    query_total='sum(rate(rag_llm_requests_total[{{window}}]))',
+    query_total="sum(rate(rag_llm_requests_total[{{window}}]))",
     category="availability",
 ))
 
 _register_sli(SLI(
     name="retrieval_availability",
     description="Percentage of successful retrieval operations",
-    query_good='sum(rate(rag_retrieval_duration_seconds_count[{{window}}]))',
-    query_total='sum(rate(rag_query_total[{{window}}]))',
+    query_good="sum(rate(rag_retrieval_duration_seconds_count[{{window}}]))",
+    query_total="sum(rate(rag_query_total[{{window}}]))",
     category="availability",
 ))
 
@@ -93,8 +92,8 @@ _register_sli(SLI(
     name="query_latency_p99",
     description="99th percentile query latency",
     query_good='sum(rate(rag_query_duration_seconds_bucket{le="2"}[{{window}}]))',
-    query_total='sum(rate(rag_query_duration_seconds_count[{{window}}]))',
-    query_ratio='histogram_quantile(0.99, sum(rate(rag_query_duration_seconds_bucket[{{window}}])) by (le))',
+    query_total="sum(rate(rag_query_duration_seconds_count[{{window}}]))",
+    query_ratio="histogram_quantile(0.99, sum(rate(rag_query_duration_seconds_bucket[{{window}}])) by (le))",
     unit="seconds",
     category="latency",
 ))
@@ -103,8 +102,8 @@ _register_sli(SLI(
     name="query_latency_p95",
     description="95th percentile query latency",
     query_good='sum(rate(rag_query_duration_seconds_bucket{le="2"}[{{window}}]))',
-    query_total='sum(rate(rag_query_duration_seconds_count[{{window}}]))',
-    query_ratio='histogram_quantile(0.95, sum(rate(rag_query_duration_seconds_bucket[{{window}}])) by (le))',
+    query_total="sum(rate(rag_query_duration_seconds_count[{{window}}]))",
+    query_ratio="histogram_quantile(0.95, sum(rate(rag_query_duration_seconds_bucket[{{window}}])) by (le))",
     unit="seconds",
     category="latency",
 ))
@@ -113,8 +112,8 @@ _register_sli(SLI(
     name="retrieval_latency_p99",
     description="99th percentile retrieval latency",
     query_good='sum(rate(rag_retrieval_duration_seconds_bucket{le="0.5"}[{{window}}]))',
-    query_total='sum(rate(rag_retrieval_duration_seconds_count[{{window}}]))',
-    query_ratio='histogram_quantile(0.99, sum(rate(rag_retrieval_duration_seconds_bucket[{{window}}])) by (le))',
+    query_total="sum(rate(rag_retrieval_duration_seconds_count[{{window}}]))",
+    query_ratio="histogram_quantile(0.99, sum(rate(rag_retrieval_duration_seconds_bucket[{{window}}])) by (le))",
     unit="seconds",
     category="latency",
 ))
@@ -123,8 +122,8 @@ _register_sli(SLI(
     name="llm_latency_p95",
     description="95th percentile LLM inference latency",
     query_good='sum(rate(rag_llm_duration_seconds_bucket{le="5"}[{{window}}]))',
-    query_total='sum(rate(rag_llm_duration_seconds_count[{{window}}]))',
-    query_ratio='histogram_quantile(0.95, sum(rate(rag_llm_duration_seconds_bucket[{{window}}])) by (le))',
+    query_total="sum(rate(rag_llm_duration_seconds_count[{{window}}]))",
+    query_ratio="histogram_quantile(0.95, sum(rate(rag_llm_duration_seconds_bucket[{{window}}])) by (le))",
     unit="seconds",
     category="latency",
 ))
@@ -133,8 +132,8 @@ _register_sli(SLI(
     name="llm_ttft_p95",
     description="95th percentile time to first token",
     query_good='sum(rate(rag_llm_ttft_seconds_bucket{le="1"}[{{window}}]))',
-    query_total='sum(rate(rag_llm_ttft_seconds_count[{{window}}]))',
-    query_ratio='histogram_quantile(0.95, sum(rate(rag_llm_ttft_seconds_bucket[{{window}}])) by (le))',
+    query_total="sum(rate(rag_llm_ttft_seconds_count[{{window}}]))",
+    query_ratio="histogram_quantile(0.95, sum(rate(rag_llm_ttft_seconds_bucket[{{window}}])) by (le))",
     unit="seconds",
     category="latency",
 ))
@@ -146,16 +145,16 @@ _register_sli(SLI(
 _register_sli(SLI(
     name="retrieval_zero_results_rate",
     description="Percentage of queries returning zero results",
-    query_good='sum(rate(rag_query_total[{{window}}])) - sum(rate(rag_retrieval_zero_results_total[{{window}}]))',
-    query_total='sum(rate(rag_query_total[{{window}}]))',
+    query_good="sum(rate(rag_query_total[{{window}}])) - sum(rate(rag_retrieval_zero_results_total[{{window}}]))",
+    query_total="sum(rate(rag_query_total[{{window}}]))",
     category="quality",
 ))
 
 _register_sli(SLI(
     name="cache_hit_rate",
     description="Cache hit rate across all cache types",
-    query_good='sum(rate(rag_cache_hits_total[{{window}}]))',
-    query_total='sum(rate(rag_cache_hits_total[{{window}}])) + sum(rate(rag_cache_misses_total[{{window}}]))',
+    query_good="sum(rate(rag_cache_hits_total[{{window}}]))",
+    query_total="sum(rate(rag_cache_hits_total[{{window}}])) + sum(rate(rag_cache_misses_total[{{window}}]))",
     category="quality",
 ))
 
@@ -167,13 +166,13 @@ _register_sli(SLI(
     name="ingestion_throughput",
     description="Document ingestion rate",
     query_good='sum(rate(rag_ingest_documents_total{status="success"}[{{window}}]))',
-    query_total='sum(rate(rag_ingest_documents_total[{{window}}]))',
+    query_total="sum(rate(rag_ingest_documents_total[{{window}}]))",
     unit="documents/second",
     category="throughput",
 ))
 
 
-def get_sli(name: str) -> Optional[SLI]:
+def get_sli(name: str) -> SLI | None:
     """
     Get an SLI by name.
 
@@ -186,7 +185,7 @@ def get_sli(name: str) -> Optional[SLI]:
     return SLI_CATALOG.get(name)
 
 
-def get_slis_by_category(category: str) -> List[SLI]:
+def get_slis_by_category(category: str) -> list[SLI]:
     """
     Get all SLIs in a category.
 

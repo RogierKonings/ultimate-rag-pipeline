@@ -6,7 +6,6 @@ and SQLAlchemy encrypted types.
 """
 
 import base64
-import json
 import os
 import tempfile
 from pathlib import Path
@@ -15,7 +14,6 @@ import pytest
 
 from services.shared.security.encryption import (
     DecryptionError,
-    EncryptionError,
     EncryptionKeyManager,
     EnvironmentKeyProvider,
     FieldEncryption,

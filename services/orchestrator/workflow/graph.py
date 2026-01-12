@@ -6,17 +6,16 @@ edges for routing decisions and proper error handling.
 
 from typing import Literal
 
-from langgraph.graph import StateGraph, END
-
-from workflow.state import RAGState
+from langgraph.graph import END, StateGraph
 from workflow.nodes import (
-    input_validation_node,
-    routing_node,
-    retrieval_node,
-    prompt_building_node,
     generation_node,
+    input_validation_node,
     output_validation_node,
+    prompt_building_node,
+    retrieval_node,
+    routing_node,
 )
+from workflow.state import RAGState
 
 
 def _route_after_routing(state: RAGState) -> Literal["retrieval", "prompt_building"]:
@@ -34,9 +33,8 @@ def _route_after_routing(state: RAGState) -> Literal["retrieval", "prompt_buildi
     if strategy == "no_retrieval":
         # Skip retrieval for no_retrieval strategy
         return "prompt_building"
-    else:
-        # For simple and complex strategies, perform retrieval
-        return "retrieval"
+    # For simple and complex strategies, perform retrieval
+    return "retrieval"
 
 
 def _route_after_input_validation(
@@ -58,8 +56,7 @@ def _route_after_input_validation(
     if error:
         # Skip to output validation if there's an error
         return "output_validation"
-    else:
-        return "routing"
+    return "routing"
 
 
 def _route_after_generation(

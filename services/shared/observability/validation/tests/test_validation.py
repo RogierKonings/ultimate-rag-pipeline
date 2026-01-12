@@ -5,15 +5,14 @@ Tests the OTLP, Loki, and trace-log correlation validators.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from ..otlp import OTLPValidator, OTLPValidationResult
-from ..loki import LokiValidator, LokiValidationResult, LogEntry
-from ..trace_log import TraceLogValidator, TraceLogValidationResult, CorrelationResult
-
+from ..loki import LogEntry, LokiValidationResult, LokiValidator
+from ..otlp import OTLPValidationResult, OTLPValidator
+from ..trace_log import TraceLogValidator
 
 # =============================================================================
 # OTLP Validator Tests
@@ -68,7 +67,7 @@ class TestOTLPValidator:
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-                return_value=mock_response
+                return_value=mock_response,
             )
 
             result = await validator._check_collector_health()
@@ -86,11 +85,11 @@ class TestOTLPValidator:
                 "spans": [
                     {"serviceName": "orchestrator-service"},
                     {"serviceName": "retrieval-service"},
-                ]
+                ],
             }
 
             result = await validator.validate_trace_propagation(
-                trace_id, expected_services
+                trace_id, expected_services,
             )
 
             assert result.is_valid
@@ -151,9 +150,9 @@ class TestLokiValidator:
                         "values": [
                             ["1234567890", '{"message": "test log"}'],
                         ],
-                    }
-                ]
-            }
+                    },
+                ],
+            },
         }
 
         with patch.object(validator, "_query_loki") as mock_query:
@@ -176,9 +175,9 @@ class TestLokiValidator:
                             "values": [
                                 ["1234567890", '{"level": "info", "message": "test"}'],
                             ],
-                        }
-                    ]
-                }
+                        },
+                    ],
+                },
             }
 
             result = await validator.verify_json_parsing("test-service")
@@ -242,20 +241,20 @@ class TestTraceLogValidator:
             mock_trace.return_value = {
                 "spans": [
                     {"serviceName": "orchestrator-service", "operationName": "query"},
-                ]
+                ],
             }
             mock_logs.return_value = [
                 LogEntry(
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(tz=UTC),
                     service="orchestrator-service",
                     level="info",
                     message="Processing query",
                     trace_id=trace_id,
-                )
+                ),
             ]
 
             result = await validator.validate_correlation(
-                trace_id, expected_services
+                trace_id, expected_services,
             )
 
             assert result.is_valid
@@ -287,7 +286,7 @@ class TestSmokeTests:
     @pytest.mark.asyncio
     async def test_run_smoke_tests(self):
         """Test running full smoke test suite."""
-        from ..smoke_tests import run_smoke_tests, SmokeTestSuite
+        from ..smoke_tests import SmokeTestSuite, run_smoke_tests
 
         with patch("httpx.AsyncClient") as mock_client:
             # Mock all HTTP responses
@@ -296,10 +295,10 @@ class TestSmokeTests:
             mock_response.json.return_value = {"status": "ok"}
 
             mock_client.return_value.__aenter__.return_value.get = AsyncMock(
-                return_value=mock_response
+                return_value=mock_response,
             )
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
+                return_value=mock_response,
             )
 
             result = await run_smoke_tests(
@@ -325,8 +324,8 @@ class TestEvaluationAPI:
     @pytest.fixture
     def client(self):
         """Create test client."""
-        from fastapi.testclient import TestClient
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
 
         from ...evaluation.api import router
 
@@ -423,7 +422,6 @@ class TestEvaluationMetrics:
     def test_prometheus_reporter(self):
         """Test Prometheus metrics reporter."""
         from ...evaluation.metrics import PrometheusMetricsReporter
-        from ...evaluation.pipeline import EvaluationRun
 
         reporter = PrometheusMetricsReporter()
 
@@ -433,8 +431,8 @@ class TestEvaluationMetrics:
         run.name = "Test Run"
         run.dataset_name = "test-dataset"
         run.status = "completed"
-        run.started_at = datetime.utcnow()
-        run.completed_at = datetime.utcnow()
+        run.started_at = datetime.now(tz=UTC)
+        run.completed_at = datetime.now(tz=UTC)
         run.metadata = {"live_rag": False}
         run.results = MagicMock()
         run.results.total_samples = 50
@@ -465,7 +463,7 @@ class TestEvaluationPersistence:
             mock_conn.fetchval.return_value = "new-dataset-id"
             mock_pool.return_value.__aenter__.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 
-            repo = EvaluationRepository("postgresql://test:test@localhost/test")
+            EvaluationRepository("postgresql://test:test@localhost/test")
 
             # This tests the interface, actual DB calls are mocked
             # Full integration would require a real database
@@ -473,8 +471,7 @@ class TestEvaluationPersistence:
     @pytest.mark.asyncio
     async def test_repository_save_run_results(self):
         """Test saving run results via repository."""
-        from ...evaluation.persistence import EvaluationRepository
-        from ...evaluation.ragas_evaluator import AggregatedResults, EvaluationResult
+        from ...evaluation.ragas_evaluator import AggregatedResults
 
         results = AggregatedResults(
             total_samples=10,
@@ -487,7 +484,7 @@ class TestEvaluationPersistence:
                     "min": 0.75,
                     "max": 0.95,
                     "median": 0.85,
-                }
+                },
             },
             individual_results=[],
             metadata={"test": True},
@@ -525,7 +522,7 @@ class TestPipelineTracing:
             }
 
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
+                return_value=mock_response,
             )
 
             response = await client.query("Test question")
@@ -536,9 +533,9 @@ class TestPipelineTracing:
     @pytest.mark.asyncio
     async def test_evaluation_pipeline_creates_spans(self):
         """Test that evaluation pipeline creates trace spans."""
-        from ...evaluation.pipeline import EvaluationPipeline
-        from ...evaluation.datasets import EvaluationDataset, EvaluationSample
         from ...evaluation.config import EvaluationConfig
+        from ...evaluation.datasets import EvaluationDataset, EvaluationSample
+        from ...evaluation.pipeline import EvaluationPipeline
 
         config = EvaluationConfig(
             metrics=["context_precision"],
@@ -555,7 +552,7 @@ class TestPipelineTracing:
                     contexts=["AI is artificial intelligence"],
                     answer="AI is artificial intelligence",
                     ground_truth="AI is artificial intelligence",
-                )
+                ),
             ],
         )
 

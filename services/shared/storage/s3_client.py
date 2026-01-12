@@ -5,12 +5,13 @@ Provides a unified interface for file upload, download, and management
 with support for presigned URLs and multi-tenant object naming.
 """
 
+import hashlib
+import os
+from datetime import timedelta
+from typing import BinaryIO
+
 from minio import Minio
 from minio.error import S3Error
-from typing import Optional, BinaryIO
-import os
-import hashlib
-from datetime import timedelta
 
 
 class S3Storage:
@@ -18,11 +19,11 @@ class S3Storage:
 
     def __init__(
         self,
-        endpoint: Optional[str] = None,
-        access_key: Optional[str] = None,
-        secret_key: Optional[str] = None,
-        secure: Optional[bool] = None,
-        default_bucket: Optional[str] = None,
+        endpoint: str | None = None,
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        secure: bool | None = None,
+        default_bucket: str | None = None,
     ):
         """
         Initialize S3 storage client.
@@ -51,9 +52,9 @@ class S3Storage:
         self,
         file_data: BinaryIO,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
         content_type: str = "application/octet-stream",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         Upload a file to S3.
@@ -89,7 +90,7 @@ class S3Storage:
     def download_file(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
     ) -> bytes:
         """
         Download a file from S3.
@@ -115,7 +116,7 @@ class S3Storage:
     def get_presigned_url(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
         expires: int = 3600,
     ) -> str:
         """
@@ -140,7 +141,7 @@ class S3Storage:
     def get_presigned_upload_url(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
         expires: int = 3600,
     ) -> str:
         """
@@ -165,7 +166,7 @@ class S3Storage:
     def delete_file(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
     ) -> None:
         """
         Delete a file from S3.
@@ -180,7 +181,7 @@ class S3Storage:
     def file_exists(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
     ) -> bool:
         """
         Check if a file exists in S3.
@@ -202,7 +203,7 @@ class S3Storage:
     def list_files(
         self,
         prefix: str = "",
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
         recursive: bool = True,
     ) -> list[dict]:
         """
@@ -231,7 +232,7 @@ class S3Storage:
     def get_file_info(
         self,
         object_name: str,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
     ) -> dict:
         """
         Get metadata for a file.
@@ -257,7 +258,7 @@ class S3Storage:
     def generate_object_name(
         tenant_id: str,
         filename: str,
-        document_id: Optional[str] = None,
+        document_id: str | None = None,
     ) -> str:
         """
         Generate a structured object name for multi-tenant storage.
@@ -280,7 +281,7 @@ class S3Storage:
 
     def ensure_bucket_exists(
         self,
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
     ) -> bool:
         """
         Ensure a bucket exists, creating it if necessary.

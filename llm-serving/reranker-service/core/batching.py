@@ -6,10 +6,11 @@ by collecting multiple rerank requests and processing them together.
 """
 
 import asyncio
+import contextlib
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Optional
 from uuid import UUID, uuid4
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class RerankBatcher:
         score_fn: Callable[[list[str], list[str]], Awaitable[list[float]]],
         max_batch_size: int = 32,
         batch_timeout_ms: float = 50.0,
-        max_queue_size: int = 1000
+        max_queue_size: int = 1000,
     ):
         """
         Initialize the rerank batcher.
@@ -56,7 +57,7 @@ class RerankBatcher:
         self.max_queue_size = max_queue_size
 
         self._queue: asyncio.Queue[PendingRerankRequest] = asyncio.Queue(maxsize=max_queue_size)
-        self._processing_task: Optional[asyncio.Task] = None
+        self._processing_task: asyncio.Task | None = None
         self._running = False
 
         # Metrics
@@ -75,15 +76,13 @@ class RerankBatcher:
         self._running = False
         if self._processing_task:
             self._processing_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._processing_task
-            except asyncio.CancelledError:
-                pass
 
     async def submit(
         self,
         queries: list[str],
-        documents: list[str]
+        documents: list[str],
     ) -> list[float]:
         """
         Submit pairs for scoring.
@@ -102,7 +101,7 @@ class RerankBatcher:
             queries=queries,
             documents=documents,
             future=future,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         await self._queue.put(request)
@@ -135,7 +134,7 @@ class RerankBatcher:
                 timeout = max(0, deadline - time.time())
                 request = await asyncio.wait_for(
                     self._queue.get(),
-                    timeout=timeout if batch else None
+                    timeout=timeout if batch else None,
                 )
 
                 request_pairs = len(request.queries)
@@ -151,7 +150,7 @@ class RerankBatcher:
                 if total_pairs >= self.max_batch_size:
                     break
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 break
 
         return batch
@@ -177,7 +176,7 @@ class RerankBatcher:
 
             # Distribute results
             offset = 0
-            for request, count in zip(batch, pair_counts):
+            for request, count in zip(batch, pair_counts, strict=True):
                 request_scores = scores[offset:offset + count]
                 request.future.set_result(request_scores)
                 offset += count
@@ -198,5 +197,5 @@ class RerankBatcher:
             "queue_size": self._queue.qsize(),
             "requests_processed": self._requests_processed,
             "batches_processed": self._batches_processed,
-            "total_pairs_processed": self._total_pairs_processed
+            "total_pairs_processed": self._total_pairs_processed,
         }

@@ -11,13 +11,12 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -28,10 +27,10 @@ class Finding:
     severity: str
     title: str
     description: str
-    file_path: Optional[str] = None
-    line_number: Optional[int] = None
-    cwe: Optional[str] = None
-    remediation: Optional[str] = None
+    file_path: str | None = None
+    line_number: int | None = None
+    cwe: str | None = None
+    remediation: str | None = None
     raw: dict = field(default_factory=dict)
 
 
@@ -205,7 +204,7 @@ def parse_safety_results(file_path: Path) -> list[Finding]:
 def aggregate_results(input_dir: Path) -> ScanResults:
     """Aggregate results from all scanners."""
     results = ScanResults()
-    results.scan_time = datetime.now().isoformat()
+    results.scan_time = datetime.now(tz=UTC).isoformat()
 
     parsers = {
         "bandit": parse_bandit_results,
@@ -291,7 +290,7 @@ def generate_markdown_report(results: ScanResults) -> str:
             "",
             "## Findings by Severity",
             "",
-        ]
+        ],
     )
 
     # Group findings by severity
@@ -307,7 +306,7 @@ def generate_markdown_report(results: ScanResults) -> str:
             [
                 f"### {severity}",
                 "",
-            ]
+            ],
         )
 
         for i, finding in enumerate(findings_by_severity[severity], 1):
@@ -316,7 +315,7 @@ def generate_markdown_report(results: ScanResults) -> str:
                     f"#### {i}. {finding.title}",
                     "",
                     f"- **Scanner:** {finding.scanner}",
-                ]
+                ],
             )
 
             if finding.file_path:
@@ -333,7 +332,7 @@ def generate_markdown_report(results: ScanResults) -> str:
                     "",
                     f"**Description:** {finding.description}",
                     "",
-                ]
+                ],
             )
 
             if finding.remediation:
@@ -341,7 +340,7 @@ def generate_markdown_report(results: ScanResults) -> str:
                     [
                         f"**Remediation:** {finding.remediation}",
                         "",
-                    ]
+                    ],
                 )
 
     lines.extend(
@@ -363,7 +362,7 @@ def generate_markdown_report(results: ScanResults) -> str:
             "- [ ] Re-run scans after fixes to verify resolution",
             "- [ ] Update security baseline documentation",
             "",
-        ]
+        ],
     )
 
     return "\n".join(lines)
@@ -372,7 +371,7 @@ def generate_markdown_report(results: ScanResults) -> str:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description="Generate consolidated security report from scanner results"
+        description="Generate consolidated security report from scanner results",
     )
     parser.add_argument(
         "--input-dir",
@@ -415,7 +414,7 @@ def main():
         output_base = args.output.stem
         output_dir = args.output.parent
     else:
-        output_base = f"security-report-{datetime.now().strftime('%Y%m%d')}"
+        output_base = f"security-report-{datetime.now(tz=UTC).strftime('%Y%m%d')}"
         output_dir = args.input_dir
 
     if args.format in ("json", "both"):

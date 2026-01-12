@@ -1,7 +1,6 @@
 """Redis-based cache for embeddings."""
 
 import json
-from typing import Optional
 
 import redis.asyncio as redis
 
@@ -24,12 +23,12 @@ class EmbeddingCache:
             config: Cache configuration with Redis URL and TTL settings.
         """
         self.config = config
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Establish Redis connection."""
         self._redis = redis.from_url(
-            self.config.redis_url, encoding="utf-8", decode_responses=True
+            self.config.redis_url, encoding="utf-8", decode_responses=True,
         )
 
     async def disconnect(self) -> None:
@@ -43,7 +42,7 @@ class EmbeddingCache:
         if not self._redis:
             await self.connect()
 
-    async def get(self, key: str) -> Optional[list[float]]:
+    async def get(self, key: str) -> list[float] | None:
         """
         Retrieve embedding from cache.
 
@@ -64,7 +63,7 @@ class EmbeddingCache:
         return json.loads(data)
 
     async def set(
-        self, key: str, embedding: list[float], ttl: Optional[int] = None
+        self, key: str, embedding: list[float], ttl: int | None = None,
     ) -> None:
         """
         Store embedding in cache.

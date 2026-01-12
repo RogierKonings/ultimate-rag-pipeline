@@ -7,18 +7,14 @@ Verifies:
 - Request/response schemas match architecture
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from jose import jwt
-
 from acl.context import UserContextExtractor
 from acl.filter import ACLFilter
-from acl.models import ACLFilterConfig, UserContext
+from acl.models import ACLFilterConfig
 from api.routes import health, retrieve
 from api.schemas.retrieve import (
     DebugInfo,
@@ -27,7 +23,9 @@ from api.schemas.retrieve import (
     SearchMetrics,
     SearchMode,
 )
-from config import RetrievalConfig
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from jose import jwt
 from query.models import ProcessedQuery, QueryType
 from query.preprocessor import QueryPreprocessor
 from reranking.reranker import RerankerService
@@ -35,6 +33,8 @@ from search.fusion import FusedResult, FusionMethod, HybridSearchResponse
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher
 from search.semantic import SemanticSearcher
+
+from config import RetrievalConfig
 
 
 class TestDefaultsMatchArchitecture:
@@ -166,7 +166,7 @@ class TestRetrieveResponseDebug:
             mode=SearchMode.HYBRID,
             metrics=SearchMetrics(total_ms=100),
             query_id=uuid4(),
-            processed_at=datetime.utcnow(),
+            processed_at=datetime.now(tz=UTC),
         )
 
         assert hasattr(response, "debug")
@@ -187,7 +187,7 @@ class TestRetrieveResponseDebug:
             mode=SearchMode.HYBRID,
             metrics=SearchMetrics(total_ms=150.5),
             query_id=uuid4(),
-            processed_at=datetime.utcnow(),
+            processed_at=datetime.now(tz=UTC),
             debug=debug,
         )
 
@@ -386,7 +386,7 @@ class TestHybridOrdering:
         return {"Authorization": f"Bearer {token}"}
 
     def test_pipeline_executes_in_order(
-        self, client, auth_header, mock_hybrid_searcher, mock_reranker
+        self, client, auth_header, mock_hybrid_searcher, mock_reranker,
     ):
         """Test that pipeline executes: search → fusion → rerank → ACL."""
         response = client.post(

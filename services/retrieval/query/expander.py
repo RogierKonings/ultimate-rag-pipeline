@@ -4,7 +4,6 @@ This module provides query expansion through synonym substitution
 and LLM-based alternatives.
 """
 
-from typing import Optional
 
 import httpx
 
@@ -96,7 +95,7 @@ class QueryExpander:
         """
         self.config = config
         self._synonym_db = SynonymDatabase()
-        self._http_client: Optional[httpx.AsyncClient] = None
+        self._http_client: httpx.AsyncClient | None = None
 
     async def expand(self, query: str) -> list[str]:
         """Generate expanded versions of the query.
@@ -109,7 +108,7 @@ class QueryExpander:
         """
         if self.config.expansion_model == "synonym":
             return self._expand_with_synonyms(query)
-        elif self.config.expansion_model == "llm":
+        if self.config.expansion_model == "llm":
             return await self._expand_with_llm(query)
 
         return []

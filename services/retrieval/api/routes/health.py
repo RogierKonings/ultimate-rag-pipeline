@@ -1,7 +1,7 @@
 """Health check endpoints for the Retrieval Service."""
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -42,12 +42,12 @@ async def health_check(request: Request) -> HealthResponse:
                 name="qdrant",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
-            )
+            ),
         )
     except Exception as e:
         components["qdrant"] = False
         component_details.append(
-            ComponentHealth(name="qdrant", healthy=False, error=str(e))
+            ComponentHealth(name="qdrant", healthy=False, error=str(e)),
         )
 
     # Check OpenSearch (keyword search)
@@ -61,12 +61,12 @@ async def health_check(request: Request) -> HealthResponse:
                 name="opensearch",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
-            )
+            ),
         )
     except Exception as e:
         components["opensearch"] = False
         component_details.append(
-            ComponentHealth(name="opensearch", healthy=False, error=str(e))
+            ComponentHealth(name="opensearch", healthy=False, error=str(e)),
         )
 
     # Check Reranker (LLM Gateway)
@@ -80,12 +80,12 @@ async def health_check(request: Request) -> HealthResponse:
                 name="reranker",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
-            )
+            ),
         )
     except Exception as e:
         components["reranker"] = False
         component_details.append(
-            ComponentHealth(name="reranker", healthy=False, error=str(e))
+            ComponentHealth(name="reranker", healthy=False, error=str(e)),
         )
 
     # Determine overall status
@@ -103,7 +103,7 @@ async def health_check(request: Request) -> HealthResponse:
         status=status,
         version=VERSION,
         components=components,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(tz=UTC),
     )
 
 
@@ -138,4 +138,4 @@ async def readiness(request: Request) -> dict[str, str]:
         raise HTTPException(
             status_code=503,
             detail=f"Service not ready: {e}",
-        )
+        ) from e

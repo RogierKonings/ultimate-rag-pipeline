@@ -6,17 +6,18 @@ OpenTelemetry spans with RAG-specific attributes.
 """
 
 import asyncio
-import time
 import logging
-from contextlib import contextmanager, asynccontextmanager
+import time
+from collections.abc import Callable
+from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
-from typing import Any, Callable, Optional, TypeVar, Union, ParamSpec
+from typing import Any, ParamSpec, TypeVar
 
 from opentelemetry import trace
-from opentelemetry.trace import Span, Status, StatusCode, SpanKind
+from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 
+from .attributes import RAGAttributes, RAGOperation
 from .tracer import get_tracer
-from .attributes import RAGOperation, RAGAttributes, set_rag_attributes
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def get_current_span() -> Optional[Span]:
+def get_current_span() -> Span | None:
     """
     Get the current active span.
 
@@ -39,8 +40,8 @@ def get_current_span() -> Optional[Span]:
 
 def add_span_event(
     name: str,
-    attributes: Optional[dict[str, Any]] = None,
-    span: Optional[Span] = None,
+    attributes: dict[str, Any] | None = None,
+    span: Span | None = None,
 ) -> None:
     """
     Add an event to the current or specified span.
@@ -59,8 +60,8 @@ def add_span_event(
 
 def set_span_error(
     exception: Exception,
-    message: Optional[str] = None,
-    span: Optional[Span] = None,
+    message: str | None = None,
+    span: Span | None = None,
 ) -> None:
     """
     Mark a span as errored and record the exception.
@@ -83,9 +84,9 @@ def set_span_error(
 @contextmanager
 def rag_span(
     name: str,
-    operation: Optional[RAGOperation] = None,
+    operation: RAGOperation | None = None,
     kind: SpanKind = SpanKind.INTERNAL,
-    attributes: Optional[dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     record_exception: bool = True,
     set_status_on_exception: bool = True,
 ):
@@ -154,9 +155,9 @@ def rag_span(
 @asynccontextmanager
 async def async_rag_span(
     name: str,
-    operation: Optional[RAGOperation] = None,
+    operation: RAGOperation | None = None,
     kind: SpanKind = SpanKind.INTERNAL,
-    attributes: Optional[dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     record_exception: bool = True,
     set_status_on_exception: bool = True,
 ):
@@ -209,12 +210,12 @@ async def async_rag_span(
 
 
 def traced(
-    name: Optional[str] = None,
-    operation: Optional[RAGOperation] = None,
+    name: str | None = None,
+    operation: RAGOperation | None = None,
     kind: SpanKind = SpanKind.INTERNAL,
     record_args: bool = False,
     record_result: bool = False,
-    attributes: Optional[dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """
     Decorator for tracing functions.
@@ -343,7 +344,7 @@ def _record_function_args(
         params = list(sig.parameters.keys())
 
         # Record positional args
-        for i, (param_name, value) in enumerate(zip(params, args)):
+        for _i, (param_name, value) in enumerate(zip(params, args, strict=True)):
             if param_name == "self":
                 continue
             _set_safe_attribute(span, f"arg.{param_name}", value)

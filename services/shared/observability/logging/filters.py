@@ -6,7 +6,7 @@ Provides filters for sensitive data masking and log filtering.
 
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 
 class SensitiveDataFilter(logging.Filter):
@@ -43,7 +43,7 @@ class SensitiveDataFilter(logging.Filter):
 
     def __init__(
         self,
-        sensitive_fields: Optional[list[str]] = None,
+        sensitive_fields: list[str] | None = None,
         mask_pattern: str = "***REDACTED***",
         mask_email: bool = False,
     ):
@@ -60,13 +60,13 @@ class SensitiveDataFilter(logging.Filter):
         self.mask_email = mask_email
 
         # Default sensitive field names
-        self.sensitive_fields = set(f.lower() for f in (sensitive_fields or [
+        self.sensitive_fields = {f.lower() for f in (sensitive_fields or [
             "password", "passwd", "pwd", "secret", "token", "api_key",
             "apikey", "api-key", "authorization", "auth", "credential",
             "private_key", "privatekey", "access_token", "refresh_token",
             "jwt", "bearer", "credit_card", "creditcard", "card_number",
             "cvv", "ssn", "social_security",
-        ]))
+        ])}
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
@@ -111,12 +111,11 @@ class SensitiveDataFilter(logging.Filter):
 
         if isinstance(value, str):
             return self._mask_string(value)
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             return self._mask_dict(value)
-        elif isinstance(value, (list, tuple)):
+        if isinstance(value, (list, tuple)):
             return type(value)(self._mask_value(item) for item in value)
-        else:
-            return value
+        return value
 
     def _mask_string(self, text: str) -> str:
         """Mask sensitive patterns in a string."""
@@ -183,7 +182,7 @@ class ExcludePathFilter(logging.Filter):
     Useful for suppressing health check logs, etc.
     """
 
-    def __init__(self, excluded_paths: Optional[list[str]] = None):
+    def __init__(self, excluded_paths: list[str] | None = None):
         """
         Initialize the filter.
 
@@ -201,11 +200,7 @@ class ExcludePathFilter(logging.Filter):
             return True
 
         # Check against excluded paths
-        for excluded in self.excluded_paths:
-            if path.startswith(excluded):
-                return False
-
-        return True
+        return all(not path.startswith(excluded) for excluded in self.excluded_paths)
 
 
 class RateLimitFilter(logging.Filter):

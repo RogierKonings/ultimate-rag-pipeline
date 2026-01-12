@@ -4,12 +4,10 @@ Unit tests for Health Checking (US-5.6).
 Tests health checkers for vLLM, embedding, and reranker services.
 """
 
-import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from monitoring.health import (
     EmbeddingHealthChecker,
     HealthChecker,
@@ -69,7 +67,7 @@ class TestHealthChecker:
 
         def check_fn():
             return ComponentHealth(
-                name="custom", status=HealthStatus.HEALTHY, message="OK"
+                name="custom", status=HealthStatus.HEALTHY, message="OK",
             )
 
         health_checker.register_component("custom", check_fn)
@@ -131,7 +129,7 @@ class TestHealthChecker:
 
         def custom_check():
             return ComponentHealth(
-                name="database", status=HealthStatus.HEALTHY, message="Connected"
+                name="database", status=HealthStatus.HEALTHY, message="Connected",
             )
 
         health_checker.register_component("database", custom_check)
@@ -170,7 +168,7 @@ class TestVLLMHealthChecker:
     def vllm_checker(self):
         """Create a vLLM health checker."""
         return VLLMHealthChecker(
-            vllm_url="http://localhost:8000", model_name="test-llm"
+            vllm_url="http://localhost:8000", model_name="test-llm",
         )
 
     def test_initialization(self, vllm_checker):
@@ -184,7 +182,7 @@ class TestVLLMHealthChecker:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "data": [{"id": "qwen2.5-7b-instruct"}]
+            "data": [{"id": "qwen2.5-7b-instruct"}],
         }
 
         with patch("httpx.AsyncClient") as mock_client:
@@ -244,7 +242,7 @@ class TestEmbeddingHealthChecker:
     def embedding_checker(self):
         """Create an embedding health checker."""
         return EmbeddingHealthChecker(
-            embedding_url="http://localhost:8001", model_name="bge-large"
+            embedding_url="http://localhost:8001", model_name="bge-large",
         )
 
     def test_initialization(self, embedding_checker):
@@ -302,7 +300,7 @@ class TestRerankerHealthChecker:
     def reranker_checker(self):
         """Create a reranker health checker."""
         return RerankerHealthChecker(
-            reranker_url="http://localhost:8002", model_name="bge-reranker"
+            reranker_url="http://localhost:8002", model_name="bge-reranker",
         )
 
     def test_initialization(self, reranker_checker):

@@ -7,13 +7,12 @@ This module tests secrets backends, service, and injection.
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from services.shared.security.secrets import (
     FileSecretsSettings,
-    K8sSecretsClient,
     KubernetesSecretsSettings,
     SecretsBackend,
     SecretsInjector,
@@ -22,7 +21,6 @@ from services.shared.security.secrets import (
     VaultAuthMethod,
     VaultClient,
     VaultSettings,
-    get_secret,
     get_secrets_service,
 )
 
@@ -224,7 +222,7 @@ class TestSecretsServiceCaching:
         """Test clearing the cache."""
         os.environ["CACHE_TEST_CLEAR"] = "value1"
         try:
-            value1 = await service.get_secret("CLEAR")
+            await service.get_secret("CLEAR")
             os.environ["CACHE_TEST_CLEAR"] = "value2"
 
             # Clear cache
@@ -301,7 +299,7 @@ class TestSecretsServiceConvenience:
         os.environ["REDIS_PASSWORD"] = "secret"
         try:
             url = await service.get_redis_url()
-            assert "redis://:secret@redis.example.com:6380" == url
+            assert url == "redis://:secret@redis.example.com:6380"
         finally:
             del os.environ["REDIS_HOST"]
             del os.environ["REDIS_PORT"]
@@ -405,7 +403,7 @@ class TestVaultClient:
         with patch.object(client, "_get_client") as mock_get_client:
             mock_hvac = MagicMock()
             mock_hvac.secrets.kv.v2.read_secret_version.return_value = {
-                "data": {"data": {"value": "secret_value"}}
+                "data": {"data": {"value": "secret_value"}},
             }
             mock_get_client.return_value = mock_hvac
 
@@ -439,12 +437,12 @@ class TestVaultClient:
 
             # Mock encrypt
             mock_hvac.secrets.transit.encrypt_data.return_value = {
-                "data": {"ciphertext": "vault:v1:encrypted"}
+                "data": {"ciphertext": "vault:v1:encrypted"},
             }
 
             # Mock decrypt
             mock_hvac.secrets.transit.decrypt_data.return_value = {
-                "data": {"plaintext": base64.b64encode(b"decrypted").decode()}
+                "data": {"plaintext": base64.b64encode(b"decrypted").decode()},
             }
 
             mock_get_client.return_value = mock_hvac

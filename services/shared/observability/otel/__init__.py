@@ -19,21 +19,21 @@ Usage:
         span.set_attribute("key", "value")
 """
 
-from .tracer import (
-    OTELConfig,
-    setup_tracing,
-    get_tracer,
-    get_tracer_provider,
-    shutdown_tracing,
-)
-from .spans import traced, rag_span, get_current_span, add_span_event, set_span_error
-from .attributes import RAGOperation, RAGAttributes, set_rag_attributes
+from .attributes import RAGAttributes, RAGOperation, set_rag_attributes
 from .context import (
     TraceContextPropagator,
-    inject_trace_context,
     extract_trace_context,
-    get_current_trace_id,
     get_current_span_id,
+    get_current_trace_id,
+    inject_trace_context,
+)
+from .spans import add_span_event, get_current_span, rag_span, set_span_error, traced
+from .tracer import (
+    OTELConfig,
+    get_tracer,
+    get_tracer_provider,
+    setup_tracing,
+    shutdown_tracing,
 )
 
 __all__ = [

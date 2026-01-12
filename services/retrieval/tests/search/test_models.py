@@ -1,20 +1,19 @@
 """Tests for search models."""
 
-import pytest
+from datetime import UTC, datetime
 from uuid import uuid4
-from datetime import datetime
 
+import pytest
 from search.models import (
+    AnalyzerConfig,
+    KeywordSearchRequest,
+    KeywordSearchResponse,
+    OpenSearchConfig,
+    QdrantConfig,
+    ScoreNormalizer,
     SearchResultItem,
     SemanticSearchRequest,
     SemanticSearchResponse,
-    KeywordSearchRequest,
-    KeywordSearchResponse,
-    QdrantConfig,
-    OpenSearchConfig,
-    ScoreNormalizer,
-    NormalizationMethod,
-    AnalyzerConfig,
 )
 
 
@@ -38,7 +37,7 @@ class TestSearchResultItem:
         """Test result with all fields."""
         chunk_id = uuid4()
         document_id = uuid4()
-        now = datetime.now()
+        now = datetime.now(tz=UTC)
 
         item = SearchResultItem(
             chunk_id=chunk_id,
@@ -157,7 +156,7 @@ class TestSemanticSearchResponse:
                 document_id=uuid4(),
                 content="Test",
                 score=0.9,
-            )
+            ),
         ]
 
         response = SemanticSearchResponse(
@@ -376,7 +375,7 @@ class TestScoreNormalizer:
                 document_id=uuid4(),
                 content="A",
                 score=0.5,
-            )
+            ),
         ]
 
         with pytest.raises(ValueError, match="Unknown normalization method"):

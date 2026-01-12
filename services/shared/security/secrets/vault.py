@@ -7,7 +7,7 @@ for secrets management, dynamic credentials, and encryption.
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import VaultAuthMethod, VaultSettings
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class VaultError(Exception):
     """Base exception for Vault errors."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -26,13 +26,11 @@ class VaultError(Exception):
 class VaultAuthError(VaultError):
     """Raised when Vault authentication fails."""
 
-    pass
 
 
 class VaultSecretError(VaultError):
     """Raised when secret operations fail."""
 
-    pass
 
 
 class VaultClient:
@@ -68,7 +66,7 @@ class VaultClient:
         ```
     """
 
-    def __init__(self, settings: Optional[VaultSettings] = None):
+    def __init__(self, settings: VaultSettings | None = None):
         """
         Initialize Vault client.
 
@@ -91,8 +89,8 @@ class VaultClient:
             import hvac
         except ImportError:
             raise VaultError(
-                "hvac not installed. Install with: pip install hvac"
-            )
+                "hvac not installed. Install with: pip install hvac",
+            ) from None
 
         # Create client
         client = hvac.Client(
@@ -128,19 +126,19 @@ class VaultClient:
                 await self._auth_approle(client)
             else:
                 raise VaultAuthError(
-                    f"Unknown auth method: {self.settings.auth_method}"
+                    f"Unknown auth method: {self.settings.auth_method}",
                 )
 
             self._authenticated = True
             logger.info(
-                f"Authenticated with Vault using {self.settings.auth_method}"
+                f"Authenticated with Vault using {self.settings.auth_method}",
             )
 
         except Exception as e:
             raise VaultAuthError(
                 f"Vault authentication failed: {str(e)}",
                 {"auth_method": self.settings.auth_method},
-            )
+            ) from e
 
     async def _auth_token(self, client) -> None:
         """Authenticate using token."""
@@ -149,7 +147,7 @@ class VaultClient:
         token = self.settings.token or os.getenv(self.settings.token_env_var)
         if not token:
             raise VaultAuthError(
-                f"Vault token not found in settings or {self.settings.token_env_var}"
+                f"Vault token not found in settings or {self.settings.token_env_var}",
             )
         client.token = token
 
@@ -162,7 +160,7 @@ class VaultClient:
         sa_token_path = Path(self.settings.service_account_token_path)
         if not sa_token_path.exists():
             raise VaultAuthError(
-                f"Service account token not found: {sa_token_path}"
+                f"Service account token not found: {sa_token_path}",
             )
 
         sa_token = sa_token_path.read_text().strip()
@@ -218,7 +216,7 @@ class VaultClient:
             raise VaultSecretError(
                 f"Failed to read secret at {path}: {str(e)}",
                 {"path": full_path},
-            )
+            ) from e
 
     async def write_secret(self, path: str, data: dict[str, Any]) -> None:
         """
@@ -248,7 +246,7 @@ class VaultClient:
             raise VaultSecretError(
                 f"Failed to write secret at {path}: {str(e)}",
                 {"path": full_path},
-            )
+            ) from e
 
     async def delete_secret(self, path: str) -> None:
         """
@@ -276,7 +274,7 @@ class VaultClient:
             raise VaultSecretError(
                 f"Failed to delete secret at {path}: {str(e)}",
                 {"path": full_path},
-            )
+            ) from e
 
     async def list_secrets(self, path: str = "") -> list[str]:
         """
@@ -310,7 +308,7 @@ class VaultClient:
             raise VaultSecretError(
                 f"Failed to list secrets at {path}: {str(e)}",
                 {"path": full_path},
-            )
+            ) from e
 
     async def get_database_credentials(
         self,
@@ -350,7 +348,7 @@ class VaultClient:
             raise VaultSecretError(
                 f"Failed to get database credentials for role {role}: {str(e)}",
                 {"role": role},
-            )
+            ) from e
 
     async def encrypt(self, plaintext: str) -> str:
         """
@@ -383,8 +381,8 @@ class VaultClient:
 
         except Exception as e:
             raise VaultSecretError(
-                f"Transit encryption failed: {str(e)}"
-            )
+                f"Transit encryption failed: {str(e)}",
+            ) from e
 
     async def decrypt(self, ciphertext: str) -> str:
         """
@@ -412,13 +410,12 @@ class VaultClient:
             )
 
             # Decode base64 result
-            decoded = base64.b64decode(response["data"]["plaintext"]).decode()
-            return decoded
+            return base64.b64decode(response["data"]["plaintext"]).decode()
 
         except Exception as e:
             raise VaultSecretError(
-                f"Transit decryption failed: {str(e)}"
-            )
+                f"Transit decryption failed: {str(e)}",
+            ) from e
 
     async def rewrap(self, ciphertext: str) -> str:
         """
@@ -448,8 +445,8 @@ class VaultClient:
 
         except Exception as e:
             raise VaultSecretError(
-                f"Transit rewrap failed: {str(e)}"
-            )
+                f"Transit rewrap failed: {str(e)}",
+            ) from e
 
     async def rotate_key(self) -> None:
         """
@@ -470,13 +467,13 @@ class VaultClient:
                 mount_point=self.settings.transit_mount_path,
             )
             logger.info(
-                f"Rotated transit key: {self.settings.transit_key_name}"
+                f"Rotated transit key: {self.settings.transit_key_name}",
             )
 
         except Exception as e:
             raise VaultSecretError(
-                f"Key rotation failed: {str(e)}"
-            )
+                f"Key rotation failed: {str(e)}",
+            ) from e
 
     def is_authenticated(self) -> bool:
         """Check if client is authenticated."""

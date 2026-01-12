@@ -2,7 +2,7 @@
 Pydantic models for the Reranker Service API.
 """
 
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -13,8 +13,8 @@ class DocumentPair(BaseModel):
 
     query: str
     document: str
-    doc_id: Optional[str] = None
-    metadata: Optional[dict] = None
+    doc_id: str | None = None
+    metadata: dict | None = None
 
 
 class RerankRequest(BaseModel):
@@ -29,15 +29,15 @@ class RerankRequest(BaseModel):
     model: str = "BAAI/bge-reranker-v2-m3"
 
     # Option 1: Query + documents
-    query: Optional[str] = None
-    documents: Optional[list[str]] = None
+    query: str | None = None
+    documents: list[str] | None = None
 
     # Option 2: Pre-formed pairs
-    pairs: Optional[list[DocumentPair]] = None
+    pairs: list[DocumentPair] | None = None
 
     # Reranking options
-    top_k: Optional[int] = None  # Return only top K results
-    min_score: Optional[float] = None  # Minimum score threshold
+    top_k: int | None = None  # Return only top K results
+    min_score: float | None = None  # Minimum score threshold
     return_documents: bool = True  # Include documents in response
 
     # Request metadata
@@ -49,9 +49,9 @@ class ScoredDocument(BaseModel):
 
     index: int
     score: float
-    document: Optional[str] = None
-    doc_id: Optional[str] = None
-    metadata: Optional[dict] = None
+    document: str | None = None
+    doc_id: str | None = None
+    metadata: dict | None = None
 
 
 class RerankResponse(BaseModel):
@@ -68,7 +68,7 @@ class BatchRerankRequest(BaseModel):
 
     queries: list[str]
     documents: list[str]
-    doc_ids: Optional[list[str]] = None
+    doc_ids: list[str] | None = None
 
 
 class BatchRerankResult(BaseModel):
@@ -86,7 +86,7 @@ class HealthResponse(BaseModel):
     model_name: str
     device: str
     gpu_available: bool
-    gpu_memory_used_mb: Optional[float] = None
+    gpu_memory_used_mb: float | None = None
     queue_size: int
     uptime_seconds: float
 

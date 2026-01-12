@@ -5,9 +5,6 @@ This module tests the StreamEvent model and its SSE formatting capabilities.
 
 import json
 import time
-from unittest.mock import patch
-
-import pytest
 
 from streaming.models import (
     CitationsEventData,
@@ -216,7 +213,7 @@ class TestStreamEventToSSE:
             data={
                 "sources": [
                     {"title": "Test", "uri": "test.md", "chunk_id": "c1"},
-                ]
+                ],
             },
             request_id="req-123",
         )

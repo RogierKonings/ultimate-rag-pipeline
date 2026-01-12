@@ -7,7 +7,7 @@ role-based access control, and group membership.
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -18,12 +18,11 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models.base import Base, TimestampMixin, SoftDeleteMixin
+from database.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 
 class Tenant(Base, TimestampMixin, SoftDeleteMixin):
@@ -52,7 +51,7 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         comment="URL-friendly unique identifier",
     )
-    description: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -87,24 +86,24 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Quotas and limits
-    max_users: Mapped[Optional[int]] = mapped_column(
+    max_users: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         comment="Maximum number of users allowed",
     )
-    max_documents: Mapped[Optional[int]] = mapped_column(
+    max_documents: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         comment="Maximum number of documents allowed",
     )
-    max_storage_bytes: Mapped[Optional[int]] = mapped_column(
+    max_storage_bytes: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         comment="Maximum storage in bytes",
     )
 
     # Contact information
-    contact_email: Mapped[Optional[str]] = mapped_column(
+    contact_email: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
@@ -167,28 +166,28 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         String(255),
         nullable=False,
     )
-    username: Mapped[Optional[str]] = mapped_column(
+    username: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
-    external_id: Mapped[Optional[str]] = mapped_column(
+    external_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         comment="External IdP user ID (e.g., Auth0 sub)",
     )
 
     # User profile
-    name: Mapped[Optional[str]] = mapped_column(
+    name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
-    avatar_url: Mapped[Optional[str]] = mapped_column(
+    avatar_url: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
     )
 
     # Authentication
-    password_hash: Mapped[Optional[str]] = mapped_column(
+    password_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
         comment="Hashed password (null for SSO-only users)",
@@ -210,7 +209,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         default=False,
         nullable=False,
     )
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+    last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
@@ -251,7 +250,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
         UniqueConstraint(
-            "tenant_id", "username", name="uq_users_tenant_username"
+            "tenant_id", "username", name="uq_users_tenant_username",
         ),
         Index("ix_users_external_id", "external_id"),
         Index("ix_users_tenant_active", "tenant_id", "is_active"),
@@ -278,7 +277,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Tenant relationship (null for system roles)
-    tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("tenants.id", ondelete="CASCADE"),
         nullable=True,
@@ -295,7 +294,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
         String(100),
         nullable=False,
     )
-    description: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -323,7 +322,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Hierarchy
-    parent_role_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    parent_role_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("roles.id", ondelete="SET NULL"),
         nullable=True,
@@ -379,7 +378,7 @@ class Group(Base, TimestampMixin, SoftDeleteMixin):
         String(255),
         nullable=False,
     )
-    description: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
@@ -454,12 +453,12 @@ class UserRole(Base, TimestampMixin):
     )
 
     # Assignment metadata
-    assigned_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    assigned_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
         comment="User ID who assigned this role",
     )
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         comment="Role assignment expiration",
@@ -513,12 +512,12 @@ class UserGroup(Base, TimestampMixin):
     )
 
     # Membership metadata
-    added_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    added_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
         comment="User ID who added this membership",
     )
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         comment="Group membership expiration",
@@ -586,7 +585,7 @@ class ApiKey(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Usage tracking
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
@@ -597,7 +596,7 @@ class ApiKey(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Expiration
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

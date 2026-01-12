@@ -1,6 +1,5 @@
 """Services package for the ingestion service."""
 
-from .documents import DeleteResult, DocumentListResult, DocumentService
 from .deduplication import (
     CHUNK_SCHEMA_VERSION,
     DeduplicationCheckResult,
@@ -9,6 +8,7 @@ from .deduplication import (
     VersionInfo,
     create_deduplication_service,
 )
+from .documents import DeleteResult, DocumentListResult, DocumentService
 from .ingestion_logs import (
     IngestionLogEntry,
     IngestionLogWriter,

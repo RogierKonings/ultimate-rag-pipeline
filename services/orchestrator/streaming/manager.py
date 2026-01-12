@@ -5,14 +5,15 @@ LLM responses with proper event sequencing and error handling.
 """
 
 import time
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from gateway.client import ModelGateway
 from gateway.exceptions import ModelGatewayError
 from gateway.models import ChatCompletionRequest, ChatMessage
 
 from .buffer import TokenBuffer
-from .models import StreamEvent, StreamEventType
+from .models import StreamEvent
 
 
 class StreamManager:
@@ -48,8 +49,8 @@ class StreamManager:
 
     def __init__(
         self,
-        gateway: Optional[ModelGateway] = None,
-        buffer: Optional[TokenBuffer] = None,
+        gateway: ModelGateway | None = None,
+        buffer: TokenBuffer | None = None,
     ) -> None:
         """Initialize the stream manager.
 
@@ -66,9 +67,9 @@ class StreamManager:
         request_id: str,
         model: str,
         messages: list[dict[str, Any]],
-        session_id: Optional[str] = None,
-        documents: Optional[list[dict[str, Any]]] = None,
-        gateway: Optional[ModelGateway] = None,
+        session_id: str | None = None,
+        documents: list[dict[str, Any]] | None = None,
+        gateway: ModelGateway | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         """Stream an LLM response with proper event sequencing.
 
@@ -185,7 +186,7 @@ class StreamManager:
         self,
         request_id: str,
         model: str,
-        session_id: Optional[str],
+        session_id: str | None,
     ) -> StreamEvent:
         """Create a start event.
 

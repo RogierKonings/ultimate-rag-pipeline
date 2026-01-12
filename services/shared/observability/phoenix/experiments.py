@@ -7,8 +7,8 @@ Provides experiment tracking for LLM/RAG pipeline changes.
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from .config import PhoenixConfig
@@ -32,11 +32,11 @@ class ExperimentRun:
 
     # Timing
     started_at: datetime = field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     # Status
     status: str = "running"  # running, completed, failed
-    error: Optional[str] = None
+    error: str | None = None
 
     # Artifacts
     artifacts: list[dict[str, Any]] = field(default_factory=list)
@@ -76,7 +76,7 @@ class ExperimentRun:
             name=data.get("name", ""),
             config=data.get("config", {}),
             metrics=data.get("metrics", {}),
-            started_at=started_at or datetime.utcnow(),
+            started_at=started_at or datetime.now(tz=UTC),
             completed_at=completed_at,
             status=data.get("status", "running"),
             error=data.get("error"),
@@ -101,18 +101,18 @@ class Experiment:
     runs: list[ExperimentRun] = field(default_factory=list)
 
     # Baseline
-    baseline_run_id: Optional[str] = None
+    baseline_run_id: str | None = None
 
     # Timing
     created_at: datetime = field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
     # Status
     status: str = "active"  # active, completed, archived
 
     # Results
-    conclusion: Optional[str] = None
-    winning_run_id: Optional[str] = None
+    conclusion: str | None = None
+    winning_run_id: str | None = None
 
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -153,7 +153,7 @@ class Experiment:
             experiment_type=data.get("experiment_type", ""),
             runs=[ExperimentRun.from_dict(r) for r in data.get("runs", [])],
             baseline_run_id=data.get("baseline_run_id"),
-            created_at=created_at or datetime.utcnow(),
+            created_at=created_at or datetime.now(tz=UTC),
             completed_at=completed_at,
             status=data.get("status", "active"),
             conclusion=data.get("conclusion"),
@@ -173,7 +173,7 @@ class ExperimentTracker:
     - Chunking experiments
     """
 
-    def __init__(self, config: Optional[PhoenixConfig] = None):
+    def __init__(self, config: PhoenixConfig | None = None):
         """
         Initialize experiment tracker.
 
@@ -201,7 +201,7 @@ class ExperimentTracker:
         description: str = "",
         hypothesis: str = "",
         experiment_type: str = "",
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Experiment:
         """
         Create a new experiment.
@@ -236,7 +236,7 @@ class ExperimentTracker:
         name: str,
         config: dict[str, Any],
         is_baseline: bool = False,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> ExperimentRun:
         """
         Start a new run within an experiment.
@@ -334,8 +334,8 @@ class ExperimentTracker:
         run_id: str,
         name: str,
         artifact_type: str,
-        path: Optional[str] = None,
-        data: Optional[Any] = None,
+        path: str | None = None,
+        data: Any | None = None,
     ) -> None:
         """
         Log an artifact for a run.
@@ -352,7 +352,7 @@ class ExperimentTracker:
             "type": artifact_type,
             "path": path,
             "data": data,
-            "logged_at": datetime.utcnow().isoformat(),
+            "logged_at": datetime.now(tz=UTC).isoformat(),
         }
 
         pool = await self._get_pool()
@@ -371,8 +371,8 @@ class ExperimentTracker:
     async def complete_run(
         self,
         run_id: str,
-        metrics: Optional[dict[str, float]] = None,
-        error: Optional[str] = None,
+        metrics: dict[str, float] | None = None,
+        error: str | None = None,
     ) -> ExperimentRun:
         """
         Mark a run as complete.
@@ -402,7 +402,7 @@ class ExperimentTracker:
                     """,
                     json.dumps(metrics),
                     status,
-                    datetime.utcnow(),
+                    datetime.now(tz=UTC),
                     error,
                     run_id,
                 )
@@ -416,7 +416,7 @@ class ExperimentTracker:
                     WHERE id = $4
                     """,
                     status,
-                    datetime.utcnow(),
+                    datetime.now(tz=UTC),
                     error,
                     run_id,
                 )
@@ -433,7 +433,7 @@ class ExperimentTracker:
         self,
         experiment_id: str,
         conclusion: str,
-        winning_run_id: Optional[str] = None,
+        winning_run_id: str | None = None,
     ) -> Experiment:
         """
         Mark an experiment as complete.
@@ -458,7 +458,7 @@ class ExperimentTracker:
                     winning_run_id = $3
                 WHERE id = $4
                 """,
-                datetime.utcnow(),
+                datetime.now(tz=UTC),
                 conclusion,
                 winning_run_id,
                 experiment_id,
@@ -503,7 +503,7 @@ class ExperimentTracker:
     async def compare_runs(
         self,
         experiment_id: str,
-        metric_names: Optional[list[str]] = None,
+        metric_names: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Compare runs within an experiment.
@@ -616,8 +616,8 @@ class ExperimentTracker:
 
     async def list_experiments(
         self,
-        status: Optional[str] = None,
-        experiment_type: Optional[str] = None,
+        status: str | None = None,
+        experiment_type: str | None = None,
         limit: int = 50,
     ) -> list[Experiment]:
         """

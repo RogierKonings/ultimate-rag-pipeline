@@ -1,7 +1,6 @@
 """Pydantic schemas for document management API endpoints."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,17 +15,17 @@ class DocumentResponse(BaseModel):
     document_id: UUID
     source_id: str
     source_type: str
-    filename: Optional[str] = None
-    mime_type: Optional[str] = None
-    title: Optional[str] = None
-    author: Optional[str] = None
+    filename: str | None = None
+    mime_type: str | None = None
+    title: str | None = None
+    author: str | None = None
     chunk_count: int
     total_tokens: int
     tenant_id: str
     visibility: str
     created_at: datetime
     updated_at: datetime
-    indexed_at: Optional[datetime] = None
+    indexed_at: datetime | None = None
     status: str
 
     model_config = ConfigDict(
@@ -48,9 +47,9 @@ class DocumentResponse(BaseModel):
                     "updated_at": "2025-12-18T10:05:00Z",
                     "indexed_at": "2025-12-18T10:05:30Z",
                     "status": "active",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -85,15 +84,15 @@ class DocumentListResponse(BaseModel):
                             "created_at": "2025-12-18T10:00:00Z",
                             "updated_at": "2025-12-18T10:05:00Z",
                             "status": "active",
-                        }
+                        },
                     ],
                     "total": 150,
                     "page": 1,
                     "page_size": 20,
                     "pages": 8,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
@@ -116,18 +115,18 @@ class DocumentDeleteResponse(BaseModel):
                     "deleted": True,
                     "chunks_deleted": 45,
                     "message": "Document and 45 chunks deleted successfully",
-                }
-            ]
-        }
+                },
+            ],
+        },
     )
 
 
 class ReindexRequest(BaseModel):
     """Request to reindex a document with new chunking settings."""
 
-    chunking_strategy: Optional[str] = None
-    chunk_size: Optional[int] = Field(default=None, ge=100, le=4096)
-    chunk_overlap: Optional[int] = Field(default=None, ge=0, le=500)
+    chunking_strategy: str | None = None
+    chunk_size: int | None = Field(default=None, ge=100, le=4096)
+    chunk_overlap: int | None = Field(default=None, ge=0, le=500)
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -136,7 +135,7 @@ class ReindexRequest(BaseModel):
                     "chunking_strategy": "recursive",
                     "chunk_size": 300,
                     "chunk_overlap": 50,
-                }
-            ]
-        }
+                },
+            ],
+        },
     )

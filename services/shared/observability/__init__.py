@@ -25,12 +25,10 @@ Usage:
     metrics.record_query(mode="hybrid", duration=0.5, result_count=10)
 """
 
-from typing import Optional
-
-from .otel import setup_tracing, get_tracer
-from .otel.spans import traced, rag_span
-from .otel.attributes import RAGOperation, RAGAttributes
-from .metrics import setup_metrics, get_metrics
+from .metrics import get_metrics, setup_metrics
+from .otel import get_tracer, setup_tracing
+from .otel.attributes import RAGAttributes, RAGOperation
+from .otel.spans import rag_span, traced
 
 __all__ = [
     # Setup functions
@@ -52,7 +50,7 @@ __all__ = [
 def setup_observability(
     service_name: str,
     service_version: str = "1.0.0",
-    otlp_endpoint: Optional[str] = None,
+    otlp_endpoint: str | None = None,
     enable_tracing: bool = True,
     enable_metrics: bool = True,
     environment: str = "development",

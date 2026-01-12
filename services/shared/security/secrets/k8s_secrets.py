@@ -7,7 +7,7 @@ Kubernetes Secrets as a secrets backend.
 
 import base64
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .config import KubernetesSecretsSettings
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class K8sSecretsError(Exception):
     """Base exception for Kubernetes Secrets errors."""
 
-    def __init__(self, message: str, details: Optional[dict] = None):
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
@@ -55,7 +55,7 @@ class K8sSecretsClient:
         ```
     """
 
-    def __init__(self, settings: Optional[KubernetesSecretsSettings] = None):
+    def __init__(self, settings: KubernetesSecretsSettings | None = None):
         """
         Initialize Kubernetes Secrets client.
 
@@ -78,14 +78,14 @@ class K8sSecretsClient:
             from kubernetes import client, config
         except ImportError:
             raise K8sSecretsError(
-                "kubernetes not installed. Install with: pip install kubernetes"
-            )
+                "kubernetes not installed. Install with: pip install kubernetes",
+            ) from None
 
         try:
             if self.settings.kubeconfig_path:
                 # Use specified kubeconfig
                 config.load_kube_config(
-                    config_file=self.settings.kubeconfig_path
+                    config_file=self.settings.kubeconfig_path,
                 )
             else:
                 # Try in-cluster config, fall back to kubeconfig
@@ -96,8 +96,8 @@ class K8sSecretsClient:
 
         except Exception as e:
             raise K8sSecretsError(
-                f"Failed to load Kubernetes config: {str(e)}"
-            )
+                f"Failed to load Kubernetes config: {str(e)}",
+            ) from e
 
         api = client.CoreV1Api()
 
@@ -107,7 +107,7 @@ class K8sSecretsClient:
             # Try to get current namespace from service account
             try:
                 with open(
-                    "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+                    "/var/run/secrets/kubernetes.io/serviceaccount/namespace",
                 ) as f:
                     namespace = f.read().strip()
             except FileNotFoundError:
@@ -115,7 +115,7 @@ class K8sSecretsClient:
 
         return api, namespace
 
-    async def read_secret(self, key: str) -> Optional[str]:
+    async def read_secret(self, key: str) -> str | None:
         """
         Read a single secret value.
 
@@ -167,7 +167,7 @@ class K8sSecretsClient:
                     "secret_name": self.settings.secret_name,
                     "namespace": self._namespace,
                 },
-            )
+            ) from e
 
     async def write_secret(self, key: str, value: str) -> None:
         """
@@ -200,8 +200,8 @@ class K8sSecretsClient:
             from kubernetes import client
         except ImportError:
             raise K8sSecretsError(
-                "kubernetes not installed. Install with: pip install kubernetes"
-            )
+                "kubernetes not installed. Install with: pip install kubernetes",
+            ) from None
 
         api = self._get_api()
 
@@ -243,13 +243,13 @@ class K8sSecretsClient:
                     body=body,
                 )
                 logger.info(
-                    f"Created Kubernetes secret: {self.settings.secret_name}"
+                    f"Created Kubernetes secret: {self.settings.secret_name}",
                 )
             else:
                 raise K8sSecretsError(
                     f"Failed to write Kubernetes secret: {str(e)}",
                     {"secret_name": self.settings.secret_name},
-                )
+                ) from e
 
     async def delete_secret(self, key: str) -> None:
         """
@@ -265,8 +265,8 @@ class K8sSecretsClient:
             from kubernetes import client
         except ImportError:
             raise K8sSecretsError(
-                "kubernetes not installed. Install with: pip install kubernetes"
-            )
+                "kubernetes not installed. Install with: pip install kubernetes",
+            ) from None
 
         api = self._get_api()
 
@@ -306,7 +306,7 @@ class K8sSecretsClient:
             raise K8sSecretsError(
                 f"Failed to delete secret key: {str(e)}",
                 {"key": key},
-            )
+            ) from e
 
     async def delete_all_secrets(self) -> None:
         """
@@ -330,7 +330,7 @@ class K8sSecretsClient:
             raise K8sSecretsError(
                 f"Failed to delete Kubernetes secret: {str(e)}",
                 {"secret_name": self.settings.secret_name},
-            )
+            ) from e
 
     async def list_keys(self) -> list[str]:
         """

@@ -2,10 +2,10 @@
 
 import pytest
 
-from ..language_detector import LanguageDetector
-from ..pii_detector import PIIDetector, PIIDetectorConfig
 from ..enrichment import EnrichmentPipeline
+from ..language_detector import LanguageDetector
 from ..models import EnrichmentConfig
+from ..pii_detector import PIIDetector, PIIDetectorConfig
 
 
 @pytest.fixture

@@ -1,21 +1,20 @@
 """Qdrant writer for vector store indexing."""
 
 import time
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
-    VectorParams,
-    PointStruct,
-    Filter,
     FieldCondition,
+    Filter,
+    HnswConfigDiff,
     MatchValue,
     OptimizersConfigDiff,
-    HnswConfigDiff,
     PayloadSchemaType,
+    PointStruct,
+    VectorParams,
 )
 
 from .base import BaseIndexWriter
@@ -26,7 +25,7 @@ class QdrantWriterConfig(BaseModel):
     """Configuration for QdrantWriter."""
 
     url: str = "http://localhost:6333"
-    api_key: Optional[str] = None
+    api_key: str | None = None
     collection_name: str = "documents"
     vector_size: int = 1024  # BGE-large dimensions
     distance: str = "Cosine"
@@ -52,14 +51,14 @@ class QdrantWriter(BaseIndexWriter):
     - Payload indices for efficient filtering
     """
 
-    def __init__(self, config: Optional[QdrantWriterConfig] = None):
+    def __init__(self, config: QdrantWriterConfig | None = None):
         """Initialize QdrantWriter.
 
         Args:
             config: Configuration for the writer. Uses defaults if not provided.
         """
         self.config = config or QdrantWriterConfig()
-        self._client: Optional[AsyncQdrantClient] = None
+        self._client: AsyncQdrantClient | None = None
 
     async def connect(self) -> None:
         """Establish connection to Qdrant."""
@@ -163,7 +162,7 @@ class QdrantWriter(BaseIndexWriter):
                     id=str(chunk.chunk_id),
                     vector=chunk.embedding,
                     payload=payload,
-                )
+                ),
             )
 
         # Batch upsert
@@ -209,7 +208,7 @@ class QdrantWriter(BaseIndexWriter):
         try:
             await self._client.delete(
                 collection_name=self.config.collection_name,
-                points_selector=[str(id) for id in chunk_ids],
+                points_selector=[str(chunk_id) for chunk_id in chunk_ids],
                 wait=True,
             )
 
@@ -250,8 +249,8 @@ class QdrantWriter(BaseIndexWriter):
                         FieldCondition(
                             key="document_id",
                             match=MatchValue(value=str(document_id)),
-                        )
-                    ]
+                        ),
+                    ],
                 ),
                 wait=True,
             )

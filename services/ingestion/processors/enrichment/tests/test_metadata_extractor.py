@@ -1,7 +1,5 @@
 """Tests for metadata extraction utilities."""
 
-import pytest
-from datetime import datetime
 
 from ..metadata_extractor import MetadataExtractor
 

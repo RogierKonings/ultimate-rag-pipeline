@@ -1,9 +1,10 @@
 """Document management service with cascade delete operations."""
 
+import contextlib
 import logging
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -19,7 +20,7 @@ class DeleteResult:
     chunks_deleted: int
     vectors_deleted: int
     keyword_entries_deleted: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class DocumentListResult(BaseModel):
@@ -93,9 +94,9 @@ class DocumentService:
         tenant_id: str,
         page: int = 1,
         page_size: int = 20,
-        source_type: Optional[str] = None,
-        status: Optional[str] = None,
-        search: Optional[str] = None,
+        source_type: str | None = None,
+        status: str | None = None,
+        search: str | None = None,
     ) -> DocumentListResult:
         """
         List documents with pagination and filtering.
@@ -135,7 +136,7 @@ class DocumentService:
                     or_(
                         Document.title.ilike(search_pattern),
                         Document.source_id.ilike(search_pattern),
-                    )
+                    ),
                 )
 
             # Get total count
@@ -181,7 +182,7 @@ class DocumentService:
                         updated_at=doc.updated_at,
                         indexed_at=doc.doc_metadata.get("indexed_at"),
                         status=doc.status,
-                    )
+                    ),
                 )
 
             return DocumentListResult(documents=doc_responses, total=total)
@@ -194,7 +195,7 @@ class DocumentService:
         self,
         document_id: UUID,
         tenant_id: str,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """
         Get document by ID.
 
@@ -301,7 +302,7 @@ class DocumentService:
             # Step 4: Delete keyword entries from OpenSearch
             try:
                 keyword_entries_deleted = await self._delete_keyword_entries(
-                    document_id, chunk_ids
+                    document_id, chunk_ids,
                 )
                 logger.info(f"Deleted {keyword_entries_deleted} entries from OpenSearch")
             except Exception as e:
@@ -345,10 +346,8 @@ class DocumentService:
                 await self._db.rollback()
 
             # Attempt to restore document status
-            try:
+            with contextlib.suppress(Exception):
                 await self._restore_document_status(document_id)
-            except Exception:
-                pass
 
             return DeleteResult(
                 success=False,
@@ -361,7 +360,7 @@ class DocumentService:
     async def reindex_document(
         self,
         document_id: UUID,
-        processing_config: Optional[dict] = None,
+        processing_config: dict | None = None,
     ):
         """
         Trigger document reindexing.
@@ -414,7 +413,7 @@ class DocumentService:
         await self._db.execute(
             update(Document)
             .where(Document.id == document_id)
-            .values(status="deleting", updated_at=datetime.utcnow())
+            .values(status="deleting", updated_at=datetime.now(tz=UTC)),
         )
 
     async def _get_chunk_ids(self, document_id: UUID) -> list[UUID]:
@@ -427,7 +426,7 @@ class DocumentService:
         from services.shared.database.models.document import Chunk
 
         result = await self._db.execute(
-            select(Chunk.id).where(Chunk.document_id == document_id)
+            select(Chunk.id).where(Chunk.document_id == document_id),
         )
         return [row[0] for row in result.fetchall()]
 
@@ -450,8 +449,8 @@ class DocumentService:
                     FieldCondition(
                         key="document_id",
                         match=MatchValue(value=str(document_id)),
-                    )
-                ]
+                    ),
+                ],
             ),
         )
 
@@ -484,7 +483,7 @@ class DocumentService:
         from services.shared.database.models.document import Chunk
 
         result = await self._db.execute(
-            delete(Chunk).where(Chunk.document_id == document_id)
+            delete(Chunk).where(Chunk.document_id == document_id),
         )
         return result.rowcount
 
@@ -500,7 +499,7 @@ class DocumentService:
         result = await self._db.execute(
             update(Chunk)
             .where(Chunk.document_id == document_id)
-            .values(status="deleted", deleted_at=datetime.utcnow())
+            .values(status="deleted", deleted_at=datetime.now(tz=UTC)),
         )
         return result.rowcount
 
@@ -529,9 +528,9 @@ class DocumentService:
             .where(Document.id == document_id)
             .values(
                 status="deleted",
-                deleted_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
+                deleted_at=datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+            ),
         )
 
     async def _delete_raw_file(self, document_id: UUID) -> None:
@@ -545,7 +544,7 @@ class DocumentService:
 
         # Get document to find raw_storage_path
         result = await self._db.execute(
-            select(Document.doc_metadata).where(Document.id == document_id)
+            select(Document.doc_metadata).where(Document.id == document_id),
         )
         metadata = result.scalar_one_or_none()
 
@@ -566,6 +565,6 @@ class DocumentService:
         await self._db.execute(
             update(Document)
             .where(Document.id == document_id)
-            .values(status="indexed", updated_at=datetime.utcnow())
+            .values(status="indexed", updated_at=datetime.now(tz=UTC)),
         )
         await self._db.commit()

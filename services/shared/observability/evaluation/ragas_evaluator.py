@@ -6,7 +6,7 @@ Wrapper around Ragas library for RAG evaluation.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from .config import EvaluationConfig
 
@@ -20,7 +20,7 @@ class EvaluationResult:
     question: str
     contexts: list[str]
     answer: str
-    ground_truth: Optional[str]
+    ground_truth: str | None
     metrics: dict[str, float]
     metadata: dict[str, Any]
 
@@ -70,7 +70,7 @@ class RagasEvaluator:
     - answer_relevancy: Does the answer address the question
     """
 
-    def __init__(self, config: Optional[EvaluationConfig] = None):
+    def __init__(self, config: EvaluationConfig | None = None):
         """
         Initialize the evaluator.
 
@@ -125,13 +125,13 @@ class RagasEvaluator:
 
         try:
             from ragas.metrics import (
+                answer_correctness,
+                answer_relevancy,
+                answer_similarity,
+                context_entity_recall,
                 context_precision,
                 context_recall,
                 faithfulness,
-                answer_relevancy,
-                context_entity_recall,
-                answer_similarity,
-                answer_correctness,
             )
 
             metric_map = {
@@ -162,8 +162,8 @@ class RagasEvaluator:
         question: str,
         contexts: list[str],
         answer: str,
-        ground_truth: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        ground_truth: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EvaluationResult:
         """
         Evaluate a single sample.
@@ -179,8 +179,8 @@ class RagasEvaluator:
             EvaluationResult with computed metrics
         """
         try:
-            from ragas import evaluate
             from datasets import Dataset
+            from ragas import evaluate
 
             # Prepare data for Ragas
             data = {
@@ -234,7 +234,7 @@ class RagasEvaluator:
                 contexts=contexts,
                 answer=answer,
                 ground_truth=ground_truth,
-                metrics={m: 0.0 for m in self.config.metrics},
+                metrics=dict.fromkeys(self.config.metrics, 0.0),
                 metadata={"error": str(e), **(metadata or {})},
             )
 
@@ -252,8 +252,8 @@ class RagasEvaluator:
             List of EvaluationResult objects
         """
         try:
-            from ragas import evaluate
             from datasets import Dataset
+            from ragas import evaluate
 
             # Prepare data for Ragas
             data = {
@@ -300,7 +300,7 @@ class RagasEvaluator:
                         ground_truth=sample.get("ground_truth"),
                         metrics=metric_values,
                         metadata=sample.get("metadata", {}),
-                    )
+                    ),
                 )
 
             return eval_results
@@ -314,7 +314,7 @@ class RagasEvaluator:
                     contexts=s["contexts"],
                     answer=s["answer"],
                     ground_truth=s.get("ground_truth"),
-                    metrics={m: 0.0 for m in self.config.metrics},
+                    metrics=dict.fromkeys(self.config.metrics, 0.0),
                     metadata={"error": str(e)},
                 )
                 for s in samples
@@ -323,7 +323,7 @@ class RagasEvaluator:
     def aggregate_results(
         self,
         results: list[EvaluationResult],
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AggregatedResults:
         """
         Aggregate evaluation results.

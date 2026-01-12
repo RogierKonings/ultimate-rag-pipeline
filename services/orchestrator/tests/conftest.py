@@ -1,10 +1,10 @@
 """Shared test fixtures for the Orchestrator Service."""
 
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from datetime import datetime
 
+import pytest
 
 # ============================================================================
 # Configuration Fixtures
@@ -58,14 +58,14 @@ def mock_llm_response():
     return {
         "id": "chatcmpl-test",
         "object": "chat.completion",
-        "created": int(datetime.utcnow().timestamp()),
+        "created": int(datetime.now(tz=UTC).timestamp()),
         "model": "meta-llama/Llama-3.1-8B-Instruct",
         "choices": [
             {
                 "index": 0,
                 "message": {"role": "assistant", "content": "This is a test response."},
                 "finish_reason": "stop",
-            }
+            },
         ],
         "usage": {"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18},
     }
@@ -242,7 +242,7 @@ def sample_stream_events():
         {
             "event": "done",
             "data": {
-                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
             },
         },
     ]
@@ -255,11 +255,11 @@ def sample_stream_events():
 
 @pytest.fixture
 def mock_app_state(
-    mock_redis, mock_httpx_client, mock_retrieval_client, sample_documents
+    mock_redis, mock_httpx_client, mock_retrieval_client, sample_documents,
 ):
     """Create mock application state."""
     state = MagicMock()
-    state.start_time = datetime.utcnow().timestamp()
+    state.start_time = datetime.now(tz=UTC).timestamp()
 
     # Session manager mock
     state.session_manager = AsyncMock()
@@ -269,7 +269,7 @@ def mock_app_state(
     # Model gateway mock
     state.model_gateway = AsyncMock()
     state.model_gateway.health_check = AsyncMock(
-        return_value={"llama": {"status": "healthy"}}
+        return_value={"llama": {"status": "healthy"}},
     )
     state.model_gateway.close = AsyncMock()
 
@@ -279,10 +279,10 @@ def mock_app_state(
     # Guardrails mock
     state.guardrail_pipeline = AsyncMock()
     state.guardrail_pipeline.check_input = AsyncMock(
-        return_value=MagicMock(passed=True, all_violations=[])
+        return_value=MagicMock(passed=True, all_violations=[]),
     )
     state.guardrail_pipeline.check_output = AsyncMock(
-        return_value=MagicMock(passed=True, final_content="Test response")
+        return_value=MagicMock(passed=True, final_content="Test response"),
     )
 
     # Stream manager mock
@@ -297,7 +297,7 @@ def mock_app_state(
             "strategy_used": "simple",
             "model_used": "llama",
             "usage": {"prompt_tokens": 10, "completion_tokens": 8, "total_tokens": 18},
-        }
+        },
     )
 
     return state

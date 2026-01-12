@@ -1,8 +1,9 @@
 """Tests for enrichment pipeline."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import Mock
+
+import pytest
 
 from ..enrichment import EnrichmentPipeline
 from ..models import EnrichmentConfig, EnrichmentContext
@@ -38,7 +39,7 @@ class TestEnrichmentPipeline:
 
     @pytest.mark.asyncio
     async def test_enrich_full_pipeline(
-        self, enrichment_pipeline, mock_parsed_doc, enrichment_context
+        self, enrichment_pipeline, mock_parsed_doc, enrichment_context,
     ):
         """Test full enrichment pipeline."""
         result = await enrichment_pipeline.enrich(mock_parsed_doc, enrichment_context)
@@ -71,11 +72,11 @@ class TestEnrichmentPipeline:
 
     @pytest.mark.asyncio
     async def test_enrich_without_pii_detection(
-        self, enrichment_pipeline_no_pii, mock_parsed_doc, enrichment_context
+        self, enrichment_pipeline_no_pii, mock_parsed_doc, enrichment_context,
     ):
         """Test enrichment with PII detection disabled."""
         result = await enrichment_pipeline_no_pii.enrich(
-            mock_parsed_doc, enrichment_context
+            mock_parsed_doc, enrichment_context,
         )
 
         assert result.pii is None
@@ -83,7 +84,7 @@ class TestEnrichmentPipeline:
 
     @pytest.mark.asyncio
     async def test_enrich_without_language_detection(
-        self, mock_parsed_doc, enrichment_context
+        self, mock_parsed_doc, enrichment_context,
     ):
         """Test enrichment with language detection disabled."""
         config = EnrichmentConfig(enable_language_detection=False)

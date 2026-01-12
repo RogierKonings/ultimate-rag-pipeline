@@ -4,7 +4,6 @@ Models for embedding jobs and retrieval/ingestion logging (US-2.12).
 
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID

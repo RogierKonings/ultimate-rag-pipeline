@@ -6,7 +6,6 @@ including handling modes, entity types, and thresholds.
 """
 
 from enum import Enum
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -98,9 +97,9 @@ class PIIEntityConfig(BaseModel):
     """Configuration for a specific PII entity type."""
 
     enabled: bool = True
-    handling_mode: Optional[PIIHandlingMode] = None  # Override default
-    min_score: Optional[float] = None  # Override default threshold
-    sensitivity: Optional[PIISensitivity] = None  # Override default
+    handling_mode: PIIHandlingMode | None = None  # Override default
+    min_score: float | None = None  # Override default threshold
+    sensitivity: PIISensitivity | None = None  # Override default
 
 
 class PIISettings(BaseModel):
@@ -201,7 +200,7 @@ class PIISettings(BaseModel):
     )
 
     # Custom recognizers
-    custom_recognizers_path: Optional[str] = Field(
+    custom_recognizers_path: str | None = Field(
         default=None,
         description="Path to custom recognizers YAML file",
     )

@@ -16,7 +16,6 @@ Default configuration:
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 import tiktoken
@@ -53,15 +52,15 @@ class Chunk(BaseModel):
     token_count: int
 
     # Parent-child relationships for hierarchical retrieval
-    parent_chunk_id: Optional[UUID] = None
+    parent_chunk_id: UUID | None = None
     child_chunk_ids: list[UUID] = Field(default_factory=list)
 
     # Metadata preserved from document
     metadata: dict = Field(default_factory=dict)
 
     # Source information for citation
-    source_page: Optional[int] = None
-    source_section: Optional[str] = None
+    source_page: int | None = None
+    source_section: str | None = None
 
 
 class ChunkingResult(BaseModel):
@@ -145,7 +144,7 @@ class BaseChunkingStrategy(ABC):
         self,
         text: str,
         document_id: UUID,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> list[Chunk]:
         """Split text into chunks.
 
@@ -157,13 +156,11 @@ class BaseChunkingStrategy(ABC):
         Returns:
             List of Chunk objects
         """
-        pass
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Return strategy name identifier."""
-        pass
 
 
 # =============================================================================
@@ -189,7 +186,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
         "; ",
         ", ",
         " ",     # Words
-        ""       # Characters (fallback)
+        "",       # Characters (fallback)
     ]
 
     @property
@@ -200,7 +197,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
         self,
         text: str,
         document_id: UUID,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> list[Chunk]:
         """Split text recursively using multiple separators."""
         metadata = metadata or {}
@@ -220,7 +217,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
                 start_char=start,
                 end_char=end,
                 token_count=self.count_tokens(content),
-                metadata=metadata.copy()
+                metadata=metadata.copy(),
             ))
 
         return chunks
@@ -229,7 +226,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
         self,
         text: str,
         separators: list[str],
-        offset: int
+        offset: int,
     ) -> list[tuple[str, int, int]]:
         """
         Recursively split text, tracking character offsets.
@@ -262,7 +259,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
         current_offset = offset
         splits = text.split(sep)
 
-        for i, part in enumerate(splits):
+        for _i, part in enumerate(splits):
             if not part.strip():
                 current_offset += len(part) + len(sep)
                 continue
@@ -272,7 +269,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
             if token_count > self.config.max_tokens:
                 # Too large, split further with next separator
                 sub_parts = self._split_recursive(
-                    part, separators[1:], current_offset
+                    part, separators[1:], current_offset,
                 )
                 parts.extend(sub_parts)
             else:
@@ -285,7 +282,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
     def _split_by_tokens(
         self,
         text: str,
-        offset: int
+        offset: int,
     ) -> list[tuple[str, int, int]]:
         """
         Split text into chunks of target_tokens size when no separators work.
@@ -306,7 +303,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
             parts.append((
                 chunk_text,
                 char_offset,
-                char_offset + len(chunk_text)
+                char_offset + len(chunk_text),
             ))
 
             char_offset += len(chunk_text)
@@ -316,7 +313,7 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
 
     def _merge_and_overlap(
         self,
-        splits: list[tuple[str, int, int]]
+        splits: list[tuple[str, int, int]],
     ) -> list[tuple[str, int, int]]:
         """
         Merge small chunks and create overlapping chunks.
@@ -430,7 +427,7 @@ class SemanticChunker(BaseChunkingStrategy):
         self,
         text: str,
         document_id: UUID,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> list[Chunk]:
         """Split text at sentence boundaries."""
         metadata = metadata or {}
@@ -458,7 +455,7 @@ class SemanticChunker(BaseChunkingStrategy):
                 if current_sentences:
                     chunk = self._create_chunk(
                         current_sentences, document_id, chunk_index,
-                        current_start, sent.start_char, metadata
+                        current_start, sent.start_char, metadata,
                     )
                     chunks.append(chunk)
                     chunk_index += 1
@@ -468,7 +465,7 @@ class SemanticChunker(BaseChunkingStrategy):
                 # Split long sentence using fallback
                 sub_chunks = self._split_long_sentence(
                     sent_text, sent.start_char, document_id,
-                    chunk_index, metadata
+                    chunk_index, metadata,
                 )
                 for sub in sub_chunks:
                     chunks.append(sub)
@@ -483,14 +480,14 @@ class SemanticChunker(BaseChunkingStrategy):
                 if current_sentences:
                     chunk = self._create_chunk(
                         current_sentences, document_id, chunk_index,
-                        current_start, sent.start_char, metadata
+                        current_start, sent.start_char, metadata,
                     )
                     chunks.append(chunk)
                     chunk_index += 1
 
                 # Handle overlap: include last N tokens from previous chunk
                 overlap_sentences = self._get_overlap_sentences(
-                    current_sentences, self.config.chunk_overlap
+                    current_sentences, self.config.chunk_overlap,
                 )
                 current_sentences = overlap_sentences + [sent_text]
                 current_tokens = sum(self.count_tokens(s) for s in current_sentences)
@@ -505,7 +502,7 @@ class SemanticChunker(BaseChunkingStrategy):
         if current_sentences:
             chunk = self._create_chunk(
                 current_sentences, document_id, chunk_index,
-                current_start, len(text), metadata
+                current_start, len(text), metadata,
             )
             chunks.append(chunk)
 
@@ -518,7 +515,7 @@ class SemanticChunker(BaseChunkingStrategy):
         chunk_index: int,
         start_char: int,
         end_char: int,
-        metadata: dict
+        metadata: dict,
     ) -> Chunk:
         """Create a Chunk from a list of sentences."""
         content = " ".join(sentences)
@@ -529,7 +526,7 @@ class SemanticChunker(BaseChunkingStrategy):
             start_char=start_char,
             end_char=end_char,
             token_count=self.count_tokens(content),
-            metadata=metadata.copy()
+            metadata=metadata.copy(),
         )
 
     def _split_long_sentence(
@@ -538,7 +535,7 @@ class SemanticChunker(BaseChunkingStrategy):
         start_char: int,
         document_id: UUID,
         base_index: int,
-        metadata: dict
+        metadata: dict,
     ) -> list[Chunk]:
         """Split a very long sentence that exceeds max_tokens."""
         chunks = []
@@ -560,7 +557,7 @@ class SemanticChunker(BaseChunkingStrategy):
                 start_char=char_offset,
                 end_char=char_offset + len(chunk_text),
                 token_count=len(chunk_tokens),
-                metadata=metadata.copy()
+                metadata=metadata.copy(),
             ))
 
             char_offset += len(chunk_text)
@@ -572,7 +569,7 @@ class SemanticChunker(BaseChunkingStrategy):
     def _get_overlap_sentences(
         self,
         sentences: list[str],
-        overlap_tokens: int
+        overlap_tokens: int,
     ) -> list[str]:
         """Get sentences from end that fit within overlap token budget."""
         result = []
@@ -615,7 +612,7 @@ class HierarchicalChunker(BaseChunkingStrategy):
         child_config = SemanticChunkerConfig(
             target_tokens=config.child_chunk_size,
             max_tokens=config.child_chunk_size,
-            chunk_overlap=config.child_overlap
+            chunk_overlap=config.child_overlap,
         )
         self._child_chunker = SemanticChunker(child_config)
 
@@ -627,7 +624,7 @@ class HierarchicalChunker(BaseChunkingStrategy):
         self,
         text: str,
         document_id: UUID,
-        metadata: dict | None = None
+        metadata: dict | None = None,
     ) -> list[Chunk]:
         """Create hierarchical parent-child chunks."""
         metadata = metadata or {}
@@ -644,7 +641,7 @@ class HierarchicalChunker(BaseChunkingStrategy):
             children = self._child_chunker.chunk(
                 parent.content,
                 document_id,
-                metadata
+                metadata,
             )
 
             child_ids = []
@@ -665,14 +662,14 @@ class HierarchicalChunker(BaseChunkingStrategy):
         self,
         text: str,
         document_id: UUID,
-        metadata: dict
+        metadata: dict,
     ) -> list[Chunk]:
         """Create large parent chunks."""
         parent_config = ChunkingConfig(
             target_tokens=self._config.parent_chunk_size,
             max_tokens=self._config.parent_chunk_size,
             chunk_overlap=self._config.parent_overlap,
-            min_chunk_size=self._config.child_chunk_size  # At least one child
+            min_chunk_size=self._config.child_chunk_size,  # At least one child
         )
 
         parent_splitter = RecursiveCharacterSplitter(parent_config)
@@ -722,7 +719,7 @@ class ChunkingEngine:
         document_id: UUID,
         strategy: str = "semantic_sentence",
         metadata: dict | None = None,
-        config: ChunkingConfig | None = None
+        config: ChunkingConfig | None = None,
     ) -> ChunkingResult:
         """
         Chunk text using the specified strategy.
@@ -743,7 +740,7 @@ class ChunkingEngine:
         if strategy not in self._strategies:
             available = ", ".join(self._strategies.keys())
             raise ValueError(
-                f"Unknown strategy: {strategy}. Available: {available}"
+                f"Unknown strategy: {strategy}. Available: {available}",
             )
 
         chunker = self._strategies[strategy]
@@ -759,7 +756,7 @@ class ChunkingEngine:
             chunks=chunks,
             total_chunks=len(chunks),
             strategy_used=strategy,
-            config=chunker.config.model_dump()
+            config=chunker.config.model_dump(),
         )
 
     @property

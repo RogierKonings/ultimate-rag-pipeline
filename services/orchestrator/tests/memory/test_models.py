@@ -1,9 +1,7 @@
 """Unit tests for memory models."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
-
-import pytest
 
 from memory.models import (
     ConversationSession,
@@ -12,7 +10,6 @@ from memory.models import (
     MessageRole,
     SessionStats,
 )
-
 
 # ============================================================================
 # MessageRole Tests
@@ -165,9 +162,9 @@ def test_session_with_summary():
 
 def test_session_timestamps():
     """Test session has correct timestamps."""
-    before = datetime.utcnow()
+    before = datetime.now(tz=UTC)
     session = ConversationSession()
-    after = datetime.utcnow()
+    after = datetime.now(tz=UTC)
 
     assert before <= session.created_at <= after
     assert before <= session.updated_at <= after

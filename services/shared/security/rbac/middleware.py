@@ -6,10 +6,11 @@ permissions and roles in route handlers.
 """
 
 import logging
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, Optional, Any
+from typing import Any
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 
 from .permissions import Permission
 from .roles import Role
@@ -49,7 +50,7 @@ def _get_user_from_request(request: Request) -> Any:
 
 def require_permission(
     permission: Permission | str,
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     FastAPI dependency that requires a specific permission.
@@ -80,14 +81,14 @@ def require_permission(
             raise HTTPException(
                 status_code=403,
                 detail=e.message,
-            )
+            ) from e
 
     return dependency
 
 
 def require_any_permission(
     *permissions: Permission | str,
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     FastAPI dependency that requires any one of the permissions.
@@ -121,14 +122,14 @@ def require_any_permission(
             raise HTTPException(
                 status_code=403,
                 detail=e.message,
-            )
+            ) from e
 
     return dependency
 
 
 def require_all_permissions(
     *permissions: Permission | str,
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     FastAPI dependency that requires all of the permissions.
@@ -162,14 +163,14 @@ def require_all_permissions(
             raise HTTPException(
                 status_code=403,
                 detail=e.message,
-            )
+            ) from e
 
     return dependency
 
 
 def require_role(
     role: str | Role,
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     FastAPI dependency that requires a specific role.
@@ -200,14 +201,14 @@ def require_role(
             raise HTTPException(
                 status_code=403,
                 detail=e.message,
-            )
+            ) from e
 
     return dependency
 
 
 def require_any_role(
     *roles: str | Role,
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     FastAPI dependency that requires any one of the roles.
@@ -246,7 +247,7 @@ def require_any_role(
 
 
 def require_admin(
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     Shortcut dependency that requires admin role.
@@ -275,7 +276,7 @@ def require_admin(
 
 
 def require_tenant_admin(
-    auth_service: Optional[AuthorizationService] = None,
+    auth_service: AuthorizationService | None = None,
 ) -> Callable:
     """
     Shortcut dependency that requires tenant admin or higher.
@@ -315,7 +316,7 @@ class PermissionChecker:
     def __init__(
         self,
         permission: Permission | str,
-        auth_service: Optional[AuthorizationService] = None,
+        auth_service: AuthorizationService | None = None,
         raise_on_deny: bool = True,
     ):
         """
@@ -369,7 +370,7 @@ class TenantAccessChecker:
     def __init__(
         self,
         tenant_param: str = "tenant_id",
-        auth_service: Optional[AuthorizationService] = None,
+        auth_service: AuthorizationService | None = None,
     ):
         """
         Initialize tenant access checker.
@@ -401,7 +402,7 @@ class TenantAccessChecker:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid {self.tenant_param} format",
-            )
+            ) from None
 
         try:
             self.auth_service.authorize_tenant_access(user, tenant_id)
@@ -409,12 +410,12 @@ class TenantAccessChecker:
             raise HTTPException(
                 status_code=403,
                 detail=e.message,
-            )
+            ) from e
 
 
 def authorize(
-    permission: Optional[Permission | str] = None,
-    role: Optional[str | Role] = None,
+    permission: Permission | str | None = None,
+    role: str | Role | None = None,
     check_tenant: bool = False,
     tenant_param: str = "tenant_id",
 ) -> Callable:
@@ -454,7 +455,7 @@ def authorize(
 
             if request is None:
                 raise RuntimeError(
-                    "@authorize decorator requires 'request' parameter"
+                    "@authorize decorator requires 'request' parameter",
                 )
 
             service = get_authorization_service()
@@ -465,14 +466,14 @@ def authorize(
                 try:
                     service.authorize_permission(user, permission)
                 except InsufficientPermissionsError as e:
-                    raise HTTPException(status_code=403, detail=e.message)
+                    raise HTTPException(status_code=403, detail=e.message) from e
 
             # Check role
             if role is not None:
                 try:
                     service.authorize_role(user, role)
                 except InsufficientPermissionsError as e:
-                    raise HTTPException(status_code=403, detail=e.message)
+                    raise HTTPException(status_code=403, detail=e.message) from e
 
             # Check tenant access
             if check_tenant:
@@ -484,12 +485,12 @@ def authorize(
                         tenant_id = UUID(tenant_id_str)
                         service.authorize_tenant_access(user, tenant_id)
                     except TenantMismatchError as e:
-                        raise HTTPException(status_code=403, detail=e.message)
+                        raise HTTPException(status_code=403, detail=e.message) from e
                     except ValueError:
                         raise HTTPException(
                             status_code=400,
                             detail=f"Invalid {tenant_param} format",
-                        )
+                        ) from None
 
             return await func(*args, **kwargs)
 

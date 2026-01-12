@@ -5,12 +5,21 @@ This module provides role and permission management with support for
 hierarchical roles, fine-grained permissions, and multi-tenancy.
 """
 
+from .middleware import (
+    require_admin,
+    require_all_permissions,
+    require_any_permission,
+    require_any_role,
+    require_permission,
+    require_role,
+    require_tenant_admin,
+)
 from .permissions import (
+    ROLE_PERMISSIONS,
     Permission,
     PermissionScope,
-    ROLE_PERMISSIONS,
-    get_role_permissions,
     get_all_permissions_for_roles,
+    get_role_permissions,
     has_permission,
     permission_implies,
 )
@@ -21,19 +30,10 @@ from .roles import (
     has_role_or_higher,
 )
 from .service import (
-    AuthorizationService,
     AuthorizationError,
+    AuthorizationService,
     InsufficientPermissionsError,
     TenantMismatchError,
-)
-from .middleware import (
-    require_permission,
-    require_any_permission,
-    require_all_permissions,
-    require_role,
-    require_any_role,
-    require_admin,
-    require_tenant_admin,
 )
 from .tenant import (
     TenantContext,

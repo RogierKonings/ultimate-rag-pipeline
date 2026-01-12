@@ -13,7 +13,6 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +49,9 @@ class Anomaly:
     threshold: float
     deviation: float
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    service_name: Optional[str] = None
-    model_name: Optional[str] = None
-    message: Optional[str] = None
+    service_name: str | None = None
+    model_name: str | None = None
+    message: str | None = None
     context: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -77,14 +76,12 @@ class BaseAnomalyDetector(ABC):
     """Base class for anomaly detectors."""
 
     @abstractmethod
-    def add_value(self, value: float) -> Optional[Anomaly]:
+    def add_value(self, value: float) -> Anomaly | None:
         """Add a new value and check for anomalies."""
-        pass
 
     @abstractmethod
     def reset(self) -> None:
         """Reset the detector state."""
-        pass
 
 
 class ZScoreDetector(BaseAnomalyDetector):
@@ -101,8 +98,8 @@ class ZScoreDetector(BaseAnomalyDetector):
         warning_threshold: float = 2.0,
         critical_threshold: float = 3.0,
         min_samples: int = 10,
-        service_name: Optional[str] = None,
-        model_name: Optional[str] = None,
+        service_name: str | None = None,
+        model_name: str | None = None,
         anomaly_type: AnomalyType = AnomalyType.LATENCY_SPIKE,
     ):
         """
@@ -131,7 +128,7 @@ class ZScoreDetector(BaseAnomalyDetector):
         self._sum = 0.0
         self._sum_sq = 0.0
 
-    def add_value(self, value: float) -> Optional[Anomaly]:
+    def add_value(self, value: float) -> Anomaly | None:
         """
         Add a value and check for anomalies.
 
@@ -216,8 +213,8 @@ class RateDetector(BaseAnomalyDetector):
         warning_threshold: float = 0.1,  # 10% error rate
         critical_threshold: float = 0.25,  # 25% error rate
         min_events: int = 10,
-        service_name: Optional[str] = None,
-        model_name: Optional[str] = None,
+        service_name: str | None = None,
+        model_name: str | None = None,
         anomaly_type: AnomalyType = AnomalyType.ERROR_RATE_SPIKE,
     ):
         """
@@ -244,7 +241,7 @@ class RateDetector(BaseAnomalyDetector):
 
         self._events: deque[tuple[float, float]] = deque()  # (timestamp, value)
 
-    def add_value(self, value: float) -> Optional[Anomaly]:
+    def add_value(self, value: float) -> Anomaly | None:
         """
         Add a value (0 for success, 1 for error/event).
 
@@ -318,9 +315,9 @@ class TrendDetector(BaseAnomalyDetector):
         window_size: int = 30,
         trend_threshold: float = 0.8,  # 80% of values increasing
         min_samples: int = 10,
-        absolute_threshold: Optional[float] = None,
-        service_name: Optional[str] = None,
-        model_name: Optional[str] = None,
+        absolute_threshold: float | None = None,
+        service_name: str | None = None,
+        model_name: str | None = None,
         anomaly_type: AnomalyType = AnomalyType.MEMORY_LEAK,
     ):
         """
@@ -347,7 +344,7 @@ class TrendDetector(BaseAnomalyDetector):
 
         self._values: deque[float] = deque(maxlen=window_size)
 
-    def add_value(self, value: float) -> Optional[Anomaly]:
+    def add_value(self, value: float) -> Anomaly | None:
         """
         Add a value and check for trends.
 
@@ -436,8 +433,8 @@ class ThresholdDetector(BaseAnomalyDetector):
         warning_threshold: float,
         critical_threshold: float,
         direction: str = "above",  # "above" or "below"
-        service_name: Optional[str] = None,
-        model_name: Optional[str] = None,
+        service_name: str | None = None,
+        model_name: str | None = None,
         anomaly_type: AnomalyType = AnomalyType.GPU_THERMAL,
     ):
         """
@@ -460,7 +457,7 @@ class ThresholdDetector(BaseAnomalyDetector):
         self.model_name = model_name
         self.anomaly_type = anomaly_type
 
-    def add_value(self, value: float) -> Optional[Anomaly]:
+    def add_value(self, value: float) -> Anomaly | None:
         """
         Check value against thresholds.
 
@@ -511,7 +508,6 @@ class ThresholdDetector(BaseAnomalyDetector):
 
     def reset(self) -> None:
         """Reset detector state (no-op for threshold detector)."""
-        pass
 
 
 class AnomalyDetectorManager:
@@ -524,8 +520,8 @@ class AnomalyDetectorManager:
     def __init__(
         self,
         service_name: str,
-        model_name: Optional[str] = None,
-        on_anomaly: Optional[callable] = None,
+        model_name: str | None = None,
+        on_anomaly: callable | None = None,
     ):
         """
         Initialize detector manager.
@@ -633,7 +629,7 @@ class AnomalyDetectorManager:
         if name in self._detectors:
             del self._detectors[name]
 
-    def check(self, metric_name: str, value: float) -> Optional[Anomaly]:
+    def check(self, metric_name: str, value: float) -> Anomaly | None:
         """
         Check a metric value for anomalies.
 
@@ -652,7 +648,7 @@ class AnomalyDetectorManager:
         if anomaly:
             self._recent_anomalies.append(anomaly)
             logger.warning(
-                f"Anomaly detected: {anomaly.type.value} - {anomaly.message}"
+                f"Anomaly detected: {anomaly.type.value} - {anomaly.message}",
             )
 
             if self.on_anomaly:
@@ -666,7 +662,7 @@ class AnomalyDetectorManager:
     def get_recent_anomalies(
         self,
         limit: int = 10,
-        severity: Optional[AnomalySeverity] = None,
+        severity: AnomalySeverity | None = None,
     ) -> list[Anomaly]:
         """
         Get recent anomalies.

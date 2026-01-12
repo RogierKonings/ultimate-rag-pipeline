@@ -6,7 +6,6 @@ number of small updates.
 """
 
 import time
-from typing import Optional
 
 
 class TokenBuffer:
@@ -57,9 +56,9 @@ class TokenBuffer:
 
         self._buffer: str = ""
         self._token_count: int = 0
-        self._first_token_time: Optional[float] = None
+        self._first_token_time: float | None = None
 
-    def add(self, token: str) -> Optional[str]:
+    def add(self, token: str) -> str | None:
         """Add a token to the buffer.
 
         If the buffer reaches the minimum token count or max wait time,
@@ -121,7 +120,7 @@ class TokenBuffer:
         self._first_token_time = None
         return content
 
-    def flush(self) -> Optional[str]:
+    def flush(self) -> str | None:
         """Force flush any remaining buffered content.
 
         This should be called at the end of streaming to ensure

@@ -7,8 +7,6 @@ Tests Prometheus metrics and MetricsCollector.
 import time
 
 import pytest
-from prometheus_client import REGISTRY
-
 from monitoring.metrics import (
     BATCH_SIZE,
     CACHE_HITS,
@@ -32,7 +30,7 @@ def reset_metrics():
     """Reset metrics before each test."""
     # Note: In a real test suite, you might want to create a fresh registry
     # For now, we'll work with the default registry
-    yield
+    return
 
 
 class TestMetricsCollector:
@@ -164,9 +162,8 @@ class TestMetricsCollector:
 
     def test_track_request_context_manager_error(self, collector):
         """Test track_request context manager on error."""
-        with pytest.raises(ValueError):
-            with collector.track_request("/generate"):
-                raise ValueError("Test error")
+        with pytest.raises(ValueError), collector.track_request("/generate"):
+            raise ValueError("Test error")
 
         # Should record error
 

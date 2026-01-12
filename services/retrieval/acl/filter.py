@@ -5,7 +5,7 @@ filter clauses for both Qdrant and OpenSearch that restrict results
 to documents the user is authorized to see.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from qdrant_client.models import (
     FieldCondition,
@@ -34,7 +34,7 @@ class ACLFilter:
     3. User must not be in denied_groups or denied_users
     """
 
-    def __init__(self, config: Optional[ACLFilterConfig] = None):
+    def __init__(self, config: ACLFilterConfig | None = None):
         """Initialize ACL filter.
 
         Args:
@@ -45,7 +45,7 @@ class ACLFilter:
     def build_filter(
         self,
         user_context: UserContext,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build filter dict for Qdrant/OpenSearch.
 
@@ -105,44 +105,44 @@ class ACLFilter:
             or user.tenant_id != self.config.super_tenant_id
         ):
             must_clauses.append(
-                {"key": "tenant_id", "match": {"value": str(user.tenant_id)}}
+                {"key": "tenant_id", "match": {"value": str(user.tenant_id)}},
             )
 
         # Visibility options (document must match at least one)
         # 1. Public documents
         should_clauses.append(
-            {"key": "visibility", "match": {"value": Visibility.PUBLIC.value}}
+            {"key": "visibility", "match": {"value": Visibility.PUBLIC.value}},
         )
 
         # 2. Tenant-wide documents (same tenant)
         should_clauses.append(
-            {"key": "visibility", "match": {"value": Visibility.TENANT.value}}
+            {"key": "visibility", "match": {"value": Visibility.TENANT.value}},
         )
 
         # 3. Documents allowed for user's groups
         if user.groups:
             should_clauses.append(
-                {"key": "allowed_groups", "match": {"any": user.groups}}
+                {"key": "allowed_groups", "match": {"any": user.groups}},
             )
 
         # 4. Documents explicitly allowed for this user
         should_clauses.append(
-            {"key": "allowed_users", "match": {"any": [str(user.user_id)]}}
+            {"key": "allowed_users", "match": {"any": [str(user.user_id)]}},
         )
 
         # 5. Documents owned by this user (owner always has access)
         should_clauses.append(
-            {"key": "owner_id", "match": {"value": str(user.user_id)}}
+            {"key": "owner_id", "match": {"value": str(user.user_id)}},
         )
 
         # Denied access (must not match any)
         if user.groups:
             must_not_clauses.append(
-                {"key": "denied_groups", "match": {"any": user.groups}}
+                {"key": "denied_groups", "match": {"any": user.groups}},
             )
 
         must_not_clauses.append(
-            {"key": "denied_users", "match": {"any": [str(user.user_id)]}}
+            {"key": "denied_users", "match": {"any": [str(user.user_id)]}},
         )
 
         result: dict[str, Any] = {}
@@ -158,7 +158,7 @@ class ACLFilter:
     def _merge_filters(
         self,
         acl_filter: dict[str, Any],
-        additional_filters: Optional[dict[str, Any]],
+        additional_filters: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Merge ACL filters with additional filters.
 
@@ -194,8 +194,8 @@ class ACLFilter:
     def build_qdrant_filter(
         self,
         user_context: UserContext,
-        additional_filters: Optional[dict[str, Any]] = None,
-    ) -> Optional[Filter]:
+        additional_filters: dict[str, Any] | None = None,
+    ) -> Filter | None:
         """Build Qdrant-specific Filter object.
 
         Converts the unified filter format to Qdrant Filter.
@@ -223,10 +223,9 @@ class ACLFilter:
 
             if "value" in match:
                 return FieldCondition(key=key, match=MatchValue(value=match["value"]))
-            elif "any" in match:
+            if "any" in match:
                 return FieldCondition(key=key, match=MatchAny(any=match["any"]))
-            else:
-                raise ValueError(f"Unknown match type in clause: {clause}")
+            raise ValueError(f"Unknown match type in clause: {clause}")
 
         for clause in unified.get("must", []):
             must_conditions.append(build_condition(clause))
@@ -246,7 +245,7 @@ class ACLFilter:
     def build_opensearch_filter(
         self,
         user_context: UserContext,
-        additional_filters: Optional[dict[str, Any]] = None,
+        additional_filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Build OpenSearch filter clauses.
 
@@ -273,10 +272,9 @@ class ACLFilter:
 
             if "value" in match:
                 return {"term": {key: match["value"]}}
-            elif "any" in match:
+            if "any" in match:
                 return {"terms": {key: match["any"]}}
-            else:
-                raise ValueError(f"Unknown match type in condition: {condition}")
+            raise ValueError(f"Unknown match type in condition: {condition}")
 
         # Must clauses
         for condition in unified.get("must", []):
@@ -286,7 +284,7 @@ class ACLFilter:
         if unified.get("should"):
             should_clauses = [build_clause(c) for c in unified["should"]]
             clauses.append(
-                {"bool": {"should": should_clauses, "minimum_should_match": 1}}
+                {"bool": {"should": should_clauses, "minimum_should_match": 1}},
             )
 
         # Must not clauses
@@ -316,5 +314,5 @@ class AnonymousAccessFilter(ACLFilter):
             "must": [
                 {"key": "tenant_id", "match": {"value": str(user.tenant_id)}},
                 {"key": "visibility", "match": {"value": Visibility.PUBLIC.value}},
-            ]
+            ],
         }

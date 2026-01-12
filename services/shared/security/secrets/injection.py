@@ -6,9 +6,9 @@ secrets into request handlers.
 """
 
 import logging
-from typing import Any, Callable, Optional
+from collections.abc import Callable
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException
 
 from .config import SecretsSettings
 from .service import SecretsService, get_secrets_service
@@ -49,8 +49,8 @@ class SecretsInjector:
 
     def __init__(
         self,
-        settings: Optional[SecretsSettings] = None,
-        service: Optional[SecretsService] = None,
+        settings: SecretsSettings | None = None,
+        service: SecretsService | None = None,
     ):
         """
         Initialize secrets injector.
@@ -72,7 +72,7 @@ class SecretsInjector:
         self,
         key: str,
         required: bool = True,
-        default: Optional[str] = None,
+        default: str | None = None,
     ) -> Callable:
         """
         Create a dependency for getting a specific secret.
@@ -86,7 +86,7 @@ class SecretsInjector:
             FastAPI dependency function.
         """
 
-        async def dependency() -> Optional[str]:
+        async def dependency() -> str | None:
             service = self._get_service()
             value = await service.get_secret(key, default)
 
@@ -111,7 +111,7 @@ class SecretsInjector:
             raise HTTPException(
                 status_code=500,
                 detail="Database configuration error",
-            )
+            ) from e
 
     async def get_redis_url(self) -> str:
         """FastAPI dependency for Redis URL."""
@@ -123,7 +123,7 @@ class SecretsInjector:
             raise HTTPException(
                 status_code=500,
                 detail="Redis configuration error",
-            )
+            ) from e
 
     async def get_jwt_secret(self) -> str:
         """FastAPI dependency for JWT secret."""
@@ -135,7 +135,7 @@ class SecretsInjector:
             raise HTTPException(
                 status_code=500,
                 detail="JWT configuration error",
-            )
+            ) from e
 
     async def get_encryption_key(self) -> bytes:
         """FastAPI dependency for encryption key."""
@@ -147,7 +147,7 @@ class SecretsInjector:
             raise HTTPException(
                 status_code=500,
                 detail="Encryption configuration error",
-            )
+            ) from e
 
     def get_api_key(self, service_name: str, required: bool = True) -> Callable:
         """
@@ -161,7 +161,7 @@ class SecretsInjector:
             FastAPI dependency function.
         """
 
-        async def dependency() -> Optional[str]:
+        async def dependency() -> str | None:
             service = self._get_service()
             try:
                 return await service.get_api_key(service_name)
@@ -171,18 +171,18 @@ class SecretsInjector:
                     raise HTTPException(
                         status_code=500,
                         detail=f"API key configuration error for {service_name}",
-                    )
+                    ) from e
                 return None
 
         return dependency
 
 
 # Global injector instance
-_injector: Optional[SecretsInjector] = None
+_injector: SecretsInjector | None = None
 
 
 def get_secrets_injector(
-    settings: Optional[SecretsSettings] = None,
+    settings: SecretsSettings | None = None,
 ) -> SecretsInjector:
     """
     Get or create global secrets injector.
@@ -243,7 +243,7 @@ def require_secret(key: str) -> Callable:
     return injector.get_secret(key, required=True)
 
 
-def optional_secret(key: str, default: Optional[str] = None) -> Callable:
+def optional_secret(key: str, default: str | None = None) -> Callable:
     """
     Create a dependency for an optional secret.
 

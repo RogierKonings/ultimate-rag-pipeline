@@ -1,7 +1,6 @@
 """Pydantic models for query routing."""
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,17 +27,17 @@ class RoutingResult(BaseModel):
     """Result of query routing decision."""
 
     strategy: RoutingStrategy = Field(
-        ..., description="The routing strategy to use for this query"
+        ..., description="The routing strategy to use for this query",
     )
     intent: QueryIntent = Field(..., description="The classified intent of the query")
     confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence score (0.0 - 1.0)"
+        ..., ge=0.0, le=1.0, description="Confidence score (0.0 - 1.0)",
     )
     complexity_score: float = Field(
-        ..., ge=0.0, le=1.0, description="Query complexity score (0.0 - 1.0)"
+        ..., ge=0.0, le=1.0, description="Query complexity score (0.0 - 1.0)",
     )
-    reasoning: Optional[str] = Field(
-        default=None, description="Optional explanation for routing decision"
+    reasoning: str | None = Field(
+        default=None, description="Optional explanation for routing decision",
     )
 
 
@@ -63,10 +62,10 @@ class RoutingConfig(BaseModel):
 
     # Feature weights for complexity scoring
     clause_weight: float = Field(
-        default=0.3, ge=0.0, le=1.0, description="Weight for clause count in complexity"
+        default=0.3, ge=0.0, le=1.0, description="Weight for clause count in complexity",
     )
     length_weight: float = Field(
-        default=0.2, ge=0.0, le=1.0, description="Weight for query length in complexity"
+        default=0.2, ge=0.0, le=1.0, description="Weight for query length in complexity",
     )
     modifier_weight: float = Field(
         default=0.3,
@@ -83,5 +82,5 @@ class RoutingConfig(BaseModel):
 
     # Query length normalization
     max_query_length: int = Field(
-        default=500, gt=0, description="Query length for maximum length complexity score"
+        default=500, gt=0, description="Query length for maximum length complexity score",
     )

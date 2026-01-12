@@ -6,7 +6,7 @@ following the OpenAI API format for compatibility with vLLM and other providers.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -32,7 +32,7 @@ class ChatMessage(BaseModel):
 
     role: Literal["system", "user", "assistant", "function"]
     content: str
-    name: Optional[str] = None
+    name: str | None = None
 
     def __str__(self) -> str:
         """Return a string representation of the message."""
@@ -62,8 +62,8 @@ class ChatCompletionRequest(BaseModel):
     # Generation parameters
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
-    max_tokens: Optional[int] = None
-    stop: Optional[list[str]] = None
+    max_tokens: int | None = None
+    stop: list[str] | None = None
 
     # Streaming
     stream: bool = False
@@ -74,7 +74,7 @@ class ChatCompletionRequest(BaseModel):
 
     # Request metadata
     request_id: UUID = Field(default_factory=uuid4)
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
     @field_validator("messages")
     @classmethod
@@ -96,7 +96,7 @@ class ChatChoice(BaseModel):
 
     index: int
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length", "content_filter"]] = None
+    finish_reason: Literal["stop", "length", "content_filter"] | None = None
 
 
 class UsageStats(BaseModel):
@@ -135,8 +135,8 @@ class ChatCompletionResponse(BaseModel):
     usage: UsageStats
 
     # Extended metadata
-    request_id: Optional[UUID] = None
-    latency_ms: Optional[float] = None
+    request_id: UUID | None = None
+    latency_ms: float | None = None
 
 
 class StreamDelta(BaseModel):
@@ -147,8 +147,8 @@ class StreamDelta(BaseModel):
         content: Incremental content.
     """
 
-    role: Optional[str] = None
-    content: Optional[str] = None
+    role: str | None = None
+    content: str | None = None
 
 
 class StreamChoice(BaseModel):
@@ -162,7 +162,7 @@ class StreamChoice(BaseModel):
 
     index: int
     delta: StreamDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class StreamChunk(BaseModel):
@@ -206,7 +206,7 @@ class ModelConfig(BaseModel):
     name: str
     provider: ModelProvider = ModelProvider.VLLM
     base_url: str = "http://localhost:8000/v1"
-    api_key: Optional[str] = None
+    api_key: str | None = None
 
     # Model capabilities
     max_tokens: int = 8192
@@ -221,8 +221,8 @@ class ModelConfig(BaseModel):
     retry_max_delay: float = 30.0
 
     # Rate limiting
-    requests_per_minute: Optional[int] = None
-    tokens_per_minute: Optional[int] = None
+    requests_per_minute: int | None = None
+    tokens_per_minute: int | None = None
 
 
 class GatewayConfig(BaseModel):
@@ -253,7 +253,7 @@ class GatewayConfig(BaseModel):
     enable_retries: bool = True
 
     # Fallback behavior
-    fallback_model: Optional[str] = None
+    fallback_model: str | None = None
     fallback_on_rate_limit: bool = True
     fallback_on_timeout: bool = True
 
@@ -281,13 +281,13 @@ class UsageRecord(BaseModel):
     timestamp: datetime
     request_id: UUID
     model: str
-    user_id: Optional[str]
+    user_id: str | None
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
     latency_ms: float
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class HealthStatus(BaseModel):
@@ -300,5 +300,5 @@ class HealthStatus(BaseModel):
     """
 
     status: Literal["healthy", "unhealthy", "error"]
-    latency_ms: Optional[float] = None
-    message: Optional[str] = None
+    latency_ms: float | None = None
+    message: str | None = None

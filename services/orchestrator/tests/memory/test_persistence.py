@@ -1,15 +1,13 @@
 """Unit tests for PostgresConversationStore."""
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from memory.models import ConversationSession, Message, MessageRole
 from memory.persistence import PostgresConversationStore
-
 
 # ============================================================================
 # Fixtures
@@ -320,7 +318,7 @@ async def test_load_conversation(postgres_store, mock_connection):
     session_id = uuid4()
     user_id = uuid4()
     tenant_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
 
     # Mock conversation row
     conv_row = {
@@ -393,7 +391,7 @@ async def test_load_conversation_not_found(postgres_store, mock_connection):
 async def test_load_conversation_with_null_metadata(postgres_store, mock_connection):
     """Test loading conversation with null metadata."""
     session_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
 
     conv_row = {
         "id": session_id,
@@ -419,7 +417,7 @@ async def test_load_conversation_with_null_metadata(postgres_store, mock_connect
 async def test_load_conversation_messages_ordered(postgres_store, mock_connection):
     """Test that messages are loaded in chronological order."""
     session_id = uuid4()
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
 
     conv_row = {
         "id": session_id,
@@ -508,7 +506,7 @@ async def test_delete_conversation_cascade(postgres_store, mock_connection):
 @pytest.mark.asyncio
 async def test_list_conversations(postgres_store, mock_connection):
     """Test listing conversations."""
-    now = datetime.utcnow()
+    now = datetime.now(tz=UTC)
 
     rows = [
         {

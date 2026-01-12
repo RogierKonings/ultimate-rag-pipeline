@@ -5,7 +5,8 @@ This module provides middleware and dependencies for JWT authentication
 in FastAPI applications.
 """
 
-from typing import Annotated, Callable, Optional
+from collections.abc import Callable
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -20,7 +21,6 @@ from .handler import (
     TokenRevokedError,
 )
 from .models import TokenClaims, TokenType
-
 
 # HTTP Bearer scheme for OpenAPI documentation
 oauth2_scheme = HTTPBearer(auto_error=False)
@@ -51,10 +51,10 @@ class JWTAuthMiddleware:
 
     def __init__(
         self,
-        settings: Optional[JWTSettings] = None,
-        handler: Optional[JWTHandler] = None,
-        blocklist: Optional[TokenBlocklist] = None,
-        excluded_paths: Optional[list[str]] = None,
+        settings: JWTSettings | None = None,
+        handler: JWTHandler | None = None,
+        blocklist: TokenBlocklist | None = None,
+        excluded_paths: list[str] | None = None,
     ):
         """
         Initialize JWT authentication middleware.
@@ -89,7 +89,7 @@ class JWTAuthMiddleware:
             for excluded in self.excluded_paths
         )
 
-    def _extract_token(self, request: Request) -> Optional[str]:
+    def _extract_token(self, request: Request) -> str | None:
         """
         Extract JWT token from request.
 
@@ -127,7 +127,7 @@ class JWTAuthMiddleware:
         self,
         request: Request,
         credentials: Annotated[
-            Optional[HTTPAuthorizationCredentials], Depends(oauth2_scheme)
+            HTTPAuthorizationCredentials | None, Depends(oauth2_scheme),
         ] = None,
     ) -> TokenClaims:
         """
@@ -145,10 +145,7 @@ class JWTAuthMiddleware:
         """
         # Try to get token from various sources
         token = None
-        if credentials:
-            token = credentials.credentials
-        else:
-            token = self._extract_token(request)
+        token = credentials.credentials if credentials else self._extract_token(request)
 
         if not token:
             raise HTTPException(
@@ -171,33 +168,33 @@ class JWTAuthMiddleware:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired",
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            ) from None
         except TokenRevokedError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked",
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            ) from None
         except TokenInvalidError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=str(e),
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            ) from e
         except JWTError as e:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Authentication error: {e}",
                 headers={"WWW-Authenticate": "Bearer"},
-            )
+            ) from e
 
     async def get_current_user_optional(
         self,
         request: Request,
         credentials: Annotated[
-            Optional[HTTPAuthorizationCredentials], Depends(oauth2_scheme)
+            HTTPAuthorizationCredentials | None, Depends(oauth2_scheme),
         ] = None,
-    ) -> Optional[TokenClaims]:
+    ) -> TokenClaims | None:
         """
         FastAPI dependency to get the current user if authenticated.
 
@@ -212,10 +209,7 @@ class JWTAuthMiddleware:
             Token claims or None
         """
         token = None
-        if credentials:
-            token = credentials.credentials
-        else:
-            token = self._extract_token(request)
+        token = credentials.credentials if credentials else self._extract_token(request)
 
         if not token:
             return None
@@ -331,8 +325,8 @@ def require_tenant(tenant_id_param: str = "tenant_id") -> Callable:
 
 
 def create_auth_dependencies(
-    settings: Optional[JWTSettings] = None,
-    blocklist: Optional[TokenBlocklist] = None,
+    settings: JWTSettings | None = None,
+    blocklist: TokenBlocklist | None = None,
 ) -> tuple:
     """
     Create authentication dependencies for FastAPI.
@@ -369,5 +363,5 @@ def create_auth_dependencies(
 # Convenience type aliases for dependency injection
 CurrentUser = Annotated[TokenClaims, Depends(JWTAuthMiddleware().get_current_user)]
 OptionalUser = Annotated[
-    Optional[TokenClaims], Depends(JWTAuthMiddleware().get_current_user_optional)
+    TokenClaims | None, Depends(JWTAuthMiddleware().get_current_user_optional),
 ]

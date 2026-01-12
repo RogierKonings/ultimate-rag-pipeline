@@ -1,7 +1,7 @@
 """Qdrant Vector Store client wrapper for document embeddings."""
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -17,8 +17,8 @@ class QdrantVectorStore:
 
     def __init__(
         self,
-        url: Optional[str] = None,
-        collection_name: Optional[str] = None,
+        url: str | None = None,
+        collection_name: str | None = None,
         timeout: int = 30,
     ):
         """Initialize Qdrant client.
@@ -33,12 +33,12 @@ class QdrantVectorStore:
             timeout=timeout,
         )
         self.collection_name = collection_name or os.getenv(
-            "QDRANT_COLLECTION", "documents"
+            "QDRANT_COLLECTION", "documents",
         )
 
     async def upsert(
         self,
-        points: List[Dict[str, Any]],
+        points: list[dict[str, Any]],
     ) -> None:
         """Upsert vectors with metadata.
 
@@ -60,11 +60,11 @@ class QdrantVectorStore:
 
     async def search(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         top_k: int = 10,
-        filter_conditions: Optional[Dict[str, Any]] = None,
-        score_threshold: Optional[float] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_conditions: dict[str, Any] | None = None,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for similar vectors.
 
         Args:
@@ -109,13 +109,13 @@ class QdrantVectorStore:
             points_selector=Filter(
                 must=[
                     FieldCondition(
-                        key="document_id", match=MatchValue(value=document_id)
-                    )
-                ]
+                        key="document_id", match=MatchValue(value=document_id),
+                    ),
+                ],
             ),
         )
 
-    async def delete_by_ids(self, point_ids: List[str]) -> None:
+    async def delete_by_ids(self, point_ids: list[str]) -> None:
         """Delete vectors by their IDs.
 
         Args:
@@ -126,7 +126,7 @@ class QdrantVectorStore:
             points_selector=point_ids,
         )
 
-    def _build_filter(self, conditions: Dict[str, Any]) -> Filter:
+    def _build_filter(self, conditions: dict[str, Any]) -> Filter:
         """Build Qdrant filter from conditions dict.
 
         Args:
@@ -156,7 +156,7 @@ class QdrantVectorStore:
         except Exception:
             return False
 
-    def get_collection_info(self) -> Optional[Dict[str, Any]]:
+    def get_collection_info(self) -> dict[str, Any] | None:
         """Get information about the current collection.
 
         Returns:

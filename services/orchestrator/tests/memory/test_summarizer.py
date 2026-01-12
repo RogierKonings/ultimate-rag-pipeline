@@ -1,13 +1,10 @@
 """Unit tests for HistorySummarizer."""
 
 from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
 
 import pytest
-
 from memory.models import MemoryConfig, Message, MessageRole
 from memory.summarizer import HistorySummarizer
-
 
 # ============================================================================
 # Fixtures
@@ -124,7 +121,7 @@ async def test_summarizer_with_gateway(memory_config, sample_messages):
     """Test LLM-based summarization."""
     gateway = AsyncMock()
     gateway.chat_completion.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="Summary of discussion."))]
+        choices=[MagicMock(message=MagicMock(content="Summary of discussion."))],
     )
 
     summarizer = HistorySummarizer(memory_config, gateway)
@@ -140,7 +137,7 @@ async def test_summarizer_with_existing_summary(memory_config, sample_messages):
     """Test summarization with existing summary."""
     gateway = AsyncMock()
     gateway.chat_completion.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="Updated summary."))]
+        choices=[MagicMock(message=MagicMock(content="Updated summary."))],
     )
 
     summarizer = HistorySummarizer(memory_config, gateway)

@@ -1,10 +1,8 @@
 """Tests for document management API routes."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from services.documents import DeleteResult, DocumentListResult
+from services.documents import DocumentListResult
 
 
 class TestListDocuments:
@@ -16,7 +14,7 @@ class TestListDocuments:
         assert response.status_code == 401
 
     def test_list_documents_success(
-        self, client, auth_headers, mock_document_service, sample_document_response
+        self, client, auth_headers, mock_document_service, sample_document_response,
     ):
         """Returns paginated document list."""
         mock_document_service.list_documents.return_value = DocumentListResult(

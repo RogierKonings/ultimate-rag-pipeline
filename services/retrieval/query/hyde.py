@@ -4,7 +4,6 @@ This module provides HyDE and multi-query generation for improved
 retrieval quality on complex or ambiguous queries.
 """
 
-from typing import Optional
 
 import httpx
 from tenacity import (
@@ -81,9 +80,8 @@ class HyDEGenerator:
         response.raise_for_status()
 
         data = response.json()
-        hypothetical_doc = data["choices"][0]["text"].strip()
+        return data["choices"][0]["text"].strip()
 
-        return hypothetical_doc
 
     def _build_prompt(self, query: str) -> str:
         """Build prompt for hypothetical document generation.

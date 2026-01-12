@@ -9,7 +9,6 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 import httpx
 from jose import JWTError, jwt
@@ -23,14 +22,14 @@ class AuthConfig(BaseModel):
     """Authentication configuration."""
 
     # JWT settings
-    jwt_secret: Optional[str] = None  # For HS256
-    jwt_public_key: Optional[str] = None  # For RS256
+    jwt_secret: str | None = None  # For HS256
+    jwt_public_key: str | None = None  # For RS256
     jwt_algorithm: str = "RS256"
-    jwt_issuer: Optional[str] = None
-    jwt_audience: Optional[str] = None
+    jwt_issuer: str | None = None
+    jwt_audience: str | None = None
 
     # JWKS settings (for RS256 with key rotation)
-    jwks_url: Optional[str] = None
+    jwks_url: str | None = None
     jwks_cache_ttl: int = 3600  # seconds
 
     # API key settings (alternative auth)
@@ -74,7 +73,7 @@ class AuthContext:
 class JWTAuth:
     """JWT authentication handler."""
 
-    def __init__(self, config: Optional[AuthConfig] = None):
+    def __init__(self, config: AuthConfig | None = None):
         """
         Initialize JWT auth handler.
 
@@ -82,7 +81,7 @@ class JWTAuth:
             config: Authentication configuration
         """
         self.config = config or AuthConfig()
-        self._jwks_cache: Optional[dict] = None
+        self._jwks_cache: dict | None = None
         self._jwks_cache_time: float = 0
 
     @classmethod
@@ -115,7 +114,7 @@ class JWTAuth:
 
         return cls(config)
 
-    async def _fetch_jwks(self) -> Optional[dict]:
+    async def _fetch_jwks(self) -> dict | None:
         """Fetch JWKS from configured URL."""
         if not self.config.jwks_url:
             return None
@@ -138,15 +137,15 @@ class JWTAuth:
             logger.error(f"Failed to fetch JWKS: {e}")
             return self._jwks_cache  # Return stale cache if available
 
-    def _get_signing_key(self, token: str) -> Optional[str]:
+    def _get_signing_key(self, token: str) -> str | None:
         """Get the signing key for token verification."""
         if self.config.jwt_algorithm.startswith("HS"):
             return self.config.jwt_secret
-        elif self.config.jwt_public_key:
+        if self.config.jwt_public_key:
             return self.config.jwt_public_key
         return None
 
-    async def validate_token(self, token: str) -> Optional[AuthContext]:
+    async def validate_token(self, token: str) -> AuthContext | None:
         """
         Validate a JWT token.
 
@@ -215,7 +214,7 @@ class JWTAuth:
             logger.error(f"Unexpected error validating JWT: {e}")
             return None
 
-    def validate_api_key(self, api_key: str) -> Optional[AuthContext]:
+    def validate_api_key(self, api_key: str) -> AuthContext | None:
         """
         Validate an API key.
 
@@ -241,9 +240,9 @@ class JWTAuth:
 
     async def authenticate(
         self,
-        authorization: Optional[str] = None,
-        api_key: Optional[str] = None,
-    ) -> Optional[AuthContext]:
+        authorization: str | None = None,
+        api_key: str | None = None,
+    ) -> AuthContext | None:
         """
         Authenticate a request using JWT or API key.
 
@@ -278,7 +277,7 @@ class JWTAuth:
 
 
 # Global auth instance
-_jwt_auth: Optional[JWTAuth] = None
+_jwt_auth: JWTAuth | None = None
 
 
 def get_auth_context() -> JWTAuth:

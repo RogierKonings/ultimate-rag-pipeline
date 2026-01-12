@@ -5,14 +5,13 @@ This module tests ACL models, service, and filter generation
 for document-level access control.
 """
 
-from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
 
 from services.shared.security.acl import (
-    ACLService,
     AccessDeniedError,
+    ACLService,
     ACLUpdateRequest,
     BulkACLUpdateRequest,
     DocumentACL,
@@ -23,7 +22,6 @@ from services.shared.security.acl import (
     Visibility,
     build_chunk_acl_payload,
 )
-
 
 # Test data
 OWNER_ID = uuid4()

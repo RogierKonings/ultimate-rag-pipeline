@@ -1,6 +1,5 @@
 """Guardrail pipeline combining input and output guardrails."""
 
-from typing import Optional
 
 from .input import InputGuardrail
 from .models import GuardrailConfig, GuardrailResult
@@ -14,7 +13,7 @@ class GuardrailPipeline:
     through their respective guardrails.
     """
 
-    def __init__(self, config: Optional[GuardrailConfig] = None):
+    def __init__(self, config: GuardrailConfig | None = None):
         """Initialize the guardrail pipeline.
 
         Args:

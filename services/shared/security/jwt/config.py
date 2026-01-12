@@ -6,7 +6,6 @@ including algorithm selection, token expiration, and IdP integration.
 """
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
@@ -42,12 +41,12 @@ class JWTSettings(BaseSettings):
     """
 
     # Key configuration
-    secret_key: Optional[str] = Field(
+    secret_key: str | None = Field(
         default=None,
         description="Secret key for HMAC or path/content of RSA private key",
         alias="JWT_SECRET_KEY",
     )
-    public_key: Optional[str] = Field(
+    public_key: str | None = Field(
         default=None,
         description="Path or content of RSA public key for RS256",
         alias="JWT_PUBLIC_KEY",
@@ -89,12 +88,12 @@ class JWTSettings(BaseSettings):
     )
 
     # External IdP integration (optional)
-    jwks_url: Optional[str] = Field(
+    jwks_url: str | None = Field(
         default=None,
         description="URL to external IdP JWKS endpoint for token validation",
         alias="JWT_JWKS_URL",
     )
-    idp_issuer: Optional[str] = Field(
+    idp_issuer: str | None = Field(
         default=None,
         description="Expected issuer from external IdP",
         alias="JWT_IDP_ISSUER",
@@ -148,7 +147,7 @@ class JWTSettings(BaseSettings):
             return JWTAlgorithm(v.upper())
         except ValueError:
             valid = [alg.value for alg in JWTAlgorithm]
-            raise ValueError(f"Invalid algorithm '{v}'. Must be one of: {valid}")
+            raise ValueError(f"Invalid algorithm '{v}'. Must be one of: {valid}") from None
 
     @property
     def is_asymmetric(self) -> bool:
@@ -171,10 +170,10 @@ class JWTSettings(BaseSettings):
             if not self.secret_key and not self.public_key:
                 raise ValueError(
                     f"Algorithm {self.algorithm.value} requires RSA keys. "
-                    "Set JWT_SECRET_KEY (private) and/or JWT_PUBLIC_KEY (public)."
+                    "Set JWT_SECRET_KEY (private) and/or JWT_PUBLIC_KEY (public).",
                 )
         else:
             if not self.secret_key:
                 raise ValueError(
-                    f"Algorithm {self.algorithm.value} requires JWT_SECRET_KEY."
+                    f"Algorithm {self.algorithm.value} requires JWT_SECRET_KEY.",
                 )

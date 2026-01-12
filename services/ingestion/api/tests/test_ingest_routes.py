@@ -1,7 +1,6 @@
 """Tests for ingestion API routes."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from tasks.models import IngestJobResult, JobProgress, JobStatus

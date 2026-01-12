@@ -12,17 +12,17 @@ This module serves as the single source of truth for RAG metrics semantics.
 """
 
 from .base import (
+    METRIC_CATALOG,
+    Label,
     MetricDefinition,
     MetricType,
-    Label,
-    METRIC_CATALOG,
+    generate_metrics_documentation,
     get_metric_definition,
     get_slo_relevant_metrics,
     validate_metric_name,
-    generate_metrics_documentation,
 )
 from .sli import SLI, SLI_CATALOG
-from .slo import SLO, SLO_CATALOG, generate_slo_recording_rules, generate_slo_burn_rate_alerts
+from .slo import SLO, SLO_CATALOG, generate_slo_burn_rate_alerts, generate_slo_recording_rules
 
 __all__ = [
     # Metric definitions

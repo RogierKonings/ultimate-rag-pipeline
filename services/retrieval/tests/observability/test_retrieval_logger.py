@@ -211,7 +211,7 @@ class TestRetrievalLogger:
             duration_ms=1.5,
         )
 
-        captured = capsys.readouterr()
+        capsys.readouterr()
         # May not output if DEBUG level is filtered
         # Just verify no errors
 

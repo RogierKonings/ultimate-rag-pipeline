@@ -9,9 +9,9 @@ Provides Prometheus metrics for evaluation runs, including:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
-from prometheus_client import Counter, Gauge, Histogram, Info, REGISTRY
+from prometheus_client import Counter, Gauge, Histogram, Info
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +266,7 @@ class EvaluationMetricsExporter:
         logger.info(
             f"Recorded evaluation metrics for run {run_id}: "
             f"{successful_samples}/{total_samples} successful, "
-            f"duration={duration_seconds:.2f}s"
+            f"duration={duration_seconds:.2f}s",
         )
 
     def record_run_failure(
@@ -311,7 +311,7 @@ class EvaluationMetricsExporter:
         LATEST_EVALUATION_INFO.info(self._last_run_info)
 
         logger.warning(
-            f"Recorded failed evaluation run {run_id}: {error_type}"
+            f"Recorded failed evaluation run {run_id}: {error_type}",
         )
 
     def record_rag_query_latency(
@@ -366,7 +366,7 @@ class PrometheusMetricsReporter:
     metrics after each evaluation run.
     """
 
-    def __init__(self, exporter: Optional[EvaluationMetricsExporter] = None):
+    def __init__(self, exporter: EvaluationMetricsExporter | None = None):
         """
         Initialize the Prometheus metrics reporter.
 
@@ -382,7 +382,6 @@ class PrometheusMetricsReporter:
         Args:
             run: EvaluationRun instance with results
         """
-        import time
 
         if run.status == "completed" and run.results:
             duration = 0.0
@@ -417,7 +416,7 @@ class PrometheusMetricsReporter:
 
 
 # Global exporter instance for convenience
-_global_exporter: Optional[EvaluationMetricsExporter] = None
+_global_exporter: EvaluationMetricsExporter | None = None
 
 
 def get_metrics_exporter() -> EvaluationMetricsExporter:

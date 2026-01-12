@@ -8,10 +8,9 @@ Verifies:
 - Content hash computation (SHA-256)
 """
 
-import asyncio
 import hashlib
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 
@@ -92,7 +91,7 @@ class TestDeduplicationCheck:
 
     @pytest.mark.asyncio
     async def test_check_duplicate_returns_duplicate_for_exact_match(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """Duplicate detected when same tenant, source_uri, content_hash exists."""
         tenant_id = uuid4()
@@ -106,7 +105,7 @@ class TestDeduplicationCheck:
             side_effect=[
                 # First query (exact match) returns a row
                 {"id": existing_doc_id, "version": 2},
-            ]
+            ],
         )
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
@@ -124,7 +123,7 @@ class TestDeduplicationCheck:
 
     @pytest.mark.asyncio
     async def test_check_duplicate_returns_new_version_for_different_hash(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """New version detected when same source_uri but different content_hash."""
         tenant_id = uuid4()
@@ -138,7 +137,7 @@ class TestDeduplicationCheck:
             side_effect=[
                 None,  # No exact match
                 {"id": existing_doc_id, "version": 3, "content_hash": "old_hash"},
-            ]
+            ],
         )
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
@@ -156,7 +155,7 @@ class TestDeduplicationCheck:
 
     @pytest.mark.asyncio
     async def test_check_duplicate_returns_new_document_for_unknown_source(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """New document detected when source_uri not seen before."""
         tenant_id = uuid4()
@@ -198,7 +197,7 @@ class TestMultiTenantDeduplication:
 
     @pytest.mark.asyncio
     async def test_same_content_different_tenants_not_duplicates(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """Same content_hash for different tenants should not be detected as duplicate."""
         tenant_a = uuid4()
@@ -273,7 +272,7 @@ class TestMarkPreviousVersionsSuperseded:
 
     @pytest.mark.asyncio
     async def test_mark_previous_versions_superseded_updates_old_docs(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """Previous versions are marked as superseded."""
         tenant_id = uuid4()
@@ -296,7 +295,7 @@ class TestMarkPreviousVersionsSuperseded:
 
     @pytest.mark.asyncio
     async def test_mark_previous_versions_excludes_new_document(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """New document ID is excluded from superseding."""
         tenant_id = uuid4()
@@ -377,7 +376,7 @@ class TestGetNextVersion:
 
     @pytest.mark.asyncio
     async def test_get_next_version_returns_one_for_new_document(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """Next version is 1 for a new document."""
         tenant_id = uuid4()
@@ -397,7 +396,7 @@ class TestGetNextVersion:
 
     @pytest.mark.asyncio
     async def test_get_next_version_increments_for_existing_document(
-        self, dedup_service, mock_pool
+        self, dedup_service, mock_pool,
     ):
         """Next version is max(version) + 1 for existing document."""
         tenant_id = uuid4()

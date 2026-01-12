@@ -8,7 +8,6 @@ import asyncio
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
 
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -35,7 +34,7 @@ class RerankerService:
     def __init__(
         self,
         model_name: str = "BAAI/bge-reranker-v2-m3",
-        model_revision: Optional[str] = None,
+        model_revision: str | None = None,
         max_sequence_length: int = 512,
         device: str = "cuda",
         use_fp16: bool = True,
@@ -66,7 +65,7 @@ class RerankerService:
 
         self._model = None
         self._tokenizer = None
-        self._actual_device: Optional[torch.device] = None
+        self._actual_device: torch.device | None = None
         self._executor = ThreadPoolExecutor(max_workers=worker_count)
         self._startup_time = time.time()
 
@@ -77,12 +76,12 @@ class RerankerService:
         def _load():
             tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
-                revision=self.model_revision
+                revision=self.model_revision,
             )
 
             model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name,
-                revision=self.model_revision
+                revision=self.model_revision,
             )
 
             # Determine actual device
@@ -103,7 +102,7 @@ class RerankerService:
 
         loop = asyncio.get_event_loop()
         self._tokenizer, self._model, self._actual_device = await loop.run_in_executor(
-            self._executor, _load
+            self._executor, _load,
         )
 
         logger.info(f"Reranker model loaded on {self._actual_device}")
@@ -112,10 +111,10 @@ class RerankerService:
         self,
         query: str,
         documents: list[str],
-        doc_ids: Optional[list[str]] = None,
-        top_k: Optional[int] = None,
-        min_score: Optional[float] = None,
-        return_documents: bool = True
+        doc_ids: list[str] | None = None,
+        top_k: int | None = None,
+        min_score: float | None = None,
+        return_documents: bool = True,
     ) -> RerankResponse:
         """
         Rerank documents for a query.
@@ -141,14 +140,14 @@ class RerankerService:
 
         # Build results with indices
         results = []
-        for i, (score, doc) in enumerate(zip(scores, documents)):
+        for i, (score, doc) in enumerate(zip(scores, documents, strict=True)):
             doc_id = doc_ids[i] if doc_ids else None
 
             results.append(ScoredDocument(
                 index=i,
                 score=float(score),
                 document=doc if return_documents else None,
-                doc_id=doc_id
+                doc_id=doc_id,
             ))
 
         # Sort by score descending
@@ -172,17 +171,17 @@ class RerankerService:
             results=results,
             usage={
                 "prompt_tokens": total_tokens,
-                "total_tokens": total_tokens
+                "total_tokens": total_tokens,
             },
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
 
     async def rerank_pairs(
         self,
         pairs: list[DocumentPair],
-        top_k: Optional[int] = None,
-        min_score: Optional[float] = None,
-        return_documents: bool = True
+        top_k: int | None = None,
+        min_score: float | None = None,
+        return_documents: bool = True,
     ) -> RerankResponse:
         """
         Rerank pre-formed query-document pairs.
@@ -204,13 +203,13 @@ class RerankerService:
 
         # Build results
         results = []
-        for i, (pair, score) in enumerate(zip(pairs, scores)):
+        for i, (pair, score) in enumerate(zip(pairs, scores, strict=True)):
             results.append(ScoredDocument(
                 index=i,
                 score=float(score),
                 document=pair.document if return_documents else None,
                 doc_id=pair.doc_id,
-                metadata=pair.metadata
+                metadata=pair.metadata,
             ))
 
         # Sort by score descending
@@ -229,16 +228,16 @@ class RerankerService:
             model=self.model_name,
             results=results,
             usage={
-                "prompt_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents)),
-                "total_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents))
+                "prompt_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)),
+                "total_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)),
             },
-            processing_time_ms=processing_time
+            processing_time_ms=processing_time,
         )
 
     async def _score_pairs(
         self,
         query: str,
-        documents: list[str]
+        documents: list[str],
     ) -> list[float]:
         """Score a single query against multiple documents."""
         queries = [query] * len(documents)
@@ -247,7 +246,7 @@ class RerankerService:
     async def _score_pairs_batch(
         self,
         queries: list[str],
-        documents: list[str]
+        documents: list[str],
     ) -> list[float]:
         """Score multiple query-document pairs."""
         if not queries:
@@ -269,7 +268,7 @@ class RerankerService:
                     padding=True,
                     truncation=True,
                     max_length=self.max_sequence_length,
-                    return_tensors="pt"
+                    return_tensors="pt",
                 )
 
                 # Move to device
@@ -315,7 +314,7 @@ class RerankerService:
             gpu_available=gpu_available,
             gpu_memory_used_mb=gpu_memory,
             queue_size=0,
-            uptime_seconds=time.time() - self._startup_time
+            uptime_seconds=time.time() - self._startup_time,
         )
 
     async def close(self) -> None:
