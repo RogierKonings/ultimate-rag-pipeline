@@ -1,0 +1,207 @@
+# Security Container Image Scanning Workflow
+# Scans container images for vulnerabilities using Trivy and Grype
+name: Security - Container Scan
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '**/Dockerfile'
+      - '**/docker-compose*.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**/Dockerfile'
+      - '**/docker-compose*.yml'
+  schedule:
+    # Run weekly on Sundays at 3:00 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-images:
+    name: Build Container Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - ingestion
+          - retrieval
+          - orchestrator
+          - embedding
+    outputs:
+      ingestion-image: ${{ steps.build.outputs.ingestion-image }}
+      retrieval-image: ${{ steps.build.outputs.retrieval-image }}
+      orchestrator-image: ${{ steps.build.outputs.orchestrator-image }}
+      embedding-image: ${{ steps.build.outputs.embedding-image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }} image
+        id: build
+        run: |
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:scan-${{ github.sha }}"
+          docker build \
+            -t "$IMAGE_TAG" \
+            -f services/${{ matrix.service }}/Dockerfile \
+            services/${{ matrix.service }}/ || true
+          echo "${{ matrix.service }}-image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          # Save image for scanning
+          docker save "$IMAGE_TAG" -o ${{ matrix.service }}.tar || true
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-image
+          path: ${{ matrix.service }}.tar
+          retention-days: 1
+        if: success()
+
+  trivy-scan:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    needs: build-images
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - ingestion
+          - retrieval
+          - orchestrator
+          - embedding
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.service }}-image
+        continue-on-error: true
+
+      - name: Load Docker image
+        run: |
+          if [ -f "${{ matrix.service }}.tar" ]; then
+            docker load -i ${{ matrix.service }}.tar
+          fi
+        continue-on-error: true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:scan-${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.service }}.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          vuln-type: 'os,library'
+          ignore-unfixed: true
+        continue-on-error: true
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-${{ matrix.service }}.sarif'
+          category: 'trivy-${{ matrix.service }}'
+        continue-on-error: true
+
+      - name: Generate SBOM with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:scan-${{ github.sha }}'
+          format: 'cyclonedx'
+          output: 'sbom-${{ matrix.service }}.json'
+        continue-on-error: true
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: 'sbom-${{ matrix.service }}.json'
+          retention-days: 90
+        if: success()
+
+  grype-scan:
+    name: Grype Container Scan
+    runs-on: ubuntu-latest
+    needs: build-images
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - ingestion
+          - retrieval
+          - orchestrator
+          - embedding
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.service }}-image
+        continue-on-error: true
+
+      - name: Load Docker image
+        run: |
+          if [ -f "${{ matrix.service }}.tar" ]; then
+            docker load -i ${{ matrix.service }}.tar
+          fi
+        continue-on-error: true
+
+      - name: Run Grype vulnerability scanner
+        uses: anchore/scan-action@v4
+        id: grype-scan
+        with:
+          image: '${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:scan-${{ github.sha }}'
+          fail-build: false
+          severity-cutoff: high
+          output-format: sarif
+        continue-on-error: true
+
+      - name: Upload Grype scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype-scan.outputs.sarif }}
+          category: 'grype-${{ matrix.service }}'
+        if: always()
+        continue-on-error: true
+
+  vulnerability-gate:
+    name: Vulnerability Gate
+    runs-on: ubuntu-latest
+    needs: [trivy-scan, grype-scan]
+    if: always()
+    steps:
+      - name: Check for critical vulnerabilities
+        run: |
+          echo "## Container Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Container scans completed. Review the Security tab for detailed findings." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Trivy Scan: ${{ needs.trivy-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Grype Scan: ${{ needs.grype-scan.result }}" >> $GITHUB_STEP_SUMMARY
+
+          # Fail if any critical vulnerabilities found in main branch
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            if [[ "${{ needs.trivy-scan.result }}" == "failure" ]] || [[ "${{ needs.grype-scan.result }}" == "failure" ]]; then
+              echo ""
+              echo "::error::Critical or high vulnerabilities detected in container images"
+              # Uncomment to fail the build on vulnerabilities
+              # exit 1
+            fi
+          fi

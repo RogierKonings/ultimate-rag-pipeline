@@ -1,0 +1,205 @@
+# Custom PII recognizers for RAG Pipeline
+#
+# These recognizers extend Presidio's built-in detection
+# with patterns specific to enterprise/development environments.
+
+recognizers:
+  # Employee ID patterns (common formats)
+  - name: employee_id_recognizer
+    entity: EMPLOYEE_ID
+    context:
+      - employee
+      - emp
+      - staff
+      - worker
+      - personnel
+    patterns:
+      - name: emp_id_standard
+        regex: '\b[Ee][Mm][Pp][-_]?\d{5,8}\b'
+        score: 0.8
+      - name: emp_id_alphanumeric
+        regex: '\b[A-Z]{2,3}\d{5,7}\b'
+        score: 0.6
+
+  # Project code patterns
+  - name: project_code_recognizer
+    entity: PROJECT_CODE
+    context:
+      - project
+      - proj
+      - initiative
+      - program
+    patterns:
+      - name: project_jira_style
+        regex: '\b[A-Z]{2,5}-\d{1,6}\b'
+        score: 0.7
+      - name: project_code_standard
+        regex: '\bPRJ[-_]\d{4,8}\b'
+        score: 0.8
+
+  # API Key patterns
+  - name: api_key_recognizer
+    entity: API_KEY
+    context:
+      - api
+      - key
+      - token
+      - secret
+      - authorization
+      - auth
+    patterns:
+      # Generic API key pattern (32+ hex chars)
+      - name: api_key_hex
+        regex: '\b[a-fA-F0-9]{32,64}\b'
+        score: 0.6
+      # Common prefixed API keys
+      - name: api_key_prefixed
+        regex: '\b(sk|pk|api|key|token)[-_][a-zA-Z0-9]{20,}\b'
+        score: 0.85
+      # Bearer tokens (excluding actual JWT which has its own recognizer)
+      - name: bearer_token
+        regex: '\bBearer\s+[a-zA-Z0-9_-]{20,}\b'
+        score: 0.8
+
+  # AWS Access Key patterns
+  - name: aws_access_key_recognizer
+    entity: AWS_ACCESS_KEY
+    context:
+      - aws
+      - amazon
+      - access
+      - credential
+      - iam
+    patterns:
+      # AWS Access Key ID
+      - name: aws_access_key_id
+        regex: '\b(A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}\b'
+        score: 0.95
+      # AWS Secret Access Key (40 chars base64)
+      - name: aws_secret_key
+        regex: '\b[A-Za-z0-9/+=]{40}\b'
+        score: 0.5  # Lower score, needs context
+
+  # Private Key patterns
+  - name: private_key_recognizer
+    entity: PRIVATE_KEY
+    patterns:
+      # PEM format private keys
+      - name: pem_private_key
+        regex: '-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----'
+        score: 0.99
+      # EC private key
+      - name: ec_private_key
+        regex: '-----BEGIN\s+EC\s+PRIVATE\s+KEY-----'
+        score: 0.99
+      # OpenSSH private key
+      - name: openssh_private_key
+        regex: '-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----'
+        score: 0.99
+
+  # JWT Token patterns
+  - name: jwt_token_recognizer
+    entity: JWT_TOKEN
+    context:
+      - jwt
+      - token
+      - bearer
+      - authorization
+      - auth
+    patterns:
+      # JWT format: header.payload.signature (base64url encoded)
+      - name: jwt_standard
+        regex: '\beyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\b'
+        score: 0.95
+
+  # Database connection strings
+  - name: connection_string_recognizer
+    entity: CONNECTION_STRING
+    context:
+      - connection
+      - database
+      - db
+      - sql
+      - postgres
+      - mysql
+      - mongodb
+      - redis
+    patterns:
+      # PostgreSQL connection string
+      - name: postgres_uri
+        regex: 'postgres(ql)?://[^:]+:[^@]+@[^\s]+'
+        score: 0.95
+      # MySQL connection string
+      - name: mysql_uri
+        regex: 'mysql://[^:]+:[^@]+@[^\s]+'
+        score: 0.95
+      # MongoDB connection string
+      - name: mongodb_uri
+        regex: 'mongodb(\+srv)?://[^:]+:[^@]+@[^\s]+'
+        score: 0.95
+      # Redis connection string with password
+      - name: redis_uri
+        regex: 'redis://:[^@]+@[^\s]+'
+        score: 0.90
+      # Generic JDBC-style
+      - name: jdbc_uri
+        regex: 'jdbc:[a-z]+://[^\s]+password=[^\s&]+'
+        score: 0.85
+
+  # GitHub/GitLab tokens
+  - name: git_token_recognizer
+    entity: API_KEY
+    context:
+      - github
+      - gitlab
+      - git
+      - token
+    patterns:
+      # GitHub personal access token (classic)
+      - name: github_pat_classic
+        regex: '\bghp_[a-zA-Z0-9]{36}\b'
+        score: 0.98
+      # GitHub fine-grained PAT
+      - name: github_pat_fine
+        regex: '\bgithub_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}\b'
+        score: 0.98
+      # GitLab personal access token
+      - name: gitlab_pat
+        regex: '\bglpat-[a-zA-Z0-9_-]{20}\b'
+        score: 0.98
+
+  # Slack tokens
+  - name: slack_token_recognizer
+    entity: API_KEY
+    context:
+      - slack
+      - webhook
+      - bot
+    patterns:
+      - name: slack_bot_token
+        regex: '\bxoxb-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}\b'
+        score: 0.98
+      - name: slack_user_token
+        regex: '\bxoxp-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}\b'
+        score: 0.98
+      - name: slack_webhook
+        regex: 'hooks\.slack\.com/services/T[A-Z0-9]{8}/B[A-Z0-9]{8}/[a-zA-Z0-9]{24}'
+        score: 0.98
+
+  # Stripe API keys
+  - name: stripe_key_recognizer
+    entity: API_KEY
+    context:
+      - stripe
+      - payment
+      - billing
+    patterns:
+      - name: stripe_secret_key
+        regex: '\bsk_live_[a-zA-Z0-9]{24}\b'
+        score: 0.98
+      - name: stripe_test_key
+        regex: '\bsk_test_[a-zA-Z0-9]{24}\b'
+        score: 0.95
+      - name: stripe_restricted_key
+        regex: '\brk_live_[a-zA-Z0-9]{24}\b'
+        score: 0.98

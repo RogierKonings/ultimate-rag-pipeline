@@ -1,0 +1,223 @@
+# Security Static Application Security Testing (SAST) Workflow
+# Performs static code analysis using Bandit, Semgrep, and CodeQL
+name: Security - SAST
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '**.py'
+      - '.github/workflows/security-sast.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**.py'
+  schedule:
+    # Run weekly on Mondays at 4:00 AM UTC
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  bandit:
+    name: Bandit Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bandit
+        run: pip install bandit bandit-sarif-formatter
+
+      - name: Run Bandit on services
+        run: |
+          bandit -r services/ \
+            --exclude "tests,**/test_*.py,**/*_test.py" \
+            --severity-level medium \
+            --confidence-level medium \
+            --format sarif \
+            --output bandit-results.sarif || true
+
+      - name: Upload Bandit results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-results.sarif
+          category: bandit
+        if: always()
+
+      - name: Run Bandit with JSON output
+        run: |
+          bandit -r services/ \
+            --exclude "tests,**/test_*.py,**/*_test.py" \
+            --severity-level low \
+            --format json \
+            --output bandit-full.json || true
+
+      - name: Upload Bandit JSON results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-results
+          path: |
+            bandit-results.sarif
+            bandit-full.json
+          retention-days: 30
+
+  semgrep:
+    name: Semgrep Security Analysis
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config auto \
+            --config p/python \
+            --config p/security-audit \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --config .semgrep.yml \
+            --sarif \
+            --output semgrep-results.sarif \
+            services/ || true
+        continue-on-error: true
+
+      - name: Upload Semgrep results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
+        if: always()
+
+      - name: Run Semgrep with JSON output
+        run: |
+          semgrep scan \
+            --config auto \
+            --config p/python \
+            --json \
+            --output semgrep-full.json \
+            services/ || true
+        continue-on-error: true
+
+      - name: Upload Semgrep JSON results
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: |
+            semgrep-results.sarif
+            semgrep-full.json
+          retention-days: 30
+        if: always()
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql-python
+
+  pylint-security:
+    name: Pylint Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install pylint
+          pip install -r services/shared/requirements.txt || true
+
+      - name: Run Pylint security checks
+        run: |
+          pylint services/ \
+            --disable=all \
+            --enable=W0611,W0612,W0613,W0614,W0621,W0622,W0631,W0640,W1505,E1120 \
+            --output-format=json \
+            > pylint-security.json 2>&1 || true
+
+      - name: Upload Pylint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-results
+          path: pylint-security.json
+          retention-days: 30
+        if: always()
+
+  sast-summary:
+    name: SAST Summary
+    runs-on: ubuntu-latest
+    needs: [bandit, semgrep, codeql, pylint-security]
+    if: always()
+    steps:
+      - name: Download Bandit results
+        uses: actions/download-artifact@v4
+        with:
+          name: bandit-results
+          path: bandit-results
+        continue-on-error: true
+
+      - name: Download Semgrep results
+        uses: actions/download-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results
+        continue-on-error: true
+
+      - name: Generate SAST Summary
+        run: |
+          echo "## SAST Security Analysis Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tool Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Bandit | ${{ needs.bandit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep | ${{ needs.semgrep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| CodeQL | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pylint | ${{ needs.pylint-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "Review findings in the Security tab for detailed vulnerability information." >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for critical findings
+        run: |
+          # Check if we should fail the build
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            if [[ -f "bandit-results/bandit-full.json" ]]; then
+              HIGH_COUNT=$(cat bandit-results/bandit-full.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(len([r for r in d.get('results',[]) if r.get('issue_severity')=='HIGH']))" 2>/dev/null || echo "0")
+              if [[ "$HIGH_COUNT" -gt 0 ]]; then
+                echo "::warning::Found $HIGH_COUNT high severity issues in Bandit scan"
+              fi
+            fi
+          fi

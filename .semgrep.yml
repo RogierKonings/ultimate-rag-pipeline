@@ -1,0 +1,357 @@
+# Semgrep Custom Rules for RAG Pipeline
+# https://semgrep.dev/docs/writing-rules/
+
+rules:
+  # SQL Injection Detection for SQLAlchemy
+  - id: sqlalchemy-raw-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $SESSION.execute($SQL)
+          - pattern: $SESSION.execute(text($SQL))
+          - pattern: $ENGINE.execute($SQL)
+          - pattern: $CONN.execute($SQL)
+      - pattern-not: $SESSION.execute(text("..."))
+      - pattern-not: $SESSION.execute("...")
+      - metavariable-pattern:
+          metavariable: $SQL
+          patterns:
+            - pattern-either:
+                - pattern: f"..."
+                - pattern: $X + $Y
+                - pattern: $X.format(...)
+                - pattern: $X % $Y
+    message: >-
+      Potential SQL injection vulnerability. Use parameterized queries instead of
+      string formatting. Example: session.execute(text("SELECT * FROM users WHERE id = :id"), {"id": user_id})
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 Injection"
+
+  - id: sqlalchemy-raw-query-string
+    pattern-either:
+      - pattern: text(f"...")
+      - pattern: text($X + $Y)
+      - pattern: text($X.format(...))
+      - pattern: text($X % $Y)
+    message: >-
+      Raw SQL string construction detected. Use parameterized queries to prevent SQL injection.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+
+  # Insecure Deserialization
+  - id: pickle-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.load(...)
+          - pattern: pickle.loads(...)
+          - pattern: cPickle.load(...)
+          - pattern: cPickle.loads(...)
+    message: >-
+      Insecure deserialization using pickle. Pickle can execute arbitrary code
+      during deserialization. Use JSON or other safe formats for untrusted data.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 Insecure Deserialization"
+
+  - id: yaml-unsafe-load
+    patterns:
+      - pattern-either:
+          - pattern: yaml.load(..., Loader=yaml.Loader)
+          - pattern: yaml.load(..., Loader=yaml.UnsafeLoader)
+          - pattern: yaml.unsafe_load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader)
+      - pattern-not: yaml.safe_load(...)
+    message: >-
+      Unsafe YAML loading can lead to arbitrary code execution. Use yaml.safe_load() instead.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+
+  # Hardcoded Credentials
+  - id: hardcoded-password-assignment
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "..."
+          - pattern: $VAR = '...'
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(password|passwd|pwd|secret|api_key|apikey|auth_token|access_token|private_key)
+      - pattern-not: $VAR = ""
+      - pattern-not: $VAR = "..."  # literal ellipsis for docs
+    message: >-
+      Hardcoded credential detected. Use environment variables or a secrets manager.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-798: Hardcoded Credentials"
+
+  - id: hardcoded-password-dict
+    patterns:
+      - pattern-either:
+          - pattern: |
+              {..., "$KEY": "...", ...}
+          - pattern: |
+              {..., '$KEY': '...', ...}
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i)(password|passwd|pwd|secret|api_key|apikey|auth_token|access_token)
+    message: >-
+      Possible hardcoded credential in dictionary. Use environment variables or secrets manager.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-798: Hardcoded Credentials"
+
+  # JWT Security
+  - id: jwt-without-expiration
+    patterns:
+      - pattern: jwt.encode($PAYLOAD, ...)
+      - pattern-not-inside: |
+          {..., "exp": ..., ...}
+      - pattern-not-inside: |
+          $PAYLOAD["exp"] = ...
+          ...
+          jwt.encode($PAYLOAD, ...)
+    message: >-
+      JWT token created without expiration claim. Always set 'exp' claim to prevent
+      token reuse attacks.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-613: Insufficient Session Expiration"
+
+  - id: jwt-algorithm-none
+    patterns:
+      - pattern-either:
+          - pattern: jwt.encode(..., algorithm="none", ...)
+          - pattern: jwt.encode(..., algorithm='none', ...)
+          - pattern: jwt.decode(..., algorithms=["none"], ...)
+          - pattern: jwt.decode(..., algorithms=['none'], ...)
+    message: >-
+      JWT with 'none' algorithm is insecure. Always use a strong algorithm like RS256 or HS256.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+
+  - id: jwt-verify-disabled
+    patterns:
+      - pattern-either:
+          - pattern: jwt.decode(..., options={"verify_signature": False}, ...)
+          - pattern: jwt.decode(..., options={'verify_signature': False}, ...)
+          - pattern: jwt.decode(..., verify=False, ...)
+    message: >-
+      JWT signature verification is disabled. This allows attackers to forge tokens.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+
+  # Command Injection
+  - id: subprocess-shell-true
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.call(..., shell=True, ...)
+          - pattern: subprocess.run(..., shell=True, ...)
+          - pattern: subprocess.Popen(..., shell=True, ...)
+      - pattern-not: subprocess.$FUNC("...", shell=True, ...)
+    message: >-
+      Using shell=True with user input can lead to command injection.
+      Pass commands as a list without shell=True.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 Injection"
+
+  - id: os-system-injection
+    patterns:
+      - pattern-either:
+          - pattern: os.system(f"...")
+          - pattern: os.system($X + $Y)
+          - pattern: os.system($X.format(...))
+          - pattern: os.system($X % $Y)
+    message: >-
+      Potential command injection via os.system(). Use subprocess with proper argument handling.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+
+  # Path Traversal
+  - id: path-traversal-open
+    patterns:
+      - pattern-either:
+          - pattern: open(f"...", ...)
+          - pattern: open($X + $Y, ...)
+          - pattern: Path($X + $Y)
+          - pattern: Path(f"...")
+      - pattern-not: open("...", ...)
+    message: >-
+      Potential path traversal vulnerability. Validate and sanitize file paths before use.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A01:2021 Broken Access Control"
+
+  # Cryptography Issues
+  - id: weak-crypto-md5
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: MD5.new(...)
+    message: >-
+      MD5 is cryptographically weak and should not be used for security purposes.
+      Use SHA-256 or stronger.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-328: Reversible One-Way Hash"
+
+  - id: weak-crypto-sha1
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.sha1(...)
+          - pattern: SHA.new(...)
+          - pattern: SHA1.new(...)
+    message: >-
+      SHA-1 is considered weak for security purposes. Use SHA-256 or stronger.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-328: Reversible One-Way Hash"
+
+  - id: insecure-random
+    patterns:
+      - pattern-either:
+          - pattern: random.random()
+          - pattern: random.randint(...)
+          - pattern: random.choice(...)
+          - pattern: random.randrange(...)
+    message: >-
+      Standard random module is not cryptographically secure.
+      Use secrets module for security-sensitive operations.
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+
+  # Request Handling
+  - id: ssrf-requests
+    patterns:
+      - pattern-either:
+          - pattern: requests.get($URL, ...)
+          - pattern: requests.post($URL, ...)
+          - pattern: requests.put($URL, ...)
+          - pattern: requests.delete($URL, ...)
+          - pattern: httpx.get($URL, ...)
+          - pattern: httpx.post($URL, ...)
+          - pattern: aiohttp.ClientSession().get($URL, ...)
+      - pattern-not: requests.$METHOD("...", ...)
+      - pattern-not: httpx.$METHOD("...", ...)
+    message: >-
+      Potential SSRF vulnerability. Validate URLs before making requests.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery"
+      owasp: "A10:2021 SSRF"
+
+  # Logging Sensitive Data
+  - id: logging-sensitive-data
+    patterns:
+      - pattern-either:
+          - pattern: logger.$METHOD(..., $VAR, ...)
+          - pattern: logging.$METHOD(..., $VAR, ...)
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(password|passwd|secret|token|api_key|apikey|credential)
+    message: >-
+      Potential sensitive data in log message. Ensure credentials are not logged.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-532: Information Exposure Through Log Files"
+
+  # XSS Prevention (for any HTML generation)
+  - id: html-string-format
+    patterns:
+      - pattern-either:
+          - pattern: f"<...$VAR...>"
+          - pattern: "<...>".format($VAR)
+          - pattern: "<...>" % $VAR
+    message: >-
+      Potential XSS vulnerability. Use proper HTML escaping or templating.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      owasp: "A03:2021 Injection"
+
+  # Environment Variable Exposure
+  - id: env-var-in-exception
+    patterns:
+      - pattern: |
+          raise $EXCEPTION(..., os.environ[$KEY], ...)
+    message: >-
+      Environment variable included in exception message may be exposed.
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-209: Information Exposure Through Error Message"
+
+  # Eval/Exec
+  - id: dangerous-eval
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: exec(...)
+          - pattern: compile(..., "exec")
+    message: >-
+      Use of eval/exec is dangerous and can lead to code injection.
+      Consider safer alternatives.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-94: Code Injection"
+
+  # Assert in production
+  - id: assert-used
+    patterns:
+      - pattern: assert ...
+    message: >-
+      Assert statements are removed when Python is run with optimization (-O).
+      Use explicit validation in production code.
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: security
+      cwe: "CWE-617: Reachable Assertion"

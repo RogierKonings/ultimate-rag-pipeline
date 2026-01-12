@@ -1,0 +1,143 @@
+# Gitleaks Configuration for RAG Pipeline
+# https://github.com/gitleaks/gitleaks
+
+title = "RAG Pipeline Gitleaks Config"
+
+[extend]
+# Use default gitleaks rules as base
+useDefault = true
+
+# Allowlist - Files and patterns that should be ignored
+[allowlist]
+description = "Allowlisted files and patterns"
+
+# Files to ignore
+paths = [
+    # Test fixtures
+    '''tests/fixtures/.*''',
+    '''tests/.*\.json''',
+    # Documentation
+    '''docs/.*\.md''',
+    # Lock files
+    '''.*\.lock''',
+    '''.*-lock\.json''',
+    # Virtual environments
+    '''\.venv/.*''',
+    '''venv/.*''',
+    # Example and template files
+    '''\.env\.example''',
+    '''.*\.example''',
+    '''.*\.template''',
+    # Generated files
+    '''.*\.sarif''',
+    # Git directory
+    '''\.git/.*''',
+]
+
+# Regex patterns to ignore (for commit messages, etc.)
+regexes = [
+    # Example API keys in docs
+    '''sk-[A-Za-z0-9]{20}EXAMPLE''',
+    # Placeholder tokens
+    '''your[-_]?api[-_]?key[-_]?here''',
+    '''your[-_]?secret[-_]?here''',
+    '''REPLACE[-_]?ME''',
+    # Test/fake values
+    '''test[-_]?key[-_]?\d*''',
+    '''fake[-_]?key[-_]?\d*''',
+    '''dummy[-_]?key[-_]?\d*''',
+]
+
+# Commits to ignore (e.g., initial commits with example files)
+commits = [
+    # Add commit SHAs to ignore here if needed
+]
+
+# Custom rules for project-specific patterns
+[[rules]]
+id = "rag-internal-token"
+description = "RAG Pipeline Internal Service Token"
+regex = '''RAG[-_]?INTERNAL[-_]?TOKEN['":\s=]+[A-Za-z0-9+/=]{32,}'''
+keywords = ["rag_internal", "rag-internal"]
+secretGroup = 1
+
+[[rules]]
+id = "vault-token"
+description = "HashiCorp Vault Token"
+regex = '''(?i)(?:vault[-_]?token|hvs)['":\s=]+[A-Za-z0-9.\-_]{20,}'''
+keywords = ["vault", "hvs"]
+secretGroup = 1
+
+[[rules]]
+id = "postgres-connection"
+description = "PostgreSQL Connection String with Password"
+regex = '''postgres(?:ql)?://[^:]+:([^@]+)@[^/]+/'''
+keywords = ["postgres", "postgresql"]
+secretGroup = 1
+
+[[rules]]
+id = "redis-password"
+description = "Redis Password in URL"
+regex = '''redis://:[^@]+@'''
+keywords = ["redis"]
+
+[[rules]]
+id = "qdrant-api-key"
+description = "Qdrant API Key"
+regex = '''(?i)qdrant[-_]?api[-_]?key['":\s=]+[A-Za-z0-9\-_]{20,}'''
+keywords = ["qdrant"]
+secretGroup = 1
+
+[[rules]]
+id = "opensearch-password"
+description = "OpenSearch Password"
+regex = '''(?i)opensearch[-_]?password['":\s=]+[^\s'"]{8,}'''
+keywords = ["opensearch"]
+secretGroup = 1
+
+[[rules]]
+id = "minio-secret"
+description = "MinIO Secret Key"
+regex = '''(?i)minio[-_]?secret[-_]?key['":\s=]+[A-Za-z0-9+/=]{20,}'''
+keywords = ["minio"]
+secretGroup = 1
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[A-Za-z0-9]{48}'''
+keywords = ["openai", "sk-"]
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[A-Za-z0-9\-]{40,}'''
+keywords = ["anthropic", "sk-ant"]
+
+[[rules]]
+id = "huggingface-token"
+description = "HuggingFace API Token"
+regex = '''hf_[A-Za-z0-9]{34}'''
+keywords = ["huggingface", "hf_"]
+
+[[rules]]
+id = "jwt-secret-value"
+description = "JWT Secret Value"
+regex = '''(?i)jwt[-_]?secret['":\s=]+[A-Za-z0-9+/=]{32,}'''
+keywords = ["jwt_secret", "jwt-secret"]
+secretGroup = 1
+
+[[rules]]
+id = "encryption-key"
+description = "Encryption Key Value"
+regex = '''(?i)encryption[-_]?key['":\s=]+[A-Za-z0-9+/=]{32,}'''
+keywords = ["encryption_key", "encryption-key"]
+secretGroup = 1
+
+# Override severity for certain rules
+[rules.allowlist]
+# Allow test files to contain fake secrets
+paths = [
+    '''tests/.*''',
+    '''.*test.*\.py''',
+]

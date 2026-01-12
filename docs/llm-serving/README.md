@@ -694,9 +694,29 @@ llm-serving/
 
 ---
 
+## Implementation Status
+
+All user stories for Epic 5 (LLM Serving Layer) have been implemented:
+
+| Wave | Component                      | User Story | Status |
+| ---- | ------------------------------ | ---------- | ------ |
+| 1    | vLLM Deployment                | US-5.1     | Done   |
+| 1    | Embedding Service              | US-5.2     | Done   |
+| 1    | Reranker Service               | US-5.3     | Done   |
+| 2    | Model Configuration            | US-5.4     | Done   |
+| 2    | Resource Management            | US-5.5     | Done   |
+| 3    | Health & Monitoring            | US-5.6     | Done   |
+| 4    | Unified OpenAI Gateway         | US-5.7     | Done   |
+| 4    | Auth & Rate Limiting           | US-5.8     | Done   |
+
+For detailed implementation plans and user stories, see `workflow/done/05-llm-serving/`.
+
+---
+
 ## Related Documentation
 
 - [Architecture Overview](../architecture.md)
 - [Health Check Specification](../health-check-specification.md)
 - [Kubernetes Setup](../infrastructure/kubernetes-setup.md)
 - [GPU Workloads Runbook](../infrastructure/gpu-workloads-runbook.md)
+- [Epic 5 Implementation Plan](../../workflow/done/05-llm-serving/implementation-plan.md)

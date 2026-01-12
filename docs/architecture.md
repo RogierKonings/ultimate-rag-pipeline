@@ -125,27 +125,28 @@ flowchart TB
 
 #### Embedding Models (MTEB Benchmarks)
 
-| Model | Dimensions | Context | Best For |
-|-------|------------|---------|----------|
-| `BAAI/bge-large-en-v1.5` | 1024 | 512 | **Primary - English** |
-| `BAAI/bge-m3` | 1024 | 8192 | Multilingual, long context |
-| `intfloat/e5-large-v2` | 1024 | 512 | Alternative high-quality |
-| `thenlper/gte-large` | 1024 | 512 | Alibaba, strong retrieval |
+| Model                    | Dimensions | Context | Best For                  |
+| ------------------------ | ---------- | ------- | ------------------------- |
+| `BAAI/bge-large-en-v1.5` | 1024       | 512     | **Primary - English**     |
+| `BAAI/bge-m3`            | 1024       | 8192    | Multilingual, long context|
+| `intfloat/e5-large-v2`   | 1024       | 512     | Alternative high-quality  |
+| `thenlper/gte-large`     | 1024       | 512     | Alibaba, strong retrieval |
 
 #### LLM Models
 
-| Model | Parameters | Use Case |
-|-------|------------|----------|
-| `meta-llama/Llama-3.1-8B-Instruct` | 8B | **Default** - fast, capable |
-| `meta-llama/Llama-3.1-70B-Instruct` | 70B | Complex reasoning, fallback |
-| `mistralai/Mixtral-8x7B-Instruct-v0.1` | 47B | High-throughput alternative |
+| Model                                   | Parameters | Use Case                     |
+| --------------------------------------- | ---------- | ---------------------------- |
+| `Qwen/Qwen2.5-7B-Instruct`              | 7B         | **Default** - fast, capable  |
+| `meta-llama/Llama-3.1-8B-Instruct`      | 8B         | Alternative, strong reasoning|
+| `meta-llama/Llama-3.1-70B-Instruct`     | 70B        | Complex reasoning, fallback  |
+| `mistralai/Mixtral-8x7B-Instruct-v0.1`  | 47B        | High-throughput alternative  |
 
 #### Reranker Models
 
-| Model | Latency | Quality |
-|-------|---------|---------|
-| `BAAI/bge-reranker-v2-m3` | ~50ms/batch | **Best quality** |
-| `BAAI/bge-reranker-base` | ~20ms/batch | Faster, slightly lower quality |
+| Model                     | Latency     | Quality                      |
+| ------------------------- | ----------- | ---------------------------- |
+| `BAAI/bge-reranker-v2-m3` | ~50ms/batch | **Best quality**             |
+| `BAAI/bge-reranker-base`  | ~20ms/batch | Faster, slightly lower quality|
 
 ---
 
@@ -232,35 +233,93 @@ ingestion-service/
 
 ### 2. Retrieval Service
 
+The Retrieval Service is the core search component, implementing a multi-stage hybrid search pipeline with semantic and keyword search, fusion algorithms, cross-encoder reranking, and ACL-based access control.
+
 **Responsibilities:**
-- Query understanding and rewriting
-- Hybrid search (semantic + keyword)
-- Result fusion (RRF)
-- Reranking
-- ACL enforcement
-- Retrieval logging
+
+- Query preprocessing (normalization, classification, expansion, HyDE)
+- Hybrid search combining semantic (Qdrant) and keyword (OpenSearch) search
+- Result fusion using Reciprocal Rank Fusion (RRF) with configurable weights
+- Cross-encoder reranking via LLM Gateway
+- ACL enforcement based on user context (tenant, groups, visibility)
+- Query and result caching (Redis-backed)
+- Comprehensive observability (structured logging, Prometheus metrics, OpenTelemetry tracing)
+
+**Search Pipeline:**
+
+```mermaid
+flowchart LR
+    Q[Query] --> PP[Preprocessing]
+    PP --> |Embedding| SS[Semantic Search<br/>Qdrant]
+    PP --> |Keywords| KS[Keyword Search<br/>OpenSearch]
+    SS --> |Top 50| RRF[RRF Fusion]
+    KS --> |Top 50| RRF
+    RRF --> |Top 20| RR[Reranker<br/>BGE-reranker-v2-m3]
+    RR --> |Top 10| ACL[ACL Filter]
+    ACL --> Results
+```
 
 **Components:**
 
 ```
 retrieval-service/
 ├── api/
-│   ├── routes.py
-│   └── schemas.py
-├── query/
-│   ├── preprocessor.py    # Query normalization
-│   ├── expansion.py       # HyDE, query reformulation
-│   └── language.py        # Language detection
-├── search/
-│   ├── semantic.py        # Qdrant vector search
-│   ├── keyword.py         # OpenSearch BM25
-│   └── hybrid.py          # Fusion strategies (RRF)
-├── ranking/
-│   ├── reranker.py        # Cross-encoder reranking
-│   └── filters.py         # ACL, metadata filters
-└── logging/
-    └── retrieval_log.py   # Log all retrievals
+│   ├── main.py              # FastAPI app with lifespan management
+│   ├── routes/
+│   │   ├── retrieve.py      # POST /retrieve, multi-query endpoints
+│   │   └── health.py        # Health checks for Kubernetes
+│   ├── schemas/
+│   │   ├── retrieve.py      # Request/response Pydantic models
+│   │   └── common.py        # Shared models
+│   └── dependencies.py      # Dependency injection setup
+├── acl/                     # Access Control Layer
+│   ├── models.py            # UserContext, DocumentACL, Visibility enums
+│   ├── filter.py            # ACLFilter for Qdrant/OpenSearch
+│   ├── context.py           # UserContextExtractor for JWT parsing
+│   └── middleware.py        # FastAPI dependencies
+├── search/                  # Hybrid search implementation
+│   ├── base.py              # BaseSearcher abstract interface
+│   ├── semantic.py          # SemanticSearcher (Qdrant)
+│   ├── keyword.py           # KeywordSearcher (OpenSearch)
+│   ├── fusion.py            # RRF, Linear, DBSF fusion algorithms
+│   ├── hybrid.py            # HybridSearcher orchestrator
+│   ├── models.py            # SearchResultItem, FusedResult, configs
+│   └── exceptions.py        # Custom exceptions
+├── query/                   # Query Preprocessing Pipeline
+│   ├── preprocessor.py      # QueryPreprocessor main pipeline
+│   ├── expander.py          # QueryExpander (synonyms + LLM)
+│   ├── hyde.py              # HyDEGenerator, MultiQueryGenerator
+│   ├── cache.py             # QueryCache (Redis-backed)
+│   └── models.py            # ProcessedQuery, QueryType configs
+├── reranking/               # Cross-encoder Reranking
+│   ├── reranker.py          # RerankerService calling LLM Gateway
+│   ├── models.py            # RerankRequest, RerankResult, configs
+│   └── exceptions.py        # Reranking exceptions
+├── cache/                   # Result Caching
+│   └── retrieval_cache.py   # RetrievalCache (Redis)
+├── observability/           # Metrics & Logging
+│   ├── retrieval_logger.py  # Structured JSON logging with structlog
+│   ├── metrics.py           # Prometheus metrics
+│   ├── tracing.py           # OpenTelemetry setup for Jaeger
+│   └── middleware.py        # LoggingMiddleware
+├── config.py                # RetrievalConfig with pydantic-settings
+├── run.py                   # Uvicorn entry point
+└── tests/                   # Comprehensive test suite (190+ tests, >90% coverage)
 ```
+
+**Hybrid Search Configuration:**
+
+| Parameter        | Default | Description                       |
+|------------------|---------|-----------------------------------|
+| Semantic weight  | 0.7     | Weight for vector search in RRF   |
+| Keyword weight   | 0.3     | Weight for BM25 search in RRF     |
+| RRF constant (k) | 60      | RRF ranking constant              |
+| Semantic top-k   | 50      | Candidates from vector search     |
+| Keyword top-k    | 50      | Candidates from keyword search    |
+| Rerank top-k     | 20      | Candidates for cross-encoder      |
+| Final top-k      | 10      | Results returned to client        |
+
+> **Full Documentation:** See [docs/retrieval-service/README.md](retrieval-service/README.md) for detailed API reference, configuration, and usage examples.
 
 ### 3. Orchestrator Service
 
@@ -1036,181 +1095,346 @@ class RerankerService:
 
 ## Observability & Evaluation
 
-### Metrics Architecture
+The RAG pipeline includes a comprehensive observability stack providing distributed tracing, metrics collection, structured logging, dashboards, alerting, and RAG-specific evaluation.
+
+> **Full Documentation:** See [docs/observability/README.md](observability/README.md) for detailed configuration, usage examples, and runbooks.
+
+### Observability Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Services
+    subgraph Services["Application Services"]
         ING[Ingestion]
         RET[Retrieval]
         ORC[Orchestrator]
         LLM[LLM Gateway]
     end
-    
-    subgraph Instrumentation
+
+    subgraph Instrumentation["Instrumentation Layer"]
         OTEL[OpenTelemetry SDK]
+        PROM_CLIENT[Prometheus Client]
+        STRUCT_LOG[Structured Logging]
     end
-    
-    subgraph Collection
+
+    subgraph Collection["Collection Layer"]
+        OTEL_COLL[OTEL Collector]
         PROM[Prometheus]
-        JAEG[Jaeger]
         LOKI[Loki]
     end
-    
-    subgraph Visualization
-        GRAF[Grafana Dashboards]
+
+    subgraph Storage["Storage Layer"]
+        JAEG[(Jaeger/Tempo)]
+        TSDB[(Prometheus TSDB)]
+        LOG_STORE[(Loki Storage)]
+    end
+
+    subgraph Visualization["Visualization & Analysis"]
+        GRAF[Grafana]
         PHOE[Arize Phoenix]
     end
-    
-    subgraph Evaluation
-        RAGAS[Ragas]
-        EVAL[Eval Pipeline]
+
+    subgraph Alert["Alerting"]
+        AM[Alertmanager]
+        SLACK[Slack]
+        PD[PagerDuty]
     end
-    
+
+    subgraph Evaluation["RAG Evaluation"]
+        RAGAS[Ragas]
+        EVAL_API[Evaluation API]
+    end
+
     Services --> OTEL
-    OTEL --> PROM
-    OTEL --> JAEG
-    OTEL --> LOKI
-    
-    PROM --> GRAF
+    Services --> PROM_CLIENT
+    Services --> STRUCT_LOG
+
+    OTEL --> OTEL_COLL
+    OTEL_COLL --> JAEG
+    OTEL_COLL --> PROM
+
+    PROM_CLIENT --> PROM
+    STRUCT_LOG --> LOKI
+
+    PROM --> AM
+    AM --> SLACK
+    AM --> PD
+
     JAEG --> GRAF
+    PROM --> GRAF
     LOKI --> GRAF
-    
+
     Services --> PHOE
-    EVAL --> RAGAS
+    EVAL_API --> RAGAS
 ```
+
+### Observability Components
+
+| Component              | Location                                      | Purpose                                                         |
+| ---------------------- | --------------------------------------------- | --------------------------------------------------------------- |
+| **OpenTelemetry**      | `services/shared/observability/otel/`         | Distributed tracing with RAG-specific semantic attributes       |
+| **Prometheus Metrics** | `services/shared/observability/metrics/`      | Centralized metrics (naming: `rag_<subsystem>_<metric>_<unit>`) |
+| **Structured Logging** | `services/shared/observability/logging/`      | JSON logging with trace context and sensitive data masking      |
+| **Grafana Dashboards** | `services/shared/observability/grafana/`      | Pre-configured dashboards (overview, retrieval, LLM, SLO)       |
+| **Alerting**           | `services/shared/observability/alerting/`     | RAG-specific and SLO burn rate alerts                           |
+| **Ragas Evaluation**   | `services/shared/observability/evaluation/`   | Automated RAG quality metrics                                   |
+| **Arize Phoenix**      | `services/shared/observability/phoenix/`      | LLM-specific observability, A/B testing, feedback               |
 
 ### Key Metrics
 
-#### System Metrics
+All metrics follow naming convention: `rag_<subsystem>_<metric>_<unit>`
 
 | Metric | Type | Description | Target |
 |--------|------|-------------|--------|
-| `ingestion_documents_total` | Counter | Documents ingested | - |
-| `ingestion_latency_seconds` | Histogram | Time to ingest document | p95 < 30s |
-| `retrieval_latency_seconds` | Histogram | Search latency | p95 < 300ms |
-| `generation_latency_seconds` | Histogram | LLM response time | p95 < 2s |
-| `retrieval_results_count` | Histogram | Results per query | - |
-| `llm_tokens_total` | Counter | Tokens consumed | - |
-| `cache_hit_ratio` | Gauge | Query cache effectiveness | > 0.3 |
+| `rag_query_total` | Counter | Total queries processed | - |
+| `rag_query_duration_seconds` | Histogram | Query processing duration | p95 < 2s |
+| `rag_retrieval_duration_seconds` | Histogram | Retrieval latency by type | p95 < 300ms |
+| `rag_retrieval_zero_results_total` | Counter | Zero-result queries | < 20% |
+| `rag_llm_duration_seconds` | Histogram | LLM inference duration | p95 < 2s |
+| `rag_llm_ttft_seconds` | Histogram | Time to first token | p95 < 1s |
+| `rag_llm_tokens_total` | Counter | Tokens (input/output) | - |
+| `rag_ingest_documents_total` | Counter | Documents ingested | - |
+| `rag_cache_hits_total` | Counter | Cache hits | > 30% hit rate |
 
-#### Quality Metrics (Ragas)
+### Service Level Objectives (SLOs)
+
+| SLO               | Target       | Window  | Burn Rate Alerts  |
+| ----------------- | ------------ | ------- | ----------------- |
+| Query Latency     | 99% < 2s     | 30 days | 14.4x/1h, 6x/6h   |
+| Availability      | 99.9%        | 30 days | 14.4x/1h, 6x/6h   |
+| LLM TTFT          | 95% < 1s     | 7 days  | 6x/6h             |
+| Retrieval Latency | 99% < 500ms  | 30 days | 6x/6h             |
+
+### Quality Metrics (Ragas)
 
 | Metric | Description | Target |
 |--------|-------------|--------|
-| `context_precision` | Relevance of retrieved chunks | > 0.8 |
-| `context_recall` | Coverage of ground truth | > 0.7 |
-| `faithfulness` | Grounded in retrieved context | > 0.9 |
-| `answer_relevancy` | Answer matches query intent | > 0.8 |
+| `context_precision` | Relevance of retrieved chunks to question | > 0.8 |
+| `context_recall` | Coverage of ground truth by retrieved context | > 0.7 |
+| `faithfulness` | Answer grounded in retrieved context | > 0.9 |
+| `answer_relevancy` | Answer relevance to original question | > 0.8 |
+
+### Quick Start
+
+```python
+from shared.observability.otel import setup_tracing, get_tracer
+from shared.observability.metrics import setup_metrics, get_metrics
+from shared.observability.logging import setup_logging, get_logger
+
+# Initialize at application startup
+setup_tracing(service_name="retrieval-service", service_version="1.0.0")
+setup_metrics(service_name="retrieval-service", service_version="1.0.0")
+setup_logging(service_name="retrieval-service", log_level="INFO")
+
+# Use throughout the application
+tracer = get_tracer()
+metrics = get_metrics()
+logger = get_logger(__name__)
+
+# Record metrics
+metrics.record_query(mode="hybrid", duration=0.215, result_count=10, status="success")
+metrics.record_llm(model="llama-3.1-8b", duration=1.2, input_tokens=500, output_tokens=150)
+
+# Structured logging with trace context
+logger.info("Query processed", extra={"query_id": "abc123", "result_count": 10})
+```
+
+### Alert Categories
+
+**RAG-Specific Alerts:**
+
+- High Error Rate (> 5% for 5m) - Critical
+- High Latency (P95 > 2s for 5m) - Warning
+- LLM Provider Errors (> 10% for 5m) - Critical
+- High Zero Results Rate (> 20% for 15m) - Warning
+
+**SLO Burn Rate Alerts:**
+
+- Fast burn (14.4x over 1h) - Page immediately
+- Slow burn (6x over 6h) - Page
+- Error budget exhausted - Critical
+
+### Grafana Dashboards
+
+| Dashboard                 | Purpose                                        |
+| ------------------------- | ---------------------------------------------- |
+| **RAG Pipeline Overview** | Request rate, error rate, latency, cache hits  |
+| **Retrieval Service**     | Search strategy comparison, reranking metrics  |
+| **LLM Service**           | Model performance, TTFT, token throughput      |
+| **SLO Dashboard**         | SLO compliance, error budget, burn rates       |
 
 ### Evaluation Pipeline
 
+Automated RAG quality evaluation runs via Celery Beat or Kubernetes CronJob:
+
 ```python
-from ragas import evaluate
-from ragas.metrics import (
-    context_precision,
-    context_recall,
-    faithfulness,
-    answer_relevancy
+from shared.observability.evaluation import EvaluationPipeline, EvaluationConfig
+
+config = EvaluationConfig(
+    evaluator_model="gpt-4",
+    metrics=["context_precision", "context_recall", "faithfulness", "answer_relevancy"],
+    sample_size=100
 )
 
-async def run_evaluation(
-    dataset_id: str,
-    pipeline_version: str
-) -> dict:
-    """Run Ragas evaluation on a dataset."""
-    
-    # Load evaluation examples
-    examples = await load_eval_examples(dataset_id)
-    
-    # Generate predictions
-    predictions = []
-    for example in examples:
-        result = await rag_pipeline.query(example.query)
-        predictions.append({
-            "question": example.query,
-            "answer": result.answer,
-            "contexts": [c.content for c in result.contexts],
-            "ground_truth": example.ground_truth_answer
-        })
-    
-    # Run Ragas evaluation
-    results = evaluate(
-        predictions,
-        metrics=[
-            context_precision,
-            context_recall,
-            faithfulness,
-            answer_relevancy
-        ]
-    )
-    
-    return {
-        "pipeline_version": pipeline_version,
-        "dataset_id": dataset_id,
-        "metrics": results.to_dict(),
-        "timestamp": datetime.utcnow().isoformat()
-    }
+pipeline = EvaluationPipeline(config)
+results = await pipeline.run(dataset)
+# Results stored in PostgreSQL eval_runs table
 ```
 
 ---
 
 ## Security & Compliance
 
-### Authentication & Authorization
+The RAG pipeline implements comprehensive security with defense-in-depth across authentication, authorization, data protection, and audit capabilities.
+
+> **Full Documentation:** See [docs/security/README.md](security/README.md) for detailed implementation guides, code examples, and configuration reference.
+
+### Security Architecture
 
 ```mermaid
-flowchart LR
-    Client --> |JWT| Gateway[API Gateway]
-    Gateway --> |Validate| Auth[Auth Service]
-    Auth --> |User Context| Services
-    Services --> |ACL Filter| Data[(Data Stores)]
+flowchart TB
+    subgraph Client["Client Layer"]
+        UI[Web UI]
+        API_CLIENT[API Client]
+    end
+
+    subgraph Gateway["API Gateway"]
+        AUTH_MW[JWT Auth<br/>RS256]
+        RBAC_MW[RBAC<br/>Middleware]
+        AUDIT_MW[Audit<br/>Middleware]
+        RATE[Rate<br/>Limiter]
+    end
+
+    subgraph Services["Application Services"]
+        ING[Ingestion]
+        RET[Retrieval]
+        ORC[Orchestrator]
+        LLM[LLM Gateway]
+    end
+
+    subgraph Security["Security Layer"]
+        JWT[JWT Handler]
+        RBAC[RBAC Service]
+        ACL[ACL Service]
+        PII[PII Detector]
+        ENCRYPT[Encryption]
+        AUDIT[Audit Logger]
+    end
+
+    subgraph Storage["Secure Storage"]
+        VAULT[(Vault)]
+        PG[(PostgreSQL<br/>TDE)]
+        AUDIT_DB[(Audit Log<br/>Hash Chain)]
+    end
+
+    Client --> Gateway
+    Gateway --> Services
+    Services --> Security
+    Security --> Storage
 ```
 
-#### Token Structure
+### Security Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| JWT Handler | `services/shared/security/jwt/` | RS256 token generation, validation, blocklist |
+| RBAC Service | `services/shared/security/rbac/` | Role-based permissions, tenant isolation |
+| ACL Service | `services/shared/security/acl/` | Document-level access control |
+| Encryption | `services/shared/security/encryption/` | AES-256-GCM field encryption |
+| PII Detector | `services/shared/security/pii/` | Presidio-based PII detection |
+| Secrets Manager | `services/shared/security/secrets/` | Vault/K8s secrets integration |
+| Audit Logger | `services/shared/security/audit/` | Tamper-evident audit logging |
+| TLS Config | `services/shared/security/tls/` | TLS 1.3 / mTLS configuration |
+
+### Authentication (JWT)
+
+JWT tokens with RS256 (RSA-SHA256) asymmetric signing provide stateless authentication with tenant context:
 
 ```json
 {
   "sub": "user-uuid",
+  "iss": "https://auth.example.com",
+  "aud": "rag-pipeline",
+  "exp": 1735000000,
+  "jti": "unique-token-id",
   "tenant_id": "tenant-uuid",
-  "groups": ["group-1", "group-2"],
-  "roles": ["user", "admin"],
-  "permissions": ["read:documents", "write:documents"],
-  "exp": 1735000000
+  "roles": ["tenant_user", "data_engineer"],
+  "groups": ["engineering", "ml-team"],
+  "permissions": ["documents:read", "query:execute"]
 }
 ```
 
-### ACL Enforcement
+**Features:**
+- RS256 asymmetric signing with JWKS support
+- Redis-backed token blocklist for revocation
+- Configurable access/refresh token expiration
+- Automatic token validation middleware
 
-```python
-class ACLFilter:
-    def build_filter(self, user_context: dict) -> dict:
-        """Build Qdrant/OpenSearch filter based on user permissions."""
-        return {
-            "must": [
-                {"key": "tenant_id", "match": {"value": user_context["tenant_id"]}},
-                {
-                    "should": [
-                        {"key": "visibility", "match": {"value": "public"}},
-                        {
-                            "key": "allowed_groups",
-                            "match": {"any": user_context["groups"]}
-                        }
-                    ]
-                }
-            ]
-        }
-```
+### Authorization (RBAC)
+
+Hierarchical role-based access control with mandatory tenant isolation:
+
+| Role | Description | Key Permissions |
+|------|-------------|-----------------|
+| `super_admin` | Full system access | All permissions |
+| `tenant_admin` | Full tenant access | User management, all tenant ops |
+| `tenant_user` | Standard user | Read/write documents, query |
+| `data_engineer` | Data management | Full ingestion control |
+| `analyst` | Query focus | Execute queries, read audit |
+| `compliance_officer` | Audit access | Read and export audit logs |
+
+**Permission Categories:** `documents:*`, `query:*`, `ingestion:*`, `collections:*`, `users:*`, `tenant:*`, `api_keys:*`, `audit:*`, `system:*`
+
+### Document ACL
+
+Fine-grained document access control with visibility levels:
+
+| Visibility | Description |
+|------------|-------------|
+| `public` | All authenticated tenant users |
+| `private` | Document owner only |
+| `group` | Specified groups only |
+| `restricted` | Explicit users/groups/roles |
+
+ACL filters are applied at query time in both Qdrant and OpenSearch to ensure consistent access control during retrieval.
 
 ### Data Protection
 
-| Concern | Solution |
-|---------|----------|
-| **Encryption at rest** | AES-256 for S3, PostgreSQL TDE, Qdrant disk encryption |
-| **Encryption in transit** | TLS 1.3 for all connections |
-| **PII detection** | Microsoft Presidio during ingestion |
-| **Secrets management** | HashiCorp Vault or Kubernetes Secrets |
-| **Audit logging** | All API calls logged with user context |
+| Layer | Implementation |
+|-------|----------------|
+| **Encryption at rest** | AES-256-GCM field encryption, encrypted storage classes (EBS/GCE), MinIO SSE |
+| **Encryption in transit** | TLS 1.3 for all connections, optional mTLS for service-to-service |
+| **PII detection** | Microsoft Presidio with custom recognizers, response filtering |
+| **Secrets management** | HashiCorp Vault (production), K8s Secrets (staging), environment (dev) |
+| **Key management** | Vault Transit, key rotation with re-encryption support |
+
+### Audit Logging
+
+Tamper-evident audit logging with hash chaining:
+
+- **Automatic logging** via FastAPI middleware for all API requests
+- **Hash chain** with SHA-256 for tamper detection
+- **PostgreSQL storage** with indexed queries by tenant/user/action
+- **Loki integration** for centralized log aggregation
+- **Export tools** for compliance reporting
+
+### Security Scanning
+
+| Type | Tools | Trigger |
+|------|-------|---------|
+| Dependency | pip-audit, safety | Push, PR, Daily |
+| SAST | Bandit, Semgrep | Push, PR, Weekly |
+| Container | Trivy | Push, PR, Weekly |
+| Secrets | Gitleaks, detect-secrets | Push, PR, Daily |
+
+Pre-commit hooks ensure local scanning before commits.
+
+### Compliance Support
+
+| Framework | Key Controls |
+|-----------|--------------|
+| **SOC 2 Type II** | Access control, audit logging, encryption |
+| **GDPR** | PII handling, data protection, audit trails |
+| **HIPAA** | Encryption, access controls, audit logging |
 
 ---
 
