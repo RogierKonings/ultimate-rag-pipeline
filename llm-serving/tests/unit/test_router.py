@@ -145,13 +145,15 @@ class TestRoutingStrategies:
 
         # Header value "a" should route to model_a
         result = router.route(
-            ModelType.LLM, request_headers={"X-Model-Version": "a"},
+            ModelType.LLM,
+            request_headers={"X-Model-Version": "a"},
         )
         assert result == "model-a"
 
         # Header value "b" should route to model_b
         result = router.route(
-            ModelType.LLM, request_headers={"X-Model-Version": "b"},
+            ModelType.LLM,
+            request_headers={"X-Model-Version": "b"},
         )
         assert result == "model-b"
 

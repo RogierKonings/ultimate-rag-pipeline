@@ -42,6 +42,7 @@ class EvaluationRepository:
         """Get or create connection pool."""
         if self._pool is None:
             import asyncpg
+
             self._pool = await asyncpg.create_pool(
                 self.connection_url,
                 min_size=2,
@@ -332,7 +333,9 @@ class EvaluationRepository:
             EvaluationSample(
                 id=str(ex["id"]),
                 question=ex["question"],
-                contexts=ex["contexts"] if isinstance(ex["contexts"], list) else json.loads(ex["contexts"]),
+                contexts=ex["contexts"]
+                if isinstance(ex["contexts"], list)
+                else json.loads(ex["contexts"]),
                 answer=ex.get("answer", ""),
                 ground_truth=ex.get("ground_truth"),
                 metadata=ex.get("metadata", {}),

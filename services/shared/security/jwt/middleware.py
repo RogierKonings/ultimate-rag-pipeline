@@ -85,8 +85,7 @@ class JWTAuthMiddleware:
     def _is_excluded_path(self, path: str) -> bool:
         """Check if path is excluded from authentication."""
         return any(
-            path == excluded or path.startswith(excluded + "/")
-            for excluded in self.excluded_paths
+            path == excluded or path.startswith(excluded + "/") for excluded in self.excluded_paths
         )
 
     def _extract_token(self, request: Request) -> str | None:
@@ -127,7 +126,8 @@ class JWTAuthMiddleware:
         self,
         request: Request,
         credentials: Annotated[
-            HTTPAuthorizationCredentials | None, Depends(oauth2_scheme),
+            HTTPAuthorizationCredentials | None,
+            Depends(oauth2_scheme),
         ] = None,
     ) -> TokenClaims:
         """
@@ -192,7 +192,8 @@ class JWTAuthMiddleware:
         self,
         request: Request,
         credentials: Annotated[
-            HTTPAuthorizationCredentials | None, Depends(oauth2_scheme),
+            HTTPAuthorizationCredentials | None,
+            Depends(oauth2_scheme),
         ] = None,
     ) -> TokenClaims | None:
         """
@@ -363,5 +364,6 @@ def create_auth_dependencies(
 # Convenience type aliases for dependency injection
 CurrentUser = Annotated[TokenClaims, Depends(JWTAuthMiddleware().get_current_user)]
 OptionalUser = Annotated[
-    TokenClaims | None, Depends(JWTAuthMiddleware().get_current_user_optional),
+    TokenClaims | None,
+    Depends(JWTAuthMiddleware().get_current_user_optional),
 ]

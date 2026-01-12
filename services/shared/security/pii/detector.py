@@ -499,14 +499,9 @@ class PIIDetector:
         rejected = False
         rejection_reason = None
 
-        if (
-            self.settings.reject_on_high_sensitivity
-            and result.has_high_sensitivity
-        ):
+        if self.settings.reject_on_high_sensitivity and result.has_high_sensitivity:
             rejected = True
-            rejection_reason = (
-                f"High-sensitivity PII detected: {list(result.entity_counts.keys())}"
-            )
+            rejection_reason = f"High-sensitivity PII detected: {list(result.entity_counts.keys())}"
 
         # Process if not rejected and handling mode requires it
         processed = None

@@ -321,12 +321,16 @@ class RateLimiter:
             "user_id": user_id,
             "requests": {
                 "count": request_bucket.request_count if request_bucket else 0,
-                "remaining": int(request_bucket.tokens) if request_bucket else self._get_limit(tenant_id, user_id, "rpm"),
+                "remaining": int(request_bucket.tokens)
+                if request_bucket
+                else self._get_limit(tenant_id, user_id, "rpm"),
                 "limit": self._get_limit(tenant_id, user_id, "rpm"),
             },
             "tokens": {
                 "count": token_bucket.token_count if token_bucket else 0,
-                "remaining": int(token_bucket.tokens) if token_bucket else self._get_limit(tenant_id, None, "tpm"),
+                "remaining": int(token_bucket.tokens)
+                if token_bucket
+                else self._get_limit(tenant_id, None, "tpm"),
                 "limit": self._get_limit(tenant_id, None, "tpm"),
             },
         }

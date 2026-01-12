@@ -48,7 +48,8 @@ class IngestJobResult(BaseModel):
     job_id: str = Field(..., description="Unique job identifier")
     status: JobStatus = Field(..., description="Current job status")
     progress: JobProgress | None = Field(
-        default=None, description="Progress info if in progress",
+        default=None,
+        description="Progress info if in progress",
     )
 
     # Results
@@ -73,15 +74,18 @@ class IngestJobRequest(BaseModel):
 
     # Source configuration
     source_type: str = Field(
-        ..., description="Source type: filesystem, database, web, api",
+        ...,
+        description="Source type: filesystem, database, web, api",
     )
     source_config: dict[str, Any] = Field(
-        ..., description="Source-specific configuration",
+        ...,
+        description="Source-specific configuration",
     )
 
     # Processing options
     chunking_strategy: str = Field(
-        default="recursive", description="Chunking strategy to use",
+        default="recursive",
+        description="Chunking strategy to use",
     )
     chunk_size: int = Field(default=300, ge=50, le=2048, description="Target chunk size in tokens")
     chunk_overlap: int = Field(default=50, ge=0, le=500, description="Chunk overlap in tokens")
@@ -104,10 +108,14 @@ class ReembedJobRequest(BaseModel):
     collection_name: str = Field(..., description="Collection to re-embed")
     new_model: str = Field(..., description="New embedding model to use")
     batch_size: int = Field(
-        default=100, ge=1, le=1000, description="Batch size for processing",
+        default=100,
+        ge=1,
+        le=1000,
+        description="Batch size for processing",
     )
     tenant_id: str | None = Field(
-        default=None, description="Optional tenant filter",
+        default=None,
+        description="Optional tenant filter",
     )
 
 

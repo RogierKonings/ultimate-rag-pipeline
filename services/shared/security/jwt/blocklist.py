@@ -212,7 +212,8 @@ class AsyncRedisTokenBlocklist(TokenBlocklist):
 
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     future = pool.submit(
-                        asyncio.run, self.is_blocked_async(jti),
+                        asyncio.run,
+                        self.is_blocked_async(jti),
                     )
                     return future.result()
             else:
@@ -325,9 +326,7 @@ class InMemoryTokenBlocklist(TokenBlocklist):
         import time
 
         current_time = time.time()
-        expired = [
-            jti for jti, expiry in self._blocked.items() if expiry <= current_time
-        ]
+        expired = [jti for jti, expiry in self._blocked.items() if expiry <= current_time]
         for jti in expired:
             del self._blocked[jti]
 

@@ -174,9 +174,7 @@ class BatchOptimizer:
             )
 
         avg_batch = statistics.mean(self._batch_sizes)
-        fill_rate = (
-            avg_batch / self.current_batch_size if self.current_batch_size > 0 else 0
-        )
+        fill_rate = avg_batch / self.current_batch_size if self.current_batch_size > 0 else 0
 
         return BatchingMetrics(
             service_name=self.service_name,
@@ -184,15 +182,11 @@ class BatchOptimizer:
             max_batch_size=max(self._batch_sizes),
             min_batch_size=min(self._batch_sizes),
             batch_fill_rate=fill_rate,
-            avg_batch_wait_ms=(
-                statistics.mean(self._wait_times) if self._wait_times else 0
-            ),
+            avg_batch_wait_ms=(statistics.mean(self._wait_times) if self._wait_times else 0),
             avg_batch_processing_ms=(
                 statistics.mean(self._processing_times) if self._processing_times else 0
             ),
-            items_per_second=(
-                statistics.mean(self._throughputs) if self._throughputs else 0
-            ),
+            items_per_second=(statistics.mean(self._throughputs) if self._throughputs else 0),
             batches_per_second=len(self._batch_sizes) / self.window_size,
             efficiency_score=self._calculate_efficiency(),
         )
@@ -218,9 +212,7 @@ class BatchOptimizer:
         if self._processing_times:
             avg_wait = statistics.mean(self._wait_times) if self._wait_times else 0
             avg_proc = statistics.mean(self._processing_times)
-            wait_ratio = (
-                avg_wait / (avg_wait + avg_proc) if (avg_wait + avg_proc) > 0 else 0
-            )
+            wait_ratio = avg_wait / (avg_wait + avg_proc) if (avg_wait + avg_proc) > 0 else 0
             wait_score = (1 - wait_ratio) * 0.3
         else:
             wait_score = 0
@@ -269,7 +261,8 @@ class BatchOptimizer:
                 }
             # Decrease batch size
             new_batch_size = max(
-                int(self.current_batch_size * 0.75), self.min_batch_size,
+                int(self.current_batch_size * 0.75),
+                self.min_batch_size,
             )
             return {
                 "batch_size": new_batch_size,
@@ -281,7 +274,8 @@ class BatchOptimizer:
         # High fill rate and quick processing: increase batch size
         if metrics.batch_fill_rate > 0.9 and metrics.avg_batch_processing_ms < 100:
             new_batch_size = min(
-                int(self.current_batch_size * 1.25), self.max_batch_size,
+                int(self.current_batch_size * 1.25),
+                self.max_batch_size,
             )
             return {
                 "batch_size": new_batch_size,

@@ -44,12 +44,17 @@ class AuditLogHandler(logging.Handler):
                 print(json.dumps(log_data), file=sys.stdout)
             else:
                 # Standard log format
-                print(json.dumps({
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    "level": record.levelname,
-                    "message": record.getMessage(),
-                    "logger": record.name,
-                }), file=sys.stdout)
+                print(
+                    json.dumps(
+                        {
+                            "timestamp": datetime.now(UTC).isoformat(),
+                            "level": record.levelname,
+                            "message": record.getMessage(),
+                            "logger": record.name,
+                        },
+                    ),
+                    file=sys.stdout,
+                )
         except Exception:
             self.handleError(record)
 

@@ -541,6 +541,7 @@ class TestChunkingEngine:
 
     def test_register_custom_strategy(self, chunking_engine, sample_text, document_id):
         """Test registering a custom strategy."""
+
         # Create a simple custom strategy
         class CustomStrategy(RecursiveCharacterSplitter):
             @property
@@ -580,8 +581,7 @@ class TestChunkingIntegration:
             )
 
             for chunk in result.chunks:
-                assert chunk.token_count <= 512, \
-                    f"Strategy {strategy_name} exceeded max_tokens"
+                assert chunk.token_count <= 512, f"Strategy {strategy_name} exceeded max_tokens"
 
     def test_total_chunks_matches_list_length(self, sample_text, document_id):
         """Test that total_chunks matches actual chunk count."""

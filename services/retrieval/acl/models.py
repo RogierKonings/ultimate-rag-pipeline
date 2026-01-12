@@ -33,13 +33,16 @@ class UserContext(BaseModel):
     user_id: UUID = Field(..., description="Unique user identifier")
     tenant_id: UUID = Field(..., description="User's tenant identifier")
     groups: list[str] = Field(
-        default_factory=list, description="Groups the user belongs to",
+        default_factory=list,
+        description="Groups the user belongs to",
     )
     roles: list[str] = Field(
-        default_factory=list, description="Roles assigned to the user",
+        default_factory=list,
+        description="Roles assigned to the user",
     )
     permissions: list[str] = Field(
-        default_factory=list, description="Explicit permissions granted",
+        default_factory=list,
+        description="Explicit permissions granted",
     )
 
     # Optional metadata
@@ -112,22 +115,28 @@ class DocumentACL(BaseModel):
 
     tenant_id: UUID = Field(..., description="Tenant that owns the document")
     visibility: Visibility = Field(
-        default=Visibility.PRIVATE, description="Document visibility level",
+        default=Visibility.PRIVATE,
+        description="Document visibility level",
     )
     owner_id: UUID | None = Field(
-        default=None, description="User ID of the document owner",
+        default=None,
+        description="User ID of the document owner",
     )
     allowed_groups: list[str] = Field(
-        default_factory=list, description="Groups explicitly granted access",
+        default_factory=list,
+        description="Groups explicitly granted access",
     )
     allowed_users: list[UUID] = Field(
-        default_factory=list, description="Users explicitly granted access",
+        default_factory=list,
+        description="Users explicitly granted access",
     )
     denied_groups: list[str] = Field(
-        default_factory=list, description="Groups explicitly denied access",
+        default_factory=list,
+        description="Groups explicitly denied access",
     )
     denied_users: list[UUID] = Field(
-        default_factory=list, description="Users explicitly denied access",
+        default_factory=list,
+        description="Users explicitly denied access",
     )
 
 
@@ -139,10 +148,12 @@ class ACLFilterConfig(BaseModel):
 
     enabled: bool = Field(default=True, description="Enable/disable ACL enforcement")
     admin_bypass: bool = Field(
-        default=True, description="Allow admins to see all documents",
+        default=True,
+        description="Allow admins to see all documents",
     )
     super_tenant_id: UUID | None = Field(
-        default=None, description="Super tenant that can see all tenants",
+        default=None,
+        description="Super tenant that can see all tenants",
     )
     default_visibility: Visibility = Field(
         default=Visibility.PRIVATE,

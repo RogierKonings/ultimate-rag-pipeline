@@ -151,9 +151,9 @@ class DynamicBatcher:
 
                 # Check if adding this request would exceed limits
                 if batch and (
-                    total_texts + len(request.texts) > self.max_batch_size or
-                    total_tokens + request_tokens > self.max_batch_tokens or
-                    (batch_input_type is not None and request.input_type != batch_input_type)
+                    total_texts + len(request.texts) > self.max_batch_size
+                    or total_tokens + request_tokens > self.max_batch_tokens
+                    or (batch_input_type is not None and request.input_type != batch_input_type)
                 ):
                     # Put request back and process current batch
                     await self._queue.put(request)
@@ -195,7 +195,7 @@ class DynamicBatcher:
             # Distribute results back to requests
             offset = 0
             for request, count in zip(batch, text_counts, strict=True):
-                request_embeddings = result.embeddings[offset:offset + count]
+                request_embeddings = result.embeddings[offset : offset + count]
                 request.future.set_result(request_embeddings)
                 offset += count
 
@@ -220,6 +220,7 @@ class DynamicBatcher:
             "batches_processed": self._batches_processed,
             "avg_wait_time_ms": (
                 self._total_wait_time_ms / self._requests_processed
-                if self._requests_processed > 0 else 0
+                if self._requests_processed > 0
+                else 0
             ),
         }

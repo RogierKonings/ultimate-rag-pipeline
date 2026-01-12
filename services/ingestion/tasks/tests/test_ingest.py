@@ -126,7 +126,8 @@ class TestBatchIngest:
         mock_task.update_state = MagicMock()
 
         with patch(
-            "services.ingestion.tasks.ingest._list_documents", new_callable=AsyncMock,
+            "services.ingestion.tasks.ingest._list_documents",
+            new_callable=AsyncMock,
         ) as mock_list:
             mock_list.return_value = []
 

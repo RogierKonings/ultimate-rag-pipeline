@@ -64,7 +64,8 @@ class TracingSetup:
         # OTLP exporter for Jaeger
         try:
             otlp_exporter = OTLPSpanExporter(
-                endpoint=self.otlp_endpoint, insecure=True,
+                endpoint=self.otlp_endpoint,
+                insecure=True,
             )
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
         except Exception:

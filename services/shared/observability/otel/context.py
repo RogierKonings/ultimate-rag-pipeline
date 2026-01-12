@@ -341,7 +341,8 @@ class CeleryTracePropagator:
             headers = {}
 
         return _context_propagator.inject_into_carrier(
-            headers, key_prefix=cls.HEADER_PREFIX,
+            headers,
+            key_prefix=cls.HEADER_PREFIX,
         )
 
     @classmethod
@@ -359,7 +360,8 @@ class CeleryTracePropagator:
             Extracted context
         """
         return _context_propagator.extract_from_carrier(
-            headers, key_prefix=cls.HEADER_PREFIX,
+            headers,
+            key_prefix=cls.HEADER_PREFIX,
         )
 
 

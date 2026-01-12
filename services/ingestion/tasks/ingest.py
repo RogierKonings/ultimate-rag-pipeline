@@ -82,7 +82,6 @@ def process_document(
             ),
         )
 
-
     except SoftTimeLimitExceeded:
         # Task taking too long
         logger.error(f"Task timed out for document: {document_source_id}")
@@ -180,10 +179,15 @@ async def _process_document_async(
     )
 
     content_hash = DeduplicationService.compute_content_hash(raw_doc.content)
-    tenant_id = UUID(acl_context["tenant_id"]) if isinstance(acl_context["tenant_id"], str) else acl_context["tenant_id"]
+    tenant_id = (
+        UUID(acl_context["tenant_id"])
+        if isinstance(acl_context["tenant_id"], str)
+        else acl_context["tenant_id"]
+    )
 
     # Create deduplication service and check
     import asyncpg
+
     pool = await asyncpg.create_pool(settings.database_url)
     try:
         dedup_service = DeduplicationService(pool)
@@ -497,7 +501,9 @@ def batch_ingest(
                 pass
 
     # Aggregate results
-    success_count = sum(1 for r in results if isinstance(r, dict) and r.get("chunks_created", 0) > 0)
+    success_count = sum(
+        1 for r in results if isinstance(r, dict) and r.get("chunks_created", 0) > 0
+    )
     total_chunks = sum(r.get("chunks_created", 0) for r in results if isinstance(r, dict))
 
     return {

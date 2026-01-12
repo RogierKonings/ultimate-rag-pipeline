@@ -100,7 +100,9 @@ class TestQueryPreprocessorClassification:
 
     def test_classify_semantic_explain(self, preprocessor):
         """Test semantic detection with 'explain'."""
-        assert preprocessor._classify_query("explain the concept of recursion") == QueryType.SEMANTIC
+        assert (
+            preprocessor._classify_query("explain the concept of recursion") == QueryType.SEMANTIC
+        )
 
     def test_classify_semantic_compare(self, preprocessor):
         """Test semantic detection with 'compare'."""
@@ -108,12 +110,17 @@ class TestQueryPreprocessorClassification:
 
     def test_classify_semantic_difference(self, preprocessor):
         """Test semantic detection with 'difference'."""
-        assert preprocessor._classify_query("difference between lists and tuples") == QueryType.SEMANTIC
+        assert (
+            preprocessor._classify_query("difference between lists and tuples")
+            == QueryType.SEMANTIC
+        )
 
     def test_classify_hybrid(self, preprocessor):
         """Test hybrid classification for medium-length queries."""
         # More than 3 words but not a question or semantic
-        assert preprocessor._classify_query("python web framework tutorial guide") == QueryType.HYBRID
+        assert (
+            preprocessor._classify_query("python web framework tutorial guide") == QueryType.HYBRID
+        )
 
 
 class TestQueryPreprocessorProcess:

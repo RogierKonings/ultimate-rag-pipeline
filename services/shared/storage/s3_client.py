@@ -38,7 +38,9 @@ class S3Storage:
         self.endpoint = endpoint or os.getenv("MINIO_ENDPOINT", "localhost:9000")
         self.access_key = access_key or os.getenv("MINIO_ACCESS_KEY", "minioadmin")
         self.secret_key = secret_key or os.getenv("MINIO_SECRET_KEY", "minioadmin123")
-        self.secure = secure if secure is not None else os.getenv("MINIO_SECURE", "false").lower() == "true"
+        self.secure = (
+            secure if secure is not None else os.getenv("MINIO_SECURE", "false").lower() == "true"
+        )
         self.default_bucket = default_bucket or os.getenv("MINIO_DEFAULT_BUCKET", "documents")
 
         self.client = Minio(

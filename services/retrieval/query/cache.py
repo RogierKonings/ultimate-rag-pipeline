@@ -4,7 +4,6 @@ This module provides Redis-based caching for processed queries,
 avoiding redundant embedding generation for repeated queries.
 """
 
-
 import redis.asyncio as redis
 
 from .models import ProcessedQuery

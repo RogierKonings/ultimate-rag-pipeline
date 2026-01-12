@@ -80,43 +80,58 @@ class TestDocumentACL:
 
     def test_owner_always_has_access(self, private_acl):
         """Test that owner can always access their document."""
-        assert private_acl.can_access(
-            user_id=OWNER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is True
+        assert (
+            private_acl.can_access(
+                user_id=OWNER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is True
+        )
 
     def test_private_denies_others(self, private_acl):
         """Test that private documents deny non-owners."""
-        assert private_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is False
+        assert (
+            private_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is False
+        )
 
     def test_public_allows_everyone(self, public_acl):
         """Test that public documents allow everyone."""
-        assert public_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=OTHER_TENANT_ID,  # Even different tenant
-            user_groups=[],
-        ) is True
+        assert (
+            public_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=OTHER_TENANT_ID,  # Even different tenant
+                user_groups=[],
+            )
+            is True
+        )
 
     def test_group_access(self, group_acl):
         """Test group-based access."""
         # User in allowed group
-        assert group_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=["engineering"],
-        ) is True
+        assert (
+            group_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=["engineering"],
+            )
+            is True
+        )
 
         # User not in allowed group
-        assert group_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=["finance"],
-        ) is False
+        assert (
+            group_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=["finance"],
+            )
+            is False
+        )
 
     def test_tenant_visibility(self):
         """Test tenant-wide visibility."""
@@ -128,39 +143,51 @@ class TestDocumentACL:
         )
 
         # Same tenant has access
-        assert acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is True
+        assert (
+            acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is True
+        )
 
         # Different tenant denied
-        assert acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=OTHER_TENANT_ID,
-            user_groups=[],
-        ) is False
+        assert (
+            acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=OTHER_TENANT_ID,
+                user_groups=[],
+            )
+            is False
+        )
 
     def test_explicit_user_allow(self, private_acl):
         """Test explicitly allowing a user."""
         private_acl.add_user(USER_ID)
 
-        assert private_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is True
+        assert (
+            private_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is True
+        )
 
     def test_explicit_deny_overrides_allow(self, group_acl):
         """Test that explicit denial overrides group access."""
         group_acl.deny_user(USER_ID)
 
         # User is in allowed group but explicitly denied
-        assert group_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=["engineering"],
-        ) is False
+        assert (
+            group_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=["engineering"],
+            )
+            is False
+        )
 
     def test_denied_group_overrides_allowed_group(self):
         """Test that denied group overrides allowed group."""
@@ -174,20 +201,26 @@ class TestDocumentACL:
         )
 
         # User in both groups - denied wins
-        assert acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=["engineering", "contractors"],
-        ) is False
+        assert (
+            acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=["engineering", "contractors"],
+            )
+            is False
+        )
 
     def test_admin_bypass(self, private_acl):
         """Test admin bypass."""
-        assert private_acl.can_access(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-            is_admin=True,
-        ) is True
+        assert (
+            private_acl.can_access(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+                is_admin=True,
+            )
+            is True
+        )
 
     def test_to_filter_payload(self, group_acl):
         """Test converting ACL to filter payload."""
@@ -222,27 +255,36 @@ class TestDocumentACL:
     def test_can_write(self, private_acl):
         """Test write permission checking."""
         # Owner can write
-        assert private_acl.can_write(
-            user_id=OWNER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is True
+        assert (
+            private_acl.can_write(
+                user_id=OWNER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is True
+        )
 
         # Other user cannot write
-        assert private_acl.can_write(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is False
+        assert (
+            private_acl.can_write(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is False
+        )
 
         # Add write permission
         private_acl.add_user(USER_ID, permission="write")
 
-        assert private_acl.can_write(
-            user_id=USER_ID,
-            user_tenant_id=TENANT_ID,
-            user_groups=[],
-        ) is True
+        assert (
+            private_acl.can_write(
+                user_id=USER_ID,
+                user_tenant_id=TENANT_ID,
+                user_groups=[],
+            )
+            is True
+        )
 
     def test_can_admin(self, private_acl):
         """Test admin permission checking."""
@@ -347,28 +389,37 @@ class TestACLService:
         )
 
         # Owner has access
-        assert await acl_service.check_access(
-            document_id=DOCUMENT_ID,
-            user_id=OWNER_ID,
-            tenant_id=TENANT_ID,
-            groups=[],
-        ) is True
+        assert (
+            await acl_service.check_access(
+                document_id=DOCUMENT_ID,
+                user_id=OWNER_ID,
+                tenant_id=TENANT_ID,
+                groups=[],
+            )
+            is True
+        )
 
         # User in group has access
-        assert await acl_service.check_access(
-            document_id=DOCUMENT_ID,
-            user_id=USER_ID,
-            tenant_id=TENANT_ID,
-            groups=["engineering"],
-        ) is True
+        assert (
+            await acl_service.check_access(
+                document_id=DOCUMENT_ID,
+                user_id=USER_ID,
+                tenant_id=TENANT_ID,
+                groups=["engineering"],
+            )
+            is True
+        )
 
         # User not in group denied
-        assert await acl_service.check_access(
-            document_id=DOCUMENT_ID,
-            user_id=USER_ID,
-            tenant_id=TENANT_ID,
-            groups=["finance"],
-        ) is False
+        assert (
+            await acl_service.check_access(
+                document_id=DOCUMENT_ID,
+                user_id=USER_ID,
+                tenant_id=TENANT_ID,
+                groups=["finance"],
+            )
+            is False
+        )
 
     @pytest.mark.asyncio
     async def test_share_document(self, acl_service):
@@ -389,12 +440,15 @@ class TestACLService:
         )
 
         # Check access was granted
-        assert await acl_service.check_access(
-            document_id=DOCUMENT_ID,
-            user_id=USER_ID,
-            tenant_id=TENANT_ID,
-            groups=[],
-        ) is True
+        assert (
+            await acl_service.check_access(
+                document_id=DOCUMENT_ID,
+                user_id=USER_ID,
+                tenant_id=TENANT_ID,
+                groups=[],
+            )
+            is True
+        )
 
     @pytest.mark.asyncio
     async def test_make_public(self, acl_service):
@@ -575,10 +629,7 @@ class TestOpenSearchACLFilter:
         assert len(filters) > 0
 
         # Should have tenant term filter
-        has_tenant_filter = any(
-            "term" in f and "tenant_id" in f.get("term", {})
-            for f in filters
-        )
+        has_tenant_filter = any("term" in f and "tenant_id" in f.get("term", {}) for f in filters)
         assert has_tenant_filter
 
     def test_admin_filter(self, filter_builder):

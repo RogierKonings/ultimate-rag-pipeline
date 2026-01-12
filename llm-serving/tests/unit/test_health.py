@@ -67,7 +67,9 @@ class TestHealthChecker:
 
         def check_fn():
             return ComponentHealth(
-                name="custom", status=HealthStatus.HEALTHY, message="OK",
+                name="custom",
+                status=HealthStatus.HEALTHY,
+                message="OK",
             )
 
         health_checker.register_component("custom", check_fn)
@@ -129,7 +131,9 @@ class TestHealthChecker:
 
         def custom_check():
             return ComponentHealth(
-                name="database", status=HealthStatus.HEALTHY, message="Connected",
+                name="database",
+                status=HealthStatus.HEALTHY,
+                message="Connected",
             )
 
         health_checker.register_component("database", custom_check)
@@ -168,7 +172,8 @@ class TestVLLMHealthChecker:
     def vllm_checker(self):
         """Create a vLLM health checker."""
         return VLLMHealthChecker(
-            vllm_url="http://localhost:8000", model_name="test-llm",
+            vllm_url="http://localhost:8000",
+            model_name="test-llm",
         )
 
     def test_initialization(self, vllm_checker):
@@ -242,7 +247,8 @@ class TestEmbeddingHealthChecker:
     def embedding_checker(self):
         """Create an embedding health checker."""
         return EmbeddingHealthChecker(
-            embedding_url="http://localhost:8001", model_name="bge-large",
+            embedding_url="http://localhost:8001",
+            model_name="bge-large",
         )
 
     def test_initialization(self, embedding_checker):
@@ -300,7 +306,8 @@ class TestRerankerHealthChecker:
     def reranker_checker(self):
         """Create a reranker health checker."""
         return RerankerHealthChecker(
-            reranker_url="http://localhost:8002", model_name="bge-reranker",
+            reranker_url="http://localhost:8002",
+            model_name="bge-reranker",
         )
 
     def test_initialization(self, reranker_checker):

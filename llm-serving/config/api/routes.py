@@ -76,7 +76,8 @@ def get_config_manager() -> ConfigurationManager:
     """Get configuration manager dependency."""
     if _config_manager is None:
         raise HTTPException(
-            status_code=503, detail="Configuration manager not initialized",
+            status_code=503,
+            detail="Configuration manager not initialized",
         )
     return _config_manager
 
@@ -90,13 +91,10 @@ async def get_configuration(
     return {
         "version": state.current_version,
         "endpoints": {
-            name: endpoint.model_dump(mode="json")
-            for name, endpoint in state.endpoints.items()
+            name: endpoint.model_dump(mode="json") for name, endpoint in state.endpoints.items()
         },
         "ab_tests": [test.model_dump(mode="json") for test in state.ab_tests],
-        "active_ab_tests": [
-            test.model_dump(mode="json") for test in state.get_active_tests()
-        ],
+        "active_ab_tests": [test.model_dump(mode="json") for test in state.get_active_tests()],
     }
 
 
@@ -145,7 +143,8 @@ async def update_generation_params(
     """Update LLM generation parameters."""
     try:
         await manager.update_generation_params(
-            name, **request.model_dump(exclude_unset=True),
+            name,
+            **request.model_dump(exclude_unset=True),
         )
         return {"status": "updated", "endpoint": name}
     except ValueError as e:

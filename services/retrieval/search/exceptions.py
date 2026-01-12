@@ -14,17 +14,13 @@ class SearchConnectionError(SearchError):
     """Error connecting to search backend."""
 
 
-
 class SearchTimeoutError(SearchError):
     """Search operation timed out."""
-
 
 
 class SearchFilterError(SearchError):
     """Error building or applying search filters."""
 
 
-
 class SearchConfigError(SearchError):
     """Invalid search configuration."""
-

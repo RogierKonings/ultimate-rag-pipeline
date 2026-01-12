@@ -99,10 +99,7 @@ async def run_benchmark(
             async with semaphore:
                 return await benchmark_request(client, prompt, max_tokens, model)
 
-        tasks = [
-            bounded_request(prompts[i % len(prompts)])
-            for i in range(num_requests)
-        ]
+        tasks = [bounded_request(prompts[i % len(prompts)]) for i in range(num_requests)]
 
         results = await asyncio.gather(*tasks)
 
@@ -171,9 +168,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    asyncio.run(run_benchmark(
-        num_requests=args.requests,
-        concurrent=args.concurrent,
-        max_tokens=args.max_tokens,
-        model=args.model,
-    ))
+    asyncio.run(
+        run_benchmark(
+            num_requests=args.requests,
+            concurrent=args.concurrent,
+            max_tokens=args.max_tokens,
+            model=args.model,
+        ),
+    )

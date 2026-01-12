@@ -1,6 +1,5 @@
 """Configuration for the Retrieval Service."""
 
-
 from pydantic import Field
 from pydantic_settings import BaseSettings
 

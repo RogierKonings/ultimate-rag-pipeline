@@ -11,6 +11,7 @@ from enum import Enum
 
 class EvaluatorModel(Enum):
     """Available evaluator models."""
+
     GPT4 = "gpt-4"
     GPT4_TURBO = "gpt-4-turbo"
     GPT35_TURBO = "gpt-3.5-turbo"
@@ -21,6 +22,7 @@ class EvaluatorModel(Enum):
 
 class SamplingStrategy(Enum):
     """Dataset sampling strategies."""
+
     RANDOM = "random"
     STRATIFIED = "stratified"
     SEQUENTIAL = "sequential"
@@ -53,12 +55,14 @@ class EvaluationConfig:
     evaluator_api_key: str | None = None
     evaluator_base_url: str | None = None
 
-    metrics: list[str] = field(default_factory=lambda: [
-        "context_precision",
-        "context_recall",
-        "faithfulness",
-        "answer_relevancy",
-    ])
+    metrics: list[str] = field(
+        default_factory=lambda: [
+            "context_precision",
+            "context_recall",
+            "faithfulness",
+            "answer_relevancy",
+        ],
+    )
 
     dataset_path: str | None = None
     sample_size: int | None = None
@@ -108,11 +112,7 @@ class EvaluationConfig:
             EvaluationConfig instance
         """
         metrics_str = os.getenv("EVAL_METRICS")
-        metrics = (
-            [m.strip() for m in metrics_str.split(",")]
-            if metrics_str
-            else None
-        )
+        metrics = [m.strip() for m in metrics_str.split(",")] if metrics_str else None
 
         sample_size_str = os.getenv("EVAL_SAMPLE_SIZE")
         sample_size = int(sample_size_str) if sample_size_str else None

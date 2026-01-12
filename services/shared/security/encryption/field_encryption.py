@@ -25,15 +25,12 @@ class EncryptionError(Exception):
     """Base exception for encryption errors."""
 
 
-
 class DecryptionError(EncryptionError):
     """Raised when decryption fails."""
 
 
-
 class EncryptionKeyError(EncryptionError):
     """Raised when there's an issue with encryption keys."""
-
 
 
 class FieldEncryption:
@@ -90,8 +87,7 @@ class FieldEncryption:
 
         if len(key) != KEY_SIZE:
             raise EncryptionKeyError(
-                f"Invalid key size: {len(key)} bytes. "
-                f"Expected {KEY_SIZE} bytes for AES-256.",
+                f"Invalid key size: {len(key)} bytes. Expected {KEY_SIZE} bytes for AES-256.",
             )
 
         return key
@@ -241,9 +237,7 @@ class FieldEncryption:
 
         if fields_to_encrypt is None:
             # Encrypt all string fields
-            fields_to_encrypt = [
-                k for k, v in data.items() if isinstance(v, str)
-            ]
+            fields_to_encrypt = [k for k, v in data.items() if isinstance(v, str)]
 
         for field in fields_to_encrypt:
             if field in result and result[field] is not None:
@@ -361,10 +355,7 @@ class MultiKeyFieldEncryption:
             associated_data: Optional AAD for authentication.
         """
         self._primary = FieldEncryption(primary_key, associated_data)
-        self._previous = [
-            FieldEncryption(k, associated_data)
-            for k in (previous_keys or [])
-        ]
+        self._previous = [FieldEncryption(k, associated_data) for k in (previous_keys or [])]
 
     def encrypt(self, plaintext: str | bytes) -> str:
         """Encrypt with primary key."""

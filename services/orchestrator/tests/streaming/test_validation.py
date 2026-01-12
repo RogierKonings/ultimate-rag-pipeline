@@ -256,7 +256,10 @@ class TestValidateErrorEvent:
     def test_valid_error_event_recoverable(self):
         """Test validation with recoverable flag."""
         event = StreamEvent.error(
-            "req-123", "Rate limited", "RATE_LIMIT", recoverable=True,
+            "req-123",
+            "Rate limited",
+            "RATE_LIMIT",
+            recoverable=True,
         )
         assert validate_error_event(event) is True
 

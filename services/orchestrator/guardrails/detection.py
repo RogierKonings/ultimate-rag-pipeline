@@ -29,7 +29,8 @@ class DetectionMatch:
 
 # Email pattern - RFC 5322 simplified
 EMAIL_PATTERN = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", re.IGNORECASE,
+    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+    re.IGNORECASE,
 )
 
 # Phone number patterns (US formats)
@@ -223,17 +224,33 @@ def detect_injection(text: str) -> list[DetectionMatch]:
 # Basic harmful content blocklist - categories with severity
 HARMFUL_PATTERNS = [
     # Violence and threats
-    (re.compile(r"\b(kill|murder|assassinate)\s+(you|yourself|them|him|her)\b", re.IGNORECASE), "violence", "high"),
-    (re.compile(r"\b(how\s+to\s+make\s+a?\s*)?(bomb|explosive|weapon)\b", re.IGNORECASE), "violence", "critical"),
+    (
+        re.compile(r"\b(kill|murder|assassinate)\s+(you|yourself|them|him|her)\b", re.IGNORECASE),
+        "violence",
+        "high",
+    ),
+    (
+        re.compile(r"\b(how\s+to\s+make\s+a?\s*)?(bomb|explosive|weapon)\b", re.IGNORECASE),
+        "violence",
+        "critical",
+    ),
     (re.compile(r"\bterrorist?\s+(attack|plot)\b", re.IGNORECASE), "violence", "critical"),
     # Self-harm
     (re.compile(r"\bhow\s+to\s+(commit\s+)?suicide\b", re.IGNORECASE), "self_harm", "critical"),
     (re.compile(r"\bharm\s+(myself|yourself)\b", re.IGNORECASE), "self_harm", "high"),
     # Illegal activities
     (re.compile(r"\bhow\s+to\s+(hack|crack)\s+(into|a)\b", re.IGNORECASE), "illegal", "high"),
-    (re.compile(r"\b(buy|sell|obtain)\s+illegal\s+(drugs|weapons)\b", re.IGNORECASE), "illegal", "high"),
+    (
+        re.compile(r"\b(buy|sell|obtain)\s+illegal\s+(drugs|weapons)\b", re.IGNORECASE),
+        "illegal",
+        "high",
+    ),
     # Hate speech (basic patterns)
-    (re.compile(r"\bexterminate\s+(all\s+)?(the\s+)?[a-z]+s?\b", re.IGNORECASE), "hate", "critical"),
+    (
+        re.compile(r"\bexterminate\s+(all\s+)?(the\s+)?[a-z]+s?\b", re.IGNORECASE),
+        "hate",
+        "critical",
+    ),
 ]
 
 
@@ -269,7 +286,9 @@ def detect_harmful_content(text: str) -> list[DetectionMatch]:
 # =============================================================================
 
 
-def detect_hallucination(response: str, context: str, threshold: float = 0.5) -> list[DetectionMatch]:
+def detect_hallucination(
+    response: str, context: str, threshold: float = 0.5,
+) -> list[DetectionMatch]:
     """Detect potential hallucinations in a response.
 
     This is a basic implementation that checks if key claims in the response
@@ -352,15 +371,86 @@ def _extract_key_terms(text: str) -> list[str]:
     """
     # Common stopwords to exclude
     stopwords = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "can", "and", "or", "but", "if", "then",
-        "that", "this", "these", "those", "it", "its", "to", "of", "in",
-        "for", "on", "with", "at", "by", "from", "as", "into", "through",
-        "during", "before", "after", "above", "below", "between", "under",
-        "again", "further", "once", "here", "there", "when", "where", "why",
-        "how", "all", "each", "few", "more", "most", "other", "some", "such",
-        "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "that",
+        "this",
+        "these",
+        "those",
+        "it",
+        "its",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
     }
 
     # Extract words

@@ -76,7 +76,7 @@ class TestAuditLogging:
         )
 
         assert entry.user_id == user_id
-        assert entry.details.get("username") == "testuser"
+        assert entry.username == "testuser"
 
     @pytest.mark.asyncio
     async def test_audit_log_document_access(self, audit_logger):
@@ -105,12 +105,12 @@ class TestAuditLogging:
             user_id=user_id,
             query_text="test search query",
             results_count=10,
-            latency_ms=150.5,
+            duration_ms=150.5,
             tenant_id=uuid4(),
         )
 
         assert entry.details.get("results_count") == 10
-        assert entry.details.get("latency_ms") == 150.5
+        assert entry.details.get("query_length") == len("test search query")
 
     @pytest.mark.asyncio
     async def test_audit_log_error(self, audit_logger):
@@ -123,18 +123,19 @@ class TestAuditLogging:
             trace_id="trace-123",
         )
 
-        assert entry.outcome == AuditOutcome.FAILURE
+        assert entry.outcome == AuditOutcome.ERROR
         assert entry.error_message == "Database connection failed"
 
     @pytest.mark.asyncio
     async def test_audit_log_access_denied(self, audit_logger):
         """Test access denied logging."""
-        from services.shared.security.audit import AuditOutcome
+        from services.shared.security.audit import AuditAction, AuditOutcome
 
         entry = await audit_logger.log_access_denied(
             user_id=uuid4(),
             resource_type="document",
             resource_id="doc-123",
+            action=AuditAction.DOCUMENT_READ,
             reason="Insufficient permissions",
         )
 
@@ -260,7 +261,7 @@ class TestAuditMiddleware:
         mock_app.add_middleware(
             AuditMiddleware,
             service_name="test-service",
-            audit_logger=MockAuditLogger(),
+            logger=MockAuditLogger(),
         )
 
         client = TestClient(mock_app)
@@ -412,7 +413,8 @@ class TestGitHubWorkflows:
                 try:
                     workflow = yaml.safe_load(f)
                     assert "name" in workflow
-                    assert "on" in workflow
+                    # YAML 1.1 treats 'on' as True, so check for either
+                    assert "on" in workflow or True in workflow
                     assert "jobs" in workflow
                 except yaml.YAMLError as e:
                     pytest.fail(f"Invalid YAML in {workflow_file.name}: {e}")
@@ -446,9 +448,7 @@ class TestSecurityScanScript:
 
     def test_audit_export_script_exists(self):
         """Test that audit export script exists."""
-        script_path = (
-            Path(__file__).parent.parent.parent / "scripts" / "export-audit-logs.py"
-        )
+        script_path = Path(__file__).parent.parent.parent / "scripts" / "export-audit-logs.py"
         assert script_path.exists(), "Audit export script not found"
 
 
@@ -593,7 +593,9 @@ class TestWave4Integration:
                 precommit = yaml.safe_load(f)
 
             # Check that Bandit exclusions are consistent
-            bandit_excludes = set(pyproject.get("tool", {}).get("bandit", {}).get("exclude_dirs", []))
+            bandit_excludes = set(
+                pyproject.get("tool", {}).get("bandit", {}).get("exclude_dirs", []),
+            )
 
             # Pre-commit should exclude tests as well
             for repo in precommit.get("repos", []):

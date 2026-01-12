@@ -75,7 +75,12 @@ class ABRouter:
             endpoint_a = self.config_manager.get_endpoint(test.model_a)
             endpoint_b = self.config_manager.get_endpoint(test.model_b)
 
-            if endpoint_a and endpoint_a.type == model_type or endpoint_b and endpoint_b.type == model_type:
+            if (
+                endpoint_a
+                and endpoint_a.type == model_type
+                or endpoint_b
+                and endpoint_b.type == model_type
+            ):
                 tests.append(test)
 
         return tests
@@ -119,9 +124,7 @@ class ABRouter:
                 # Hash user ID for consistent routing
                 user_hash = int(hashlib.md5(user_id.encode()).hexdigest(), 16)
                 return (
-                    test.model_a
-                    if (user_hash % 100) < (test.traffic_split * 100)
-                    else test.model_b
+                    test.model_a if (user_hash % 100) < (test.traffic_split * 100) else test.model_b
                 )
 
             # No user ID, fall back to model_a

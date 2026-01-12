@@ -106,9 +106,7 @@ async def health_check():
     return {
         "status": "healthy",
         "config_loaded": _config_manager is not None,
-        "version": (
-            _config_manager.get_state().current_version if _config_manager else None
-        ),
+        "version": (_config_manager.get_state().current_version if _config_manager else None),
     }
 
 

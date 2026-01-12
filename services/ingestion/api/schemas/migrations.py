@@ -52,29 +52,40 @@ class MigrationRequestSchema(BaseModel):
 
     target_model: str = Field(..., description="Target embedding model name")
     target_dimensions: int | None = Field(
-        None, description="Target dimensions (auto-detected if not specified)",
+        None,
+        description="Target dimensions (auto-detected if not specified)",
     )
 
     # Scope
     tenant_ids: list[str] | None = Field(
-        None, description="Limit migration to specific tenants",
+        None,
+        description="Limit migration to specific tenants",
     )
 
     # Options
     batch_size: int = Field(
-        default=100, ge=10, le=1000, description="Documents per batch",
+        default=100,
+        ge=10,
+        le=1000,
+        description="Documents per batch",
     )
     max_concurrent_batches: int = Field(
-        default=4, ge=1, le=16, description="Max concurrent batches",
+        default=4,
+        ge=1,
+        le=16,
+        description="Max concurrent batches",
     )
     validate_before_switch: bool = Field(
-        default=True, description="Run validation before switching",
+        default=True,
+        description="Run validation before switching",
     )
     auto_switch: bool = Field(
-        default=False, description="Auto-switch on validation pass",
+        default=False,
+        description="Auto-switch on validation pass",
     )
     preserve_source: bool = Field(
-        default=True, description="Keep source collection for rollback",
+        default=True,
+        description="Keep source collection for rollback",
     )
 
     # Validation configuration
@@ -129,7 +140,8 @@ class MigrationResponseSchema(BaseModel):
     validation_score: float | None = None
     validation_passed: bool = False
     validation_config: dict | None = Field(
-        None, description="Stored validation configuration",
+        None,
+        description="Stored validation configuration",
     )
     rollback_enabled: bool = True
     last_error: str | None = None
@@ -172,7 +184,8 @@ class SwitchRequestSchema(BaseModel):
     """Request schema for switching collections."""
 
     force: bool = Field(
-        default=False, description="Force switch even if validation failed",
+        default=False,
+        description="Force switch even if validation failed",
     )
 
 

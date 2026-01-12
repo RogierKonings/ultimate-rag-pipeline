@@ -672,12 +672,14 @@ class RAGMetrics:
             environment: Deployment environment
             **extra: Additional info fields
         """
-        self.service_info.info({
-            "service": self.service_name,
-            "version": version,
-            "environment": environment,
-            **extra,
-        })
+        self.service_info.info(
+            {
+                "service": self.service_name,
+                "version": version,
+                "environment": environment,
+                **extra,
+            },
+        )
 
     def inc_active_queries(self) -> None:
         """Increment active queries gauge."""

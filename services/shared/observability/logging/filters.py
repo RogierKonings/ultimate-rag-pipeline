@@ -28,7 +28,9 @@ class SensitiveDataFilter(logging.Filter):
         # Bearer tokens
         "bearer": re.compile(r"Bearer\s+[A-Za-z0-9_-]+", re.IGNORECASE),
         # API keys (various formats)
-        "api_key": re.compile(r"(?:api[_-]?key|apikey)[=:]\s*['\"]?([A-Za-z0-9_-]{20,})['\"]?", re.IGNORECASE),
+        "api_key": re.compile(
+            r"(?:api[_-]?key|apikey)[=:]\s*['\"]?([A-Za-z0-9_-]{20,})['\"]?", re.IGNORECASE,
+        ),
         # Credit card numbers (with or without spaces/dashes)
         "credit_card": re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
         # SSN (US Social Security Number)
@@ -38,7 +40,9 @@ class SensitiveDataFilter(logging.Filter):
         # AWS access keys
         "aws_key": re.compile(r"(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}"),
         # Generic secret patterns
-        "generic_secret": re.compile(r"(?:secret|password|passwd|pwd)[=:]\s*['\"]?([^\s'\"]+)['\"]?", re.IGNORECASE),
+        "generic_secret": re.compile(
+            r"(?:secret|password|passwd|pwd)[=:]\s*['\"]?([^\s'\"]+)['\"]?", re.IGNORECASE,
+        ),
     }
 
     def __init__(
@@ -60,13 +64,37 @@ class SensitiveDataFilter(logging.Filter):
         self.mask_email = mask_email
 
         # Default sensitive field names
-        self.sensitive_fields = {f.lower() for f in (sensitive_fields or [
-            "password", "passwd", "pwd", "secret", "token", "api_key",
-            "apikey", "api-key", "authorization", "auth", "credential",
-            "private_key", "privatekey", "access_token", "refresh_token",
-            "jwt", "bearer", "credit_card", "creditcard", "card_number",
-            "cvv", "ssn", "social_security",
-        ])}
+        self.sensitive_fields = {
+            f.lower()
+            for f in (
+                sensitive_fields
+                or [
+                    "password",
+                    "passwd",
+                    "pwd",
+                    "secret",
+                    "token",
+                    "api_key",
+                    "apikey",
+                    "api-key",
+                    "authorization",
+                    "auth",
+                    "credential",
+                    "private_key",
+                    "privatekey",
+                    "access_token",
+                    "refresh_token",
+                    "jwt",
+                    "bearer",
+                    "credit_card",
+                    "creditcard",
+                    "card_number",
+                    "cvv",
+                    "ssn",
+                    "social_security",
+                ]
+            )
+        }
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
@@ -96,11 +124,28 @@ class SensitiveDataFilter(logging.Filter):
     def _standard_attrs(self) -> set[str]:
         """Return standard LogRecord attributes."""
         return {
-            "name", "msg", "args", "created", "filename", "funcName",
-            "levelname", "levelno", "lineno", "module", "msecs",
-            "pathname", "process", "processName", "relativeCreated",
-            "stack_info", "exc_info", "exc_text", "thread", "threadName",
-            "message", "asctime",
+            "name",
+            "msg",
+            "args",
+            "created",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "module",
+            "msecs",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "exc_info",
+            "exc_text",
+            "thread",
+            "threadName",
+            "message",
+            "asctime",
         }
 
     def _mask_value(self, value: Any, field_name: str = "") -> Any:
@@ -242,9 +287,7 @@ class RateLimitFilter(logging.Filter):
             self._message_counts[key] = []
 
         # Remove old timestamps
-        self._message_counts[key] = [
-            t for t in self._message_counts[key] if t > cutoff_time
-        ]
+        self._message_counts[key] = [t for t in self._message_counts[key] if t > cutoff_time]
 
         # Check if we've exceeded the limit
         if len(self._message_counts[key]) >= self.max_duplicates:

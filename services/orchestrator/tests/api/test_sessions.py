@@ -90,7 +90,10 @@ class TestCreateSession:
         assert data["message"] == "Session created successfully"
 
     def test_create_session_with_user_and_tenant(
-        self, client, app, mock_session_manager,
+        self,
+        client,
+        app,
+        mock_session_manager,
     ):
         """Test session creation with user_id and tenant_id."""
         app.state.session_manager = mock_session_manager
@@ -256,7 +259,11 @@ class TestDeleteSession:
     """Tests for DELETE /api/v1/sessions/{id} endpoint."""
 
     def test_delete_session_success(
-        self, client, app, mock_session_manager, sample_session,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        sample_session,
     ):
         """Test successful session deletion."""
         app.state.session_manager = mock_session_manager
@@ -292,7 +299,11 @@ class TestClearSession:
     """Tests for POST /api/v1/sessions/{id}/clear endpoint."""
 
     def test_clear_session_success(
-        self, client, app, mock_session_manager, sample_session,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        sample_session,
     ):
         """Test successful session clearing."""
         app.state.session_manager = mock_session_manager
@@ -324,7 +335,11 @@ class TestClearSession:
         assert response.status_code == 503
 
     def test_clear_session_verifies_clear_was_called(
-        self, client, app, mock_session_manager, sample_session,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        sample_session,
     ):
         """Test that clear_session is called with correct arguments."""
         app.state.session_manager = mock_session_manager
@@ -338,7 +353,11 @@ class TestSessionResponseModel:
     """Tests for session response model structure."""
 
     def test_session_response_includes_all_fields(
-        self, client, app, mock_session_manager, sample_session,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        sample_session,
     ):
         """Test that session response includes all expected fields."""
         app.state.session_manager = mock_session_manager
@@ -357,7 +376,11 @@ class TestSessionResponseModel:
         assert "total_tokens" in session
 
     def test_session_response_datetime_format(
-        self, client, app, mock_session_manager, sample_session,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        sample_session,
     ):
         """Test that datetime fields are properly formatted."""
         app.state.session_manager = mock_session_manager

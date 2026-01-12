@@ -99,10 +99,7 @@ async def run_warmup(
             async with semaphore:
                 return await warmup_request(client, prompt)
 
-        tasks = [
-            bounded_request(prompts[i % len(prompts)])
-            for i in range(num_requests)
-        ]
+        tasks = [bounded_request(prompts[i % len(prompts)]) for i in range(num_requests)]
 
         results = await asyncio.gather(*tasks)
         latencies = [r for r in results if r is not None]

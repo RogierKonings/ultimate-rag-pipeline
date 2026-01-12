@@ -438,7 +438,9 @@ def main():
         fail_count = sum(results.summary.get(s, 0) for s in relevant_severities)
 
         if fail_count > 0:
-            print(f"\nError: Found {fail_count} findings at {args.fail_on.upper()} severity or higher")
+            print(
+                f"\nError: Found {fail_count} findings at {args.fail_on.upper()} severity or higher",
+            )
             sys.exit(1)
 
     print("\nReport generation complete!")

@@ -63,18 +63,9 @@ class TestPIISettings:
             },
         )
 
-        assert (
-            settings.get_handling_mode(PIIEntityType.US_SSN.value)
-            == PIIHandlingMode.REJECT
-        )
-        assert (
-            settings.get_handling_mode(PIIEntityType.EMAIL_ADDRESS.value)
-            == PIIHandlingMode.MASK
-        )
-        assert (
-            settings.get_handling_mode(PIIEntityType.PERSON.value)
-            == PIIHandlingMode.FLAG
-        )
+        assert settings.get_handling_mode(PIIEntityType.US_SSN.value) == PIIHandlingMode.REJECT
+        assert settings.get_handling_mode(PIIEntityType.EMAIL_ADDRESS.value) == PIIHandlingMode.MASK
+        assert settings.get_handling_mode(PIIEntityType.PERSON.value) == PIIHandlingMode.FLAG
 
         assert settings.get_min_score(PIIEntityType.US_SSN.value) == 0.9
         assert settings.get_min_score(PIIEntityType.EMAIL_ADDRESS.value) == 0.7
@@ -136,8 +127,7 @@ class TestPIIDetector:
         assert result.entity_counts[PIIEntityType.EMAIL_ADDRESS.value] == 1
 
         email_entity = next(
-            e for e in result.entities
-            if e.entity_type == PIIEntityType.EMAIL_ADDRESS.value
+            e for e in result.entities if e.entity_type == PIIEntityType.EMAIL_ADDRESS.value
         )
         assert email_entity.text == "support@example.com"
 
@@ -470,7 +460,8 @@ class TestPIIResponseFilter:
         ]
 
         filtered = await filter.filter_search_results(
-            results, include_pii_metadata=True,
+            results,
+            include_pii_metadata=True,
         )
 
         assert filtered[0]["pii_detected"] is True

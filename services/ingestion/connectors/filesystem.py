@@ -25,6 +25,7 @@ from services.ingestion.connectors.base import (
 # Try to import python-magic for better MIME type detection
 try:
     import magic
+
     HAS_MAGIC = True
 except ImportError:
     HAS_MAGIC = False

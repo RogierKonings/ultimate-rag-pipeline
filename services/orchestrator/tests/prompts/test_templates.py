@@ -64,7 +64,14 @@ class TestTemplateRegistry:
 
     def test_templates_dict_contains_all_strategies(self):
         """Templates dict should contain all expected strategies."""
-        expected_keys = ["rag", "rag_citations", "no_context", "follow_up", "clarification", "summary"]
+        expected_keys = [
+            "rag",
+            "rag_citations",
+            "no_context",
+            "follow_up",
+            "clarification",
+            "summary",
+        ]
         for key in expected_keys:
             assert key in TEMPLATES
 

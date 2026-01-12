@@ -93,7 +93,9 @@ class EmbeddingJob(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<EmbeddingJob(id={self.id}, status='{self.status}', model='{self.embedding_model}')>"
+        return (
+            f"<EmbeddingJob(id={self.id}, status='{self.status}', model='{self.embedding_model}')>"
+        )
 
 
 class RetrievalLog(Base):
@@ -202,9 +204,7 @@ class RetrievalLog(Base):
     )
 
     # Indexes
-    __table_args__ = (
-        Index("ix_retrieval_logs_tenant_created", "tenant_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_retrieval_logs_tenant_created", "tenant_id", "created_at"),)
 
     def __repr__(self) -> str:
         return f"<RetrievalLog(id={self.id}, tenant_id={self.tenant_id}, event_type='{self.event_type}')>"

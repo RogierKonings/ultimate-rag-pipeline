@@ -58,7 +58,9 @@ class BaseParser(ABC):
 
     @abstractmethod
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse document content and return structured output.
 

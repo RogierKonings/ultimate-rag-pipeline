@@ -75,7 +75,10 @@ class TestReadinessProbe:
         assert "Session manager not initialized" in data["reasons"]
 
     def test_readiness_returns_503_without_model_gateway(
-        self, client, app, mock_session_manager,
+        self,
+        client,
+        app,
+        mock_session_manager,
     ):
         """Test readiness returns 503 when model gateway is not initialized."""
         app.state.session_manager = mock_session_manager
@@ -89,7 +92,11 @@ class TestReadinessProbe:
         assert "Model gateway not initialized" in data["reasons"]
 
     def test_readiness_returns_200_when_all_services_ready(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test readiness returns 200 when all services are ready."""
         app.state.session_manager = mock_session_manager
@@ -101,7 +108,10 @@ class TestReadinessProbe:
         assert response.json() == {"status": "ready"}
 
     def test_readiness_returns_503_when_redis_unavailable(
-        self, client, app, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_model_gateway,
     ):
         """Test readiness returns 503 when Redis is unavailable."""
         manager = MagicMock()
@@ -124,7 +134,11 @@ class TestDetailedHealthCheck:
     """Tests for the detailed health check endpoint."""
 
     def test_health_returns_healthy_when_all_components_healthy(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test health returns healthy when all components are healthy."""
         app.state.session_manager = mock_session_manager
@@ -142,7 +156,11 @@ class TestDetailedHealthCheck:
         assert "timestamp" in data
 
     def test_health_includes_component_details(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test health response includes component details."""
         app.state.session_manager = mock_session_manager
@@ -161,7 +179,10 @@ class TestDetailedHealthCheck:
         assert components["llm_gateway"]["status"] == "healthy"
 
     def test_health_returns_degraded_when_gateway_unhealthy(
-        self, client, app, mock_session_manager,
+        self,
+        client,
+        app,
+        mock_session_manager,
     ):
         """Test health returns degraded when gateway is unhealthy."""
         app.state.session_manager = mock_session_manager
@@ -194,7 +215,11 @@ class TestDetailedHealthCheck:
         assert components["llm_gateway"]["status"] == "unknown"
 
     def test_health_calculates_uptime_correctly(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test health correctly calculates uptime."""
         app.state.session_manager = mock_session_manager
@@ -209,7 +234,11 @@ class TestDetailedHealthCheck:
         assert data["uptime_seconds"] < 65
 
     def test_health_includes_latency_measurements(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test health includes latency measurements for components."""
         app.state.session_manager = mock_session_manager

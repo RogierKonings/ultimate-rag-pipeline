@@ -350,7 +350,11 @@ class TestSemanticSearcherMultiVector:
 
         result_lists = [
             [item],
-            [SearchResultItem(chunk_id=chunk_id, document_id=item.document_id, content="Test", score=0.9)],
+            [
+                SearchResultItem(
+                    chunk_id=chunk_id, document_id=item.document_id, content="Test", score=0.9,
+                ),
+            ],
         ]
 
         aggregated = searcher._aggregate_results(result_lists, "max", 10)

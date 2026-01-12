@@ -25,6 +25,7 @@ class BurnRate:
         severity: Alert severity
         action: Recommended action
     """
+
     rate: float
     short_window: str
     long_window: str
@@ -50,6 +51,7 @@ class SLO:
         owner: Team or individual responsible
         consequences: What happens when SLO is violated
     """
+
     name: str
     sli_name: str
     target: float
@@ -121,88 +123,103 @@ def _register_slo(slo: SLO) -> SLO:
 # Availability SLOs
 # -----------------------------------------------------------------------------
 
-_register_slo(SLO(
-    name="query_availability",
-    sli_name="query_availability",
-    target=0.999,  # 99.9%
-    window="30d",
-    description="99.9% of queries should complete successfully",
-    owner="platform-team",
-    consequences="User-facing errors, degraded experience",
-))
+_register_slo(
+    SLO(
+        name="query_availability",
+        sli_name="query_availability",
+        target=0.999,  # 99.9%
+        window="30d",
+        description="99.9% of queries should complete successfully",
+        owner="platform-team",
+        consequences="User-facing errors, degraded experience",
+    ),
+)
 
-_register_slo(SLO(
-    name="llm_availability",
-    sli_name="llm_availability",
-    target=0.995,  # 99.5%
-    window="30d",
-    description="99.5% of LLM requests should complete successfully",
-    owner="ml-team",
-    consequences="Fallback to cached responses or simpler models",
-))
+_register_slo(
+    SLO(
+        name="llm_availability",
+        sli_name="llm_availability",
+        target=0.995,  # 99.5%
+        window="30d",
+        description="99.5% of LLM requests should complete successfully",
+        owner="ml-team",
+        consequences="Fallback to cached responses or simpler models",
+    ),
+)
 
 # -----------------------------------------------------------------------------
 # Latency SLOs
 # -----------------------------------------------------------------------------
 
-_register_slo(SLO(
-    name="query_latency",
-    sli_name="query_latency_p99",
-    target=0.99,  # 99% of requests under threshold
-    window="30d",
-    description="99% of queries should complete in under 2 seconds",
-    owner="platform-team",
-    consequences="Poor user experience, timeouts",
-))
+_register_slo(
+    SLO(
+        name="query_latency",
+        sli_name="query_latency_p99",
+        target=0.99,  # 99% of requests under threshold
+        window="30d",
+        description="99% of queries should complete in under 2 seconds",
+        owner="platform-team",
+        consequences="Poor user experience, timeouts",
+    ),
+)
 
-_register_slo(SLO(
-    name="retrieval_latency",
-    sli_name="retrieval_latency_p99",
-    target=0.99,  # 99% of requests under threshold
-    window="30d",
-    description="99% of retrieval operations should complete in under 500ms",
-    owner="platform-team",
-    consequences="Slow queries, degraded throughput",
-))
+_register_slo(
+    SLO(
+        name="retrieval_latency",
+        sli_name="retrieval_latency_p99",
+        target=0.99,  # 99% of requests under threshold
+        window="30d",
+        description="99% of retrieval operations should complete in under 500ms",
+        owner="platform-team",
+        consequences="Slow queries, degraded throughput",
+    ),
+)
 
-_register_slo(SLO(
-    name="llm_ttft",
-    sli_name="llm_ttft_p95",
-    target=0.95,  # 95% of requests under threshold
-    window="7d",
-    description="95% of streaming responses should start within 1 second",
-    owner="ml-team",
-    consequences="Poor perceived responsiveness",
-))
+_register_slo(
+    SLO(
+        name="llm_ttft",
+        sli_name="llm_ttft_p95",
+        target=0.95,  # 95% of requests under threshold
+        window="7d",
+        description="95% of streaming responses should start within 1 second",
+        owner="ml-team",
+        consequences="Poor perceived responsiveness",
+    ),
+)
 
 # -----------------------------------------------------------------------------
 # Quality SLOs
 # -----------------------------------------------------------------------------
 
-_register_slo(SLO(
-    name="retrieval_quality",
-    sli_name="retrieval_zero_results_rate",
-    target=0.80,  # 80% of queries return results
-    window="7d",
-    description="At least 80% of queries should return relevant results",
-    owner="search-team",
-    consequences="Users not finding information, poor RAG quality",
-))
+_register_slo(
+    SLO(
+        name="retrieval_quality",
+        sli_name="retrieval_zero_results_rate",
+        target=0.80,  # 80% of queries return results
+        window="7d",
+        description="At least 80% of queries should return relevant results",
+        owner="search-team",
+        consequences="Users not finding information, poor RAG quality",
+    ),
+)
 
-_register_slo(SLO(
-    name="cache_effectiveness",
-    sli_name="cache_hit_rate",
-    target=0.50,  # 50% cache hit rate
-    window="7d",
-    description="Cache hit rate should be at least 50%",
-    owner="platform-team",
-    consequences="Higher latency, increased costs",
-))
+_register_slo(
+    SLO(
+        name="cache_effectiveness",
+        sli_name="cache_hit_rate",
+        target=0.50,  # 50% cache hit rate
+        window="7d",
+        description="Cache hit rate should be at least 50%",
+        owner="platform-team",
+        consequences="Higher latency, increased costs",
+    ),
+)
 
 
 # =============================================================================
 # Rule Generation
 # =============================================================================
+
 
 def generate_slo_recording_rules(slo: SLO) -> list[dict[str, Any]]:
     """
@@ -229,14 +246,16 @@ def generate_slo_recording_rules(slo: SLO) -> list[dict[str, Any]]:
     # Recording rule for SLI ratio
     for window in ["5m", "30m", "1h", "6h", "1d", "3d", "7d", "30d"]:
         ratio_query = sli.query_ratio.replace("{{window}}", window)
-        rules.append({
-            "record": f"slo:{base_name}:ratio_{window.replace('d', 'd').replace('h', 'h').replace('m', 'm')}",
-            "expr": ratio_query,
-            "labels": {
-                "slo": slo.name,
-                "window": window,
+        rules.append(
+            {
+                "record": f"slo:{base_name}:ratio_{window.replace('d', 'd').replace('h', 'h').replace('m', 'm')}",
+                "expr": ratio_query,
+                "labels": {
+                    "slo": slo.name,
+                    "window": window,
+                },
             },
-        })
+        )
 
     # Error budget remaining (over compliance window)
     budget_query = f"""
@@ -245,13 +264,15 @@ def generate_slo_recording_rules(slo: SLO) -> list[dict[str, Any]]:
         / {slo.error_budget}
     )
     """.strip()
-    rules.append({
-        "record": f"slo:{base_name}:error_budget_remaining",
-        "expr": budget_query,
-        "labels": {
-            "slo": slo.name,
+    rules.append(
+        {
+            "record": f"slo:{base_name}:error_budget_remaining",
+            "expr": budget_query,
+            "labels": {
+                "slo": slo.name,
+            },
         },
-    })
+    )
 
     # Burn rate for each window
     for burn_rate in slo.burn_rates:
@@ -261,23 +282,27 @@ def generate_slo_recording_rules(slo: SLO) -> list[dict[str, Any]]:
         short_burn = f"(1 - ({short_ratio})) / {slo.error_budget}"
         long_burn = f"(1 - ({long_ratio})) / {slo.error_budget}"
 
-        rules.append({
-            "record": f"slo:{base_name}:burn_rate_{burn_rate.short_window}",
-            "expr": short_burn,
-            "labels": {
-                "slo": slo.name,
-                "window": burn_rate.short_window,
+        rules.append(
+            {
+                "record": f"slo:{base_name}:burn_rate_{burn_rate.short_window}",
+                "expr": short_burn,
+                "labels": {
+                    "slo": slo.name,
+                    "window": burn_rate.short_window,
+                },
             },
-        })
+        )
 
-        rules.append({
-            "record": f"slo:{base_name}:burn_rate_{burn_rate.long_window}",
-            "expr": long_burn,
-            "labels": {
-                "slo": slo.name,
-                "window": burn_rate.long_window,
+        rules.append(
+            {
+                "record": f"slo:{base_name}:burn_rate_{burn_rate.long_window}",
+                "expr": long_burn,
+                "labels": {
+                    "slo": slo.name,
+                    "window": burn_rate.long_window,
+                },
             },
-        })
+        )
 
     return rules
 
@@ -322,23 +347,25 @@ def generate_slo_burn_rate_alerts(slo: SLO) -> list[dict[str, Any]]:
         )
         """.strip()
 
-        alerts.append({
-            "alert": f"SLO{base_name.title()}BurnRateTooHigh",
-            "expr": alert_expr,
-            "for": "2m",
-            "labels": {
-                "severity": burn_rate.severity,
-                "slo": slo.name,
-                "burn_rate": str(burn_rate.rate),
+        alerts.append(
+            {
+                "alert": f"SLO{base_name.title()}BurnRateTooHigh",
+                "expr": alert_expr,
+                "for": "2m",
+                "labels": {
+                    "severity": burn_rate.severity,
+                    "slo": slo.name,
+                    "burn_rate": str(burn_rate.rate),
+                },
+                "annotations": {
+                    "summary": f"SLO {slo.name} burn rate is {burn_rate.rate}x",
+                    "description": f"Error budget for {slo.name} is being consumed {burn_rate.rate}x faster than sustainable. "
+                    f"Short window ({short_window}) and long window ({long_window}) both exceed threshold. "
+                    f"Action: {burn_rate.action}",
+                    "runbook_url": f"https://runbooks.example.com/slo/{slo.name}",
+                },
             },
-            "annotations": {
-                "summary": f"SLO {slo.name} burn rate is {burn_rate.rate}x",
-                "description": f"Error budget for {slo.name} is being consumed {burn_rate.rate}x faster than sustainable. "
-                               f"Short window ({short_window}) and long window ({long_window}) both exceed threshold. "
-                               f"Action: {burn_rate.action}",
-                "runbook_url": f"https://runbooks.example.com/slo/{slo.name}",
-            },
-        })
+        )
 
     # Error budget exhausted alert
     budget_query = f"""
@@ -350,22 +377,24 @@ def generate_slo_burn_rate_alerts(slo: SLO) -> list[dict[str, Any]]:
     ) <= 0
     """.strip()
 
-    alerts.append({
-        "alert": f"SLO{base_name.title()}ErrorBudgetExhausted",
-        "expr": budget_query,
-        "for": "5m",
-        "labels": {
-            "severity": "critical",
-            "slo": slo.name,
+    alerts.append(
+        {
+            "alert": f"SLO{base_name.title()}ErrorBudgetExhausted",
+            "expr": budget_query,
+            "for": "5m",
+            "labels": {
+                "severity": "critical",
+                "slo": slo.name,
+            },
+            "annotations": {
+                "summary": f"SLO {slo.name} error budget exhausted",
+                "description": f"The error budget for {slo.name} has been completely consumed. "
+                f"Target: {slo.target * 100}% over {slo.window}. "
+                f"Immediate action required.",
+                "runbook_url": f"https://runbooks.example.com/slo/{slo.name}",
+            },
         },
-        "annotations": {
-            "summary": f"SLO {slo.name} error budget exhausted",
-            "description": f"The error budget for {slo.name} has been completely consumed. "
-                           f"Target: {slo.target*100}% over {slo.window}. "
-                           f"Immediate action required.",
-            "runbook_url": f"https://runbooks.example.com/slo/{slo.name}",
-        },
-    })
+    )
 
     return alerts
 

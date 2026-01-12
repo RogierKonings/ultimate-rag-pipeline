@@ -238,10 +238,7 @@ class EvaluationDataset:
             description=data.get("description", ""),
             created_at=created_at,
             metadata=data.get("metadata", {}),
-            samples=[
-                EvaluationSample.from_dict(s)
-                for s in data.get("samples", [])
-            ],
+            samples=[EvaluationSample.from_dict(s) for s in data.get("samples", [])],
         )
 
     def to_json(self, indent: int = 2) -> str:
@@ -340,10 +337,7 @@ class EvaluationDataset:
         Returns:
             New dataset with filtered samples
         """
-        filtered = [
-            s for s in self.samples
-            if s.metadata.get("category") == category
-        ]
+        filtered = [s for s in self.samples if s.metadata.get("category") == category]
         return EvaluationDataset(
             name=f"{self.name}_{category}",
             samples=filtered,

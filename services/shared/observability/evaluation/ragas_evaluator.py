@@ -340,11 +340,7 @@ class RagasEvaluator:
         aggregated_metrics: dict[str, dict[str, float]] = {}
 
         for metric_name in self.config.metrics:
-            values = [
-                r.metrics.get(metric_name, 0.0)
-                for r in results
-                if "error" not in r.metadata
-            ]
+            values = [r.metrics.get(metric_name, 0.0) for r in results if "error" not in r.metadata]
 
             if values:
                 aggregated_metrics[metric_name] = {

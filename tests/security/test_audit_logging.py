@@ -21,6 +21,7 @@ from services.shared.security.audit import (
     AuditSeverity,
     AuditStats,
     get_audit_logger,
+    set_audit_logger,
 )
 
 
@@ -214,7 +215,7 @@ class TestAuditLogger:
         )
 
         assert entry.action == AuditAction.QUERY_SEARCH
-        assert entry.details.get("query_length") == 23
+        assert entry.details.get("query_length") == len("How do I configure X?")
         assert entry.details.get("results_count") == 10
         # Query text should NOT be in details (privacy)
         assert "How do I" not in str(entry.details)
@@ -440,18 +441,34 @@ class TestAuditMiddleware:
         middleware = AuditMiddleware(app, service_name="test")
 
         assert middleware._determine_action("POST", "/api/v1/auth/login") == AuditAction.AUTH_LOGIN
-        assert middleware._determine_action("POST", "/api/v1/auth/logout") == AuditAction.AUTH_LOGOUT
-        assert middleware._determine_action("POST", "/api/v1/auth/refresh") == AuditAction.AUTH_TOKEN_REFRESH
+        assert (
+            middleware._determine_action("POST", "/api/v1/auth/logout") == AuditAction.AUTH_LOGOUT
+        )
+        assert (
+            middleware._determine_action("POST", "/api/v1/auth/refresh")
+            == AuditAction.AUTH_TOKEN_REFRESH
+        )
 
     def test_determine_action_documents(self):
         """Test action determination for document endpoints."""
         app = MagicMock()
         middleware = AuditMiddleware(app, service_name="test")
 
-        assert middleware._determine_action("POST", "/api/v1/documents") == AuditAction.DOCUMENT_CREATE
-        assert middleware._determine_action("GET", "/api/v1/documents/123") == AuditAction.DOCUMENT_READ
-        assert middleware._determine_action("PUT", "/api/v1/documents/123") == AuditAction.DOCUMENT_UPDATE
-        assert middleware._determine_action("DELETE", "/api/v1/documents/123") == AuditAction.DOCUMENT_DELETE
+        assert (
+            middleware._determine_action("POST", "/api/v1/documents") == AuditAction.DOCUMENT_CREATE
+        )
+        assert (
+            middleware._determine_action("GET", "/api/v1/documents/123")
+            == AuditAction.DOCUMENT_READ
+        )
+        assert (
+            middleware._determine_action("PUT", "/api/v1/documents/123")
+            == AuditAction.DOCUMENT_UPDATE
+        )
+        assert (
+            middleware._determine_action("DELETE", "/api/v1/documents/123")
+            == AuditAction.DOCUMENT_DELETE
+        )
 
     def test_determine_action_search(self):
         """Test action determination for search endpoints."""
@@ -485,6 +502,8 @@ class TestGlobalLogger:
 
     def test_get_audit_logger(self):
         """Test getting global logger."""
+        # Reset global logger to test creating a new one
+        set_audit_logger(None)
         logger = get_audit_logger("my-service")
 
         assert isinstance(logger, AuditLogger)
@@ -492,6 +511,8 @@ class TestGlobalLogger:
 
     def test_get_same_logger(self):
         """Test getting same logger instance."""
+        # Reset global logger first
+        set_audit_logger(None)
         logger1 = get_audit_logger()
         logger2 = get_audit_logger()
 

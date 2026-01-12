@@ -124,8 +124,7 @@ class StreamManager:
         try:
             # Convert messages to ChatMessage objects
             chat_messages = [
-                ChatMessage(role=msg["role"], content=msg["content"])
-                for msg in messages
+                ChatMessage(role=msg["role"], content=msg["content"]) for msg in messages
             ]
 
             # Create chat completion request

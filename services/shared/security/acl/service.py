@@ -73,7 +73,8 @@ class ACLRepository(Protocol):
         ...
 
     async def get_acls_for_documents(
-        self, document_ids: list[UUID],
+        self,
+        document_ids: list[UUID],
     ) -> dict[UUID, DocumentACL]:
         """Get ACLs for multiple documents."""
         ...
@@ -83,13 +84,16 @@ class VectorStoreUpdater(Protocol):
     """Protocol for updating vector store ACL metadata."""
 
     async def update_document_acl(
-        self, document_id: UUID, acl_payload: dict[str, Any],
+        self,
+        document_id: UUID,
+        acl_payload: dict[str, Any],
     ) -> None:
         """Update ACL payload in vector store."""
         ...
 
     async def update_documents_acl(
-        self, document_acls: dict[UUID, dict[str, Any]],
+        self,
+        document_acls: dict[UUID, dict[str, Any]],
     ) -> None:
         """Bulk update ACL payloads in vector store."""
         ...

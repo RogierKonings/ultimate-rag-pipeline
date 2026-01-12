@@ -54,12 +54,14 @@ class UserContextExtractor:
         auth_header = request.headers.get("Authorization")
         if not auth_header:
             raise HTTPException(
-                status_code=401, detail="Missing Authorization header",
+                status_code=401,
+                detail="Missing Authorization header",
             )
 
         if not auth_header.startswith("Bearer "):
             raise HTTPException(
-                status_code=401, detail="Invalid Authorization header format",
+                status_code=401,
+                detail="Invalid Authorization header format",
             )
 
         token = auth_header[7:]  # Remove "Bearer "
@@ -110,11 +112,13 @@ class UserContextExtractor:
             )
         except KeyError as e:
             raise HTTPException(
-                status_code=401, detail=f"Missing required token claim: {str(e)}",
+                status_code=401,
+                detail=f"Missing required token claim: {str(e)}",
             ) from e
         except ValueError as e:
             raise HTTPException(
-                status_code=401, detail=f"Invalid token claim format: {str(e)}",
+                status_code=401,
+                detail=f"Invalid token claim format: {str(e)}",
             ) from e
 
     def create_anonymous_context(self, tenant_id: UUID) -> UserContext:

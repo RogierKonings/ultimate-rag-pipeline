@@ -37,40 +37,44 @@ class LoggingConfig:
     json_format: bool = True
     pretty_json: bool = False
     include_trace_context: bool = True
-    sensitive_fields: list[str] = field(default_factory=lambda: [
-        "password",
-        "passwd",
-        "secret",
-        "token",
-        "api_key",
-        "apikey",
-        "api-key",
-        "authorization",
-        "auth",
-        "credential",
-        "private_key",
-        "privatekey",
-        "access_token",
-        "refresh_token",
-        "jwt",
-        "bearer",
-        "credit_card",
-        "creditcard",
-        "card_number",
-        "cvv",
-        "ssn",
-        "social_security",
-    ])
-    excluded_paths: list[str] = field(default_factory=lambda: [
-        "/health",
-        "/healthz",
-        "/ready",
-        "/readyz",
-        "/live",
-        "/livez",
-        "/metrics",
-        "/favicon.ico",
-    ])
+    sensitive_fields: list[str] = field(
+        default_factory=lambda: [
+            "password",
+            "passwd",
+            "secret",
+            "token",
+            "api_key",
+            "apikey",
+            "api-key",
+            "authorization",
+            "auth",
+            "credential",
+            "private_key",
+            "privatekey",
+            "access_token",
+            "refresh_token",
+            "jwt",
+            "bearer",
+            "credit_card",
+            "creditcard",
+            "card_number",
+            "cvv",
+            "ssn",
+            "social_security",
+        ],
+    )
+    excluded_paths: list[str] = field(
+        default_factory=lambda: [
+            "/health",
+            "/healthz",
+            "/ready",
+            "/readyz",
+            "/live",
+            "/livez",
+            "/metrics",
+            "/favicon.ico",
+        ],
+    )
     log_request_body: bool = False
     log_response_body: bool = False
     max_body_length: int = 1000
@@ -147,4 +151,5 @@ class LoggingConfig:
     def get_log_level_int(self) -> int:
         """Get log level as integer for logging module."""
         import logging
+
         return getattr(logging, self.log_level, logging.INFO)

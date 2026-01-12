@@ -124,12 +124,8 @@ async def query(
                     "session_id": str(query_request.session_id)
                     if query_request.session_id
                     else None,
-                    "user_id": str(query_request.user_id)
-                    if query_request.user_id
-                    else None,
-                    "tenant_id": str(query_request.tenant_id)
-                    if query_request.tenant_id
-                    else None,
+                    "user_id": str(query_request.user_id) if query_request.user_id else None,
+                    "tenant_id": str(query_request.tenant_id) if query_request.tenant_id else None,
                     "options": query_request.options or {},
                 },
             )
@@ -280,7 +276,7 @@ async def query_stream(
         # If we have documents, add context
         if documents:
             context = "\n\n".join(
-                [f"[{i+1}] {doc.get('content', '')}" for i, doc in enumerate(documents)],
+                [f"[{i + 1}] {doc.get('content', '')}" for i, doc in enumerate(documents)],
             )
             context_message = f"Use the following context to answer the question:\n\n{context}"
             messages.insert(0, {"role": "system", "content": context_message})
@@ -290,9 +286,7 @@ async def query_stream(
             request_id=request_id,
             model="meta-llama/Llama-3.1-8B-Instruct",
             messages=messages,
-            session_id=str(query_request.session_id)
-            if query_request.session_id
-            else None,
+            session_id=str(query_request.session_id) if query_request.session_id else None,
             documents=documents,
             gateway=model_gateway,
         ):

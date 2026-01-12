@@ -122,7 +122,9 @@ class EmbeddingService:
                     if self.cache and self.config.cache_enabled:
                         cache_key = self._get_cache_key(batch_texts[j])
                         await self.cache.set(
-                            cache_key, embedding, ttl=self.config.cache_ttl_seconds,
+                            cache_key,
+                            embedding,
+                            ttl=self.config.cache_ttl_seconds,
                         )
 
         # Reconstruct results in original order
@@ -139,7 +141,9 @@ class EmbeddingService:
         )
 
     def _create_batches(
-        self, texts: list[str], chunk_ids: list[tuple[int, UUID]],
+        self,
+        texts: list[str],
+        chunk_ids: list[tuple[int, UUID]],
     ) -> list[tuple[list[str], list[tuple[int, UUID]]]]:
         """
         Split texts into batches respecting size limits.
@@ -264,7 +268,8 @@ class ParallelEmbedder:
         self.semaphore = asyncio.Semaphore(max_concurrent)
 
     async def embed_chunks_parallel(
-        self, chunks: list,
+        self,
+        chunks: list,
     ) -> AsyncIterator[EmbeddingResult]:
         """
         Embed chunks in parallel with concurrency control.
@@ -285,9 +290,7 @@ class ParallelEmbedder:
 
         # Split into batches
         batch_size = self.service.config.max_batch_size
-        batches = [
-            chunks[i : i + batch_size] for i in range(0, len(chunks), batch_size)
-        ]
+        batches = [chunks[i : i + batch_size] for i in range(0, len(chunks), batch_size)]
 
         # Process batches in parallel
         tasks = [embed_batch(batch) for batch in batches]

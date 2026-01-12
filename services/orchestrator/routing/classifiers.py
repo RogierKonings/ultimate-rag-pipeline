@@ -69,19 +69,13 @@ class KeywordClassifier:
 
     def __init__(self):
         """Initialize the classifier with compiled regex patterns."""
-        self._greeting_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.GREETING_PATTERNS
-        ]
-        self._gratitude_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.GRATITUDE_PATTERNS
-        ]
+        self._greeting_regex = [re.compile(p, re.IGNORECASE) for p in self.GREETING_PATTERNS]
+        self._gratitude_regex = [re.compile(p, re.IGNORECASE) for p in self.GRATITUDE_PATTERNS]
         self._question_regex = {
             intent: [re.compile(p, re.IGNORECASE) for p in patterns]
             for intent, patterns in self.QUESTION_PATTERNS.items()
         }
-        self._multi_part_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.MULTI_PART_PATTERNS
-        ]
+        self._multi_part_regex = [re.compile(p, re.IGNORECASE) for p in self.MULTI_PART_PATTERNS]
 
     def is_greeting(self, query: str) -> tuple[bool, float]:
         """
@@ -167,9 +161,7 @@ class KeywordClassifier:
         question_count = query.count("?")
 
         # Check for multi-part patterns
-        pattern_matches = sum(
-            1 for p in self._multi_part_regex if p.search(query_lower)
-        )
+        pattern_matches = sum(1 for p in self._multi_part_regex if p.search(query_lower))
 
         # Check for explicit conjunctions joining queries
         conjunction_count = len(re.findall(r",\s*(and|or)\s+", query_lower))
@@ -213,12 +205,8 @@ class ComplexityScorer:
         Args:
             max_query_length: Query length at which length complexity is maximum
         """
-        self._modifier_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.MODIFIER_PATTERNS
-        ]
-        self._clause_regex = [
-            re.compile(p, re.IGNORECASE) for p in self.CLAUSE_PATTERNS
-        ]
+        self._modifier_regex = [re.compile(p, re.IGNORECASE) for p in self.MODIFIER_PATTERNS]
+        self._clause_regex = [re.compile(p, re.IGNORECASE) for p in self.CLAUSE_PATTERNS]
         self._max_query_length = max_query_length
 
     def score(

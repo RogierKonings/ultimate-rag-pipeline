@@ -98,10 +98,7 @@ async def test_summarizer_truncates_long_topics(memory_config):
 @pytest.mark.asyncio
 async def test_summarizer_uses_last_five_messages(memory_config):
     """Test that summary uses last 5 user messages."""
-    messages = [
-        Message(role=MessageRole.USER, content=f"Topic {i}")
-        for i in range(10)
-    ]
+    messages = [Message(role=MessageRole.USER, content=f"Topic {i}") for i in range(10)]
 
     summarizer = HistorySummarizer(memory_config)
 

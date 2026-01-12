@@ -158,9 +158,7 @@ class ReciprocalRankFusion:
                 }
 
         # Sort by RRF score
-        sorted_chunks = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[
-            :top_k
-        ]
+        sorted_chunks = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
 
         # Build fused results
         results = []
@@ -250,9 +248,7 @@ class LinearFusion:
             fused_scores[chunk_id] = fused
 
         # Sort and build results
-        sorted_chunks = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)[
-            :top_k
-        ]
+        sorted_chunks = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
 
         results = []
         for chunk_id, fused_score in sorted_chunks:
@@ -303,9 +299,7 @@ class DistributionBasedScoreFusion:
         if sem_scores:
             sem_mean = np.mean(sem_scores)
             sem_std = np.std(sem_scores) or 1.0
-            sem_normalized = {
-                r.chunk_id: (r.score - sem_mean) / sem_std for r in semantic_results
-            }
+            sem_normalized = {r.chunk_id: (r.score - sem_mean) / sem_std for r in semantic_results}
         else:
             sem_normalized = {}
 
@@ -314,9 +308,7 @@ class DistributionBasedScoreFusion:
         if kw_scores:
             kw_mean = np.mean(kw_scores)
             kw_std = np.std(kw_scores) or 1.0
-            kw_normalized = {
-                r.chunk_id: (r.score - kw_mean) / kw_std for r in keyword_results
-            }
+            kw_normalized = {r.chunk_id: (r.score - kw_mean) / kw_std for r in keyword_results}
         else:
             kw_normalized = {}
 
@@ -367,9 +359,7 @@ class DistributionBasedScoreFusion:
             fused_scores[chunk_id] = 1 / (1 + np.exp(-fused_scores[chunk_id]))
 
         # Sort and build results
-        sorted_chunks = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)[
-            :top_k
-        ]
+        sorted_chunks = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
 
         results = []
         for chunk_id, fused_score in sorted_chunks:

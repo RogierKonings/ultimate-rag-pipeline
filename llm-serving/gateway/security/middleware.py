@@ -140,7 +140,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Get auth context (set by AuthMiddleware)
         auth_context: AuthContext | None = getattr(
-            request.state, "auth_context", None,
+            request.state,
+            "auth_context",
+            None,
         )
 
         if auth_context:
@@ -159,8 +161,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if not result.allowed:
             logger.warning(
-                f"Rate limit exceeded: tenant={tenant_id} "
-                f"user={user_id} path={path}",
+                f"Rate limit exceeded: tenant={tenant_id} user={user_id} path={path}",
             )
             return JSONResponse(
                 status_code=429,
@@ -213,9 +214,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Add HSTS for HTTPS connections
         if request.url.scheme == "https":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         return response
 
@@ -241,7 +240,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         # Get auth context if available
         auth_context: AuthContext | None = getattr(
-            request.state, "auth_context", None,
+            request.state,
+            "auth_context",
+            None,
         )
         tenant_id = auth_context.tenant_id if auth_context else "unknown"
         user_id = auth_context.user_id if auth_context else "unknown"

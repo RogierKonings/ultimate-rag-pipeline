@@ -135,6 +135,7 @@ class JWTSettings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "extra": "ignore",
+        "populate_by_name": True,  # Allow using field names (not just aliases) in constructor
     }
 
     @field_validator("algorithm", mode="before")

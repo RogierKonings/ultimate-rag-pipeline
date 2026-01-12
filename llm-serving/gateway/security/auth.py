@@ -38,7 +38,15 @@ class AuthConfig(BaseModel):
 
     # Validation settings
     require_auth: bool = True
-    skip_paths: list[str] = ["/health", "/health/live", "/health/ready", "/docs", "/redoc", "/openapi.json", "/"]
+    skip_paths: list[str] = [
+        "/health",
+        "/health/live",
+        "/health/ready",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/",
+    ]
 
 
 @dataclass
@@ -120,10 +128,7 @@ class JWTAuth:
             return None
 
         # Check cache
-        if (
-            self._jwks_cache
-            and time.time() - self._jwks_cache_time < self.config.jwks_cache_ttl
-        ):
+        if self._jwks_cache and time.time() - self._jwks_cache_time < self.config.jwks_cache_ttl:
             return self._jwks_cache
 
         try:

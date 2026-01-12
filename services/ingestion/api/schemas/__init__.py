@@ -39,6 +39,7 @@ try:
         ValidationRequestSchema,
         ValidationResponseSchema,
     )
+
     _migration_schemas = [
         "MigrationRequestSchema",
         "MigrationResponseSchema",
@@ -87,5 +88,3 @@ __all__ = [
     "DocumentDeleteResponse",
     "ReindexRequest",
 ] + _migration_schemas
-
-

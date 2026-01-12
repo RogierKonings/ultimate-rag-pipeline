@@ -10,4 +10,3 @@ except ImportError:
     migrations_router = None
 
 __all__ = ["ingest_router", "documents_router", "migrations_router"]
-

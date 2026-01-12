@@ -212,10 +212,7 @@ class RedisCache:
                 pipe.get(key)
             results = await pipe.execute()
 
-        return {
-            keys[i]: json.loads(r) if r else None
-            for i, r in enumerate(results)
-        }
+        return {keys[i]: json.loads(r) if r else None for i, r in enumerate(results)}
 
     async def set_many(
         self,

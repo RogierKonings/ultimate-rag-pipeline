@@ -102,7 +102,8 @@ class RerankerService:
 
         loop = asyncio.get_event_loop()
         self._tokenizer, self._model, self._actual_device = await loop.run_in_executor(
-            self._executor, _load,
+            self._executor,
+            _load,
         )
 
         logger.info(f"Reranker model loaded on {self._actual_device}")
@@ -143,12 +144,14 @@ class RerankerService:
         for i, (score, doc) in enumerate(zip(scores, documents, strict=True)):
             doc_id = doc_ids[i] if doc_ids else None
 
-            results.append(ScoredDocument(
-                index=i,
-                score=float(score),
-                document=doc if return_documents else None,
-                doc_id=doc_id,
-            ))
+            results.append(
+                ScoredDocument(
+                    index=i,
+                    score=float(score),
+                    document=doc if return_documents else None,
+                    doc_id=doc_id,
+                ),
+            )
 
         # Sort by score descending
         results.sort(key=lambda x: x.score, reverse=True)
@@ -204,13 +207,15 @@ class RerankerService:
         # Build results
         results = []
         for i, (pair, score) in enumerate(zip(pairs, scores, strict=True)):
-            results.append(ScoredDocument(
-                index=i,
-                score=float(score),
-                document=pair.document if return_documents else None,
-                doc_id=pair.doc_id,
-                metadata=pair.metadata,
-            ))
+            results.append(
+                ScoredDocument(
+                    index=i,
+                    score=float(score),
+                    document=pair.document if return_documents else None,
+                    doc_id=pair.doc_id,
+                    metadata=pair.metadata,
+                ),
+            )
 
         # Sort by score descending
         results.sort(key=lambda x: x.score, reverse=True)
@@ -228,8 +233,12 @@ class RerankerService:
             model=self.model_name,
             results=results,
             usage={
-                "prompt_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)),
-                "total_tokens": sum(len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)),
+                "prompt_tokens": sum(
+                    len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)
+                ),
+                "total_tokens": sum(
+                    len(q.split()) + len(d.split()) for q, d in zip(queries, documents, strict=True)
+                ),
             },
             processing_time_ms=processing_time,
         )
@@ -257,8 +266,8 @@ class RerankerService:
 
         # Process in batches
         for i in range(0, len(queries), self.max_batch_size):
-            batch_queries = queries[i:i + self.max_batch_size]
-            batch_docs = documents[i:i + self.max_batch_size]
+            batch_queries = queries[i : i + self.max_batch_size]
+            batch_docs = documents[i : i + self.max_batch_size]
 
             def _score(q_batch=batch_queries, d_batch=batch_docs):
                 # Tokenize pairs

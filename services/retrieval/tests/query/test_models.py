@@ -1,6 +1,5 @@
 """Tests for query preprocessing models."""
 
-
 from query.models import (
     ProcessedQuery,
     QueryPreprocessorConfig,

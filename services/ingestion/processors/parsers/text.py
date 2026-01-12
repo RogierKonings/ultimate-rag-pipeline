@@ -20,7 +20,9 @@ class TextParser(BaseParser):
         return ["text/plain"]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse plain text document.
 

@@ -146,7 +146,9 @@ async def retrieve(
 
     # Convert to response format
     response_results = _convert_to_response_documents(
-        results, body.include_metadata, body.include_highlights,
+        results,
+        body.include_metadata,
+        body.include_highlights,
     )
 
     total_time = (time.time() - start_time) * 1000

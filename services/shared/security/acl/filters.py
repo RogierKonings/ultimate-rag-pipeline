@@ -273,21 +273,25 @@ class OpenSearchACLFilter(ACLFilterBuilder):
         # Should clauses (at least one required)
         if base.get("should"):
             should_clauses = [to_clause(c) for c in base["should"]]
-            filters.append({
-                "bool": {
-                    "should": should_clauses,
-                    "minimum_should_match": 1,
+            filters.append(
+                {
+                    "bool": {
+                        "should": should_clauses,
+                        "minimum_should_match": 1,
+                    },
                 },
-            })
+            )
 
         # Must not clauses (none can match)
         if base.get("must_not"):
             must_not_clauses = [to_clause(c) for c in base["must_not"]]
-            filters.append({
-                "bool": {
-                    "must_not": must_not_clauses,
+            filters.append(
+                {
+                    "bool": {
+                        "must_not": must_not_clauses,
+                    },
                 },
-            })
+            )
 
         return filters
 

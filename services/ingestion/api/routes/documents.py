@@ -105,7 +105,8 @@ async def get_document(
 async def delete_document(
     document_id: UUID,
     hard_delete: bool = Query(
-        default=True, description="If False, marks as deleted instead of removing",
+        default=True,
+        description="If False, marks as deleted instead of removing",
     ),
     document_service=Depends(get_document_service),
     current_user: dict = Depends(get_current_user),
@@ -148,9 +149,7 @@ async def delete_document(
     result = await document_service.delete_document(document_id, hard_delete=hard_delete)
 
     message = (
-        "Document deleted successfully"
-        if result.success
-        else f"Deletion failed: {result.error}"
+        "Document deleted successfully" if result.success else f"Deletion failed: {result.error}"
     )
 
     return DocumentDeleteResponse(
@@ -197,9 +196,7 @@ async def reindex_document(
     # Build processing config from request
     processing_config = None
     if request:
-        processing_config = {
-            k: v for k, v in request.model_dump().items() if v is not None
-        }
+        processing_config = {k: v for k, v in request.model_dump().items() if v is not None}
 
     # Start reindex job
     task = await document_service.reindex_document(document_id, processing_config)

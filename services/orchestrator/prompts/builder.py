@@ -99,7 +99,9 @@ class PromptBuilder:
         # Add system prompt
         if self.config.include_system_prompt:
             system_content = self._render_system_prompt(
-                effective_strategy, context, documents,
+                effective_strategy,
+                context,
+                documents,
             )
             if system_content:
                 messages.append({"role": "system", "content": system_content})
@@ -224,7 +226,8 @@ class PromptBuilder:
 
         if documents and self.config.citation_config.enabled:
             citations = format_citations(
-                documents, self.config.citation_config.max_citations,
+                documents,
+                self.config.citation_config.max_citations,
             )
             template_vars["citations"] = citations
 
@@ -232,7 +235,8 @@ class PromptBuilder:
         return template.render(**template_vars).strip()
 
     def _format_history(
-        self, history: list[dict[str, str]],
+        self,
+        history: list[dict[str, str]],
     ) -> list[dict[str, str]]:
         """Format conversation history for inclusion in the prompt.
 
@@ -328,8 +332,7 @@ class PromptBuilder:
         query_tokens = count_tokens(query, self.config.model_name)
         context_tokens = count_tokens(context or "", self.config.model_name)
         history_tokens = sum(
-            count_tokens(msg.get("content", ""), self.config.model_name)
-            for msg in history
+            count_tokens(msg.get("content", ""), self.config.model_name) for msg in history
         )
 
         # Estimate system prompt tokens
@@ -340,7 +343,10 @@ class PromptBuilder:
             "context_tokens": context_tokens,
             "history_tokens": history_tokens,
             "system_prompt_tokens": system_prompt_tokens,
-            "total_estimated": query_tokens + context_tokens + history_tokens + system_prompt_tokens,
+            "total_estimated": query_tokens
+            + context_tokens
+            + history_tokens
+            + system_prompt_tokens,
         }
 
 

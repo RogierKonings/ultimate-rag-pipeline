@@ -104,8 +104,7 @@ class VLLMClient:
         payload = {
             "model": request.model or self.default_model,
             "messages": [
-                {"role": msg.role.value, "content": msg.content}
-                for msg in request.messages
+                {"role": msg.role.value, "content": msg.content} for msg in request.messages
             ],
             "temperature": request.temperature,
             "top_p": request.top_p,
@@ -198,8 +197,7 @@ class VLLMClient:
         payload = {
             "model": request.model or self.default_model,
             "messages": [
-                {"role": msg.role.value, "content": msg.content}
-                for msg in request.messages
+                {"role": msg.role.value, "content": msg.content} for msg in request.messages
             ],
             "temperature": request.temperature,
             "top_p": request.top_p,
@@ -245,14 +243,16 @@ class VLLMClient:
                             choices = []
                             for choice in data.get("choices", []):
                                 delta = choice.get("delta", {})
-                                choices.append({
-                                    "index": choice.get("index", 0),
-                                    "delta": {
-                                        "role": delta.get("role"),
-                                        "content": delta.get("content"),
+                                choices.append(
+                                    {
+                                        "index": choice.get("index", 0),
+                                        "delta": {
+                                            "role": delta.get("role"),
+                                            "content": delta.get("content"),
+                                        },
+                                        "finish_reason": choice.get("finish_reason"),
                                     },
-                                    "finish_reason": choice.get("finish_reason"),
-                                })
+                                )
 
                             yield ChatCompletionChunk(
                                 id=data.get("id", chunk_id),

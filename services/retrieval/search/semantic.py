@@ -164,10 +164,7 @@ class SemanticSearcher(BaseSearcher):
             range_spec = condition["range"]
             # Check if any value looks like a datetime string
             values = [v for v in range_spec.values() if v is not None]
-            is_datetime = any(
-                isinstance(v, str) and ("-" in v or "T" in v)
-                for v in values
-            )
+            is_datetime = any(isinstance(v, str) and ("-" in v or "T" in v) for v in values)
 
             if is_datetime:
                 return FieldCondition(
@@ -221,9 +218,7 @@ class SemanticSearcher(BaseSearcher):
             content=payload.get("content", ""),
             score=self._normalize_score(result.score),
             metadata={
-                k: v
-                for k, v in payload.items()
-                if k not in ["content", "document_id", "chunk_id"]
+                k: v for k, v in payload.items() if k not in ["content", "document_id", "chunk_id"]
             },
             title=payload.get("title"),
             source=payload.get("source"),
@@ -332,7 +327,9 @@ class SemanticSearcher(BaseSearcher):
 
         # Sort by final score and return top_k
         sorted_chunks = sorted(
-            final_scores.items(), key=lambda x: x[1], reverse=True,
+            final_scores.items(),
+            key=lambda x: x[1],
+            reverse=True,
         )[:top_k]
 
         result = []

@@ -146,7 +146,9 @@ class TestHybridSearcherConnection:
 
     @pytest.mark.asyncio
     async def test_health_check_semantic_failure(
-        self, hybrid_searcher, mock_semantic_searcher,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
     ):
         """Test health check returns False when semantic unhealthy."""
         mock_semantic_searcher.health_check = AsyncMock(return_value=False)
@@ -156,7 +158,9 @@ class TestHybridSearcherConnection:
 
     @pytest.mark.asyncio
     async def test_health_check_keyword_failure(
-        self, hybrid_searcher, mock_keyword_searcher,
+        self,
+        hybrid_searcher,
+        mock_keyword_searcher,
     ):
         """Test health check returns False when keyword unhealthy."""
         mock_keyword_searcher.health_check = AsyncMock(return_value=False)
@@ -250,7 +254,10 @@ class TestHybridSearcherSearch:
 
     @pytest.mark.asyncio
     async def test_search_min_score_filtering(
-        self, hybrid_searcher, mock_semantic_searcher, mock_keyword_searcher,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
+        mock_keyword_searcher,
     ):
         """Test min_score filtering removes low-scored results."""
         # Create results with varying scores
@@ -273,12 +280,16 @@ class TestHybridSearcherSearch:
 
         mock_semantic_searcher.search = AsyncMock(
             return_value=SemanticSearchResponse(
-                results=semantic_results, total_found=1, search_time_ms=10,
+                results=semantic_results,
+                total_found=1,
+                search_time_ms=10,
             ),
         )
         mock_keyword_searcher.search = AsyncMock(
             return_value=KeywordSearchResponse(
-                results=keyword_results, total_found=1, search_time_ms=10,
+                results=keyword_results,
+                total_found=1,
+                search_time_ms=10,
             ),
         )
 
@@ -371,7 +382,10 @@ class TestHybridSearcherSemanticOnly:
 
     @pytest.mark.asyncio
     async def test_semantic_only_search(
-        self, hybrid_searcher, mock_semantic_searcher, sample_semantic_response,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
+        sample_semantic_response,
     ):
         """Test semantic-only search bypasses keyword search."""
         mock_semantic_searcher.search = AsyncMock(return_value=sample_semantic_response)
@@ -388,7 +402,10 @@ class TestHybridSearcherSemanticOnly:
 
     @pytest.mark.asyncio
     async def test_semantic_only_result_format(
-        self, hybrid_searcher, mock_semantic_searcher, sample_semantic_response,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
+        sample_semantic_response,
     ):
         """Test semantic-only results are properly formatted."""
         mock_semantic_searcher.search = AsyncMock(return_value=sample_semantic_response)
@@ -410,7 +427,10 @@ class TestHybridSearcherKeywordOnly:
 
     @pytest.mark.asyncio
     async def test_keyword_only_search(
-        self, hybrid_searcher, mock_keyword_searcher, sample_keyword_response,
+        self,
+        hybrid_searcher,
+        mock_keyword_searcher,
+        sample_keyword_response,
     ):
         """Test keyword-only search bypasses semantic search."""
         mock_keyword_searcher.search = AsyncMock(return_value=sample_keyword_response)
@@ -427,7 +447,10 @@ class TestHybridSearcherKeywordOnly:
 
     @pytest.mark.asyncio
     async def test_keyword_only_result_format(
-        self, hybrid_searcher, mock_keyword_searcher, sample_keyword_response,
+        self,
+        hybrid_searcher,
+        mock_keyword_searcher,
+        sample_keyword_response,
     ):
         """Test keyword-only results are properly formatted."""
         mock_keyword_searcher.search = AsyncMock(return_value=sample_keyword_response)
@@ -449,7 +472,10 @@ class TestHybridSearcherParallelExecution:
 
     @pytest.mark.asyncio
     async def test_parallel_search_timing(
-        self, hybrid_searcher, mock_semantic_searcher, mock_keyword_searcher,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
+        mock_keyword_searcher,
     ):
         """Test that searches run in parallel."""
         import time
@@ -482,7 +508,10 @@ class TestHybridSearcherBackendInfo:
 
     @pytest.mark.asyncio
     async def test_get_backend_info(
-        self, hybrid_searcher, mock_semantic_searcher, mock_keyword_searcher,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
+        mock_keyword_searcher,
     ):
         """Test getting backend info from both searchers."""
         info = await hybrid_searcher.get_backend_info()
@@ -496,7 +525,9 @@ class TestHybridSearcherBackendInfo:
 
     @pytest.mark.asyncio
     async def test_get_backend_info_with_error(
-        self, hybrid_searcher, mock_semantic_searcher,
+        self,
+        hybrid_searcher,
+        mock_semantic_searcher,
     ):
         """Test backend info handles errors gracefully."""
         mock_semantic_searcher.get_collection_info = AsyncMock(

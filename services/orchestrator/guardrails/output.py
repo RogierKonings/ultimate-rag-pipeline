@@ -53,7 +53,11 @@ class OutputGuardrail:
             harmful_matches = detect_harmful_content(text)
             for match in harmful_matches:
                 category = match.details.get("category", "unknown") if match.details else "unknown"
-                severity = match.details.get("severity", self.config.harmful_content_severity) if match.details else self.config.harmful_content_severity
+                severity = (
+                    match.details.get("severity", self.config.harmful_content_severity)
+                    if match.details
+                    else self.config.harmful_content_severity
+                )
                 violations.append(
                     Violation(
                         type=ViolationType.HARMFUL_CONTENT,

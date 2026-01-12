@@ -553,11 +553,7 @@ class ExperimentTracker:
                     if metric in baseline.metrics:
                         baseline_value = baseline.metrics[metric]
                         delta = value - baseline_value
-                        pct_change = (
-                            (delta / baseline_value * 100)
-                            if baseline_value != 0
-                            else 0
-                        )
+                        pct_change = (delta / baseline_value * 100) if baseline_value != 0 else 0
                         run_data["vs_baseline"][metric] = {
                             "delta": delta,
                             "percent_change": pct_change,

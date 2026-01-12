@@ -63,9 +63,7 @@ class LLMSpan:
     def finish(self, error: str | None = None) -> None:
         """Mark span as finished."""
         self.end_time = datetime.now(tz=UTC)
-        self.latency_ms = (
-            (self.end_time - self.start_time).total_seconds() * 1000
-        )
+        self.latency_ms = (self.end_time - self.start_time).total_seconds() * 1000
         if error:
             self.status = "error"
             self.error_message = error
@@ -204,29 +202,35 @@ class PhoenixTracer:
 
         # Add type-specific attributes
         if span.span_type == "llm":
-            phoenix_span["attributes"].update({
-                "llm.model_name": span.model,
-                "llm.provider": span.provider,
-                "llm.token_count.prompt": span.prompt_tokens,
-                "llm.token_count.completion": span.completion_tokens,
-                "llm.token_count.total": span.total_tokens,
-            })
+            phoenix_span["attributes"].update(
+                {
+                    "llm.model_name": span.model,
+                    "llm.provider": span.provider,
+                    "llm.token_count.prompt": span.prompt_tokens,
+                    "llm.token_count.completion": span.completion_tokens,
+                    "llm.token_count.total": span.total_tokens,
+                },
+            )
             if self.config.log_prompts:
                 phoenix_span["attributes"]["llm.prompts"] = [span.prompt]
             if self.config.log_responses:
                 phoenix_span["attributes"]["llm.completions"] = [span.completion]
 
         elif span.span_type == "embedding":
-            phoenix_span["attributes"].update({
-                "embedding.model_name": span.embedding_model,
-                "embedding.embeddings": span.num_embeddings,
-            })
+            phoenix_span["attributes"].update(
+                {
+                    "embedding.model_name": span.embedding_model,
+                    "embedding.embeddings": span.num_embeddings,
+                },
+            )
 
         elif span.span_type == "retrieval":
-            phoenix_span["attributes"].update({
-                "retrieval.strategy": span.retrieval_strategy,
-                "retrieval.documents": span.num_results,
-            })
+            phoenix_span["attributes"].update(
+                {
+                    "retrieval.strategy": span.retrieval_strategy,
+                    "retrieval.documents": span.num_results,
+                },
+            )
 
         # Add metadata
         for key, value in span.metadata.items():
@@ -259,6 +263,7 @@ class PhoenixTracer:
         try:
             if self._tokenizer is None:
                 import tiktoken
+
                 self._tokenizer = tiktoken.get_encoding(self.config.tokenizer_model)
             return len(self._tokenizer.encode(text))
         except Exception:

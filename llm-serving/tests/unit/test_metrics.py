@@ -145,11 +145,13 @@ class TestMetricsCollector:
 
     def test_set_model_info(self, collector):
         """Test setting model info."""
-        collector.set_model_info({
-            "name": "test-model",
-            "version": "1.0",
-            "parameters": "7B",
-        })
+        collector.set_model_info(
+            {
+                "name": "test-model",
+                "version": "1.0",
+                "parameters": "7B",
+            },
+        )
 
         # Should not raise
 

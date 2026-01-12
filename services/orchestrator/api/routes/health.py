@@ -45,7 +45,8 @@ async def health_check(request: Request) -> HealthResponse:
             redis_start = time.perf_counter()
             # Try to ping Redis through the session store
             if hasattr(session_manager, "store") and hasattr(
-                session_manager.store, "_redis",
+                session_manager.store,
+                "_redis",
             ):
                 await session_manager.store._redis.ping()
             redis_latency = (time.perf_counter() - redis_start) * 1000
@@ -84,9 +85,7 @@ async def health_check(request: Request) -> HealthResponse:
             gateway_latency = (time.perf_counter() - gateway_start) * 1000
 
             # Check if any model is healthy
-            gateway_healthy = any(
-                m.get("status") == "healthy" for m in health_result.values()
-            )
+            gateway_healthy = any(m.get("status") == "healthy" for m in health_result.values())
             components.append(
                 ComponentHealth(
                     name="llm_gateway",
@@ -188,7 +187,8 @@ async def readiness_probe(request: Request) -> JSONResponse:
         # Try to ping Redis
         try:
             if hasattr(session_manager, "store") and hasattr(
-                session_manager.store, "_redis",
+                session_manager.store,
+                "_redis",
             ):
                 await session_manager.store._redis.ping()
         except Exception as e:

@@ -8,10 +8,8 @@ key management, and SQLAlchemy type integration.
 from .field_encryption import (
     DecryptionError,
     EncryptionError,
+    EncryptionKeyError,
     FieldEncryption,
-)
-from .field_encryption import (
-    KeyError as EncryptionKeyError,
 )
 from .key_manager import (
     EncryptionKeyManager,

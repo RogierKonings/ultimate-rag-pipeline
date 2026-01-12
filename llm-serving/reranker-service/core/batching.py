@@ -177,7 +177,7 @@ class RerankBatcher:
             # Distribute results
             offset = 0
             for request, count in zip(batch, pair_counts, strict=True):
-                request_scores = scores[offset:offset + count]
+                request_scores = scores[offset : offset + count]
                 request.future.set_result(request_scores)
                 offset += count
 

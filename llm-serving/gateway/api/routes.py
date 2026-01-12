@@ -207,7 +207,8 @@ async def create_chat_completion(
             async def generate():
                 try:
                     async for chunk in vllm.chat_completion_stream(
-                        request, context_headers,
+                        request,
+                        context_headers,
                     ):
                         yield f"data: {chunk.model_dump_json()}\n\n"
                     yield "data: [DONE]\n\n"
@@ -266,13 +267,10 @@ async def create_embeddings(
     try:
         response = await embedding.create_embeddings(request, context_headers)
 
-        input_count = (
-            len(request.input) if isinstance(request.input, list) else 1
-        )
+        input_count = len(request.input) if isinstance(request.input, list) else 1
         latency_ms = (time.time() - start_time) * 1000
         logger.info(
-            f"Embeddings: model={request.model} count={input_count} "
-            f"latency={latency_ms:.1f}ms",
+            f"Embeddings: model={request.model} count={input_count} latency={latency_ms:.1f}ms",
         )
 
         return response

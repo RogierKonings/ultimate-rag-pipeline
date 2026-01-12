@@ -114,7 +114,8 @@ class AuditLogEntry(BaseModel):
     # Identity
     id: UUID = Field(default_factory=uuid4, description="Unique audit entry ID")
     trace_id: str | None = Field(
-        default=None, description="Distributed trace ID for correlation",
+        default=None,
+        description="Distributed trace ID for correlation",
     )
     span_id: str | None = Field(default=None, description="Span ID within trace")
 
@@ -124,38 +125,46 @@ class AuditLogEntry(BaseModel):
         description="When the event occurred",
     )
     duration_ms: float | None = Field(
-        default=None, description="Duration of operation in milliseconds",
+        default=None,
+        description="Duration of operation in milliseconds",
     )
 
     # Actor
     user_id: UUID | None = Field(
-        default=None, description="User who performed the action",
+        default=None,
+        description="User who performed the action",
     )
     username: str | None = Field(default=None, description="Username for display")
     tenant_id: UUID | None = Field(default=None, description="Tenant context")
     service_name: str | None = Field(
-        default=None, description="Service that generated the event",
+        default=None,
+        description="Service that generated the event",
     )
     api_key_id: str | None = Field(
-        default=None, description="API key used (if applicable)",
+        default=None,
+        description="API key used (if applicable)",
     )
 
     # Action
     action: AuditAction = Field(..., description="Type of action performed")
     outcome: AuditOutcome = Field(
-        default=AuditOutcome.SUCCESS, description="Outcome of the action",
+        default=AuditOutcome.SUCCESS,
+        description="Outcome of the action",
     )
     severity: AuditSeverity = Field(
-        default=AuditSeverity.INFO, description="Severity level",
+        default=AuditSeverity.INFO,
+        description="Severity level",
     )
 
     # Resource
     resource_type: str | None = Field(
-        default=None, description="Type of resource (document, user, etc.)",
+        default=None,
+        description="Type of resource (document, user, etc.)",
     )
     resource_id: str | None = Field(default=None, description="ID of the resource")
     resource_name: str | None = Field(
-        default=None, description="Name/title of resource",
+        default=None,
+        description="Name/title of resource",
     )
 
     # Request context
@@ -168,21 +177,25 @@ class AuditLogEntry(BaseModel):
     # Response
     status_code: int | None = Field(default=None, description="HTTP status code")
     error_message: str | None = Field(
-        default=None, description="Error message if failed",
+        default=None,
+        description="Error message if failed",
     )
     error_code: str | None = Field(default=None, description="Error code if failed")
 
     # Additional context
     details: dict[str, Any] = Field(
-        default_factory=dict, description="Additional event details",
+        default_factory=dict,
+        description="Additional event details",
     )
     changes: dict[str, Any] | None = Field(
-        default=None, description="Before/after values for updates",
+        default=None,
+        description="Before/after values for updates",
     )
 
     # Tamper evidence
     previous_hash: str | None = Field(
-        default=None, description="Hash of previous audit entry",
+        default=None,
+        description="Hash of previous audit entry",
     )
     entry_hash: str | None = Field(default=None, description="Hash of this entry")
 
@@ -266,7 +279,8 @@ class AuditQuery(BaseModel):
 
     # Time range
     start_time: datetime | None = Field(
-        default=None, description="Start of time range",
+        default=None,
+        description="Start of time range",
     )
     end_time: datetime | None = Field(default=None, description="End of time range")
 
@@ -274,26 +288,32 @@ class AuditQuery(BaseModel):
     user_id: UUID | None = Field(default=None, description="Filter by user")
     tenant_id: UUID | None = Field(default=None, description="Filter by tenant")
     actions: list[AuditAction] | None = Field(
-        default=None, description="Filter by actions",
+        default=None,
+        description="Filter by actions",
     )
     outcomes: list[AuditOutcome] | None = Field(
-        default=None, description="Filter by outcomes",
+        default=None,
+        description="Filter by outcomes",
     )
     severities: list[AuditSeverity] | None = Field(
-        default=None, description="Filter by severity levels",
+        default=None,
+        description="Filter by severity levels",
     )
     resource_type: str | None = Field(
-        default=None, description="Filter by resource type",
+        default=None,
+        description="Filter by resource type",
     )
     resource_id: str | None = Field(
-        default=None, description="Filter by resource ID",
+        default=None,
+        description="Filter by resource ID",
     )
     client_ip: str | None = Field(default=None, description="Filter by client IP")
     trace_id: str | None = Field(default=None, description="Filter by trace ID")
 
     # Search
     search_text: str | None = Field(
-        default=None, description="Full-text search in details",
+        default=None,
+        description="Full-text search in details",
     )
 
     # Pagination
@@ -310,13 +330,16 @@ class AuditStats(BaseModel):
 
     total_entries: int = Field(default=0, description="Total audit entries")
     entries_by_action: dict[str, int] = Field(
-        default_factory=dict, description="Count by action",
+        default_factory=dict,
+        description="Count by action",
     )
     entries_by_outcome: dict[str, int] = Field(
-        default_factory=dict, description="Count by outcome",
+        default_factory=dict,
+        description="Count by outcome",
     )
     entries_by_severity: dict[str, int] = Field(
-        default_factory=dict, description="Count by severity",
+        default_factory=dict,
+        description="Count by severity",
     )
     unique_users: int = Field(default=0, description="Unique users")
     unique_resources: int = Field(default=0, description="Unique resources accessed")
@@ -330,10 +353,12 @@ class AuditExportRequest(BaseModel):
     query: AuditQuery = Field(default_factory=AuditQuery, description="Query filters")
     format: str = Field(default="json", description="Export format (json, csv)")
     include_details: bool = Field(
-        default=False, description="Include full details field",
+        default=False,
+        description="Include full details field",
     )
     include_hash: bool = Field(
-        default=True, description="Include hash chain validation",
+        default=True,
+        description="Include hash chain validation",
     )
 
 
@@ -343,7 +368,8 @@ class AuditExportResponse(BaseModel):
     total_entries: int = Field(description="Total entries exported")
     file_path: str | None = Field(default=None, description="Path to export file")
     hash_chain_valid: bool = Field(
-        default=True, description="Whether hash chain is valid",
+        default=True,
+        description="Whether hash chain is valid",
     )
     export_timestamp: datetime = Field(
         default_factory=lambda: datetime.now(UTC),

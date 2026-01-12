@@ -472,8 +472,8 @@ class TestEndToEndIntegration:
                 keyword_score=0.88 - (i * 0.05),
                 semantic_rank=i + 1,
                 keyword_rank=i + 1,
-                title=f"ML Guide Chapter {i+1}",
-                source=f"docs/ml-guide-{i+1}.md",
+                title=f"ML Guide Chapter {i + 1}",
+                source=f"docs/ml-guide-{i + 1}.md",
                 metadata={"source_type": "documentation"},
             )
             for i in range(10)

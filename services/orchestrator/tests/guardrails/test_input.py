@@ -116,9 +116,7 @@ class TestInputGuardrail:
         result = await guardrail.check(text)
 
         assert result.passed is True
-        pii_violations = [
-            v for v in result.violations if v.type == ViolationType.PII_DETECTED
-        ]
+        pii_violations = [v for v in result.violations if v.type == ViolationType.PII_DETECTED]
         assert len(pii_violations) == 0
 
     @pytest.mark.asyncio

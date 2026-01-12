@@ -152,8 +152,8 @@ rules:
   - id: jwt-verify-disabled
     patterns:
       - pattern-either:
-          - pattern: jwt.decode(..., options={"verify_signature": False}, ...)
-          - pattern: jwt.decode(..., options={'verify_signature': False}, ...)
+          - pattern: 'jwt.decode(..., options={"verify_signature": False}, ...)'
+          - pattern: "jwt.decode(..., options={'verify_signature': False}, ...)"
           - pattern: jwt.decode(..., verify=False, ...)
     message: >-
       JWT signature verification is disabled. This allows attackers to forge tokens.
@@ -302,9 +302,9 @@ rules:
   - id: html-string-format
     patterns:
       - pattern-either:
-          - pattern: f"<...$VAR...>"
-          - pattern: "<...>".format($VAR)
-          - pattern: "<...>" % $VAR
+          - pattern: 'f"<...$VAR...>"'
+          - pattern: '"<...>".format($VAR)'
+          - pattern: '"<...>" % $VAR'
     message: >-
       Potential XSS vulnerability. Use proper HTML escaping or templating.
     languages: [python]

@@ -97,15 +97,14 @@ class RerankerService:
 
         # Truncate query and documents if needed
         truncated_query = self._truncate(query, self.config.max_query_length)
-        truncated_docs = [
-            self._truncate(doc, self.config.max_document_length) for doc in documents
-        ]
+        truncated_docs = [self._truncate(doc, self.config.max_document_length) for doc in documents]
 
         # Call reranker in batches if needed
         all_scores: list[float] = []
         for batch_start in range(0, len(truncated_docs), self.config.max_batch_size):
             batch_end = min(
-                batch_start + self.config.max_batch_size, len(truncated_docs),
+                batch_start + self.config.max_batch_size,
+                len(truncated_docs),
             )
             batch_docs = truncated_docs[batch_start:batch_end]
 

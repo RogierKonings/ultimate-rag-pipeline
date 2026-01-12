@@ -31,26 +31,32 @@ class ProcessedQuery(BaseModel):
     """
 
     query_id: UUID = Field(
-        default_factory=uuid4, description="Unique identifier for this query",
+        default_factory=uuid4,
+        description="Unique identifier for this query",
     )
     original_query: str = Field(..., description="Original user query")
     normalized_query: str = Field(..., description="Normalized/cleaned query")
     expanded_queries: list[str] = Field(
-        default_factory=list, description="Alternative query formulations",
+        default_factory=list,
+        description="Alternative query formulations",
     )
     hyde_document: str | None = Field(
-        default=None, description="Hypothetical document for HyDE",
+        default=None,
+        description="Hypothetical document for HyDE",
     )
     embedding: list[float] = Field(..., description="Query embedding vector")
     query_type: QueryType = Field(
-        default=QueryType.SIMPLE, description="Classified query type",
+        default=QueryType.SIMPLE,
+        description="Classified query type",
     )
     tokens: int = Field(default=0, description="Token count for embedding")
     processing_time_ms: float = Field(
-        default=0.0, description="Total preprocessing time in milliseconds",
+        default=0.0,
+        description="Total preprocessing time in milliseconds",
     )
     metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata",
+        default_factory=dict,
+        description="Additional metadata",
     )
 
 
@@ -64,63 +70,78 @@ class QueryPreprocessorConfig(BaseModel):
     # Normalization options
     lowercase: bool = Field(default=True, description="Convert query to lowercase")
     strip_whitespace: bool = Field(
-        default=True, description="Strip and collapse whitespace",
+        default=True,
+        description="Strip and collapse whitespace",
     )
     remove_special_chars: bool = Field(
-        default=False, description="Remove special characters",
+        default=False,
+        description="Remove special characters",
     )
 
     # Expansion options
     enable_expansion: bool = Field(
-        default=True, description="Enable query expansion",
+        default=True,
+        description="Enable query expansion",
     )
     max_expansions: int = Field(
-        default=3, description="Maximum number of expanded queries",
+        default=3,
+        description="Maximum number of expanded queries",
     )
     expansion_model: str = Field(
-        default="synonym", description="Expansion method: 'synonym' or 'llm'",
+        default="synonym",
+        description="Expansion method: 'synonym' or 'llm'",
     )
 
     # HyDE options
     enable_hyde: bool = Field(
-        default=False, description="Enable HyDE (adds latency)",
+        default=False,
+        description="Enable HyDE (adds latency)",
     )
     hyde_model: str = Field(
         default="meta-llama/Llama-3.1-8B-Instruct",
         description="Model for HyDE generation",
     )
     hyde_max_tokens: int = Field(
-        default=256, description="Max tokens for HyDE document",
+        default=256,
+        description="Max tokens for HyDE document",
     )
 
     # Multi-query options
     enable_multi_query: bool = Field(
-        default=False, description="Enable multi-query generation",
+        default=False,
+        description="Enable multi-query generation",
     )
     max_generated_queries: int = Field(
-        default=3, description="Max generated query variations",
+        default=3,
+        description="Max generated query variations",
     )
 
     # Embedding options
     embedding_model: str = Field(
-        default="BAAI/bge-large-en-v1.5", description="Embedding model name",
+        default="BAAI/bge-large-en-v1.5",
+        description="Embedding model name",
     )
     embedding_prefix: str = Field(
-        default="query: ", description="Prefix for query embeddings (BGE requires this)",
+        default="query: ",
+        description="Prefix for query embeddings (BGE requires this)",
     )
     embedding_dimension: int = Field(
-        default=1024, description="Expected embedding dimension",
+        default=1024,
+        description="Expected embedding dimension",
     )
 
     # LLM Gateway options
     llm_gateway_url: str = Field(
-        default="http://localhost:8004", description="LLM Gateway base URL",
+        default="http://localhost:8004",
+        description="LLM Gateway base URL",
     )
     embedding_endpoint: str = Field(
-        default="/v1/embeddings", description="Embedding API endpoint",
+        default="/v1/embeddings",
+        description="Embedding API endpoint",
     )
     completion_endpoint: str = Field(
-        default="/v1/completions", description="Completion API endpoint",
+        default="/v1/completions",
+        description="Completion API endpoint",
     )
 
     # Cache options
@@ -129,7 +150,8 @@ class QueryPreprocessorConfig(BaseModel):
 
     # Timeout and retry options
     request_timeout: float = Field(
-        default=30.0, description="HTTP request timeout in seconds",
+        default=30.0,
+        description="HTTP request timeout in seconds",
     )
     max_retries: int = Field(default=3, description="Maximum retry attempts")
     retry_min_wait: float = Field(default=1.0, description="Minimum retry wait time")

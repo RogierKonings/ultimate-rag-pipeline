@@ -270,10 +270,7 @@ class TestTruncateDocuments:
 
     def test_truncate_documents_exceeds_limit(self):
         """Documents exceeding limit should be truncated."""
-        docs = [
-            {"content": "Word " * 200, "title": f"Doc {i}"}
-            for i in range(5)
-        ]
+        docs = [{"content": "Word " * 200, "title": f"Doc {i}"} for i in range(5)]
         result, truncated = truncate_documents(docs, 100)
 
         assert truncated is True

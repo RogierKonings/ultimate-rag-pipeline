@@ -50,7 +50,9 @@ class JSONParser(BaseParser):
         return ["application/json", "text/json"]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse JSON document content.
 

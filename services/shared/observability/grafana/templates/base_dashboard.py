@@ -12,6 +12,7 @@ from typing import Any
 
 class PanelType(Enum):
     """Grafana panel types."""
+
     STAT = "stat"
     GAUGE = "gauge"
     TIMESERIES = "timeseries"
@@ -25,6 +26,7 @@ class PanelType(Enum):
 
 class ThresholdMode(Enum):
     """Threshold evaluation modes."""
+
     ABSOLUTE = "absolute"
     PERCENTAGE = "percentage"
 
@@ -32,6 +34,7 @@ class ThresholdMode(Enum):
 @dataclass
 class Threshold:
     """Grafana threshold definition."""
+
     value: float
     color: str
 
@@ -39,6 +42,7 @@ class Threshold:
 @dataclass
 class Target:
     """Prometheus query target."""
+
     expr: str
     legendFormat: str = ""
     refId: str = "A"
@@ -63,6 +67,7 @@ class Target:
 @dataclass
 class Panel:
     """Grafana panel definition."""
+
     title: str
     panel_type: PanelType
     targets: list[Target]
@@ -115,6 +120,7 @@ class Panel:
 @dataclass
 class Row:
     """Grafana row (collapsible section)."""
+
     title: str
     panels: list[Panel]
     collapsed: bool = False
@@ -134,6 +140,7 @@ class Row:
 @dataclass
 class Variable:
     """Grafana template variable."""
+
     name: str
     label: str
     query: str
@@ -162,6 +169,7 @@ class Variable:
 @dataclass
 class Dashboard:
     """Grafana dashboard definition."""
+
     title: str
     uid: str
     panels: list[Panel]
@@ -185,13 +193,16 @@ class Dashboard:
         templating = {"list": [v.to_dict() for v in self.variables]}
 
         # Add datasource variable
-        templating["list"].insert(0, {
-            "name": "datasource",
-            "label": "Datasource",
-            "type": "datasource",
-            "query": "prometheus",
-            "current": {"text": "Prometheus", "value": "Prometheus"},
-        })
+        templating["list"].insert(
+            0,
+            {
+                "name": "datasource",
+                "label": "Datasource",
+                "type": "datasource",
+                "query": "prometheus",
+                "current": {"text": "Prometheus", "value": "Prometheus"},
+            },
+        )
 
         return {
             "uid": self.uid,
@@ -221,6 +232,7 @@ class Dashboard:
 
 
 # Helper functions for common panel types
+
 
 def create_stat_panel(
     title: str,

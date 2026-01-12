@@ -1,6 +1,5 @@
 """PII detection and anonymization using Microsoft Presidio."""
 
-
 from presidio_analyzer import AnalyzerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_anonymizer import AnonymizerEngine
@@ -125,9 +124,7 @@ class PIIDetector:
             entities.append(entity)
 
             # Count by type
-            entity_counts[result.entity_type] = (
-                entity_counts.get(result.entity_type, 0) + 1
-            )
+            entity_counts[result.entity_type] = entity_counts.get(result.entity_type, 0) + 1
 
             # Check high sensitivity
             if result.entity_type in self.config.high_sensitivity_entities:
@@ -159,7 +156,9 @@ class PIIDetector:
 
         # Sort by position (descending) to replace from end
         sorted_entities = sorted(
-            result.entities, key=lambda e: e.start, reverse=True,
+            result.entities,
+            key=lambda e: e.start,
+            reverse=True,
         )
 
         redacted = text
@@ -227,7 +226,8 @@ class PIIAnonymizer:
         elif strategy == "mask":
             operators = {
                 "DEFAULT": OperatorConfig(
-                    "mask", {"chars_to_mask": 4, "masking_char": "*"},
+                    "mask",
+                    {"chars_to_mask": 4, "masking_char": "*"},
                 ),
             }
 

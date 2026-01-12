@@ -100,10 +100,7 @@ class ACLFilter:
         must_not_clauses: list[dict[str, Any]] = []
 
         # Tenant isolation (always required unless super tenant)
-        if (
-            self.config.super_tenant_id is None
-            or user.tenant_id != self.config.super_tenant_id
-        ):
+        if self.config.super_tenant_id is None or user.tenant_id != self.config.super_tenant_id:
             must_clauses.append(
                 {"key": "tenant_id", "match": {"value": str(user.tenant_id)}},
             )

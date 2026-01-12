@@ -109,15 +109,19 @@ class TestGPUMonitor:
 
     def test_register_callback(self, gpu_monitor):
         """Test registering a callback."""
+
         def callback(x):
             return None
+
         gpu_monitor.register_callback(callback)
         assert callback in gpu_monitor._callbacks
 
     def test_unregister_callback(self, gpu_monitor):
         """Test unregistering a callback."""
+
         def callback(x):
             return None
+
         gpu_monitor.register_callback(callback)
         gpu_monitor.unregister_callback(callback)
         assert callback not in gpu_monitor._callbacks
@@ -144,7 +148,9 @@ class TestBatchOptimizer:
     def test_record_batch(self, batch_optimizer):
         """Test recording batch events."""
         batch_optimizer.record_batch(
-            batch_size=16, processing_time_ms=50.0, wait_time_ms=25.0,
+            batch_size=16,
+            processing_time_ms=50.0,
+            wait_time_ms=25.0,
         )
 
         metrics = batch_optimizer.get_metrics()

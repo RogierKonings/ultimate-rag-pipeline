@@ -50,7 +50,8 @@ class RequestContext:
 
 # Context variable for request context
 _request_context: ContextVar[RequestContext | None] = ContextVar(
-    "request_context", default=None,
+    "request_context",
+    default=None,
 )
 
 

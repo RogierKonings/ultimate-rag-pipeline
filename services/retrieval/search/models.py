@@ -188,7 +188,8 @@ class ScoreNormalizer:
 
     @staticmethod
     def normalize_results(
-        results: list[SearchResultItem], method: str = "min_max",
+        results: list[SearchResultItem],
+        method: str = "min_max",
     ) -> list[SearchResultItem]:
         """
         Normalize scores in a list of results.

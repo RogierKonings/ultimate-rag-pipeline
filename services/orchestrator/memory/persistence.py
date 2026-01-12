@@ -198,7 +198,8 @@ class PostgresConversationStore:
         )
 
     async def load_conversation(
-        self, session_id: str,
+        self,
+        session_id: str,
     ) -> ConversationSession | None:
         """Load conversation from Postgres.
 

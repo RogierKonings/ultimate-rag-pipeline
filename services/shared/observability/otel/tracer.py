@@ -194,8 +194,7 @@ def setup_tracing(
     _initialized = True
 
     logger.info(
-        f"Tracing initialized: service={config.service_name}, "
-        f"sampler={type(sampler).__name__}",
+        f"Tracing initialized: service={config.service_name}, sampler={type(sampler).__name__}",
     )
 
     return _tracer_provider

@@ -128,17 +128,24 @@ def create_auth_router(
         """
         if token_request.grant_type == "password":
             return await _handle_password_grant(
-                token_request, jwt_handler, user_lookup,
+                token_request,
+                jwt_handler,
+                user_lookup,
             )
         if token_request.grant_type == "refresh_token":
             return await _handle_refresh_grant(token_request, jwt_handler)
         if token_request.grant_type == "client_credentials":
             return await _handle_client_credentials_grant(
-                token_request, jwt_handler, user_lookup,
+                token_request,
+                jwt_handler,
+                user_lookup,
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "unsupported_grant_type", "error_description": f"Grant type '{token_request.grant_type}' not supported"},
+            detail={
+                "error": "unsupported_grant_type",
+                "error_description": f"Grant type '{token_request.grant_type}' not supported",
+            },
         )
 
     @router.post(
@@ -277,13 +284,19 @@ async def _handle_password_grant(
     if not request.username or not request.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "invalid_request", "error_description": "Missing username or password"},
+            detail={
+                "error": "invalid_request",
+                "error_description": "Missing username or password",
+            },
         )
 
     if not user_lookup:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail={"error": "server_error", "error_description": "User authentication not configured"},
+            detail={
+                "error": "server_error",
+                "error_description": "User authentication not configured",
+            },
         )
 
     # Lookup user
@@ -356,13 +369,19 @@ async def _handle_client_credentials_grant(
     if not request.client_id or not request.client_secret:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": "invalid_request", "error_description": "Missing client_id or client_secret"},
+            detail={
+                "error": "invalid_request",
+                "error_description": "Missing client_id or client_secret",
+            },
         )
 
     if not user_lookup:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail={"error": "server_error", "error_description": "Client authentication not configured"},
+            detail={
+                "error": "server_error",
+                "error_description": "Client authentication not configured",
+            },
         )
 
     # Use same lookup function for client credentials

@@ -98,7 +98,7 @@ class TestPIIDetector:
             if entity.entity_type == PIIType.EMAIL:
                 assert entity.start >= 0
                 assert entity.end > entity.start
-                assert text[entity.start:entity.end] == entity.text
+                assert text[entity.start : entity.end] == entity.text
 
     @pytest.mark.asyncio
     async def test_redact_pii(self, pii_detector):

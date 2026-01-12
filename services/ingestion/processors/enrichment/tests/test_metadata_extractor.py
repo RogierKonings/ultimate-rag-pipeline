@@ -1,6 +1,5 @@
 """Tests for metadata extraction utilities."""
 
-
 from ..metadata_extractor import MetadataExtractor
 
 

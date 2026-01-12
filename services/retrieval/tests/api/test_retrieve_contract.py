@@ -386,7 +386,11 @@ class TestHybridOrdering:
         return {"Authorization": f"Bearer {token}"}
 
     def test_pipeline_executes_in_order(
-        self, client, auth_header, mock_hybrid_searcher, mock_reranker,
+        self,
+        client,
+        auth_header,
+        mock_hybrid_searcher,
+        mock_reranker,
     ):
         """Test that pipeline executes: search → fusion → rerank → ACL."""
         response = client.post(

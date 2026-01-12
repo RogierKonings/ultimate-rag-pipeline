@@ -325,12 +325,14 @@ class TestComplexityScorer:
 
         # Heavy modifier weight
         modifier_heavy_score = scorer.score(
-            query, weights={"clause": 0.1, "length": 0.1, "modifier": 0.7, "history": 0.1},
+            query,
+            weights={"clause": 0.1, "length": 0.1, "modifier": 0.7, "history": 0.1},
         )
 
         # Heavy length weight
         length_heavy_score = scorer.score(
-            query, weights={"clause": 0.1, "length": 0.7, "modifier": 0.1, "history": 0.1},
+            query,
+            weights={"clause": 0.1, "length": 0.7, "modifier": 0.1, "history": 0.1},
         )
 
         # Scores should differ based on weights

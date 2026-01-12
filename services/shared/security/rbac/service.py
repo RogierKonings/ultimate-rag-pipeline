@@ -54,7 +54,9 @@ class TenantMismatchError(AuthorizationError):
         resource_tenant: UUID,
         details: dict | None = None,
     ):
-        message = f"Tenant mismatch: user tenant {user_tenant} cannot access tenant {resource_tenant}"
+        message = (
+            f"Tenant mismatch: user tenant {user_tenant} cannot access tenant {resource_tenant}"
+        )
         super().__init__(message, details)
         self.user_tenant = user_tenant
         self.resource_tenant = resource_tenant
@@ -161,9 +163,7 @@ class AuthorizationService:
 
         # Convert to Permission enum if string
         required_perm = (
-            required
-            if isinstance(required, Permission)
-            else Permission.from_string(required)
+            required if isinstance(required, Permission) else Permission.from_string(required)
         )
 
         # Check explicit permissions
@@ -311,9 +311,7 @@ class AuthorizationService:
             InsufficientPermissionsError: If user lacks all permissions.
         """
         if not self.has_any_permission(user, required):
-            required_strs = [
-                p.value if isinstance(p, Permission) else p for p in required
-            ]
+            required_strs = [p.value if isinstance(p, Permission) else p for p in required]
             raise InsufficientPermissionsError(
                 required=required_strs,
                 user_id=user.sub,
@@ -334,13 +332,9 @@ class AuthorizationService:
         Raises:
             InsufficientPermissionsError: If user lacks any permission.
         """
-        missing = [
-            p for p in required if not self.has_permission(user, p)
-        ]
+        missing = [p for p in required if not self.has_permission(user, p)]
         if missing:
-            missing_strs = [
-                p.value if isinstance(p, Permission) else p for p in missing
-            ]
+            missing_strs = [p.value if isinstance(p, Permission) else p for p in missing]
             raise InsufficientPermissionsError(
                 required=missing_strs,
                 user_id=user.sub,
@@ -390,11 +384,7 @@ class AuthorizationService:
             return
 
         # Super tenant bypass
-        if (
-            allow_super_tenant
-            and self._super_tenant_id
-            and user.tenant_id == self._super_tenant_id
-        ):
+        if allow_super_tenant and self._super_tenant_id and user.tenant_id == self._super_tenant_id:
             return
 
         # Tenant must match

@@ -123,10 +123,10 @@ class EnvironmentKeyProvider(KeyProvider):
         for env_name in os.environ:
             if env_name.endswith(suffix):
                 if prefix and env_name.startswith(prefix):
-                    name = env_name[len(prefix):-len(suffix)]
+                    name = env_name[len(prefix) : -len(suffix)]
                     keys.append(name.lower().replace("_", "-"))
                 elif not prefix:
-                    name = env_name[:-len(suffix)]
+                    name = env_name[: -len(suffix)]
                     keys.append(name.lower().replace("_", "-"))
 
         return keys
@@ -195,9 +195,7 @@ class FileKeyProvider(KeyProvider):
 
     def list_keys(self) -> list[str]:
         """List all key files."""
-        return [
-            p.stem for p in self._dir.glob("*.key")
-        ]
+        return [p.stem for p in self._dir.glob("*.key")]
 
 
 class VaultKeyProvider(KeyProvider):
@@ -261,8 +259,7 @@ class VaultKeyProvider(KeyProvider):
 
             except ImportError:
                 raise ImportError(
-                    "hvac package required for Vault integration. "
-                    "Install with: pip install hvac",
+                    "hvac package required for Vault integration. Install with: pip install hvac",
                 ) from None
 
         return self._client
@@ -430,8 +427,7 @@ class EncryptionKeyManager:
         """
         if len(key) != KEY_SIZE:
             raise ValueError(
-                f"Invalid key size: {len(key)} bytes. "
-                f"Expected {KEY_SIZE} bytes for AES-256.",
+                f"Invalid key size: {len(key)} bytes. Expected {KEY_SIZE} bytes for AES-256.",
             )
 
         self._provider.set_key(key_name, key)
@@ -453,6 +449,7 @@ class EncryptionKeyManager:
 
         if key is None:
             import secrets
+
             key = secrets.token_bytes(KEY_SIZE)
             self.set_key(key_name, key)
             logger.info(f"Generated new key: {key_name}")

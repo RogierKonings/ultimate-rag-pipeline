@@ -16,12 +16,15 @@ class TestOTELConfig:
         """Test configuration from environment variables."""
         from shared.observability.otel.tracer import OTELConfig
 
-        with patch.dict("os.environ", {
-            "OTEL_SERVICE_NAME": "test-service",
-            "OTEL_EXPORTER_OTLP_ENDPOINT": "localhost:4317",
-            "ENVIRONMENT": "testing",
-            "OTEL_TRACES_SAMPLER_ARG": "0.5",
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "OTEL_SERVICE_NAME": "test-service",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "localhost:4317",
+                "ENVIRONMENT": "testing",
+                "OTEL_TRACES_SAMPLER_ARG": "0.5",
+            },
+        ):
             config = OTELConfig.from_env("default-service")
 
             assert config.service_name == "test-service"
@@ -118,7 +121,9 @@ class TestRAGAttributes:
         mock_span = Mock()
         mock_span.is_recording.return_value = True
 
-        with patch("shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span):
+        with patch(
+            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+        ):
             set_rag_attributes(
                 operation=RAGOperation.QUERY,
                 tenant_id="tenant-123",
@@ -138,7 +143,9 @@ class TestRAGAttributes:
         mock_span = Mock()
         mock_span.is_recording.return_value = True
 
-        with patch("shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span):
+        with patch(
+            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+        ):
             set_retrieval_results(count=5, scores=[0.9, 0.8, 0.7, 0.6, 0.5])
 
             calls = mock_span.set_attribute.call_args_list
@@ -153,7 +160,9 @@ class TestRAGAttributes:
         mock_span = Mock()
         mock_span.is_recording.return_value = True
 
-        with patch("shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span):
+        with patch(
+            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+        ):
             set_llm_usage(
                 model="llama-3.1-8b",
                 provider="vllm",

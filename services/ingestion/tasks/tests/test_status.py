@@ -149,10 +149,12 @@ class TestJobStatusTracker:
         import json
 
         mock_async_redis.scan.return_value = (0, ["dlq:task1:2024-01-01"])
-        mock_async_redis.get.return_value = json.dumps({
-            "task_name": "task1",
-            "error": "Connection failed",
-        })
+        mock_async_redis.get.return_value = json.dumps(
+            {
+                "task_name": "task1",
+                "error": "Connection failed",
+            },
+        )
 
         with patch(f"{STATUS_MODULE}.redis.from_url", return_value=mock_async_redis):
             async with JobStatusTracker() as tracker:

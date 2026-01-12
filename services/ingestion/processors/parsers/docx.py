@@ -22,7 +22,9 @@ class DocxParser(BaseParser):
         ]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse Word document.
 

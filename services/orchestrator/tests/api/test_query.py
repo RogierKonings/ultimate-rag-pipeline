@@ -144,7 +144,9 @@ class TestSynchronousQuery:
     """Tests for POST /api/v1/query endpoint."""
 
     def test_query_success_with_workflow(
-        self, client, configured_app,
+        self,
+        client,
+        configured_app,
     ):
         """Test successful query with workflow."""
         response = client.post(
@@ -217,7 +219,11 @@ class TestSynchronousQuery:
         assert response.status_code == 200
 
     def test_query_input_validation_failure(
-        self, client, app, mock_session_manager, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
     ):
         """Test query rejection when input fails guardrails."""
         app.state.session_manager = mock_session_manager
@@ -387,7 +393,12 @@ class TestStreamingQuery:
         assert "event: done" in content
 
     def test_stream_query_input_validation_failure(
-        self, client, app, mock_session_manager, mock_model_gateway, mock_stream_manager,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_model_gateway,
+        mock_stream_manager,
     ):
         """Test streaming query rejection when input fails guardrails."""
         app.state.session_manager = mock_session_manager
@@ -560,7 +571,12 @@ class TestSourceDocumentTransformation:
         assert "snippet" in source
 
     def test_source_documents_truncate_content(
-        self, client, app, mock_session_manager, mock_guardrail_pipeline, mock_model_gateway,
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
     ):
         """Test that source document snippets are truncated."""
         workflow = AsyncMock()

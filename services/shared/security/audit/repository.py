@@ -411,11 +411,7 @@ class AuditRepository:
         """Get the hash of the most recent audit entry."""
         from services.shared.database.models.audit_log import AuditLog
 
-        stmt = (
-            select(AuditLog.entry_hash)
-            .order_by(desc(AuditLog.timestamp))
-            .limit(1)
-        )
+        stmt = select(AuditLog.entry_hash).order_by(desc(AuditLog.timestamp)).limit(1)
         result = await self.session.execute(stmt)
         return result.scalar()
 

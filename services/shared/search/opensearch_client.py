@@ -39,11 +39,15 @@ class OpenSearchClient:
         self._password = password or os.getenv("OPENSEARCH_PASSWORD")
 
         # SSL configuration
-        self._use_ssl = use_ssl if use_ssl is not None else (
-            os.getenv("OPENSEARCH_USE_SSL", "false").lower() == "true"
+        self._use_ssl = (
+            use_ssl
+            if use_ssl is not None
+            else (os.getenv("OPENSEARCH_USE_SSL", "false").lower() == "true")
         )
-        self._verify_certs = verify_certs if verify_certs is not None else (
-            os.getenv("OPENSEARCH_VERIFY_CERTS", "true").lower() == "true"
+        self._verify_certs = (
+            verify_certs
+            if verify_certs is not None
+            else (os.getenv("OPENSEARCH_VERIFY_CERTS", "true").lower() == "true")
         )
         self._ca_cert_path = ca_cert_path or os.getenv("OPENSEARCH_CA_CERT")
 

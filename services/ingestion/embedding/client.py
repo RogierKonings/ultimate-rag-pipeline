@@ -1,6 +1,5 @@
 """LLM Gateway client for embedding generation."""
 
-
 import httpx
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 

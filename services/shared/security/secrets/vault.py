@@ -27,10 +27,8 @@ class VaultAuthError(VaultError):
     """Raised when Vault authentication fails."""
 
 
-
 class VaultSecretError(VaultError):
     """Raised when secret operations fail."""
-
 
 
 class VaultClient:

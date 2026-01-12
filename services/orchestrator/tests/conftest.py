@@ -255,7 +255,10 @@ def sample_stream_events():
 
 @pytest.fixture
 def mock_app_state(
-    mock_redis, mock_httpx_client, mock_retrieval_client, sample_documents,
+    mock_redis,
+    mock_httpx_client,
+    mock_retrieval_client,
+    sample_documents,
 ):
     """Create mock application state."""
     state = MagicMock()

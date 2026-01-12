@@ -84,7 +84,8 @@ class ConfigurationManager:
         for name, endpoint_data in data.get("endpoints", {}).items():
             # Handle nested config objects
             if "llm_config" in endpoint_data and isinstance(
-                endpoint_data["llm_config"], dict,
+                endpoint_data["llm_config"],
+                dict,
             ):
                 endpoint_data["llm_config"] = LLMGenerationConfig(
                     **endpoint_data["llm_config"],
@@ -105,9 +106,7 @@ class ConfigurationManager:
             endpoints=endpoints,
             ab_tests=ab_tests,
             previous_version_id=(
-                self._state.version_history[-1].id
-                if self._state.version_history
-                else None
+                self._state.version_history[-1].id if self._state.version_history else None
             ),
         )
 
@@ -254,7 +253,8 @@ class ConfigurationManager:
         return self._state.get_endpoint(name)
 
     def get_all_endpoints(
-        self, type_filter: ModelType | None = None,
+        self,
+        type_filter: ModelType | None = None,
     ) -> list[ModelEndpoint]:
         """Get all endpoints, optionally filtered by type."""
         endpoints = list(self._state.endpoints.values())
@@ -267,7 +267,8 @@ class ConfigurationManager:
         return self._state.get_active_tests()
 
     def register_callback(
-        self, callback: Callable[[ModelConfigurationState], None],
+        self,
+        callback: Callable[[ModelConfigurationState], None],
     ) -> None:
         """Register callback for configuration changes."""
         self._callbacks.append(callback)

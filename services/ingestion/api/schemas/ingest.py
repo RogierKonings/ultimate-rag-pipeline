@@ -441,11 +441,13 @@ class SyncSourceConfig(BaseModel):
     """Configuration for incremental sync source."""
 
     connection_string: str | None = Field(
-        None, description="Database connection string for DATABASE source",
+        None,
+        description="Database connection string for DATABASE source",
     )
     table: str | None = Field(None, description="Table to sync for DATABASE source")
     updated_since: datetime | None = Field(
-        None, description="Sync documents updated since this timestamp",
+        None,
+        description="Sync documents updated since this timestamp",
     )
     path: str | None = Field(None, description="Path for FILESYSTEM source")
     start_urls: list[str] | None = Field(None, description="URLs for WEB source")
@@ -505,7 +507,9 @@ class SyncRequest(BaseModel):
     @field_validator("source_config")
     @classmethod
     def validate_source_config(
-        cls, v: SyncSourceConfig, info,
+        cls,
+        v: SyncSourceConfig,
+        info,
     ) -> SyncSourceConfig:
         """Validate that required fields are present for source type."""
         source_type = info.data.get("source_type")
@@ -523,7 +527,8 @@ class SyncResponse(BaseModel):
     job_id: UUID = Field(..., description="Job identifier for tracking")
     status: str = Field(default="queued", description="Initial job status")
     estimated_completion: datetime | None = Field(
-        None, description="Estimated completion time",
+        None,
+        description="Estimated completion time",
     )
     message: str = Field(default="Sync job started", description="Status message")
 
@@ -549,10 +554,12 @@ class ReembedTargetScope(BaseModel):
 
     tenant_id: str | None = Field(None, description="Limit to specific tenant")
     source_types: list[SourceType] | None = Field(
-        None, description="Limit to specific source types",
+        None,
+        description="Limit to specific source types",
     )
     document_ids: list[UUID] | None = Field(
-        None, description="Limit to specific document IDs",
+        None,
+        description="Limit to specific document IDs",
     )
 
     model_config = ConfigDict(
@@ -581,13 +588,18 @@ class ReembedRequest(BaseModel):
     """
 
     embedding_model: str = Field(
-        ..., description="New embedding model name (e.g., BAAI/bge-m3)",
+        ...,
+        description="New embedding model name (e.g., BAAI/bge-m3)",
     )
     target_scope: ReembedTargetScope = Field(
-        ..., description="Scope filter for documents to re-embed",
+        ...,
+        description="Scope filter for documents to re-embed",
     )
     batch_size: int = Field(
-        default=100, ge=10, le=1000, description="Batch size for processing",
+        default=100,
+        ge=10,
+        le=1000,
+        description="Batch size for processing",
     )
 
     model_config = ConfigDict(
@@ -611,14 +623,17 @@ class ReembedResponse(BaseModel):
 
     job_id: UUID = Field(..., description="Celery job ID for task tracking")
     embedding_job_id: UUID = Field(
-        ..., description="Embedding job record ID in database",
+        ...,
+        description="Embedding job record ID in database",
     )
     status: str = Field(default="pending", description="Initial job status")
     estimated_completion: datetime | None = Field(
-        None, description="Estimated completion time",
+        None,
+        description="Estimated completion time",
     )
     message: str = Field(
-        default="Re-embedding job started", description="Status message",
+        default="Re-embedding job started",
+        description="Status message",
     )
 
     model_config = ConfigDict(
@@ -634,4 +649,3 @@ class ReembedResponse(BaseModel):
             ],
         },
     )
-

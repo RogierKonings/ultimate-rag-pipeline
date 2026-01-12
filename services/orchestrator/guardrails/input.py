@@ -102,10 +102,7 @@ class InputGuardrail:
                 return False
 
             # Check injection blocking
-            if (
-                violation.type == ViolationType.INJECTION_ATTEMPT
-                and self.config.block_on_injection
-            ):
+            if violation.type == ViolationType.INJECTION_ATTEMPT and self.config.block_on_injection:
                 return False
 
             # Check PII blocking

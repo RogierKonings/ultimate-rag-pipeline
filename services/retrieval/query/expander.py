@@ -4,7 +4,6 @@ This module provides query expansion through synonym substitution
 and LLM-based alternatives.
 """
 
-
 import httpx
 
 from .models import QueryPreprocessorConfig
@@ -186,9 +185,7 @@ Return only the alternative queries, one per line, without numbering or explanat
 
         # Parse response into list of queries
         expansions = [
-            line.strip()
-            for line in text.split("\n")
-            if line.strip() and line.strip() != query
+            line.strip() for line in text.split("\n") if line.strip() and line.strip() != query
         ]
 
         return expansions[: self.config.max_expansions]

@@ -425,7 +425,8 @@ class WebConnector(BaseConnector):
                 extra={
                     "depth": depth,
                     "headers": {
-                        k: v for k, v in headers.items()
+                        k: v
+                        for k, v in headers.items()
                         if k.lower() in ("content-type", "last-modified", "etag")
                     },
                 },
@@ -489,7 +490,8 @@ class WebConnector(BaseConnector):
             size_bytes=len(content),
             extra={
                 "headers": {
-                    k: v for k, v in headers.items()
+                    k: v
+                    for k, v in headers.items()
                     if k.lower() in ("content-type", "last-modified", "etag")
                 },
             },
@@ -564,7 +566,8 @@ class WebConnector(BaseConnector):
                 extra={
                     "depth": depth,
                     "headers": {
-                        k: v for k, v in headers.items()
+                        k: v
+                        for k, v in headers.items()
                         if k.lower() in ("content-type", "last-modified", "etag")
                     },
                 },

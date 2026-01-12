@@ -172,12 +172,17 @@ class TraceLogValidator:
 
         # Check trace exists
         trace_result = await self.otlp_validator.validate_trace_propagation(
-            trace_id, expected,
+            trace_id,
+            expected,
         )
 
-        trace_found = trace_result.get("valid", False) or len(
-            trace_result.get("services_found", []),
-        ) > 0
+        trace_found = (
+            trace_result.get("valid", False)
+            or len(
+                trace_result.get("services_found", []),
+            )
+            > 0
+        )
         trace_services = trace_result.get("services_found", [])
         span_count = trace_result.get("span_count", 0)
 

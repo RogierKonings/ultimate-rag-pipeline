@@ -186,7 +186,9 @@ async def get_active_migrations(
         return [_migration_to_response(m) for m in migrations]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get active migrations: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get active migrations: {str(e)}",
+        ) from e
 
 
 @router.get("/embeddings/{migration_id}", response_model=MigrationResponseSchema)

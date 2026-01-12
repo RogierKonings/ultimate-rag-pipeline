@@ -179,7 +179,9 @@ class ZScoreDetector(BaseAnomalyDetector):
             metric_name=self.metric_name,
             current_value=value,
             expected_value=mean,
-            threshold=self.warning_threshold if severity == AnomalySeverity.WARNING else self.critical_threshold,
+            threshold=self.warning_threshold
+            if severity == AnomalySeverity.WARNING
+            else self.critical_threshold,
             deviation=z_score,
             service_name=self.service_name,
             model_name=self.model_name,
@@ -284,11 +286,13 @@ class RateDetector(BaseAnomalyDetector):
             metric_name=self.metric_name,
             current_value=rate,
             expected_value=0.0,  # Ideal rate
-            threshold=self.warning_threshold if severity == AnomalySeverity.WARNING else self.critical_threshold,
+            threshold=self.warning_threshold
+            if severity == AnomalySeverity.WARNING
+            else self.critical_threshold,
             deviation=rate / self.warning_threshold,
             service_name=self.service_name,
             model_name=self.model_name,
-            message=f"{self.metric_name} rate is {rate*100:.1f}%",
+            message=f"{self.metric_name} rate is {rate * 100:.1f}%",
             context={
                 "rate": rate,
                 "total_events": total_events,
@@ -384,14 +388,10 @@ class TrendDetector(BaseAnomalyDetector):
         if trend_ratio >= self.trend_threshold:
             # Calculate slope
             first_half_avg = sum(values[: len(values) // 2]) / (len(values) // 2)
-            second_half_avg = sum(values[len(values) // 2 :]) / (
-                len(values) - len(values) // 2
-            )
+            second_half_avg = sum(values[len(values) // 2 :]) / (len(values) - len(values) // 2)
             slope = second_half_avg - first_half_avg
 
-            severity = (
-                AnomalySeverity.CRITICAL if trend_ratio > 0.9 else AnomalySeverity.WARNING
-            )
+            severity = AnomalySeverity.CRITICAL if trend_ratio > 0.9 else AnomalySeverity.WARNING
 
             return Anomaly(
                 type=self.anomaly_type,
@@ -403,7 +403,7 @@ class TrendDetector(BaseAnomalyDetector):
                 deviation=trend_ratio,
                 service_name=self.service_name,
                 model_name=self.model_name,
-                message=f"{self.metric_name} showing {trend_ratio*100:.0f}% increasing trend",
+                message=f"{self.metric_name} showing {trend_ratio * 100:.0f}% increasing trend",
                 context={
                     "trend_ratio": trend_ratio,
                     "slope": slope,

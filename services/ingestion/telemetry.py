@@ -330,6 +330,7 @@ def traced(name: str | None = None, record_args: bool = False):
                 return func(*args, **kwargs)
 
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

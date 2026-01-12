@@ -347,7 +347,9 @@ class TestIngestionLogWriterBulkInsert:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=100, flush_interval=10.0, session_factory=mock_factory,
+            batch_size=100,
+            flush_interval=10.0,
+            session_factory=mock_factory,
         )
 
         tenant_id = uuid4()
@@ -387,7 +389,9 @@ class TestIngestionLogWriterBulkInsert:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=100, flush_interval=10.0, session_factory=mock_factory,
+            batch_size=100,
+            flush_interval=10.0,
+            session_factory=mock_factory,
         )
 
         entries = [
@@ -415,7 +419,9 @@ class TestIngestionLogWriterMetrics:
         mock_factory = MagicMock(return_value=mock_session)
 
         writer = IngestionLogWriter(
-            batch_size=2, flush_interval=10.0, session_factory=mock_factory,
+            batch_size=2,
+            flush_interval=10.0,
+            session_factory=mock_factory,
         )
 
         # Add entries to trigger flush

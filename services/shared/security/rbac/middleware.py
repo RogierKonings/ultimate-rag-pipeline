@@ -442,6 +442,7 @@ def authorize(
     Returns:
         Decorator function.
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):

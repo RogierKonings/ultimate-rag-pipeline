@@ -67,7 +67,10 @@ class ParserRegistry:
         return list(self._parsers.keys())
 
     async def parse(
-        self, content: bytes, mime_type: str, metadata: dict | None = None,
+        self,
+        content: bytes,
+        mime_type: str,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse document content using the appropriate parser.
 

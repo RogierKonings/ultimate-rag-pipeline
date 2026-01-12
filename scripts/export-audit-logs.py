@@ -65,7 +65,14 @@ async def fetch_audit_logs(
         # Fallback for when running standalone
         print("Warning: Could not import AuditLog model, using raw SQL")
         return await fetch_audit_logs_raw(
-            session, start_date, end_date, tenant_id, user_id, action, limit, offset,
+            session,
+            start_date,
+            end_date,
+            tenant_id,
+            user_id,
+            action,
+            limit,
+            offset,
         )
 
     conditions = []
@@ -151,7 +158,7 @@ async def fetch_audit_logs_raw(
     query = text(
         f"""
         SELECT * FROM audit_logs
-        WHERE {' AND '.join(conditions)}
+        WHERE {" AND ".join(conditions)}
         ORDER BY timestamp ASC
         LIMIT :limit OFFSET :offset
     """,
@@ -184,7 +191,9 @@ def compute_hash(entry: dict, previous_hash: str | None = None) -> str:
 
 
 async def validate_hash_chain(
-    session, start_id: UUID | None = None, limit: int = 1000,
+    session,
+    start_id: UUID | None = None,
+    limit: int = 1000,
 ) -> tuple[bool, str | None, int]:
     """
     Validate the hash chain of audit logs.
@@ -410,7 +419,9 @@ async def main():
             print("Validating hash chain...")
             start_id = UUID(args.start_id) if args.start_id else None
             is_valid, error, count = await validate_hash_chain(
-                session, start_id, args.limit,
+                session,
+                start_id,
+                args.limit,
             )
 
             if is_valid:

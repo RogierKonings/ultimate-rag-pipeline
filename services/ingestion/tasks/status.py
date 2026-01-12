@@ -37,7 +37,8 @@ class JobStatusTracker:
         import os
 
         self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/2",
+            "REDIS_URL",
+            "redis://localhost:6379/2",
         )
         self._redis: redis.Redis | None = None
 
@@ -124,8 +125,12 @@ class JobStatusTracker:
             started_at=info.get("started_at") if isinstance(info, dict) else None,
             completed_at=info.get("completed_at") if isinstance(info, dict) else None,
             duration_seconds=info.get("duration_seconds") if isinstance(info, dict) else None,
-            error_message=info.get("error") if status == JobStatus.FAILURE and isinstance(info, dict) else None,
-            traceback=info.get("traceback") if status == JobStatus.FAILURE and isinstance(info, dict) else None,
+            error_message=info.get("error")
+            if status == JobStatus.FAILURE and isinstance(info, dict)
+            else None,
+            traceback=info.get("traceback")
+            if status == JobStatus.FAILURE and isinstance(info, dict)
+            else None,
         )
 
     async def cancel_job(self, job_id: str) -> bool:
@@ -185,7 +190,9 @@ class JobStatusTracker:
             cursor = 0
             while True:
                 cursor, keys = await self._redis.scan(
-                    cursor, match=pattern, count=100,
+                    cursor,
+                    match=pattern,
+                    count=100,
                 )
                 for key in keys[: limit - len(entries)]:
                     data = await self._redis.get(key)

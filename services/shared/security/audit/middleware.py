@@ -63,19 +63,20 @@ class AuditMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.service_name = service_name
         self._logger = logger
-        self.exclude_paths = set(exclude_paths or [
-            "/health",
-            "/healthz",
-            "/ready",
-            "/readiness",
-            "/metrics",
-            "/openapi.json",
-            "/docs",
-            "/redoc",
-        ])
-        self.exclude_patterns = [
-            re.compile(p) for p in (exclude_patterns or [])
-        ]
+        self.exclude_paths = set(
+            exclude_paths
+            or [
+                "/health",
+                "/healthz",
+                "/ready",
+                "/readiness",
+                "/metrics",
+                "/openapi.json",
+                "/docs",
+                "/redoc",
+            ],
+        )
+        self.exclude_patterns = [re.compile(p) for p in (exclude_patterns or [])]
         self.log_request_body = log_request_body
         self.log_response_body = log_response_body
 
@@ -103,9 +104,15 @@ class AuditMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         user_agent = request.headers.get("user-agent")
         request_id = request.headers.get("x-request-id")
-        trace_id = request.headers.get("x-trace-id") or request.headers.get(
-            "traceparent", "",
-        ).split("-")[1] if "-" in request.headers.get("traceparent", "") else None
+        trace_id = (
+            request.headers.get("x-trace-id")
+            or request.headers.get(
+                "traceparent",
+                "",
+            ).split("-")[1]
+            if "-" in request.headers.get("traceparent", "")
+            else None
+        )
 
         # Extract user info from request state (set by auth middleware)
         user_id = getattr(request.state, "user_id", None)

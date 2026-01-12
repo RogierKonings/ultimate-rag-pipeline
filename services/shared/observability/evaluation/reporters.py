@@ -95,8 +95,7 @@ class JSONFileReporter(BaseReporter):
 
         if run.results:
             summary["metrics"] = {
-                metric: stats["mean"]
-                for metric, stats in run.results.aggregated_metrics.items()
+                metric: stats["mean"] for metric, stats in run.results.aggregated_metrics.items()
             }
             summary["total_samples"] = run.results.total_samples
             summary["successful_samples"] = run.results.successful_samples
@@ -325,9 +324,7 @@ class GrafanaAnnotationReporter(BaseReporter):
 
         annotation = {
             "time": int(run.started_at.timestamp() * 1000),
-            "timeEnd": int(run.completed_at.timestamp() * 1000)
-            if run.completed_at
-            else None,
+            "timeEnd": int(run.completed_at.timestamp() * 1000) if run.completed_at else None,
             "tags": tags,
             "text": "\n".join(text_parts),
         }

@@ -267,8 +267,7 @@ class TestArchitectureDeviations:
                 )
 
             warnings.warn(
-                "ARCHITECTURE DEVIATION: Column name differences\n"
-                + "\n".join(rename_messages),
+                "ARCHITECTURE DEVIATION: Column name differences\n" + "\n".join(rename_messages),
                 UserWarning,
             )
 
@@ -286,9 +285,7 @@ class TestSourceDocumentsTableSchema:
         column_names = {col.key for col in mapper.columns}
 
         for col_name in ORM_DOCUMENTS_COLUMNS:
-            assert col_name in column_names, (
-                f"Documents table missing required column: {col_name}"
-            )
+            assert col_name in column_names, f"Documents table missing required column: {col_name}"
 
     def test_source_documents_column_nullability(self):
         """Verify column nullable constraints match ORM specification."""
@@ -327,10 +324,7 @@ class TestSourceDocumentsTableSchema:
         table = mapper.persist_selectable
 
         unique_indexes = [idx for idx in table.indexes if idx.unique]
-        unique_column_sets = [
-            frozenset(col.name for col in idx.columns)
-            for idx in unique_indexes
-        ]
+        unique_column_sets = [frozenset(col.name for col in idx.columns) for idx in unique_indexes]
 
         expected_columns = frozenset(["tenant_id", "source_uri", "content_hash"])
         assert expected_columns in unique_column_sets, (
@@ -350,9 +344,7 @@ class TestChunksTableSchema:
         column_names = {col.key for col in mapper.columns}
 
         for col_name in ORM_CHUNKS_COLUMNS:
-            assert col_name in column_names, (
-                f"Chunks table missing required column: {col_name}"
-            )
+            assert col_name in column_names, f"Chunks table missing required column: {col_name}"
 
     def test_chunks_column_nullability(self):
         """Verify column nullable constraints match ORM specification."""
@@ -382,17 +374,11 @@ class TestChunksTableSchema:
         doc_id_col = mapper.columns.get("document_id")
 
         assert doc_id_col is not None, "Chunks must have document_id column"
-        assert len(doc_id_col.foreign_keys) > 0, (
-            "document_id must have foreign key reference"
-        )
+        assert len(doc_id_col.foreign_keys) > 0, "document_id must have foreign key reference"
 
         fk = list(doc_id_col.foreign_keys)[0]
-        assert fk.ondelete == "CASCADE", (
-            "Foreign key on document_id should have ON DELETE CASCADE"
-        )
-        assert "documents" in str(fk.column), (
-            "Foreign key should reference documents table"
-        )
+        assert fk.ondelete == "CASCADE", "Foreign key on document_id should have ON DELETE CASCADE"
+        assert "documents" in str(fk.column), "Foreign key should reference documents table"
 
     def test_chunks_unique_constraint_document_chunk_index(self):
         """Verify chunks has unique constraint on (document_id, chunk_index)."""
@@ -402,15 +388,11 @@ class TestChunksTableSchema:
         table = mapper.persist_selectable
 
         unique_indexes = [idx for idx in table.indexes if idx.unique]
-        unique_column_sets = [
-            frozenset(col.name for col in idx.columns)
-            for idx in unique_indexes
-        ]
+        unique_column_sets = [frozenset(col.name for col in idx.columns) for idx in unique_indexes]
 
         expected_columns = frozenset(["document_id", "chunk_index"])
         assert expected_columns in unique_column_sets, (
-            f"Missing unique constraint on (document_id, chunk_index). "
-            f"Found: {unique_column_sets}"
+            f"Missing unique constraint on (document_id, chunk_index). Found: {unique_column_sets}"
         )
 
     def test_chunks_has_tenant_id_for_query_performance(self):
@@ -487,8 +469,7 @@ class TestTableIndexes:
 
         for expected_idx in EXPECTED_INDEXES["documents"]:
             assert expected_idx in index_names, (
-                f"Documents table missing index: {expected_idx}. "
-                f"Found indexes: {index_names}"
+                f"Documents table missing index: {expected_idx}. Found indexes: {index_names}"
             )
 
     def test_chunks_indexes(self):
@@ -502,8 +483,7 @@ class TestTableIndexes:
 
         for expected_idx in EXPECTED_INDEXES["chunks"]:
             assert expected_idx in index_names, (
-                f"Chunks table missing index: {expected_idx}. "
-                f"Found indexes: {index_names}"
+                f"Chunks table missing index: {expected_idx}. Found indexes: {index_names}"
             )
 
     def test_embedding_jobs_indexes(self):
@@ -517,8 +497,7 @@ class TestTableIndexes:
 
         for expected_idx in EXPECTED_INDEXES["embedding_jobs"]:
             assert expected_idx in index_names, (
-                f"EmbeddingJobs table missing index: {expected_idx}. "
-                f"Found indexes: {index_names}"
+                f"EmbeddingJobs table missing index: {expected_idx}. Found indexes: {index_names}"
             )
 
 

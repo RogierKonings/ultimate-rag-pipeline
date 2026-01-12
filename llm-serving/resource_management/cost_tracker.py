@@ -174,9 +174,7 @@ class CostTracker:
 
             # Calculate per-unit costs
             cost_per_request = total_cost / acc["requests"] if acc["requests"] > 0 else 0
-            cost_per_1k_tokens = (
-                total_cost / (acc["tokens"] / 1000) if acc["tokens"] > 0 else 0
-            )
+            cost_per_1k_tokens = total_cost / (acc["tokens"] / 1000) if acc["tokens"] > 0 else 0
 
             record = CostRecord(
                 id=uuid4(),
@@ -285,12 +283,8 @@ class CostTracker:
             "memory_cost": sum(r.memory_cost for r in records),
             "total_requests": total_requests,
             "total_tokens": total_tokens,
-            "cost_per_request": (
-                total_cost / total_requests if total_requests > 0 else 0
-            ),
-            "cost_per_1k_tokens": (
-                total_cost / (total_tokens / 1000) if total_tokens > 0 else 0
-            ),
+            "cost_per_request": (total_cost / total_requests if total_requests > 0 else 0),
+            "cost_per_1k_tokens": (total_cost / (total_tokens / 1000) if total_tokens > 0 else 0),
             "records_count": len(records),
         }
 
@@ -348,9 +342,7 @@ class CostTracker:
             service_costs[record.service_name]["cpu_cost"] += record.cpu_cost
             service_costs[record.service_name]["memory_cost"] += record.memory_cost
             service_costs[record.service_name]["total_requests"] += record.total_requests
-            service_costs[record.service_name][
-                "total_tokens"
-            ] += record.total_tokens_processed
+            service_costs[record.service_name]["total_tokens"] += record.total_tokens_processed
 
         return service_costs
 

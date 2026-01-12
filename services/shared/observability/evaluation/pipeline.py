@@ -122,6 +122,7 @@ class RAGClient:
 
             # Inject trace context into headers for distributed tracing
             from opentelemetry.propagate import inject
+
             inject(headers)
 
             payload = {
@@ -290,7 +291,8 @@ class EvaluationPipeline:
                     ) as rag_span:
                         rag_start = time.perf_counter()
                         sampled_dataset = await self._run_live_rag(
-                            sampled_dataset, tenant_id,
+                            sampled_dataset,
+                            tenant_id,
                         )
                         rag_duration_ms = (time.perf_counter() - rag_start) * 1000
                         rag_span.set_attribute("evaluation.rag_duration_ms", rag_duration_ms)
@@ -389,7 +391,7 @@ class EvaluationPipeline:
 
         for i, sample in enumerate(dataset):
             try:
-                logger.debug(f"Querying RAG for sample {i+1}/{total}")
+                logger.debug(f"Querying RAG for sample {i + 1}/{total}")
 
                 response = await asyncio.wait_for(
                     self.rag_client.query(sample.question, tenant_id),
@@ -505,9 +507,7 @@ class EvaluationPipeline:
                 baseline_std = baseline.aggregated_metrics[metric_name]["std"]
 
                 delta = current_mean - baseline_mean
-                percent_change = (
-                    (delta / baseline_mean * 100) if baseline_mean != 0 else 0
-                )
+                percent_change = (delta / baseline_mean * 100) if baseline_mean != 0 else 0
 
                 # Simple significance check (> 1 std deviation)
                 significant = abs(delta) > (baseline_std + current_std) / 2

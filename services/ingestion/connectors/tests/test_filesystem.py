@@ -282,11 +282,13 @@ class TestFilesystemConnectorS3:
                 Fileobj.write(test_content)
 
             mock_client.download_fileobj = mock_download
-            mock_client.head_object = AsyncMock(return_value={
-                "ContentType": "text/plain",
-                "LastModified": datetime.now(UTC),
-                "ETag": '"abc123"',
-            })
+            mock_client.head_object = AsyncMock(
+                return_value={
+                    "ContentType": "text/plain",
+                    "LastModified": datetime.now(UTC),
+                    "ETag": '"abc123"',
+                },
+            )
 
             mock_session.client.return_value = mock_client
             mock_boto.Session.return_value = mock_session

@@ -154,8 +154,7 @@ class K8sSecretsClient:
 
             # Decode base64 values
             return {
-                key: base64.b64decode(value).decode("utf-8")
-                for key, value in secret.data.items()
+                key: base64.b64decode(value).decode("utf-8") for key, value in secret.data.items()
             }
 
         except Exception as e:
@@ -281,8 +280,7 @@ class K8sSecretsClient:
 
         # Re-encode
         encoded = {
-            k: base64.b64encode(v.encode("utf-8")).decode("utf-8")
-            for k, v in existing.items()
+            k: base64.b64encode(v.encode("utf-8")).decode("utf-8") for k, v in existing.items()
         }
 
         body = client.V1Secret(

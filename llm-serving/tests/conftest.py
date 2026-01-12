@@ -10,7 +10,8 @@ import pytest
 def pytest_configure(config):
     """Add custom markers."""
     config.addinivalue_line(
-        "markers", "integration: mark test as integration test (requires running services)",
+        "markers",
+        "integration: mark test as integration test (requires running services)",
     )
 
 

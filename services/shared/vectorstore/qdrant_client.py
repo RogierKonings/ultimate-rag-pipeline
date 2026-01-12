@@ -33,7 +33,8 @@ class QdrantVectorStore:
             timeout=timeout,
         )
         self.collection_name = collection_name or os.getenv(
-            "QDRANT_COLLECTION", "documents",
+            "QDRANT_COLLECTION",
+            "documents",
         )
 
     async def upsert(
@@ -76,9 +77,7 @@ class QdrantVectorStore:
         Returns:
             List of dicts with 'id', 'score', and 'payload' keys.
         """
-        qdrant_filter = (
-            self._build_filter(filter_conditions) if filter_conditions else None
-        )
+        qdrant_filter = self._build_filter(filter_conditions) if filter_conditions else None
 
         results = self.client.search(
             collection_name=self.collection_name,
@@ -109,7 +108,8 @@ class QdrantVectorStore:
             points_selector=Filter(
                 must=[
                     FieldCondition(
-                        key="document_id", match=MatchValue(value=document_id),
+                        key="document_id",
+                        match=MatchValue(value=document_id),
                     ),
                 ],
             ),

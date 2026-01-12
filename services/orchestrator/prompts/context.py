@@ -149,7 +149,7 @@ def truncate_context(
         # Try to start at a word boundary
         first_space = truncated_text.find(" ")
         if first_space > 0 and first_space < len(truncated_text) // 4:
-            truncated_text = "..." + truncated_text[first_space + 1:]
+            truncated_text = "..." + truncated_text[first_space + 1 :]
         else:
             truncated_text = "..." + truncated_text
     else:
@@ -205,7 +205,9 @@ def truncate_documents(
             remaining_tokens = max_tokens - current_tokens
             if remaining_tokens > 50:  # Only include if meaningful content remains
                 truncated_content, _ = truncate_context(
-                    content, remaining_tokens, model_name,
+                    content,
+                    remaining_tokens,
+                    model_name,
                 )
                 truncated_doc = doc.copy()
                 truncated_doc["content"] = truncated_content

@@ -195,7 +195,8 @@ class TestJWTHandler:
         """Test that expired tokens are rejected."""
         # Create token that expires immediately
         token = jwt_handler.create_access_token(
-            sample_claims, expires_delta=timedelta(seconds=-1),
+            sample_claims,
+            expires_delta=timedelta(seconds=-1),
         )
 
         with pytest.raises(TokenExpiredError):
@@ -279,7 +280,8 @@ class TestTokenBlocklist:
 
         # Create token with short expiry
         token = handler.create_access_token(
-            sample_claims, expires_delta=timedelta(seconds=1),
+            sample_claims,
+            expires_delta=timedelta(seconds=1),
         )
         payload = handler.decode_token_unverified(token)
         jti = payload["jti"]

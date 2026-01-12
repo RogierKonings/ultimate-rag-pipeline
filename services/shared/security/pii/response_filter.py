@@ -129,7 +129,8 @@ class PIIResponseFilter:
 
                 # Filter content
                 filtered[content_field] = await self.filter_text(
-                    content, handling_mode,
+                    content,
+                    handling_mode,
                 )
 
             filtered_results.append(filtered)

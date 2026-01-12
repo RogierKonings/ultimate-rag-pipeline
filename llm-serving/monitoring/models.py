@@ -62,10 +62,7 @@ class ServiceHealth(BaseModel):
 
     def is_ready(self) -> bool:
         """Check if service is ready to accept requests."""
-        return (
-            self.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
-            and self.model_loaded
-        )
+        return self.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED] and self.model_loaded
 
 
 class LatencyMetrics(BaseModel):

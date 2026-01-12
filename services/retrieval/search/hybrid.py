@@ -46,7 +46,8 @@ class HybridSearcher(BaseSearcher):
         self._fusion = self._create_fusion(self.config)
 
     def _create_fusion(
-        self, config: HybridSearchConfig,
+        self,
+        config: HybridSearchConfig,
     ) -> ReciprocalRankFusion | LinearFusion | DistributionBasedScoreFusion:
         """Create fusion algorithm based on config."""
         if config.fusion_method == FusionMethod.RRF:

@@ -88,7 +88,10 @@ class TestOutputGuardrail:
             None,
         )
         assert harmful_violation is not None
-        assert "violence" in harmful_violation.description.lower() or harmful_violation.severity in ["high", "critical"]
+        assert (
+            "violence" in harmful_violation.description.lower()
+            or harmful_violation.severity in ["high", "critical"]
+        )
 
     @pytest.mark.asyncio
     async def test_processing_time_recorded(self, guardrail):

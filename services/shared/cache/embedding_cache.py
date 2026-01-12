@@ -81,10 +81,7 @@ class EmbeddingCache:
         if not text_hashes:
             return {}
 
-        keys = [
-            self.key_builder.build(KeyType.EMBEDDING, tenant_id, h)
-            for h in text_hashes
-        ]
+        keys = [self.key_builder.build(KeyType.EMBEDDING, tenant_id, h) for h in text_hashes]
 
         # Use pipeline for efficiency
         async with self.cache.redis.pipeline() as pipe:
@@ -92,10 +89,7 @@ class EmbeddingCache:
                 pipe.get(key)
             results = await pipe.execute()
 
-        return {
-            text_hashes[i]: json.loads(r) if r else None
-            for i, r in enumerate(results)
-        }
+        return {text_hashes[i]: json.loads(r) if r else None for i, r in enumerate(results)}
 
     async def set_many(
         self,

@@ -306,7 +306,8 @@ class ModelGateway:
         raise ModelError("Request failed after retries")
 
     def _parse_completion_response(
-        self, data: dict[str, Any],
+        self,
+        data: dict[str, Any],
     ) -> ChatCompletionResponse:
         """Parse raw API response into ChatCompletionResponse.
 
@@ -540,13 +541,12 @@ class ModelGateway:
         if error is None:
             return False
 
-        if (
-            isinstance(error, RateLimitError)
-            and self._gateway_config.fallback_on_rate_limit
-        ):
+        if isinstance(error, RateLimitError) and self._gateway_config.fallback_on_rate_limit:
             return True
 
-        return bool(isinstance(error, ModelTimeoutError) and self._gateway_config.fallback_on_timeout)
+        return bool(
+            isinstance(error, ModelTimeoutError) and self._gateway_config.fallback_on_timeout,
+        )
 
     async def _execute_fallback(
         self,

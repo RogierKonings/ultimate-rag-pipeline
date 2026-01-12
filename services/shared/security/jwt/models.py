@@ -57,10 +57,12 @@ class TokenClaims(BaseModel):
     roles: list[str] = Field(default_factory=list, description="User roles")
     groups: list[str] = Field(default_factory=list, description="User groups")
     permissions: list[str] = Field(
-        default_factory=list, description="Explicit permissions",
+        default_factory=list,
+        description="Explicit permissions",
     )
     token_type: TokenType = Field(
-        default=TokenType.ACCESS, description="Token type (access/refresh)",
+        default=TokenType.ACCESS,
+        description="Token type (access/refresh)",
     )
 
     # Optional user metadata
@@ -181,7 +183,8 @@ class TokenPair(BaseModel):
     token_type: str = Field(default="Bearer", description="Token type for Authorization header")
     expires_in: int = Field(..., description="Access token expiration in seconds")
     refresh_expires_in: int = Field(
-        ..., description="Refresh token expiration in seconds",
+        ...,
+        description="Refresh token expiration in seconds",
     )
 
 
@@ -207,23 +210,28 @@ class TokenRequest(BaseModel):
 
     # For refresh_token grant
     refresh_token: str | None = Field(
-        default=None, description="Refresh token for token refresh",
+        default=None,
+        description="Refresh token for token refresh",
     )
 
     # For client_credentials grant
     client_id: str | None = Field(
-        default=None, description="Client ID for service auth",
+        default=None,
+        description="Client ID for service auth",
     )
     client_secret: str | None = Field(
-        default=None, description="Client secret for service auth",
+        default=None,
+        description="Client secret for service auth",
     )
 
     # Common fields
     scope: str | None = Field(
-        default=None, description="Requested scopes (space-separated)",
+        default=None,
+        description="Requested scopes (space-separated)",
     )
     tenant_id: UUID | None = Field(
-        default=None, description="Tenant ID for multi-tenant auth",
+        default=None,
+        description="Tenant ID for multi-tenant auth",
     )
 
 

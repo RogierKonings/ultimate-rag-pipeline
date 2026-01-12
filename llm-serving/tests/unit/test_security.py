@@ -300,7 +300,7 @@ class TestRateLimiter:
             result = await rate_limiter.check_rate_limit(
                 tenant_id="burst-test",
             )
-            assert result.allowed is True, f"Request {i+1} should be allowed"
+            assert result.allowed is True, f"Request {i + 1} should be allowed"
 
         # Next request should be denied
         result = await rate_limiter.check_rate_limit(

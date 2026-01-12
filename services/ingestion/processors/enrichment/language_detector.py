@@ -1,6 +1,5 @@
 """Language detection using langdetect."""
 
-
 from langdetect import detect_langs
 from langdetect.lang_detect_exception import LangDetectException
 

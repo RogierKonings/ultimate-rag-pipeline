@@ -28,7 +28,9 @@ class EmbeddingCache:
     async def connect(self) -> None:
         """Establish Redis connection."""
         self._redis = redis.from_url(
-            self.config.redis_url, encoding="utf-8", decode_responses=True,
+            self.config.redis_url,
+            encoding="utf-8",
+            decode_responses=True,
         )
 
     async def disconnect(self) -> None:
@@ -63,7 +65,10 @@ class EmbeddingCache:
         return json.loads(data)
 
     async def set(
-        self, key: str, embedding: list[float], ttl: int | None = None,
+        self,
+        key: str,
+        embedding: list[float],
+        ttl: int | None = None,
     ) -> None:
         """
         Store embedding in cache.

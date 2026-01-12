@@ -99,9 +99,7 @@ class RerankerClient:
         start_time = time.time()
 
         # Extract document texts
-        document_texts = [
-            self._extract_document_text(doc) for doc in request.documents
-        ]
+        document_texts = [self._extract_document_text(doc) for doc in request.documents]
 
         # Build request payload
         payload = {

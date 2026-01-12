@@ -267,7 +267,8 @@ class DocumentACL(BaseModel):
         """Remove a user from the allowed list."""
         self.allowed_users = [u for u in self.allowed_users if u != user_id]
         self.entries = [
-            e for e in self.entries
+            e
+            for e in self.entries
             if not (e.principal_type == "user" and e.principal_id == str(user_id))
         ]
         self.updated_at = datetime.now(UTC)
@@ -300,7 +301,8 @@ class DocumentACL(BaseModel):
         """Remove a group from the allowed list."""
         self.allowed_groups = [g for g in self.allowed_groups if g != group_name]
         self.entries = [
-            e for e in self.entries
+            e
+            for e in self.entries
             if not (e.principal_type == "group" and e.principal_id == group_name)
         ]
         self.updated_at = datetime.now(UTC)

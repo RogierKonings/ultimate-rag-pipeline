@@ -127,7 +127,6 @@ class EncryptedText(EncryptedString):
     """
 
 
-
 class EncryptedJSON(TypeDecorator):
     """
     SQLAlchemy type for encrypted JSON columns.

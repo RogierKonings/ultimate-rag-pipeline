@@ -229,7 +229,8 @@ class TestDatabaseConnectorPostgres:
         with PostgresContainer("postgres:16") as postgres:
             yield {
                 "connection_string": postgres.get_connection_url().replace(
-                    "postgresql+psycopg2://", "postgresql://",
+                    "postgresql+psycopg2://",
+                    "postgresql://",
                 ),
                 "host": postgres.get_container_host_ip(),
                 "port": postgres.get_exposed_port(5432),
@@ -565,8 +566,10 @@ class TestPerformance:
 def pytest_configure(config):
     """Add custom markers for integration tests."""
     config.addinivalue_line(
-        "markers", "integration: mark test as integration test",
+        "markers",
+        "integration: mark test as integration test",
     )
     config.addinivalue_line(
-        "markers", "slow: mark test as slow running",
+        "markers",
+        "slow: mark test as slow running",
     )

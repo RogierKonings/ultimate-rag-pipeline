@@ -18,6 +18,7 @@ from ..trace_log import TraceLogValidator
 # OTLP Validator Tests
 # =============================================================================
 
+
 class TestOTLPValidator:
     """Tests for OTLPValidator."""
 
@@ -32,10 +33,11 @@ class TestOTLPValidator:
     @pytest.mark.asyncio
     async def test_validate_success(self, validator):
         """Test successful validation."""
-        with patch.object(validator, "_check_collector_health") as mock_health, \
-             patch.object(validator, "_check_trace_export") as mock_export, \
-             patch.object(validator, "_check_service_discovery") as mock_discovery:
-
+        with (
+            patch.object(validator, "_check_collector_health") as mock_health,
+            patch.object(validator, "_check_trace_export") as mock_export,
+            patch.object(validator, "_check_service_discovery") as mock_discovery,
+        ):
             mock_health.return_value = True
             mock_export.return_value = True
             mock_discovery.return_value = ["service-a", "service-b"]
@@ -89,7 +91,8 @@ class TestOTLPValidator:
             }
 
             result = await validator.validate_trace_propagation(
-                trace_id, expected_services,
+                trace_id,
+                expected_services,
             )
 
             assert result.is_valid
@@ -99,6 +102,7 @@ class TestOTLPValidator:
 # =============================================================================
 # Loki Validator Tests
 # =============================================================================
+
 
 class TestLokiValidator:
     """Tests for LokiValidator."""
@@ -111,10 +115,11 @@ class TestLokiValidator:
     @pytest.mark.asyncio
     async def test_validate_success(self, validator):
         """Test successful Loki validation."""
-        with patch.object(validator, "_check_loki_health") as mock_health, \
-             patch.object(validator, "_check_log_ingestion") as mock_ingestion, \
-             patch.object(validator, "_check_label_extraction") as mock_labels:
-
+        with (
+            patch.object(validator, "_check_loki_health") as mock_health,
+            patch.object(validator, "_check_log_ingestion") as mock_ingestion,
+            patch.object(validator, "_check_label_extraction") as mock_labels,
+        ):
             mock_health.return_value = True
             mock_ingestion.return_value = True
             mock_labels.return_value = ["service", "level", "trace_id"]
@@ -190,6 +195,7 @@ class TestLokiValidator:
 # Trace-Log Validator Tests
 # =============================================================================
 
+
 class TestTraceLogValidator:
     """Tests for TraceLogValidator."""
 
@@ -204,10 +210,11 @@ class TestTraceLogValidator:
     @pytest.mark.asyncio
     async def test_validate_success(self, validator):
         """Test successful trace-log correlation validation."""
-        with patch.object(validator.otlp_validator, "validate") as mock_otlp, \
-             patch.object(validator.loki_validator, "validate") as mock_loki, \
-             patch.object(validator, "_check_correlation_working") as mock_corr:
-
+        with (
+            patch.object(validator.otlp_validator, "validate") as mock_otlp,
+            patch.object(validator.loki_validator, "validate") as mock_loki,
+            patch.object(validator, "_check_correlation_working") as mock_corr,
+        ):
             mock_otlp.return_value = OTLPValidationResult(
                 is_valid=True,
                 collector_healthy=True,
@@ -235,9 +242,10 @@ class TestTraceLogValidator:
         trace_id = "abc123def456"
         expected_services = ["orchestrator-service"]
 
-        with patch.object(validator.otlp_validator, "_get_trace_from_jaeger") as mock_trace, \
-             patch.object(validator.loki_validator, "query_logs_by_trace_id") as mock_logs:
-
+        with (
+            patch.object(validator.otlp_validator, "_get_trace_from_jaeger") as mock_trace,
+            patch.object(validator.loki_validator, "query_logs_by_trace_id") as mock_logs,
+        ):
             mock_trace.return_value = {
                 "spans": [
                     {"serviceName": "orchestrator-service", "operationName": "query"},
@@ -254,7 +262,8 @@ class TestTraceLogValidator:
             ]
 
             result = await validator.validate_correlation(
-                trace_id, expected_services,
+                trace_id,
+                expected_services,
             )
 
             assert result.is_valid
@@ -279,6 +288,7 @@ class TestTraceLogValidator:
 # =============================================================================
 # Smoke Tests
 # =============================================================================
+
 
 class TestSmokeTests:
     """Tests for the smoke test runner."""
@@ -317,6 +327,7 @@ class TestSmokeTests:
 # =============================================================================
 # API Tests
 # =============================================================================
+
 
 class TestEvaluationAPI:
     """Tests for the evaluation API endpoints."""
@@ -371,6 +382,7 @@ class TestEvaluationAPI:
 # =============================================================================
 # Metrics Tests
 # =============================================================================
+
 
 class TestEvaluationMetrics:
     """Tests for the evaluation metrics export."""
@@ -450,6 +462,7 @@ class TestEvaluationMetrics:
 # Persistence Tests
 # =============================================================================
 
+
 class TestEvaluationPersistence:
     """Tests for evaluation persistence."""
 
@@ -499,6 +512,7 @@ class TestEvaluationPersistence:
 # =============================================================================
 # Pipeline Tracing Tests
 # =============================================================================
+
 
 class TestPipelineTracing:
     """Tests for pipeline OpenTelemetry tracing."""
@@ -557,9 +571,10 @@ class TestPipelineTracing:
         )
 
         # Mock the evaluator to avoid actual Ragas calls
-        with patch.object(pipeline.evaluator, "evaluate_batch") as mock_eval, \
-             patch.object(pipeline.evaluator, "aggregate_results") as mock_agg:
-
+        with (
+            patch.object(pipeline.evaluator, "evaluate_batch") as mock_eval,
+            patch.object(pipeline.evaluator, "aggregate_results") as mock_agg,
+        ):
             mock_eval.return_value = []
             mock_agg.return_value = MagicMock(
                 total_samples=1,

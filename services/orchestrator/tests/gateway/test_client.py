@@ -40,8 +40,10 @@ def gateway_config():
 @pytest.fixture(autouse=True)
 def fast_retry(monkeypatch):
     """Speed up tests by making asyncio.sleep a no-op."""
+
     async def fast_sleep(delay):
         pass  # Skip the delay in tests
+
     monkeypatch.setattr("gateway.client.asyncio.sleep", fast_sleep)
 
 
@@ -314,7 +316,9 @@ async def test_chat_completion_timeout(gateway, chat_request):
 
 
 @pytest.mark.asyncio
-async def test_chat_completion_fallback_on_timeout(gateway_config, chat_request, mock_response_data):
+async def test_chat_completion_fallback_on_timeout(
+    gateway_config, chat_request, mock_response_data,
+):
     """Test fallback to secondary model on timeout."""
     gateway = ModelGateway(gateway_config)
     call_count = 0

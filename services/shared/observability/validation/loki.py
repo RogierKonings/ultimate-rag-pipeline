@@ -166,11 +166,13 @@ class LokiValidator:
 
                         # Get sample logs
                         for timestamp, log_line in values[:5]:
-                            sample_logs.append({
-                                "timestamp": timestamp,
-                                "labels": labels,
-                                "line": log_line[:500],  # Truncate
-                            })
+                            sample_logs.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "labels": labels,
+                                    "line": log_line[:500],  # Truncate
+                                },
+                            )
 
                     if log_count > 0:
                         return LokiIngestionStatus(
@@ -243,13 +245,15 @@ class LokiValidator:
                         values = stream.get("values", [])
 
                         for timestamp, log_line in values:
-                            logs.append({
-                                "timestamp": timestamp,
-                                "service": labels.get("service", "unknown"),
-                                "trace_id": labels.get("trace_id"),
-                                "span_id": labels.get("span_id"),
-                                "line": log_line,
-                            })
+                            logs.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "service": labels.get("service", "unknown"),
+                                    "trace_id": labels.get("trace_id"),
+                                    "span_id": labels.get("span_id"),
+                                    "line": log_line,
+                                },
+                            )
 
                 # If no results with label, try content search
                 if not logs:
@@ -274,11 +278,13 @@ class LokiValidator:
                             values = stream.get("values", [])
 
                             for timestamp, log_line in values:
-                                logs.append({
-                                    "timestamp": timestamp,
-                                    "service": labels.get("service", "unknown"),
-                                    "line": log_line,
-                                })
+                                logs.append(
+                                    {
+                                        "timestamp": timestamp,
+                                        "service": labels.get("service", "unknown"),
+                                        "line": log_line,
+                                    },
+                                )
 
         except Exception as e:
             logger.error(f"Failed to query logs by trace_id: {e}")
@@ -375,7 +381,8 @@ class LokiValidator:
 
                         # Check for extracted JSON fields
                         json_fields = [
-                            k for k in labels
+                            k
+                            for k in labels
                             if k not in ["service", "namespace", "pod", "container"]
                         ]
 

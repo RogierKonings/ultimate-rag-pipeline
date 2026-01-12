@@ -185,7 +185,9 @@ class OTLPValidator:
     async def _get_span_count_from_prometheus(self, service_name: str) -> int:
         """Get span count from Prometheus metrics."""
         async with httpx.AsyncClient(timeout=10.0) as client:
-            query = f'sum(rate(otelcol_receiver_accepted_spans{{service_name="{service_name}"}}[1h]))'
+            query = (
+                f'sum(rate(otelcol_receiver_accepted_spans{{service_name="{service_name}"}}[1h]))'
+            )
             response = await client.get(
                 f"{self.prometheus_url}/api/v1/query",
                 params={"query": query},
@@ -259,9 +261,7 @@ class OTLPValidator:
                     "trace_id": trace_id,
                     "services_found": list(services_found),
                     "services_missing": services_missing,
-                    "span_count": sum(
-                        len(t.get("spans", [])) for t in traces
-                    ),
+                    "span_count": sum(len(t.get("spans", [])) for t in traces),
                 }
 
         except Exception as e:

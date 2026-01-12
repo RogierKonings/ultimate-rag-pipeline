@@ -64,8 +64,14 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             self.max_body_length = config.max_body_length
         else:
             self.excluded_paths = excluded_paths or [
-                "/health", "/healthz", "/ready", "/readyz",
-                "/live", "/livez", "/metrics", "/favicon.ico",
+                "/health",
+                "/healthz",
+                "/ready",
+                "/readyz",
+                "/live",
+                "/livez",
+                "/metrics",
+                "/favicon.ico",
             ]
             self.log_request_body = False
             self.log_response_body = False

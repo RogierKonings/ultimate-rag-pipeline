@@ -47,7 +47,9 @@ class PDFParser(BaseParser):
         return ["application/pdf"]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse PDF document.
 
@@ -76,7 +78,9 @@ class PDFParser(BaseParser):
             raise ValueError(f"Failed to parse PDF: {e}") from e
 
     async def _parse_with_pymupdf(
-        self, content: bytes, metadata: dict,
+        self,
+        content: bytes,
+        metadata: dict,
     ) -> ParsedDocument:
         """Parse PDF using PyMuPDF (fitz).
 
@@ -169,7 +173,9 @@ class PDFParser(BaseParser):
             doc.close()
 
     async def _parse_with_unstructured(
-        self, content: bytes, metadata: dict,
+        self,
+        content: bytes,
+        metadata: dict,
     ) -> ParsedDocument:
         """Parse PDF using Unstructured library.
 
@@ -200,7 +206,8 @@ class PDFParser(BaseParser):
                     content_type = ContentType.TABLE
                     # Try to extract table structure
                     if hasattr(element, "metadata") and hasattr(
-                        element.metadata, "text_as_html",
+                        element.metadata,
+                        "text_as_html",
                     ):
                         table = self._parse_html_table(element.metadata.text_as_html)
                         if table:
@@ -211,7 +218,8 @@ class PDFParser(BaseParser):
                 # Get page number if available
                 page_num = None
                 if hasattr(element, "metadata") and hasattr(
-                    element.metadata, "page_number",
+                    element.metadata,
+                    "page_number",
                 ):
                     page_num = element.metadata.page_number
 

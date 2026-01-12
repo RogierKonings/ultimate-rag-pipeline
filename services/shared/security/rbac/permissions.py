@@ -410,9 +410,7 @@ def has_permission(
     if user_roles:
         role_perms = get_all_permissions_for_roles(user_roles)
         required_enum = (
-            required
-            if isinstance(required, Permission)
-            else Permission.from_string(required_str)
+            required if isinstance(required, Permission) else Permission.from_string(required_str)
         )
         if required_enum and required_enum in role_perms:
             return True

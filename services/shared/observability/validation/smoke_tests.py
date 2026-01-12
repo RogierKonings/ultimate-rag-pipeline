@@ -536,10 +536,7 @@ async def _test_prometheus_scrapes(prometheus_url: str) -> SmokeTestResult:
                     details={
                         "up_count": len(up_targets),
                         "down_count": len(down_targets),
-                        "down_targets": [
-                            t.get("labels", {}).get("job")
-                            for t in down_targets
-                        ],
+                        "down_targets": [t.get("labels", {}).get("job") for t in down_targets],
                     },
                 )
             return SmokeTestResult(

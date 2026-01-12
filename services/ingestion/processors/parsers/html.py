@@ -40,7 +40,9 @@ class HTMLParser(BaseParser):
         return ["text/html", "application/xhtml+xml"]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse HTML document.
 

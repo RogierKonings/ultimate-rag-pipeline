@@ -224,8 +224,7 @@ class APIConnector(BaseConnector):
             self._id_path = jsonpath_parse(config.id_json_path)
             self._next_cursor_path = jsonpath_parse(config.next_cursor_json_path)
             self._total_path = (
-                jsonpath_parse(config.total_json_path)
-                if config.total_json_path else None
+                jsonpath_parse(config.total_json_path) if config.total_json_path else None
             )
         except JsonPathParserError as e:
             raise ValueError(f"Invalid JSONPath expression: {e}") from e
@@ -330,7 +329,7 @@ class APIConnector(BaseConnector):
 
                     if response.status >= 500:  # Server error
                         if attempt < self.config.max_retries:
-                            delay = self.config.retry_delay * (2 ** attempt)
+                            delay = self.config.retry_delay * (2**attempt)
                             await asyncio.sleep(delay)
                             continue
 
@@ -340,11 +339,13 @@ class APIConnector(BaseConnector):
             except (TimeoutError, aiohttp.ClientError) as e:
                 last_error = e
                 if attempt < self.config.max_retries:
-                    delay = self.config.retry_delay * (2 ** attempt)
+                    delay = self.config.retry_delay * (2**attempt)
                     await asyncio.sleep(delay)
                     continue
 
-        raise ConnectionError(f"Request failed after {self.config.max_retries} retries: {last_error}")
+        raise ConnectionError(
+            f"Request failed after {self.config.max_retries} retries: {last_error}",
+        )
 
     def _extract_items(self, data: dict[str, Any]) -> list[dict[str, Any]]:
         """Extract items from API response using JSONPath.
@@ -381,6 +382,7 @@ class APIConnector(BaseConnector):
             return content.encode("utf-8")
         # Convert other types to JSON string
         import json
+
         return json.dumps(content).encode("utf-8")
 
     def _extract_id(self, item: dict[str, Any]) -> str:
@@ -444,10 +446,7 @@ class APIConnector(BaseConnector):
             DocumentMetadata instance.
         """
         # Include all item fields except content in extra
-        extra = {
-            k: v for k, v in item.items()
-            if not isinstance(v, (bytes, bytearray))
-        }
+        extra = {k: v for k, v in item.items() if not isinstance(v, (bytes, bytearray))}
 
         return DocumentMetadata(
             source_id=source_id,

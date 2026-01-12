@@ -1,6 +1,5 @@
 """Orchestrator Service Configuration."""
 
-
 from pydantic_settings import BaseSettings
 
 

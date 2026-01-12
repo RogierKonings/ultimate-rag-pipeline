@@ -230,9 +230,9 @@ class GPUMonitor:
         """Get average GPU utilization across all GPUs."""
         if not self._latest_metrics:
             return 0.0
-        return sum(
-            m.gpu_utilization_percent for m in self._latest_metrics.values()
-        ) / len(self._latest_metrics)
+        return sum(m.gpu_utilization_percent for m in self._latest_metrics.values()) / len(
+            self._latest_metrics,
+        )
 
     def get_max_temperature(self) -> float:
         """Get maximum GPU temperature across all GPUs."""

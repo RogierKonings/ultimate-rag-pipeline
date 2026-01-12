@@ -12,7 +12,6 @@ Contract Requirements:
     - Error event: Must have error and code fields
 """
 
-
 from .models import StreamEvent, StreamEventType
 
 

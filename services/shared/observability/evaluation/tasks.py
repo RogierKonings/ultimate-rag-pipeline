@@ -168,10 +168,13 @@ def run_scheduled_evaluation(
                 span.set_attribute(f"evaluation.metric.{metric_name}.mean", stats["mean"])
 
             span.set_status(Status(StatusCode.OK))
-            span.add_event("evaluation_completed", {
-                "total_samples": results.total_samples,
-                "successful_samples": results.successful_samples,
-            })
+            span.add_event(
+                "evaluation_completed",
+                {
+                    "total_samples": results.total_samples,
+                    "successful_samples": results.successful_samples,
+                },
+            )
 
             logger.info(f"Completed scheduled evaluation task {self.request.id}")
 
@@ -181,8 +184,7 @@ def run_scheduled_evaluation(
                 "successful_samples": results.successful_samples,
                 "failed_samples": results.failed_samples,
                 "metrics": {
-                    metric: stats["mean"]
-                    for metric, stats in results.aggregated_metrics.items()
+                    metric: stats["mean"] for metric, stats in results.aggregated_metrics.items()
                 },
             }
 
@@ -289,10 +291,13 @@ def run_on_demand_evaluation(
                 span.set_attribute(f"evaluation.metric.{metric_name}.std", stats["std"])
 
             span.set_status(Status(StatusCode.OK))
-            span.add_event("evaluation_completed", {
-                "total_samples": results.total_samples,
-                "successful_samples": results.successful_samples,
-            })
+            span.add_event(
+                "evaluation_completed",
+                {
+                    "total_samples": results.total_samples,
+                    "successful_samples": results.successful_samples,
+                },
+            )
 
             logger.info(f"Completed on-demand evaluation task {self.request.id}")
 
@@ -373,10 +378,12 @@ def compare_evaluation_runs(
 
                 async with pool.acquire() as conn:
                     current_row = await conn.fetchrow(
-                        "SELECT * FROM eval_runs WHERE id = $1", current_run_id,
+                        "SELECT * FROM eval_runs WHERE id = $1",
+                        current_run_id,
                     )
                     baseline_row = await conn.fetchrow(
-                        "SELECT * FROM eval_runs WHERE id = $1", baseline_run_id,
+                        "SELECT * FROM eval_runs WHERE id = $1",
+                        baseline_run_id,
                     )
 
                     if not current_row or not baseline_row:
@@ -384,10 +391,12 @@ def compare_evaluation_runs(
 
                     # Get metrics for both runs
                     current_metrics = await conn.fetch(
-                        "SELECT * FROM eval_metrics WHERE run_id = $1", current_run_id,
+                        "SELECT * FROM eval_metrics WHERE run_id = $1",
+                        current_run_id,
                     )
                     baseline_metrics = await conn.fetch(
-                        "SELECT * FROM eval_metrics WHERE run_id = $1", baseline_run_id,
+                        "SELECT * FROM eval_metrics WHERE run_id = $1",
+                        baseline_run_id,
                     )
 
                 # Build comparison

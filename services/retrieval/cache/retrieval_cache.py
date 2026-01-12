@@ -18,6 +18,7 @@ from uuid import UUID
 
 try:
     import redis.asyncio as redis
+
     HAS_REDIS = True
 except ImportError:
     HAS_REDIS = False

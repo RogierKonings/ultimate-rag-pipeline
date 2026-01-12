@@ -79,6 +79,7 @@ def setup_metrics_endpoint(
         path: Path for metrics endpoint
         include_in_schema: Whether to include in OpenAPI schema
     """
+
     @app.get(
         path,
         include_in_schema=include_in_schema,

@@ -8,7 +8,6 @@ These tests validate that:
 Run with: pytest tests/ingest/test_schema_alignment.py
 """
 
-
 import pytest
 from sqlalchemy import inspect
 
@@ -299,14 +298,9 @@ class TestDocumentModelConstraints:
         table = mapper.persist_selectable
 
         # Check for unique index
-        unique_indexes = [
-            idx for idx in table.indexes if idx.unique
-        ]
+        unique_indexes = [idx for idx in table.indexes if idx.unique]
 
-        unique_column_sets = [
-            frozenset(col.name for col in idx.columns)
-            for idx in unique_indexes
-        ]
+        unique_column_sets = [frozenset(col.name for col in idx.columns) for idx in unique_indexes]
 
         expected_columns = frozenset(["tenant_id", "source_uri", "content_hash"])
         assert expected_columns in unique_column_sets, (

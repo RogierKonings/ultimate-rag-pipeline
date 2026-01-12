@@ -460,8 +460,7 @@ async def test_message_limit_enforcement(session_manager, mock_store, memory_con
     session = ConversationSession(
         id=session_id,
         messages=[
-            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=10)
-            for i in range(5)
+            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=10) for i in range(5)
         ],
         total_tokens=50,
     )
@@ -484,7 +483,9 @@ async def test_message_limit_enforcement(session_manager, mock_store, memory_con
 
 @pytest.mark.asyncio
 async def test_message_limit_updates_token_count(
-    session_manager, mock_store, memory_config,
+    session_manager,
+    mock_store,
+    memory_config,
 ):
     """Test that token count is updated when messages are removed."""
     memory_config.max_messages = 2
@@ -524,7 +525,9 @@ async def test_message_limit_updates_token_count(
 
 @pytest.mark.asyncio
 async def test_should_summarize_when_threshold_reached(
-    mock_store, memory_config, mock_tokenizer,
+    mock_store,
+    memory_config,
+    mock_tokenizer,
 ):
     """Test that summarization is triggered when threshold is reached."""
     memory_config.enable_summarization = True
@@ -544,8 +547,7 @@ async def test_should_summarize_when_threshold_reached(
     session = ConversationSession(
         id=session_id,
         messages=[
-            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=1)
-            for i in range(3)
+            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=1) for i in range(3)
         ],
         summarized_count=0,
     )
@@ -597,7 +599,9 @@ async def test_no_summarization_without_summarizer(session_manager, mock_store):
 
 @pytest.mark.asyncio
 async def test_no_summarization_when_disabled(
-    mock_store, memory_config, mock_tokenizer,
+    mock_store,
+    memory_config,
+    mock_tokenizer,
 ):
     """Test that summarization is skipped when disabled."""
     memory_config.enable_summarization = False
@@ -615,8 +619,7 @@ async def test_no_summarization_when_disabled(
     session = ConversationSession(
         id=session_id,
         messages=[
-            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=1)
-            for i in range(100)
+            Message(role=MessageRole.USER, content=f"Msg {i}", token_count=1) for i in range(100)
         ],
     )
 

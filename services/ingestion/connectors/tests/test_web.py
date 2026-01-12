@@ -131,7 +131,10 @@ class TestURLHandling:
         assert connector._normalize_url("https://example.com/path/") == "https://example.com/path"
 
         # Preserve query string
-        assert connector._normalize_url("https://example.com/path?q=1") == "https://example.com/path?q=1"
+        assert (
+            connector._normalize_url("https://example.com/path?q=1")
+            == "https://example.com/path?q=1"
+        )
 
     def test_get_domain(self, config):
         """Test domain extraction."""
@@ -347,10 +350,11 @@ class TestCrawling:
         connector = WebConnector(config)
 
         # Mock to return same page always with many links
-        html = b"<html><body>" + b"".join(
-            f'<a href="/page{i}">Link {i}</a>'.encode()
-            for i in range(100)
-        ) + b"</body></html>"
+        html = (
+            b"<html><body>"
+            + b"".join(f'<a href="/page{i}">Link {i}</a>'.encode() for i in range(100))
+            + b"</body></html>"
+        )
 
         async def mock_fetch(url):
             return (html, {"Content-Type": "text/html"})

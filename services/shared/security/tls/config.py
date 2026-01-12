@@ -178,8 +178,7 @@ def create_server_ssl_context(
 
     if not cert or not key:
         logger.warning(
-            "TLS enabled but no certificate/key provided. "
-            "Set TLS_CERT_FILE and TLS_KEY_FILE.",
+            "TLS enabled but no certificate/key provided. Set TLS_CERT_FILE and TLS_KEY_FILE.",
         )
         return None
 

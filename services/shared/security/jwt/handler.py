@@ -28,25 +28,20 @@ class JWTError(Exception):
     """Base exception for JWT errors."""
 
 
-
 class TokenExpiredError(JWTError):
     """Token has expired."""
-
 
 
 class TokenInvalidError(JWTError):
     """Token is invalid."""
 
 
-
 class TokenRevokedError(JWTError):
     """Token has been revoked."""
 
 
-
 class KeyLoadError(JWTError):
     """Error loading cryptographic keys."""
-
 
 
 class JWTHandler:
@@ -135,7 +130,8 @@ class JWTHandler:
 
             try:
                 private_key = load_pem_private_key(
-                    self._private_key.encode(), password=None,
+                    self._private_key.encode(),
+                    password=None,
                 )
                 public_key = private_key.public_key()
                 self._public_key = public_key.public_bytes(
@@ -420,7 +416,9 @@ class JWTHandler:
         # External IdPs may use different claim names
         claims_dict = {
             "sub": payload.get("sub"),
-            "tenant_id": payload.get("tenant_id") or payload.get("org_id") or payload.get("custom:tenant_id"),
+            "tenant_id": payload.get("tenant_id")
+            or payload.get("org_id")
+            or payload.get("custom:tenant_id"),
             "roles": payload.get("roles") or payload.get("custom:roles", []),
             "groups": payload.get("groups") or payload.get("custom:groups", []),
             "permissions": payload.get("permissions") or payload.get("scope", "").split(),

@@ -29,14 +29,17 @@ class TestLoggingConfig:
         """Test loading config from environment."""
         from shared.observability.logging.config import LoggingConfig
 
-        with patch.dict("os.environ", {
-            "SERVICE_NAME": "env-service",
-            "SERVICE_VERSION": "1.2.3",
-            "ENVIRONMENT": "production",
-            "LOG_LEVEL": "DEBUG",
-            "LOG_JSON": "true",
-            "LOG_PRETTY": "false",
-        }):
+        with patch.dict(
+            "os.environ",
+            {
+                "SERVICE_NAME": "env-service",
+                "SERVICE_VERSION": "1.2.3",
+                "ENVIRONMENT": "production",
+                "LOG_LEVEL": "DEBUG",
+                "LOG_JSON": "true",
+                "LOG_PRETTY": "false",
+            },
+        ):
             config = LoggingConfig.from_env()
 
             assert config.service_name == "env-service"
@@ -98,6 +101,7 @@ class TestJSONFormatter:
             raise ValueError("Test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
 
         record = logging.LogRecord(
@@ -408,6 +412,7 @@ class TestSetupLogging:
         import shared.observability.logging.logger as logger_module
         from shared.observability.logging.config import LoggingConfig
         from shared.observability.logging.logger import setup_logging
+
         logger_module._logging_initialized = False
         logger_module._logging_config = None
 
@@ -428,6 +433,7 @@ class TestSetupLogging:
         import shared.observability.logging.logger as logger_module
         from shared.observability.logging.context import LoggerAdapter
         from shared.observability.logging.logger import get_logger
+
         logger_module._logging_initialized = False
         logger_module._logging_config = None
 

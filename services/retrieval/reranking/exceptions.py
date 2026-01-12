@@ -14,12 +14,9 @@ class RerankerConnectionError(RerankerError):
     """Raised when connection to reranker service fails."""
 
 
-
 class RerankerTimeoutError(RerankerError):
     """Raised when reranker request times out."""
 
 
-
 class RerankerValidationError(RerankerError):
     """Raised when input validation fails."""
-

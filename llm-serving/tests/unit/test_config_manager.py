@@ -74,7 +74,9 @@ class TestConfigurationLoading:
     async def test_load_from_file(self, config_manager, sample_config):
         """Test loading configuration from YAML file."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False,
+            mode="w",
+            suffix=".yaml",
+            delete=False,
         ) as f:
             yaml.dump(sample_config, f)
             path = Path(f.name)
@@ -168,7 +170,9 @@ class TestGenerationParams:
         await config_manager.load_from_dict(sample_config)
 
         await config_manager.update_generation_params(
-            "test-llm", temperature=0.9, max_tokens=2048,
+            "test-llm",
+            temperature=0.9,
+            max_tokens=2048,
         )
 
         endpoint = config_manager.get_endpoint("test-llm")
@@ -182,7 +186,8 @@ class TestGenerationParams:
 
         with pytest.raises(ValueError, match="not an LLM"):
             await config_manager.update_generation_params(
-                "test-embedding", temperature=0.5,
+                "test-embedding",
+                temperature=0.5,
             )
 
 

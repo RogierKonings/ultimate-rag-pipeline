@@ -302,7 +302,8 @@ class DocumentService:
             # Step 4: Delete keyword entries from OpenSearch
             try:
                 keyword_entries_deleted = await self._delete_keyword_entries(
-                    document_id, chunk_ids,
+                    document_id,
+                    chunk_ids,
                 )
                 logger.info(f"Deleted {keyword_entries_deleted} entries from OpenSearch")
             except Exception as e:

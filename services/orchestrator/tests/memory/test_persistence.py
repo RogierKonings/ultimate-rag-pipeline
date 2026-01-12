@@ -219,7 +219,9 @@ async def test_save_conversation_metadata_format(postgres_store, mock_connection
 
 
 @pytest.mark.asyncio
-async def test_save_conversation_deletes_existing_messages(postgres_store, mock_connection, sample_session):
+async def test_save_conversation_deletes_existing_messages(
+    postgres_store, mock_connection, sample_session,
+):
     """Test that existing messages are deleted before re-insert."""
     await postgres_store.save_conversation(sample_session)
 
@@ -267,8 +269,9 @@ async def test_save_message_with_citations(postgres_store, mock_connection):
     await postgres_store.save_message(session_id, message)
 
     # Verify citations are JSON serialized
-    insert_call = [c for c in mock_connection.execute.call_args_list
-                   if "INSERT INTO messages" in c[0][0]][0]
+    insert_call = [
+        c for c in mock_connection.execute.call_args_list if "INSERT INTO messages" in c[0][0]
+    ][0]
 
     # Citations should be the 5th parameter (index 4)
     citations_param = insert_call[0][5]
@@ -284,8 +287,9 @@ async def test_save_message_without_citations(postgres_store, mock_connection, s
 
     await postgres_store.save_message(session_id, sample_message)
 
-    insert_call = [c for c in mock_connection.execute.call_args_list
-                   if "INSERT INTO messages" in c[0][0]][0]
+    insert_call = [
+        c for c in mock_connection.execute.call_args_list if "INSERT INTO messages" in c[0][0]
+    ][0]
 
     # Citations should be None
     citations_param = insert_call[0][5]
@@ -300,8 +304,9 @@ async def test_save_message_uuid_conversion(postgres_store, mock_connection, sam
     await postgres_store.save_message(str(session_id), sample_message)
 
     # The update call should have UUID, not string
-    update_call = [c for c in mock_connection.execute.call_args_list
-                   if "UPDATE conversations" in c[0][0]][0]
+    update_call = [
+        c for c in mock_connection.execute.call_args_list if "UPDATE conversations" in c[0][0]
+    ][0]
 
     # Second parameter should be UUID
     assert update_call[0][2] == session_id
@@ -327,13 +332,15 @@ async def test_load_conversation(postgres_store, mock_connection):
         "user_id": user_id,
         "created_at": now,
         "updated_at": now,
-        "metadata": json.dumps({
-            "summary": "Test summary",
-            "summarized_count": 5,
-            "total_messages": 10,
-            "total_tokens": 100,
-            "system_prompt": "Be helpful",
-        }),
+        "metadata": json.dumps(
+            {
+                "summary": "Test summary",
+                "summarized_count": 5,
+                "total_messages": 10,
+                "total_tokens": 100,
+                "system_prompt": "Be helpful",
+            },
+        ),
     }
     mock_connection.fetchrow.return_value = conv_row
 
@@ -613,6 +620,7 @@ async def test_list_conversations_ordered_by_updated_at(postgres_store, mock_con
 @pytest.mark.asyncio
 async def test_save_and_load_roundtrip(postgres_store, mock_connection, sample_session):
     """Test save and load cycle preserves data."""
+
     # Setup mock for load
     def mock_fetchrow_impl(*args):
         return {
@@ -621,13 +629,15 @@ async def test_save_and_load_roundtrip(postgres_store, mock_connection, sample_s
             "user_id": sample_session.user_id,
             "created_at": sample_session.created_at,
             "updated_at": sample_session.updated_at,
-            "metadata": json.dumps({
-                "summary": sample_session.summary,
-                "summarized_count": sample_session.summarized_count,
-                "total_messages": sample_session.total_messages,
-                "total_tokens": sample_session.total_tokens,
-                "system_prompt": sample_session.system_prompt,
-            }),
+            "metadata": json.dumps(
+                {
+                    "summary": sample_session.summary,
+                    "summarized_count": sample_session.summarized_count,
+                    "total_messages": sample_session.total_messages,
+                    "total_tokens": sample_session.total_tokens,
+                    "system_prompt": sample_session.system_prompt,
+                },
+            ),
         }
 
     def mock_fetch_impl(*args):

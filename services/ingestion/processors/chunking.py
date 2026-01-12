@@ -30,6 +30,7 @@ def _get_spacy_nlp(model: str = "en_core_web_sm"):
     global _nlp
     if _nlp is None:
         import spacy
+
         _nlp = spacy.load(model)
         _nlp.max_length = 2_000_000  # Handle large documents
     return _nlp
@@ -106,7 +107,7 @@ class HierarchicalChunkerConfig(ChunkingConfig):
 
     parent_chunk_size: int = 2048  # Larger parent chunks
     parent_overlap: int = 200
-    child_chunk_size: int = 512   # Smaller child chunks
+    child_chunk_size: int = 512  # Smaller child chunks
     child_overlap: int = 50
 
 
@@ -179,14 +180,14 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
 
     SEPARATORS = [
         "\n\n",  # Paragraphs
-        "\n",    # Lines
-        ". ",    # Sentences
+        "\n",  # Lines
+        ". ",  # Sentences
         "? ",
         "! ",
         "; ",
         ", ",
-        " ",     # Words
-        "",       # Characters (fallback)
+        " ",  # Words
+        "",  # Characters (fallback)
     ]
 
     @property
@@ -210,15 +211,17 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
         merged = self._merge_and_overlap(raw_splits)
 
         for i, (content, start, end) in enumerate(merged):
-            chunks.append(Chunk(
-                document_id=document_id,
-                content=content,
-                chunk_index=i,
-                start_char=start,
-                end_char=end,
-                token_count=self.count_tokens(content),
-                metadata=metadata.copy(),
-            ))
+            chunks.append(
+                Chunk(
+                    document_id=document_id,
+                    content=content,
+                    chunk_index=i,
+                    start_char=start,
+                    end_char=end,
+                    token_count=self.count_tokens(content),
+                    metadata=metadata.copy(),
+                ),
+            )
 
         return chunks
 
@@ -269,7 +272,9 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
             if token_count > self.config.max_tokens:
                 # Too large, split further with next separator
                 sub_parts = self._split_recursive(
-                    part, separators[1:], current_offset,
+                    part,
+                    separators[1:],
+                    current_offset,
                 )
                 parts.extend(sub_parts)
             else:
@@ -297,14 +302,16 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
 
         while i < len(tokens):
             # Take target_tokens worth of tokens
-            chunk_tokens = tokens[i:i + self.config.target_tokens]
+            chunk_tokens = tokens[i : i + self.config.target_tokens]
             chunk_text = self._tokenizer.decode(chunk_tokens)
 
-            parts.append((
-                chunk_text,
-                char_offset,
-                char_offset + len(chunk_text),
-            ))
+            parts.append(
+                (
+                    chunk_text,
+                    char_offset,
+                    char_offset + len(chunk_text),
+                ),
+            )
 
             char_offset += len(chunk_text)
             i += self.config.target_tokens
@@ -340,7 +347,10 @@ class RecursiveCharacterSplitter(BaseChunkingStrategy):
                 current_end = end
             else:
                 # Save current and start new
-                if current_content and self.count_tokens(current_content) >= self.config.min_chunk_size:
+                if (
+                    current_content
+                    and self.count_tokens(current_content) >= self.config.min_chunk_size
+                ):
                     merged.append((current_content, current_start, current_end))
                 elif current_content:
                     # Too small, will be merged with next
@@ -415,6 +425,7 @@ class SemanticChunker(BaseChunkingStrategy):
         """Lazy-load spaCy model."""
         if self._nlp is None:
             import spacy
+
             self._nlp = spacy.load(self._spacy_model)
             self._nlp.max_length = 2_000_000
         return self._nlp
@@ -454,8 +465,12 @@ class SemanticChunker(BaseChunkingStrategy):
                 # Flush current chunk first
                 if current_sentences:
                     chunk = self._create_chunk(
-                        current_sentences, document_id, chunk_index,
-                        current_start, sent.start_char, metadata,
+                        current_sentences,
+                        document_id,
+                        chunk_index,
+                        current_start,
+                        sent.start_char,
+                        metadata,
                     )
                     chunks.append(chunk)
                     chunk_index += 1
@@ -464,8 +479,11 @@ class SemanticChunker(BaseChunkingStrategy):
 
                 # Split long sentence using fallback
                 sub_chunks = self._split_long_sentence(
-                    sent_text, sent.start_char, document_id,
-                    chunk_index, metadata,
+                    sent_text,
+                    sent.start_char,
+                    document_id,
+                    chunk_index,
+                    metadata,
                 )
                 for sub in sub_chunks:
                     chunks.append(sub)
@@ -479,15 +497,20 @@ class SemanticChunker(BaseChunkingStrategy):
                 # Create chunk from current sentences
                 if current_sentences:
                     chunk = self._create_chunk(
-                        current_sentences, document_id, chunk_index,
-                        current_start, sent.start_char, metadata,
+                        current_sentences,
+                        document_id,
+                        chunk_index,
+                        current_start,
+                        sent.start_char,
+                        metadata,
                     )
                     chunks.append(chunk)
                     chunk_index += 1
 
                 # Handle overlap: include last N tokens from previous chunk
                 overlap_sentences = self._get_overlap_sentences(
-                    current_sentences, self.config.chunk_overlap,
+                    current_sentences,
+                    self.config.chunk_overlap,
                 )
                 current_sentences = overlap_sentences + [sent_text]
                 current_tokens = sum(self.count_tokens(s) for s in current_sentences)
@@ -501,8 +524,12 @@ class SemanticChunker(BaseChunkingStrategy):
         # Don't forget the last chunk
         if current_sentences:
             chunk = self._create_chunk(
-                current_sentences, document_id, chunk_index,
-                current_start, len(text), metadata,
+                current_sentences,
+                document_id,
+                chunk_index,
+                current_start,
+                len(text),
+                metadata,
             )
             chunks.append(chunk)
 
@@ -547,18 +574,20 @@ class SemanticChunker(BaseChunkingStrategy):
 
         while i < len(tokens):
             # Take max_tokens worth of tokens
-            chunk_tokens = tokens[i:i + self.config.max_tokens]
+            chunk_tokens = tokens[i : i + self.config.max_tokens]
             chunk_text = self._tokenizer.decode(chunk_tokens)
 
-            chunks.append(Chunk(
-                document_id=document_id,
-                content=chunk_text,
-                chunk_index=base_index + sub_index,
-                start_char=char_offset,
-                end_char=char_offset + len(chunk_text),
-                token_count=len(chunk_tokens),
-                metadata=metadata.copy(),
-            ))
+            chunks.append(
+                Chunk(
+                    document_id=document_id,
+                    content=chunk_text,
+                    chunk_index=base_index + sub_index,
+                    start_char=char_offset,
+                    end_char=char_offset + len(chunk_text),
+                    token_count=len(chunk_tokens),
+                    metadata=metadata.copy(),
+                ),
+            )
 
             char_offset += len(chunk_text)
             i += self.config.max_tokens

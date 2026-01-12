@@ -22,7 +22,9 @@ class MarkdownParser(BaseParser):
         return ["text/markdown", "text/x-markdown"]
 
     async def parse(
-        self, content: bytes, metadata: dict | None = None,
+        self,
+        content: bytes,
+        metadata: dict | None = None,
     ) -> ParsedDocument:
         """Parse Markdown document.
 
@@ -147,7 +149,8 @@ class MarkdownParser(BaseParser):
 
         # Pattern for fenced code blocks
         code_pattern = re.compile(
-            r"```(\w*)\n(.*?)```", re.DOTALL | re.MULTILINE,
+            r"```(\w*)\n(.*?)```",
+            re.DOTALL | re.MULTILINE,
         )
 
         # Find all code blocks first

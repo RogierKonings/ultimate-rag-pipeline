@@ -250,7 +250,9 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
         UniqueConstraint(
-            "tenant_id", "username", name="uq_users_tenant_username",
+            "tenant_id",
+            "username",
+            name="uq_users_tenant_username",
         ),
         Index("ix_users_external_id", "external_id"),
         Index("ix_users_tenant_active", "tenant_id", "is_active"),

@@ -29,6 +29,7 @@ from ..reporters import (
 # EvaluationConfig Tests
 # ============================================================================
 
+
 class TestEvaluationConfig:
     """Tests for EvaluationConfig."""
 
@@ -93,6 +94,7 @@ class TestEvaluationConfig:
 # ============================================================================
 # EvaluationDataset Tests
 # ============================================================================
+
 
 class TestEvaluationSample:
     """Tests for EvaluationSample."""
@@ -174,8 +176,7 @@ class TestEvaluationDataset:
     def test_dataset_iteration(self):
         """Test iterating over dataset."""
         samples = [
-            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}")
-            for i in range(5)
+            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}") for i in range(5)
         ]
         dataset = EvaluationDataset(name="test", samples=samples)
 
@@ -185,8 +186,7 @@ class TestEvaluationDataset:
     def test_dataset_sampling_random(self):
         """Test random sampling from dataset."""
         samples = [
-            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}")
-            for i in range(100)
+            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}") for i in range(100)
         ]
         dataset = EvaluationDataset(name="test", samples=samples)
 
@@ -198,8 +198,7 @@ class TestEvaluationDataset:
     def test_dataset_sampling_sequential(self):
         """Test sequential sampling from dataset."""
         samples = [
-            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}")
-            for i in range(100)
+            EvaluationSample(question=f"Q{i}", contexts=["C"], answer=f"A{i}") for i in range(100)
         ]
         dataset = EvaluationDataset(name="test", samples=samples)
 
@@ -345,6 +344,7 @@ class TestEvaluationDataset:
 # RagasEvaluator Tests
 # ============================================================================
 
+
 class TestRagasEvaluator:
     """Tests for RagasEvaluator."""
 
@@ -368,16 +368,19 @@ class TestRagasEvaluator:
         evaluator = RagasEvaluator(config)
 
         # Mock the ragas evaluate function
-        with patch.object(evaluator, "_setup_metrics") as mock_metrics, \
-             patch.object(evaluator, "_setup_llm") as mock_llm, \
-             patch.object(evaluator, "_setup_embeddings") as mock_emb:
-
+        with (
+            patch.object(evaluator, "_setup_metrics") as mock_metrics,
+            patch.object(evaluator, "_setup_llm") as mock_llm,
+            patch.object(evaluator, "_setup_embeddings") as mock_emb,
+        ):
             mock_metrics.return_value = []
             mock_llm.return_value = MagicMock()
             mock_emb.return_value = MagicMock()
 
             # Patch ragas.evaluate
-            with patch("services.shared.observability.evaluation.ragas_evaluator.evaluate") as mock_eval:
+            with patch(
+                "services.shared.observability.evaluation.ragas_evaluator.evaluate",
+            ) as mock_eval:
                 mock_eval.return_value = {
                     "faithfulness": [0.9],
                     "answer_relevancy": [0.85],
@@ -432,6 +435,7 @@ class TestRagasEvaluator:
 # EvaluationPipeline Tests
 # ============================================================================
 
+
 class TestEvaluationPipeline:
     """Tests for EvaluationPipeline."""
 
@@ -477,7 +481,15 @@ class TestEvaluationPipeline:
         mock_evaluator.aggregate_results = MagicMock(
             return_value=AggregatedResults(
                 individual_results=[],
-                aggregated_metrics={"faithfulness": {"mean": 0.85, "std": 0.05, "min": 0.8, "max": 0.9, "median": 0.85}},
+                aggregated_metrics={
+                    "faithfulness": {
+                        "mean": 0.85,
+                        "std": 0.05,
+                        "min": 0.8,
+                        "max": 0.9,
+                        "median": 0.85,
+                    },
+                },
                 total_samples=2,
                 successful_samples=2,
                 failed_samples=0,
@@ -540,6 +552,7 @@ class TestEvaluationPipeline:
 # Reporter Tests
 # ============================================================================
 
+
 class TestJSONFileReporter:
     """Tests for JSONFileReporter."""
 
@@ -559,7 +572,15 @@ class TestJSONFileReporter:
                 status="completed",
                 results=AggregatedResults(
                     individual_results=[],
-                    aggregated_metrics={"faithfulness": {"mean": 0.9, "std": 0.05, "min": 0.85, "max": 0.95, "median": 0.9}},
+                    aggregated_metrics={
+                        "faithfulness": {
+                            "mean": 0.9,
+                            "std": 0.05,
+                            "min": 0.85,
+                            "max": 0.95,
+                            "median": 0.9,
+                        },
+                    },
                     total_samples=10,
                     successful_samples=10,
                     failed_samples=0,
@@ -615,6 +636,7 @@ class TestCompositeReporter:
 # ============================================================================
 # RAGClient Tests
 # ============================================================================
+
 
 class TestRAGClient:
     """Tests for RAGClient."""

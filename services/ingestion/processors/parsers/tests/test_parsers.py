@@ -155,7 +155,9 @@ class TestMarkdownParser:
 
     @pytest.mark.asyncio
     async def test_extracts_code_blocks(
-        self, parser: MarkdownParser, sample_markdown: bytes,
+        self,
+        parser: MarkdownParser,
+        sample_markdown: bytes,
     ):
         """Test code block extraction."""
         result = await parser.parse(sample_markdown)
@@ -166,7 +168,9 @@ class TestMarkdownParser:
 
     @pytest.mark.asyncio
     async def test_extracts_tables(
-        self, parser: MarkdownParser, markdown_with_table: bytes,
+        self,
+        parser: MarkdownParser,
+        markdown_with_table: bytes,
     ):
         """Test table extraction from Markdown."""
         result = await parser.parse(markdown_with_table)
@@ -179,7 +183,9 @@ class TestMarkdownParser:
 
     @pytest.mark.asyncio
     async def test_preserves_original_text(
-        self, parser: MarkdownParser, sample_markdown: bytes,
+        self,
+        parser: MarkdownParser,
+        sample_markdown: bytes,
     ):
         """Test that original Markdown is preserved."""
         result = await parser.parse(sample_markdown)
@@ -336,7 +342,9 @@ class TestPDFParser:
 
     @pytest.mark.asyncio
     async def test_parse_simple_pdf(
-        self, parser: PDFParser, simple_pdf_content: bytes,
+        self,
+        parser: PDFParser,
+        simple_pdf_content: bytes,
     ):
         """Test parsing a simple PDF."""
         result = await parser.parse(simple_pdf_content)
@@ -348,7 +356,9 @@ class TestPDFParser:
 
     @pytest.mark.asyncio
     async def test_parse_with_metadata(
-        self, parser: PDFParser, simple_pdf_content: bytes,
+        self,
+        parser: PDFParser,
+        simple_pdf_content: bytes,
     ):
         """Test parsing PDF with custom metadata."""
         metadata = {"source": "test"}
@@ -435,7 +445,9 @@ class TestParserRegistry:
 
     @pytest.mark.asyncio
     async def test_parse_delegates_to_correct_parser(
-        self, registry: ParserRegistry, sample_text: bytes,
+        self,
+        registry: ParserRegistry,
+        sample_text: bytes,
     ):
         """Test that parse delegates to correct parser."""
         result = await registry.parse(sample_text, "text/plain")

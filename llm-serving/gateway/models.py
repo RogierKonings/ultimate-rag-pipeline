@@ -164,7 +164,8 @@ class EmbeddingRequest(BaseModel):
 
     model: str = Field(..., description="Model ID to use")
     input: str | list[str] = Field(
-        ..., description="Text(s) to embed",
+        ...,
+        description="Text(s) to embed",
     )
     encoding_format: Literal["float", "base64"] = "float"
     dimensions: int | None = None
@@ -203,10 +204,12 @@ class RerankRequest(BaseModel):
         description="Documents to rerank (strings or objects with 'text' field)",
     )
     top_n: int | None = Field(
-        default=None, description="Number of top results to return",
+        default=None,
+        description="Number of top results to return",
     )
     return_documents: bool = Field(
-        default=False, description="Whether to return document text in response",
+        default=False,
+        description="Whether to return document text in response",
     )
     max_chunks_per_doc: int | None = None
 
@@ -217,7 +220,8 @@ class RerankResult(BaseModel):
     index: int = Field(..., description="Original index of the document")
     relevance_score: float = Field(..., description="Relevance score (0-1)")
     document: str | dict | None = Field(
-        default=None, description="Document text if return_documents=True",
+        default=None,
+        description="Document text if return_documents=True",
     )
 
 

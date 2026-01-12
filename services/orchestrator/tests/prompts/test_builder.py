@@ -273,10 +273,7 @@ class TestPromptBuilderHistoryHandling:
         )
         builder = PromptBuilder(config=config)
 
-        history = [
-            {"role": "user", "content": f"Message {i}" * 10}
-            for i in range(10)
-        ]
+        history = [{"role": "user", "content": f"Message {i}" * 10} for i in range(10)]
 
         messages = builder.build(
             query="Current query",

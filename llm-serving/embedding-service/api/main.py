@@ -160,10 +160,7 @@ async def create_embeddings(request: EmbeddingRequest):
         embeddings = await batcher.submit(texts, request.input_type)
 
         # Build response
-        data = [
-            EmbeddingData(index=i, embedding=emb)
-            for i, emb in enumerate(embeddings)
-        ]
+        data = [EmbeddingData(index=i, embedding=emb) for i, emb in enumerate(embeddings)]
 
         total_tokens = sum(len(t.split()) for t in texts)
 

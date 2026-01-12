@@ -1,6 +1,5 @@
 """Query Router for determining routing strategy."""
 
-
 from .classifiers import ComplexityScorer, KeywordClassifier
 from .models import QueryIntent, RoutingConfig, RoutingResult, RoutingStrategy
 
@@ -68,7 +67,10 @@ class QueryRouter:
 
         # Step 4: Determine strategy
         strategy, strategy_reasoning = self._determine_strategy(
-            intent, intent_confidence, complexity_score, query,
+            intent,
+            intent_confidence,
+            complexity_score,
+            query,
         )
 
         return RoutingResult(
@@ -105,7 +107,9 @@ class QueryRouter:
         return (intent, confidence)
 
     def _score_complexity(
-        self, query: str, history: list[dict] | None = None,
+        self,
+        query: str,
+        history: list[dict] | None = None,
     ) -> float:
         """
         Score query complexity on a 0-1 scale.

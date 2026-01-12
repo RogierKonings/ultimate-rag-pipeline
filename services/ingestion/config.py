@@ -11,7 +11,6 @@ Architecture defaults (from docs/architecture.md):
 - Chunking overlap: 50 tokens
 """
 
-
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 

@@ -24,6 +24,7 @@ from ..tracer import LLMSpan, PhoenixTracer
 # PhoenixConfig Tests
 # ============================================================================
 
+
 class TestPhoenixConfig:
     """Tests for PhoenixConfig."""
 
@@ -78,6 +79,7 @@ class TestPhoenixConfig:
 # ============================================================================
 # LLMSpan Tests
 # ============================================================================
+
 
 class TestLLMSpan:
     """Tests for LLMSpan."""
@@ -142,6 +144,7 @@ class TestLLMSpan:
 # ============================================================================
 # PhoenixTracer Tests
 # ============================================================================
+
 
 class TestPhoenixTracer:
     """Tests for PhoenixTracer."""
@@ -241,6 +244,7 @@ class TestPhoenixTracer:
 # LangChainCallback Tests
 # ============================================================================
 
+
 class TestLangChainCallback:
     """Tests for LangChainCallback."""
 
@@ -312,6 +316,7 @@ class TestLangChainCallback:
 # LlamaIndexCallback Tests
 # ============================================================================
 
+
 class TestLlamaIndexCallback:
     """Tests for LlamaIndexCallback."""
 
@@ -350,6 +355,7 @@ class TestLlamaIndexCallback:
 # ============================================================================
 # Feedback Tests
 # ============================================================================
+
 
 class TestFeedback:
     """Tests for Feedback."""
@@ -419,9 +425,10 @@ class TestFeedbackCollector:
         )
         collector = FeedbackCollector(config)
 
-        with patch.object(collector, "_store_feedback", new_callable=AsyncMock), \
-             patch.object(collector, "_send_to_phoenix", new_callable=AsyncMock):
-
+        with (
+            patch.object(collector, "_store_feedback", new_callable=AsyncMock),
+            patch.object(collector, "_send_to_phoenix", new_callable=AsyncMock),
+        ):
             feedback = await collector.record_thumbs_up(
                 trace_id="trace-123",
                 user_id="user-1",
@@ -441,9 +448,10 @@ class TestFeedbackCollector:
         )
         collector = FeedbackCollector(config)
 
-        with patch.object(collector, "_store_feedback", new_callable=AsyncMock), \
-             patch.object(collector, "_send_to_phoenix", new_callable=AsyncMock):
-
+        with (
+            patch.object(collector, "_store_feedback", new_callable=AsyncMock),
+            patch.object(collector, "_send_to_phoenix", new_callable=AsyncMock),
+        ):
             feedback = await collector.record_rating(
                 trace_id="trace-123",
                 rating=4,
@@ -458,6 +466,7 @@ class TestFeedbackCollector:
 # ============================================================================
 # Experiment Tests
 # ============================================================================
+
 
 class TestExperimentRun:
     """Tests for ExperimentRun."""
