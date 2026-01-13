@@ -20,7 +20,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from celery import group
 from celery.exceptions import Reject, SoftTimeLimitExceeded
 
 from .callbacks import send_to_dlq
@@ -146,7 +145,6 @@ async def _process_document_async(
         Processing results dict with deduplication status.
     """
     # Import pipeline components
-    from config import get_settings
     from embedding.service import create_embedding_service
     from indexing.coordinator import IndexCoordinator
     from indexing.models import DocumentRecord, IndexedChunk
@@ -156,6 +154,8 @@ async def _process_document_async(
     from processors import ChunkingConfig, ChunkingEngine
     from processors.enrichment import EnrichmentContext, EnrichmentPipeline
     from processors.parsers import create_default_registry
+
+    from config import get_settings
     from services.deduplication import (
         CHUNK_SCHEMA_VERSION,
         DeduplicationResult,
@@ -306,7 +306,7 @@ async def _process_document_async(
         )
         cache_config = EmbeddingCacheConfig(redis_url=settings.redis_url)
         embedding_service = await create_embedding_service(
-            config=service_config, cache_config=cache_config
+            config=service_config, cache_config=cache_config,
         )
         try:
             embedding_results = await embedding_service.embed_texts(
@@ -535,7 +535,7 @@ def batch_ingest(
                     source_config=source_config,
                     processing_config=processing_config,
                     acl_context=acl_context,
-                )
+                ),
             )
 
             chunks_created = result.get("chunks_created", 0)
@@ -571,7 +571,7 @@ def batch_ingest(
                 "source_config": source_config,
                 "processing_config": processing_config,
                 "acl_context": acl_context,
-            }
+            },
         )
         task_ids.append(async_result.id)
         logger.info(f"Dispatched task {async_result.id} for document: {doc_id}")

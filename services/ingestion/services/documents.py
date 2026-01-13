@@ -116,9 +116,8 @@ class DocumentService:
             return DocumentListResult(documents=[], total=0)
 
         try:
-            from sqlalchemy import text
-
             from api.schemas import DocumentResponse
+            from sqlalchemy import text
 
             # Build dynamic WHERE clause for indexed_documents table
             conditions = ["tenant_id = :tenant_id"]
@@ -210,9 +209,8 @@ class DocumentService:
             return None
 
         try:
-            from sqlalchemy import text
-
             from api.schemas import DocumentResponse
+            from sqlalchemy import text
 
             # Query indexed_documents table directly (same as list_documents)
             query = text("""

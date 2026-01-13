@@ -201,7 +201,7 @@ async def batch_delete_documents(
                     deleted=False,
                     chunks_deleted=0,
                     message=f"Document {document_id} not found",
-                )
+                ),
             )
             failed_count += 1
             continue
@@ -222,7 +222,7 @@ async def batch_delete_documents(
                 deleted=result.success,
                 chunks_deleted=result.chunks_deleted,
                 message=message,
-            )
+            ),
         )
 
     return BatchDeleteResponse(

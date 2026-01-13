@@ -5,6 +5,7 @@ supporting multiple providers with retry logic, streaming, and health checks.
 """
 
 import asyncio
+import logging
 import random
 import time
 from collections.abc import AsyncGenerator
@@ -37,6 +38,8 @@ from .models import (
     UsageStats,
 )
 from .streaming import parse_sse_stream
+
+logger = logging.getLogger(__name__)
 
 
 class ModelGateway:
@@ -627,7 +630,8 @@ class ModelGateway:
                         response = await client.get(endpoint, timeout=5.0)
                         if response.is_success:
                             break
-                    except Exception:
+                    except Exception as e:
+                        logger.debug("Health check failed for endpoint %s: %s", endpoint, e)
                         continue
 
                 latency_ms = (time.perf_counter() - start_time) * 1000

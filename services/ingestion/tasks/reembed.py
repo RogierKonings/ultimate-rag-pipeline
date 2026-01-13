@@ -81,12 +81,12 @@ async def _reembed_collection_async(
     Returns:
         Results dict.
     """
-    from sqlalchemy import select
-
     from embedding.service import (
         EmbeddingService,
         EmbeddingServiceConfig,
     )
+    from sqlalchemy import select
+
     from shared.database.connection import get_session
     from shared.database.models import Chunk
 
@@ -296,9 +296,6 @@ async def _reembed_migration_batch_async(
     Returns:
         Results dict with processed/failed counts.
     """
-    from qdrant_client import AsyncQdrantClient
-    from qdrant_client.models import PointStruct
-
     from embedding.service import (
         EmbeddingService,
         EmbeddingServiceConfig,
@@ -308,6 +305,8 @@ async def _reembed_migration_batch_async(
         MigrationProgressStore,
         MigrationProgressStoreConfig,
     )
+    from qdrant_client import AsyncQdrantClient
+    from qdrant_client.models import PointStruct
 
     start_time = time.time()
     processed = 0
