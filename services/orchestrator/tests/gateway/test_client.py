@@ -317,7 +317,9 @@ async def test_chat_completion_timeout(gateway, chat_request):
 
 @pytest.mark.asyncio
 async def test_chat_completion_fallback_on_timeout(
-    gateway_config, chat_request, mock_response_data,
+    gateway_config,
+    chat_request,
+    mock_response_data,
 ):
     """Test fallback to secondary model on timeout."""
     gateway = ModelGateway(gateway_config)

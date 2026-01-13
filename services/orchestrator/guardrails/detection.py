@@ -326,7 +326,9 @@ def detect_harmful_content(text: str) -> list[DetectionMatch]:
 
 
 def detect_hallucination(
-    response: str, context: str, threshold: float = 0.5,
+    response: str,
+    context: str,
+    threshold: float = 0.5,
 ) -> list[DetectionMatch]:
     """Detect potential hallucinations in a response.
 

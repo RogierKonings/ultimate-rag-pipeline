@@ -245,7 +245,11 @@ class APIConnector(BaseConnector):
             if self.config.auth_token and self.config.api_key_header:
                 headers[self.config.api_key_header] = self.config.auth_token
 
-        elif self.config.auth_type == "basic" and self.config.basic_username and self.config.basic_password:
+        elif (
+            self.config.auth_type == "basic"
+            and self.config.basic_username
+            and self.config.basic_password
+        ):
             credentials = f"{self.config.basic_username}:{self.config.basic_password}"
             encoded = base64.b64encode(credentials.encode()).decode()
             headers["Authorization"] = f"Basic {encoded}"

@@ -131,6 +131,7 @@ ignore = [
     "TC002",  # Move import into type-checking block (causes runtime issues)
     "TC003",  # Move import into type-checking block (causes runtime issues)
     "SIM105", # Use contextlib.suppress (stylistic, already using noqa)
+    "COM812", # Missing trailing comma (conflicts with ruff formatter)
 ]
 
 [tool.ruff.lint.per-file-ignores]

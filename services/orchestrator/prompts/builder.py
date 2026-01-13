@@ -209,9 +209,14 @@ class PromptBuilder:
             The effective strategy to use.
         """
         # If no context or documents, fall back to no_context
-        if not context and not documents and requested_strategy in (
-            PromptStrategy.RAG.value,
-            PromptStrategy.RAG_CITATIONS.value,
+        if (
+            not context
+            and not documents
+            and requested_strategy
+            in (
+                PromptStrategy.RAG.value,
+                PromptStrategy.RAG_CITATIONS.value,
+            )
         ):
             return PromptStrategy.NO_CONTEXT.value
 

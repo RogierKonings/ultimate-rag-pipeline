@@ -132,7 +132,9 @@ class DocumentService:
                 params["status"] = status
 
             if search:
-                conditions.append("(title ILIKE :search OR source_uri ILIKE :search OR filename ILIKE :search)")
+                conditions.append(
+                    "(title ILIKE :search OR source_uri ILIKE :search OR filename ILIKE :search)"
+                )
                 params["search"] = f"%{search}%"
 
             where_clause = " AND ".join(conditions)

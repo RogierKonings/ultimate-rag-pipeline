@@ -220,7 +220,9 @@ async def test_save_conversation_metadata_format(postgres_store, mock_connection
 
 @pytest.mark.asyncio
 async def test_save_conversation_deletes_existing_messages(
-    postgres_store, mock_connection, sample_session,
+    postgres_store,
+    mock_connection,
+    sample_session,
 ):
     """Test that existing messages are deleted before re-insert."""
     await postgres_store.save_conversation(sample_session)

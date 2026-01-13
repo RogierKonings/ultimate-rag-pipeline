@@ -99,13 +99,13 @@ class TestProcessDocument:
                                     patch("services.ingestion.tasks.ingest.DocumentRecord"),
                                 ):
                                     result = await _process_document_async(
-                                            task=mock_task,
-                                            document_source_id="test-doc",
-                                            source_type="filesystem",
-                                            source_config=source_config,
-                                            processing_config=processing_config,
-                                            acl_context=acl_context,
-                                        )
+                                        task=mock_task,
+                                        document_source_id="test-doc",
+                                        source_type="filesystem",
+                                        source_config=source_config,
+                                        processing_config=processing_config,
+                                        acl_context=acl_context,
+                                    )
 
         assert "document_id" in result
         assert "chunks_created" in result

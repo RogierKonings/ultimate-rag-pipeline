@@ -187,7 +187,8 @@ async def get_active_migrations(
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to get active migrations: {str(e)}",
+            status_code=500,
+            detail=f"Failed to get active migrations: {str(e)}",
         ) from e
 
 

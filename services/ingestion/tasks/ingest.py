@@ -306,7 +306,8 @@ async def _process_document_async(
         )
         cache_config = EmbeddingCacheConfig(redis_url=settings.redis_url)
         embedding_service = await create_embedding_service(
-            config=service_config, cache_config=cache_config,
+            config=service_config,
+            cache_config=cache_config,
         )
         try:
             embedding_results = await embedding_service.embed_texts(
@@ -541,7 +542,9 @@ def batch_ingest(
             chunks_created = result.get("chunks_created", 0)
             success = chunks_created > 0 or result.get("status") == "duplicate"
 
-            logger.info(f"Batch job {job_id} completed: document processed with {chunks_created} chunks")
+            logger.info(
+                f"Batch job {job_id} completed: document processed with {chunks_created} chunks"
+            )
 
             return {
                 "job_id": job_id,

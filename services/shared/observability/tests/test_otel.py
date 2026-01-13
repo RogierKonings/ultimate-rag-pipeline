@@ -122,7 +122,8 @@ class TestRAGAttributes:
         mock_span.is_recording.return_value = True
 
         with patch(
-            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+            "shared.observability.otel.attributes.trace.get_current_span",
+            return_value=mock_span,
         ):
             set_rag_attributes(
                 operation=RAGOperation.QUERY,
@@ -144,7 +145,8 @@ class TestRAGAttributes:
         mock_span.is_recording.return_value = True
 
         with patch(
-            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+            "shared.observability.otel.attributes.trace.get_current_span",
+            return_value=mock_span,
         ):
             set_retrieval_results(count=5, scores=[0.9, 0.8, 0.7, 0.6, 0.5])
 
@@ -161,7 +163,8 @@ class TestRAGAttributes:
         mock_span.is_recording.return_value = True
 
         with patch(
-            "shared.observability.otel.attributes.trace.get_current_span", return_value=mock_span,
+            "shared.observability.otel.attributes.trace.get_current_span",
+            return_value=mock_span,
         ):
             set_llm_usage(
                 model="llama-3.1-8b",

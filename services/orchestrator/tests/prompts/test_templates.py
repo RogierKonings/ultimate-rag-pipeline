@@ -297,7 +297,9 @@ class TestTemplateStructure:
         max_length = 2000  # characters
         for lang, lang_templates in TEMPLATES.items():
             for name, template_str in lang_templates.items():
-                assert len(template_str) < max_length, f"Template '{lang}/{name}' exceeds max length"
+                assert len(template_str) < max_length, (
+                    f"Template '{lang}/{name}' exceeds max length"
+                )
 
 
 class TestLanguageEnum:

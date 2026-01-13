@@ -334,10 +334,12 @@ class TestSemanticSearcherMultiVector:
             payload={"content": "Doc B", "document_id": str(uuid4())},
         )
 
-        mock_client.query_points = AsyncMock(side_effect=[
-            MockQueryResponse([result1, result2]),
-            MockQueryResponse([result1]),
-        ])
+        mock_client.query_points = AsyncMock(
+            side_effect=[
+                MockQueryResponse([result1, result2]),
+                MockQueryResponse([result1]),
+            ]
+        )
 
         response = await searcher.search_multi_vector(
             query_embeddings=[[0.1] * 1024, [0.2] * 1024],
@@ -362,7 +364,10 @@ class TestSemanticSearcherMultiVector:
             [item],
             [
                 SearchResultItem(
-                    chunk_id=chunk_id, document_id=item.document_id, content="Test", score=0.9,
+                    chunk_id=chunk_id,
+                    document_id=item.document_id,
+                    content="Test",
+                    score=0.9,
                 ),
             ],
         ]

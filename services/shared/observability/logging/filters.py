@@ -29,7 +29,8 @@ class SensitiveDataFilter(logging.Filter):
         "bearer": re.compile(r"Bearer\s+[A-Za-z0-9_-]+", re.IGNORECASE),
         # API keys (various formats)
         "api_key": re.compile(
-            r"(?:api[_-]?key|apikey)[=:]\s*['\"]?([A-Za-z0-9_-]{20,})['\"]?", re.IGNORECASE,
+            r"(?:api[_-]?key|apikey)[=:]\s*['\"]?([A-Za-z0-9_-]{20,})['\"]?",
+            re.IGNORECASE,
         ),
         # Credit card numbers (with or without spaces/dashes)
         "credit_card": re.compile(r"\b(?:\d{4}[-\s]?){3}\d{4}\b"),
@@ -41,7 +42,8 @@ class SensitiveDataFilter(logging.Filter):
         "aws_key": re.compile(r"(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}"),
         # Generic secret patterns
         "generic_secret": re.compile(
-            r"(?:secret|password|passwd|pwd)[=:]\s*['\"]?([^\s'\"]+)['\"]?", re.IGNORECASE,
+            r"(?:secret|password|passwd|pwd)[=:]\s*['\"]?([^\s'\"]+)['\"]?",
+            re.IGNORECASE,
         ),
     }
 
