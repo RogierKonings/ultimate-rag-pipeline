@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { X, Upload, FileText, AlertCircle, Loader2, AlertTriangle } from 'lucide-svelte';
 	import { upload } from '$lib/stores/upload';
+	import { documents } from '$lib/stores/documents';
 	import type { QueuedFile } from '$lib/api/types';
 
 	let dragOver = $state(false);
@@ -8,6 +9,9 @@
 
 	const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
 	const MAX_SIZE_MB = 50;
+
+	// Get existing filenames from the documents store
+	const existingFilenames = $derived(new Set($documents.documents.map((doc) => doc.filename)));
 
 	const validFiles = $derived($upload.queuedFiles.filter((f) => f.status === 'valid'));
 	const hasValidFiles = $derived(validFiles.length > 0);
@@ -59,6 +63,9 @@
 	}
 
 	function processFiles(files: File[]) {
+		// Track filenames within this batch to detect duplicates within the same upload
+		const batchFilenames = new Set<string>();
+
 		const queuedFiles: QueuedFile[] = files.map((file) => {
 			const extension = '.' + file.name.split('.').pop()?.toLowerCase();
 			let status: 'valid' | 'invalid' = 'valid';
@@ -70,7 +77,16 @@
 			} else if (file.size > MAX_SIZE_MB * 1024 * 1024) {
 				status = 'invalid';
 				error = `Exceeds ${MAX_SIZE_MB}MB limit`;
+			} else if (existingFilenames.has(file.name)) {
+				status = 'invalid';
+				error = `"${file.name}" already exists. Please rename the file to continue.`;
+			} else if (batchFilenames.has(file.name)) {
+				status = 'invalid';
+				error = `Duplicate filename in this batch. Please rename to continue.`;
 			}
+
+			// Track this filename for batch duplicate detection
+			batchFilenames.add(file.name);
 
 			return {
 				id: crypto.randomUUID(),

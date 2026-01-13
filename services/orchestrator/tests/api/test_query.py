@@ -50,6 +50,7 @@ def mock_model_gateway():
     from gateway.models import ChatChoice, ChatCompletionResponse, ChatMessage, UsageStats
 
     gateway = AsyncMock()
+    gateway.default_model = "meta-llama/Llama-3.1-8B-Instruct"
     gateway.chat_completion = AsyncMock(
         return_value=ChatCompletionResponse(
             id="test-id",

@@ -302,6 +302,28 @@ class AnonymousAccessFilter(ACLFilter):
     Only allows access to public documents within the specified tenant.
     """
 
+    def build_filter(
+        self,
+        user_context: UserContext,
+        additional_filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build filter dict for anonymous access.
+
+        Overrides parent to always apply ACL clauses (no anonymous bypass).
+
+        Args:
+            user_context: Anonymous user's context.
+            additional_filters: Extra filters to merge (metadata, etc.).
+
+        Returns:
+            Filter dict requiring public visibility only.
+        """
+        if not self.config.enabled:
+            return additional_filters or {}
+
+        acl_filter = self._build_acl_clauses(user_context)
+        return self._merge_filters(acl_filter, additional_filters)
+
     def _build_acl_clauses(self, user: UserContext) -> dict[str, Any]:
         """Build filter for public documents only.
 

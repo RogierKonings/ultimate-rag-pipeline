@@ -14,7 +14,6 @@ from langdetect import LangDetectException, detect
 
 from .models import PIIType
 
-
 # =============================================================================
 # Language Detection
 # =============================================================================

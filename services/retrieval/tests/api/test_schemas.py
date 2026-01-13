@@ -33,7 +33,7 @@ class TestRetrieveRequest:
         assert request.query == "test query"
         assert request.mode == SearchMode.HYBRID
         assert request.top_k == 10
-        assert request.rerank is True
+        assert request.rerank is False  # Disabled by default for performance
         assert request.semantic_weight == 0.7
         assert request.keyword_weight == 0.3
 
@@ -121,7 +121,7 @@ class TestMultiQueryRequest:
         assert request.queries == ["query 1", "query 2"]
         assert request.aggregation == "rrf"
         assert request.top_k == 10
-        assert request.rerank is True
+        assert request.rerank is False  # Disabled by default for performance
 
     def test_all_aggregation_methods(self):
         """Test all aggregation methods."""

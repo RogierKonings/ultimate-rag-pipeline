@@ -1,7 +1,9 @@
 """Tests for individual workflow nodes."""
 
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+import httpx
 import pytest
 from workflow.nodes import (
     generation_node,
@@ -159,19 +161,28 @@ class TestRetrievalNode:
     """Tests for retrieval_node."""
 
     @pytest.mark.asyncio
-    async def test_retrieval_returns_empty_documents_stub(self):
-        """Test retrieval returns empty documents (stub implementation)."""
+    async def test_retrieval_returns_empty_documents_when_service_unavailable(self):
+        """Test retrieval returns empty documents when service unavailable."""
         state = create_initial_state(
             request_id=str(uuid4()),
             query="What is Python?",
         )
 
-        result = await retrieval_node(state)
+        # Mock the httpx client to simulate connection error
+        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            mock_instance.post.side_effect = httpx.ConnectError("Connection refused")
+            mock_client.return_value = mock_instance
 
-        # Stub returns empty documents
+            result = await retrieval_node(state)
+
+        # Returns empty documents on connection error
         assert result["documents"] == []
         assert result["context"] == ""
         assert "retrieval" in result["timing"]
+        assert "retrieval_unavailable" in result.get("fallbacks_used", [])
 
     @pytest.mark.asyncio
     async def test_retrieval_records_timing(self):
@@ -181,7 +192,18 @@ class TestRetrievalNode:
             query="Test query",
         )
 
-        result = await retrieval_node(state)
+        # Mock the httpx client
+        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            mock_response = AsyncMock()
+            mock_response.json.return_value = {"results": []}
+            mock_response.raise_for_status.return_value = None
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            result = await retrieval_node(state)
 
         assert "retrieval" in result["timing"]
         assert result["timing"]["retrieval"] >= 0
@@ -196,7 +218,18 @@ class TestRetrievalNode:
         state["strategy"] = "simple"
         state["timing"] = {"routing": 2.0}
 
-        result = await retrieval_node(state)
+        # Mock the httpx client
+        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            mock_response = AsyncMock()
+            mock_response.json.return_value = {"results": []}
+            mock_response.raise_for_status.return_value = None
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            result = await retrieval_node(state)
 
         assert result["strategy"] == "simple"
         assert result["timing"]["routing"] == 2.0
@@ -276,8 +309,8 @@ class TestGenerationNode:
     """Tests for generation_node."""
 
     @pytest.mark.asyncio
-    async def test_generation_returns_none_stub(self):
-        """Test generation returns None response (stub implementation)."""
+    async def test_generation_returns_none_when_llm_unavailable(self):
+        """Test generation returns None response when LLM is unavailable."""
         state = create_initial_state(
             request_id=str(uuid4()),
             query="What is Python?",
@@ -287,13 +320,21 @@ class TestGenerationNode:
             {"role": "user", "content": "What is Python?"},
         ]
 
-        result = await generation_node(state)
+        # Mock the httpx client to simulate connection error
+        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            mock_instance.post.side_effect = httpx.ConnectError("Connection refused")
+            mock_client.return_value = mock_instance
 
-        # Stub returns None
+            result = await generation_node(state)
+
+        # Returns None on connection error
         assert result["response"] is None
-        assert result["model_used"] is None
-        assert result["usage"] is None
+        assert result["error"] is not None
         assert "generation" in result["timing"]
+        assert "llm_unavailable" in result.get("fallbacks_used", [])
 
     @pytest.mark.asyncio
     async def test_generation_fails_without_messages(self):
@@ -318,7 +359,22 @@ class TestGenerationNode:
         )
         state["messages"] = [{"role": "user", "content": "test"}]
 
-        result = await generation_node(state)
+        # Mock the httpx client
+        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__.return_value = mock_instance
+            mock_instance.__aexit__.return_value = None
+            mock_response = AsyncMock()
+            mock_response.json.return_value = {
+                "choices": [{"message": {"content": "Test response"}}],
+                "model": "test-model",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            }
+            mock_response.raise_for_status.return_value = None
+            mock_instance.post.return_value = mock_response
+            mock_client.return_value = mock_instance
+
+            result = await generation_node(state)
 
         assert "generation" in result["timing"]
         assert result["timing"]["generation"] >= 0

@@ -26,11 +26,16 @@ Indexes:
     - messages: conversation_id, created_at
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+def _utc_now() -> datetime:
+    """Return current UTC time with timezone info."""
+    return datetime.now(UTC)
 
 
 class MessageRole(str, Enum):
@@ -50,7 +55,7 @@ class Message(BaseModel):
     content: str
 
     # Timestamp
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utc_now)
 
     # Token count for management
     token_count: int | None = None
@@ -90,9 +95,9 @@ class ConversationSession(BaseModel):
     summarized_count: int = 0  # Number of messages included in summary
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    last_activity: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
+    last_activity: datetime = Field(default_factory=_utc_now)
 
     # Stats
     total_messages: int = 0

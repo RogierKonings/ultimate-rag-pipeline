@@ -9,9 +9,9 @@ Supports automatic language detection for multi-language prompts.
 
 from typing import Any
 
+from guardrails.detection import detect_language
 from jinja2 import BaseLoader, Environment
 
-from guardrails.detection import detect_language
 from .context import (
     count_tokens,
     format_citations,

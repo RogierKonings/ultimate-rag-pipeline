@@ -409,8 +409,8 @@ class TestContractAlignment:
         # Default mode
         assert request.mode == SearchMode.HYBRID
 
-        # Default reranking
-        assert request.rerank is True
+        # Default reranking (disabled by default for performance)
+        assert request.rerank is False
 
     def test_config_defaults_match_architecture(self):
         """Test config defaults match architecture spec."""

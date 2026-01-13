@@ -60,10 +60,10 @@ class TestDefaultsMatchArchitecture:
         request = RetrieveRequest(query="test")
         assert request.top_k == 10
 
-    def test_default_rerank_enabled(self):
-        """Reranking should be enabled by default."""
+    def test_default_rerank_disabled(self):
+        """Reranking is disabled by default for faster responses."""
         request = RetrieveRequest(query="test")
-        assert request.rerank is True
+        assert request.rerank is False
 
     def test_default_rerank_top_k(self):
         """Default rerank_top_k should be 20."""
@@ -395,7 +395,7 @@ class TestHybridOrdering:
         """Test that pipeline executes: search → fusion → rerank → ACL."""
         response = client.post(
             "/api/v1/retrieve",
-            json={"query": "test query"},
+            json={"query": "test query", "rerank": True},  # Enable reranking explicitly
             headers=auth_header,
         )
 

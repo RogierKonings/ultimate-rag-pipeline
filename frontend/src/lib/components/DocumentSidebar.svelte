@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { FileText, Loader2, AlertCircle, FolderOpen, Trash2, CheckSquare, Square, X } from 'lucide-svelte';
-	import { documents, sampleDocuments, userDocuments, selectedDocuments, selectedCount } from '$lib/stores/documents';
+	import { Loader2, AlertCircle, FolderOpen, Trash2, CheckSquare, Square, X } from 'lucide-svelte';
+	import { documents, userDocuments, selectedDocuments, selectedCount } from '$lib/stores/documents';
 	import { activeJobs } from '$lib/stores/upload';
 	import { batchDeleteDocuments } from '$lib/api/ingestion';
 	import DocumentItem from './DocumentItem.svelte';
@@ -156,40 +156,6 @@
 			</div>
 		{/if}
 
-		<!-- Sample Documents -->
-		<div>
-			<h3
-				class="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]"
-			>
-				<FileText class="h-3 w-3" />
-				Sample Documents
-			</h3>
-
-			{#if $documents.loading}
-				<div class="space-y-2">
-					{#each Array(5) as _}
-						<div class="skeleton h-10 w-full rounded-lg"></div>
-					{/each}
-				</div>
-			{:else if $documents.error}
-				<div
-					class="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"
-				>
-					<AlertCircle class="h-4 w-4 shrink-0" />
-					<span>{$documents.error}</span>
-				</div>
-			{:else if $sampleDocuments.length > 0}
-				<div class="space-y-1">
-					{#each $sampleDocuments as doc (doc.document_id)}
-						<DocumentItem document={doc} />
-					{/each}
-				</div>
-			{:else}
-				<p class="text-sm text-[var(--color-text-secondary)] italic">
-					No sample documents loaded
-				</p>
-			{/if}
-		</div>
 	</div>
 </aside>
 
