@@ -14,7 +14,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field, field_validator
 
-from services.ingestion.connectors.base import (
+from .base import (
     BaseConnector,
     DocumentMetadata,
     RawDocument,

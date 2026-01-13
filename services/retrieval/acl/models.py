@@ -79,6 +79,14 @@ class UserContext(BaseModel):
         """
         return "admin" in self.roles
 
+    def is_anonymous(self) -> bool:
+        """Check if user is anonymous (no authentication).
+
+        Returns:
+            True if user has 'anonymous' role, False otherwise.
+        """
+        return "anonymous" in self.roles
+
     def is_member_of(self, group: str) -> bool:
         """Check if user is a member of a specific group.
 

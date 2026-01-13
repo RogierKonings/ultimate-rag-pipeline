@@ -116,72 +116,72 @@ class DocumentService:
             return DocumentListResult(documents=[], total=0)
 
         try:
-            from sqlalchemy import func, or_, select
+            from sqlalchemy import text
 
-            # Import document model
-            from services.shared.database.models.document import Chunk, Document
+            from api.schemas import DocumentResponse
 
-            # Build query
-            query = select(Document).where(Document.tenant_id == UUID(tenant_id))
+            # Build dynamic WHERE clause for indexed_documents table
+            conditions = ["tenant_id = :tenant_id"]
+            params = {"tenant_id": tenant_id}
 
             if source_type:
-                query = query.where(Document.source_type == source_type)
+                conditions.append("source_type = :source_type")
+                params["source_type"] = source_type
 
             if status:
-                query = query.where(Document.status == status)
+                conditions.append("status = :status")
+                params["status"] = status
 
             if search:
-                search_pattern = f"%{search}%"
-                query = query.where(
-                    or_(
-                        Document.title.ilike(search_pattern),
-                        Document.source_id.ilike(search_pattern),
-                    ),
-                )
+                conditions.append("(title ILIKE :search OR source_uri ILIKE :search OR filename ILIKE :search)")
+                params["search"] = f"%{search}%"
+
+            where_clause = " AND ".join(conditions)
 
             # Get total count
-            count_query = select(func.count()).select_from(query.subquery())
-            total_result = await self._db.execute(count_query)
-            total = total_result.scalar() or 0
+            count_query = text(f"SELECT COUNT(*) FROM indexed_documents WHERE {where_clause}")
+            count_result = await self._db.execute(count_query, params)
+            total = count_result.scalar() or 0
 
             # Get paginated results
             offset = (page - 1) * page_size
-            query = query.offset(offset).limit(page_size).order_by(Document.created_at.desc())
-            result = await self._db.execute(query)
-            documents = result.scalars().all()
+            params["limit"] = page_size
+            params["offset"] = offset
+
+            query = text(f"""
+                SELECT document_id, source_uri, source_type, filename, mime_type,
+                       title, author, chunk_count, total_tokens, content_hash, version,
+                       tenant_id, visibility, allowed_groups, allowed_users, created_at,
+                       updated_at, indexed_at, status, error_message
+                FROM indexed_documents
+                WHERE {where_clause}
+                ORDER BY created_at DESC
+                LIMIT :limit OFFSET :offset
+            """)
+
+            result = await self._db.execute(query, params)
+            rows = result.fetchall()
 
             # Convert to response format
-            from api.schemas import DocumentResponse
-
             doc_responses = []
-            for doc in documents:
-                # Get chunk count
-                chunk_query = select(func.count()).where(Chunk.document_id == doc.id)
-                chunk_result = await self._db.execute(chunk_query)
-                chunk_count = chunk_result.scalar() or 0
-
-                # Get total tokens
-                token_query = select(func.sum(Chunk.token_count)).where(Chunk.document_id == doc.id)
-                token_result = await self._db.execute(token_query)
-                total_tokens = token_result.scalar() or 0
-
+            for row in rows:
                 doc_responses.append(
                     DocumentResponse(
-                        document_id=doc.id,
-                        source_id=doc.source_id,
-                        source_type=doc.source_type,
-                        filename=doc.doc_metadata.get("filename"),
-                        mime_type=doc.doc_metadata.get("mime_type"),
-                        title=doc.title,
-                        author=doc.doc_metadata.get("author"),
-                        chunk_count=chunk_count,
-                        total_tokens=total_tokens,
-                        tenant_id=str(doc.tenant_id),
-                        visibility=doc.visibility,
-                        created_at=doc.created_at,
-                        updated_at=doc.updated_at,
-                        indexed_at=doc.doc_metadata.get("indexed_at"),
-                        status=doc.status,
+                        document_id=row.document_id,
+                        source_id=row.source_uri,
+                        source_type=row.source_type,
+                        filename=row.filename,
+                        mime_type=row.mime_type,
+                        title=row.title,
+                        author=row.author,
+                        chunk_count=row.chunk_count or 0,
+                        total_tokens=row.total_tokens or 0,
+                        tenant_id=str(row.tenant_id),
+                        visibility=row.visibility,
+                        created_at=row.created_at,
+                        updated_at=row.updated_at,
+                        indexed_at=row.indexed_at,
+                        status=row.status,
                     ),
                 )
 

@@ -32,6 +32,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     preprocessor = QueryPreprocessor(
         QueryPreprocessorConfig(
             llm_gateway_url=config.llm_gateway_url,
+            embedding_model=config.embedding_model,
+            embedding_dimension=config.embedding_dimension,
+            embedding_prefix=config.embedding_prefix,
         ),
     )
 

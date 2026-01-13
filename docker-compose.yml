@@ -136,13 +136,20 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
-      - QDRANT_URL=http://qdrant:6333
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://:ragredis@redis:6379
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # Prefixed vars for ingestion config.py (uses INGESTION_ prefix)
+      - INGESTION_DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
+      - INGESTION_QDRANT_URL=http://qdrant:6333
+      - INGESTION_OPENSEARCH_URL=http://opensearch:9200
+      - INGESTION_REDIS_URL=redis://:ragredis@redis:6379
+      - INGESTION_MINIO_URL=http://minio:9000
+      - INGESTION_MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - INGESTION_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - INGESTION_MINIO_BUCKET=rag-documents
+      - INGESTION_DEBUG=true
+      # Celery vars (not prefixed - used directly by celery_app.py)
+      - CELERY_BROKER_URL=redis://:ragredis@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:ragredis@redis:6379/1
+      # Embedding service
       - EMBEDDING_SERVICE_URL=http://embedding-service:8080
       - LOG_LEVEL=DEBUG
     volumes:
@@ -169,12 +176,19 @@ services:
     container_name: rag-ingestion-worker
     command: celery -A tasks worker -l info -c 2
     environment:
-      - DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
-      - QDRANT_URL=http://qdrant:6333
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://:ragredis@redis:6379
-      - MINIO_ENDPOINT=minio:9000
-      - EMBEDDING_SERVICE_URL=http://embedding-service:8080
+      # Prefixed vars for ingestion config.py (uses INGESTION_ prefix)
+      - INGESTION_DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
+      - INGESTION_QDRANT_URL=http://qdrant:6333
+      - INGESTION_OPENSEARCH_URL=http://opensearch:9200
+      - INGESTION_REDIS_URL=redis://:ragredis@redis:6379
+      - INGESTION_MINIO_URL=http://minio:9000
+      - INGESTION_MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - INGESTION_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - INGESTION_MINIO_BUCKET=rag-documents
+      - INGESTION_LLM_GATEWAY_URL=http://host.docker.internal:11434
+      # Celery vars (not prefixed - used directly by celery_app.py)
+      - CELERY_BROKER_URL=redis://:ragredis@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:ragredis@redis:6379/1
     volumes:
       - ./services/ingestion:/app
       - ./services/shared:/app/shared
@@ -194,13 +208,12 @@ services:
     ports:
       - "8002:8002"
     environment:
-      - DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
-      - QDRANT_URL=http://qdrant:6333
-      - OPENSEARCH_URL=http://opensearch:9200
-      - REDIS_URL=redis://:ragredis@redis:6379
-      - EMBEDDING_SERVICE_URL=http://embedding-service:8080
-      - RERANKER_SERVICE_URL=http://reranker-service:8080
-      - LOG_LEVEL=DEBUG
+      - RETRIEVAL_QDRANT_URL=http://qdrant:6333
+      - RETRIEVAL_OPENSEARCH_URL=http://opensearch:9200
+      - RETRIEVAL_REDIS_URL=redis://:ragredis@redis:6379
+      - RETRIEVAL_LLM_GATEWAY_URL=http://host.docker.internal:11434
+      - RETRIEVAL_RERANK_ENABLED=false
+      - RETRIEVAL_LOG_LEVEL=DEBUG
     volumes:
       - ./services/retrieval:/app
       - ./services/shared:/app/shared
@@ -221,9 +234,12 @@ services:
     ports:
       - "8003:8003"
     environment:
-      - RETRIEVAL_SERVICE_URL=http://retrieval-service:8002
-      - LLM_SERVICE_URL=http://llm-gateway:8004
-      - REDIS_URL=redis://:ragredis@redis:6379
+      - ORCHESTRATOR_RETRIEVAL_URL=http://retrieval-service:8002
+      - ORCHESTRATOR_LLM_GATEWAY_URL=http://host.docker.internal:11434
+      - ORCHESTRATOR_REDIS_URL=redis://:ragredis@redis:6379
+      - ORCHESTRATOR_DEFAULT_MODEL=${LLM_MODEL:-llama3.1:8b}
+      - ORCHESTRATOR_STREAM_TIMEOUT=120.0
+      - ORCHESTRATOR_MAX_TOKENS=512
       - LOG_LEVEL=DEBUG
     volumes:
       - ./services/orchestrator:/app
@@ -254,14 +270,51 @@ services:
     profiles:
       - app
 
-  # For local dev without GPU, use Ollama
-  llm-gateway:
-    image: ollama/ollama:latest
-    container_name: rag-ollama
+  # NOTE: For GPU acceleration on Apple Silicon, run Ollama natively (not in Docker)
+  # Docker containers cannot access Metal GPU. Install Ollama from https://ollama.ai
+  # The services below connect to native Ollama via host.docker.internal:11434
+  #
+  # To use Docker-based Ollama (CPU only, slower), uncomment this service and change
+  # all LLM_GATEWAY_URL references from host.docker.internal:11434 to llm-gateway:11434
+  #
+  # llm-gateway:
+  #   image: ollama/ollama:latest
+  #   container_name: rag-ollama
+  #   ports:
+  #     - "8004:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   environment:
+  #     - OLLAMA_NUM_PARALLEL=4
+  #     - OLLAMA_MAX_LOADED_MODELS=2
+  #     - OLLAMA_FLASH_ATTENTION=1
+  #     - OLLAMA_KEEP_ALIVE=5m
+  #   networks:
+  #     - rag-network
+  #   profiles:
+  #     - app
+
+  # ============ FRONTEND ============
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag-frontend
     ports:
-      - "8004:11434"
-    volumes:
-      - ollama_data:/root/.ollama
+      - "3000:3000"
+    environment:
+      - PUBLIC_ORCHESTRATOR_URL=http://orchestrator-service:8003
+      - PUBLIC_INGESTION_URL=http://ingestion-service:8001
+      - PUBLIC_DEMO_TENANT_ID=00000000-0000-0000-0000-000000000001
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - MINIO_BUCKET=rag-documents
+      - INGESTION_URL=http://ingestion-service:8001
+      - ORCHESTRATOR_URL=http://orchestrator-service:8003
+      - DEMO_TENANT_ID=00000000-0000-0000-0000-000000000001
+    depends_on:
+      - minio
     networks:
       - rag-network
     profiles:

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(
-    name="services.ingestion.tasks.callbacks.send_to_dlq",
+    name="tasks.callbacks.send_to_dlq",
     queue="dlq",
 )
 def send_to_dlq(failure_info: dict[str, Any]) -> dict[str, Any]:
@@ -122,7 +122,7 @@ def retry_dlq_entry(dlq_key: str) -> bool:
         kwargs = entry.get("kwargs", {})
 
         # Get the task by name and retry
-        task = celery_app.tasks.get(f"services.ingestion.tasks.ingest.{task_name}")
+        task = celery_app.tasks.get(f"tasks.ingest.{task_name}")
         if task:
             task.apply_async(args=args, kwargs=kwargs)
             # Remove from DLQ after successful retry

@@ -94,9 +94,9 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
 
     # Route tasks to queues
     app.conf.task_routes = {
-        "services.ingestion.tasks.ingest.*": {"queue": "ingestion"},
-        "services.ingestion.tasks.reembed.*": {"queue": "reembed"},
-        "services.ingestion.tasks.callbacks.*": {"queue": "dlq"},
+        "tasks.ingest.*": {"queue": "ingestion"},
+        "tasks.reembed.*": {"queue": "reembed"},
+        "tasks.callbacks.*": {"queue": "dlq"},
     }
 
     # Configure dead letter queue behavior

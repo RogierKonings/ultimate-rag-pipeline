@@ -200,7 +200,48 @@ make status
 make health
 ```
 
-5. **Access the services**
+5. **Run database migrations**
+
+The PostgreSQL database requires schema migrations before the services can function properly.
+
+```bash
+# From the project root, run migrations using Alembic
+cd services/shared/database/migrations
+alembic upgrade head
+```
+
+**Note:** The migrations use the `INGESTION_DATABASE_URL` environment variable. For local development with Docker:
+
+- If running from host: `postgresql://raguser:ragpass@localhost:5432/ragpipeline`
+- If running from container: `postgresql://raguser:ragpass@postgres:5432/ragpipeline`
+
+You can also run migrations explicitly with the database URL:
+
+```bash
+cd services/shared/database/migrations
+INGESTION_DATABASE_URL=postgresql://raguser:ragpass@localhost:5432/ragpipeline alembic upgrade head
+```
+
+**Migration commands:**
+
+```bash
+# Check current migration version
+alembic current
+
+# Upgrade to latest
+alembic upgrade head
+
+# Rollback one version
+alembic downgrade -1
+
+# View migration history
+alembic history
+
+# Create a new migration (auto-generate from models)
+alembic revision --autogenerate -m "Description of changes"
+```
+
+1. **Access the services**
 
 | Service | URL |
 |---------|-----|

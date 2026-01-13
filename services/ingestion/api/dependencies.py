@@ -14,9 +14,12 @@ security = HTTPBearer(auto_error=False)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
+    tenant_id: str | None = None,
 ) -> dict:
     """
     Extract and validate user from JWT token.
+
+    In debug mode, allows unauthenticated requests with tenant_id query param.
 
     Token structure (per architecture):
     {
@@ -33,6 +36,19 @@ async def get_current_user(
     Raises:
         HTTPException: If authentication fails.
     """
+    settings = get_settings()
+
+    # Dev mode bypass: allow tenant_id query param when debug is enabled
+    if settings.debug and credentials is None and tenant_id:
+        logger.debug(f"Dev mode: using tenant_id from query param: {tenant_id}")
+        return {
+            "sub": "dev-user",
+            "tenant_id": tenant_id,
+            "groups": [],
+            "roles": ["admin"],
+            "permissions": ["read:documents", "write:documents", "delete:documents"],
+        }
+
     if credentials is None:
         raise HTTPException(
             status_code=401,
@@ -43,7 +59,6 @@ async def get_current_user(
     try:
         from jose import JWTError, jwt
 
-        settings = get_settings()
         token = credentials.credentials
         return jwt.decode(
             token,

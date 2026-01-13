@@ -14,7 +14,7 @@ from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
 from pydantic import BaseModel, Field, field_validator
 
-from services.ingestion.connectors.base import (
+from .base import (
     BaseConnector,
     DocumentMetadata,
     RawDocument,

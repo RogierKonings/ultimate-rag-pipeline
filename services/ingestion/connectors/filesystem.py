@@ -16,7 +16,7 @@ import aiofiles
 import aiofiles.os
 from pydantic import BaseModel, Field
 
-from services.ingestion.connectors.base import (
+from .base import (
     BaseConnector,
     DocumentMetadata,
     RawDocument,
@@ -29,6 +29,10 @@ try:
     HAS_MAGIC = True
 except ImportError:
     HAS_MAGIC = False
+
+# Register additional MIME types not in the standard library
+mimetypes.add_type("text/markdown", ".md")
+mimetypes.add_type("text/markdown", ".markdown")
 
 
 class FilesystemConnectorConfig(BaseModel):
@@ -291,13 +295,15 @@ class FilesystemConnector(BaseConnector):
         """List files from S3-compatible storage.
 
         Args:
-            path: Optional prefix to filter objects.
+            path: Optional prefix to filter objects. If not provided,
+                  uses base_path from config as the default prefix.
 
         Yields:
             DocumentMetadata for each object found.
         """
         bucket = self.config.s3_bucket or self.config.base_path
-        prefix = path or ""
+        # Use base_path as default prefix when path not specified
+        prefix = path if path is not None else self.config.base_path
 
         async with self._session.client(
             "s3",

@@ -63,6 +63,10 @@ class ACLFilter:
         if self.config.admin_bypass and user_context.is_admin():
             return self._merge_filters({}, additional_filters)
 
+        # Anonymous bypass - rely on explicit filters (e.g., tenant_id in request)
+        if user_context.is_anonymous():
+            return self._merge_filters({}, additional_filters)
+
         # Build ACL filter
         acl_filter = self._build_acl_clauses(user_context)
 

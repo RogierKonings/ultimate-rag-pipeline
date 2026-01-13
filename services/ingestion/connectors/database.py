@@ -11,7 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from services.ingestion.connectors.base import (
+from .base import (
     BaseConnector,
     DocumentMetadata,
     RawDocument,

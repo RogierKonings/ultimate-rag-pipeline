@@ -92,8 +92,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"Failed to initialize stream manager: {e}")
         app.state.stream_manager = None
 
-    # Workflow can be initialized separately or lazily
-    app.state.workflow = None
+    # Initialize RAG workflow
+    try:
+        from workflow import build_rag_workflow
+
+        app.state.workflow = build_rag_workflow()
+        logger.info("RAG workflow initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize RAG workflow: {e}")
+        app.state.workflow = None
+
     app.state.retrieval_client = None
 
     logger.info(f"{config.service_name} started successfully")

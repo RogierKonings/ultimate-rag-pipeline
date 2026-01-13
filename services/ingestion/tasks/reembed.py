@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(
     bind=True,
-    name="services.ingestion.tasks.reembed.reembed_collection",
+    name="tasks.reembed.reembed_collection",
     max_retries=3,
     queue="reembed",
 )
@@ -83,12 +83,12 @@ async def _reembed_collection_async(
     """
     from sqlalchemy import select
 
-    from services.ingestion.embedding.service import (
+    from embedding.service import (
         EmbeddingService,
         EmbeddingServiceConfig,
     )
-    from services.shared.database.connection import get_session
-    from services.shared.database.models import Chunk
+    from shared.database.connection import get_session
+    from shared.database.models import Chunk
 
     start_time = datetime.now(tz=UTC)
 
@@ -213,7 +213,7 @@ async def _update_embeddings_in_qdrant(
 
 @celery_app.task(
     bind=True,
-    name="services.ingestion.tasks.reembed.reembed_migration_batch",
+    name="tasks.reembed.reembed_migration_batch",
     max_retries=3,
     default_retry_delay=60,
     rate_limit="10/m",  # Prevent overwhelming embedding service
@@ -299,12 +299,12 @@ async def _reembed_migration_batch_async(
     from qdrant_client import AsyncQdrantClient
     from qdrant_client.models import PointStruct
 
-    from services.ingestion.embedding.service import (
+    from embedding.service import (
         EmbeddingService,
         EmbeddingServiceConfig,
     )
-    from services.ingestion.migrations.models import MigrationProgress
-    from services.ingestion.migrations.progress_tracker import (
+    from migrations.models import MigrationProgress
+    from migrations.progress_tracker import (
         MigrationProgressStore,
         MigrationProgressStoreConfig,
     )
@@ -449,8 +449,8 @@ async def _record_batch_failure(
         failed_count: Number of documents that failed.
         error: Error message.
     """
-    from services.ingestion.migrations.models import MigrationProgress
-    from services.ingestion.migrations.progress_tracker import (
+    from migrations.models import MigrationProgress
+    from migrations.progress_tracker import (
         MigrationProgressStore,
         MigrationProgressStoreConfig,
     )

@@ -91,10 +91,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			body: JSON.stringify({
 				source_type: 'filesystem',
 				source_config: {
-					base_path: s3Key,
+					path: s3Key,
 					storage_type: 's3',
-					s3_endpoint: MINIO_ENDPOINT || 'http://minio:9000',
-					s3_bucket: BUCKET
+					s3_endpoint: 'http://minio:9000',
+					s3_bucket: BUCKET,
+					s3_access_key: MINIO_ACCESS_KEY || 'minioadmin',
+					s3_secret_key: MINIO_SECRET_KEY || 'minioadmin123'
 				},
 				processing: {
 					chunking_strategy: 'recursive',

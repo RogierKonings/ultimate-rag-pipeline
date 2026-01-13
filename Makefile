@@ -1,18 +1,25 @@
-.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate
+.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama
 
 help:
 	@echo "RAG Pipeline Development Commands"
 	@echo ""
-	@echo "  make dev      - Set up development environment (infra only)"
-	@echo "  make up       - Start infrastructure services"
-	@echo "  make up-all   - Start all services including app services"
-	@echo "  make down     - Stop all services"
-	@echo "  make logs     - Follow all logs"
-	@echo "  make status   - Show service status"
-	@echo "  make health   - Check health endpoints"
-	@echo "  make test     - Run all tests"
-	@echo "  make lint     - Run linting"
-	@echo "  make clean    - Tear down environment and remove volumes"
+	@echo "  make dev          - Set up development environment (infra only)"
+	@echo "  make up           - Start infrastructure services"
+	@echo "  make up-all       - Start all services including app services"
+	@echo "  make down         - Stop all services"
+	@echo "  make logs         - Follow all logs"
+	@echo "  make status       - Show service status"
+	@echo "  make health       - Check health endpoints"
+	@echo "  make test         - Run all tests"
+	@echo "  make lint         - Run linting"
+	@echo "  make clean        - Tear down environment and remove volumes"
+	@echo ""
+	@echo "LLM Model Management:"
+	@echo "  make pull-models  - Pull default LLM model (llama3.1:8b)"
+	@echo "  make pull-model MODEL=<name> - Pull a specific model"
+	@echo "  make list-models  - List installed models"
+	@echo "  make remove-model MODEL=<name> - Remove a model"
+	@echo "  make test-llm     - Test LLM inference"
 
 dev:
 	./scripts/dev-setup.sh
@@ -57,6 +64,35 @@ lint:
 
 clean:
 	./scripts/dev-teardown.sh
+
+# LLM Model Management (uses native Ollama for GPU acceleration)
+pull-models:
+	@echo "Pulling recommended LLM models (native Ollama with GPU)..."
+	ollama pull llama3.1:8b
+	@echo "Model pulled successfully. Run 'make list-models' to verify."
+
+pull-model:
+	@echo "Usage: make pull-model MODEL=<model-name>"
+	@echo "Example: make pull-model MODEL=qwen2.5:14b"
+	@test -n "$(MODEL)" && ollama pull $(MODEL) || echo "Please specify MODEL=<name>"
+
+list-models:
+	@echo "Installed Ollama models:"
+	@ollama list
+
+remove-model:
+	@test -n "$(MODEL)" && ollama rm $(MODEL) || echo "Please specify MODEL=<name>"
+
+test-llm:
+	@echo "Testing LLM inference (native Ollama with GPU)..."
+	@curl -s http://localhost:11434/v1/chat/completions \
+		-H "Content-Type: application/json" \
+		-d '{"model": "$(or $(MODEL),llama3.1:8b)", "messages": [{"role": "user", "content": "Say hello in one word."}], "max_tokens": 10}' \
+		| python3 -c "import sys,json; r=json.load(sys.stdin); print(r.get('choices',[{}])[0].get('message',{}).get('content','No response'))"
+
+check-ollama:
+	@echo "Checking Ollama status..."
+	@ollama ps 2>/dev/null || echo "Ollama not running. Start with: ollama serve"
 
 # OpenSearch Bootstrap Commands
 opensearch-bootstrap:

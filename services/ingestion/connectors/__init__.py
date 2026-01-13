@@ -9,24 +9,24 @@ This module provides pluggable connectors for loading documents from:
 All connectors implement the BaseConnector interface for consistency.
 """
 
-from services.ingestion.connectors.api import (
+from .api import (
     APIConnector,
     APIConnectorConfig,
 )
-from services.ingestion.connectors.base import (
+from .base import (
     BaseConnector,
     DocumentMetadata,
     RawDocument,
 )
-from services.ingestion.connectors.database import (
+from .database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
 )
-from services.ingestion.connectors.filesystem import (
+from .filesystem import (
     FilesystemConnector,
     FilesystemConnectorConfig,
 )
-from services.ingestion.connectors.web import (
+from .web import (
     WebConnector,
     WebConnectorConfig,
 )

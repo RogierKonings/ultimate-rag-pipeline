@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task(
     bind=True,
-    name="services.ingestion.tasks.ingest.process_document",
+    name="tasks.ingest.process_document",
     max_retries=3,
     default_retry_delay=60,
     autoretry_for=(ConnectionError, TimeoutError),
@@ -146,14 +146,17 @@ async def _process_document_async(
         Processing results dict with deduplication status.
     """
     # Import pipeline components
-    from services.ingestion.config import get_settings
-    from services.ingestion.embedding.service import create_embedding_service
-    from services.ingestion.indexing.coordinator import IndexCoordinator
-    from services.ingestion.indexing.models import DocumentRecord, IndexedChunk
-    from services.ingestion.processors import ChunkingConfig, ChunkingEngine
-    from services.ingestion.processors.enrichment import EnrichmentContext, EnrichmentPipeline
-    from services.ingestion.processors.parsers import ParserRegistry
-    from services.ingestion.services.deduplication import (
+    from config import get_settings
+    from embedding.service import create_embedding_service
+    from indexing.coordinator import IndexCoordinator
+    from indexing.models import DocumentRecord, IndexedChunk
+    from indexing.opensearch import OpenSearchWriter, OpenSearchWriterConfig
+    from indexing.postgres import PostgresWriter, PostgresWriterConfig
+    from indexing.qdrant import QdrantWriter, QdrantWriterConfig
+    from processors import ChunkingConfig, ChunkingEngine
+    from processors.enrichment import EnrichmentContext, EnrichmentPipeline
+    from processors.parsers import create_default_registry
+    from services.deduplication import (
         CHUNK_SCHEMA_VERSION,
         DeduplicationResult,
         DeduplicationService,
@@ -236,7 +239,7 @@ async def _process_document_async(
             meta={"stage": "parsing", "progress": 25, "message": "Parsing document..."},
         )
 
-        parser_registry = ParserRegistry()
+        parser_registry = create_default_registry()
         parsed_doc = await parser_registry.parse(raw_doc.content, raw_doc.metadata.mime_type)
 
         # Stage 4: Enrich metadata
@@ -265,12 +268,23 @@ async def _process_document_async(
             target_tokens=processing_config.get("chunk_size", 300),
             chunk_overlap=processing_config.get("chunk_overlap", 50),
         )
-        chunking_engine = ChunkingEngine(config=chunking_config)
-        chunks = chunking_engine.chunk(
+        # Map strategy names from API to internal names
+        strategy_mapping = {
+            "recursive": "recursive_character",
+            "semantic": "semantic_sentence",
+            "hierarchical": "hierarchical",
+        }
+        raw_strategy = processing_config.get("chunking_strategy", "recursive")
+        chunking_strategy = strategy_mapping.get(raw_strategy, raw_strategy)
+        chunking_engine = ChunkingEngine()
+        chunking_result = chunking_engine.chunk(
             text=parsed_doc.text,
             document_id=document_id,
+            strategy=chunking_strategy,
             metadata={"source_uri": document_source_id, **metadata.model_dump()},
+            config=chunking_config,
         )
+        chunks = chunking_result.chunks
 
         # Stage 6: Generate embeddings
         task.update_state(
@@ -282,11 +296,25 @@ async def _process_document_async(
             },
         )
 
-        async with create_embedding_service() as embedding_service:
+        from embedding.models import EmbeddingCacheConfig, EmbeddingServiceConfig
+
+        # Use nomic-embed-text for Ollama (768 dimensions)
+        service_config = EmbeddingServiceConfig(
+            llm_gateway_url=settings.llm_gateway_url,
+            model="nomic-embed-text",
+            dimensions=768,
+        )
+        cache_config = EmbeddingCacheConfig(redis_url=settings.redis_url)
+        embedding_service = await create_embedding_service(
+            config=service_config, cache_config=cache_config
+        )
+        try:
             embedding_results = await embedding_service.embed_texts(
                 texts=[c.content for c in chunks],
                 chunk_ids=[c.chunk_id for c in chunks],
             )
+        finally:
+            await embedding_service.close()
 
         # Combine chunks with embeddings and versioning metadata (US-2.11)
         indexed_chunks = []
@@ -336,7 +364,23 @@ async def _process_document_async(
         )
 
         # Use coordinator to write to all stores
-        async with IndexCoordinator() as coordinator:
+        qdrant_config = QdrantWriterConfig(
+            url=settings.qdrant_url,
+            vector_size=768,  # nomic-embed-text dimensions
+        )
+        opensearch_config = OpenSearchWriterConfig(hosts=[settings.opensearch_url])
+        postgres_config = PostgresWriterConfig(
+            connection_string=settings.database_url,
+            table_name="indexed_documents",  # Separate from migration-managed 'documents' table
+        )
+
+        qdrant_writer = QdrantWriter(qdrant_config)
+        opensearch_writer = OpenSearchWriter(opensearch_config)
+        postgres_writer = PostgresWriter(postgres_config)
+
+        coordinator = IndexCoordinator(qdrant_writer, opensearch_writer, postgres_writer)
+        async with coordinator:
+            await coordinator.ensure_indices()
             await coordinator.index_document(document_record, indexed_chunks)
 
         # Mark previous versions as superseded if this is a new version
@@ -382,7 +426,7 @@ def _get_connector(source_type: str, source_config: dict[str, Any]):
     Raises:
         ValueError: If source_type is not recognized.
     """
-    from services.ingestion.connectors import (
+    from connectors import (
         APIConnector,
         APIConnectorConfig,
         DatabaseConnector,
@@ -404,13 +448,20 @@ def _get_connector(source_type: str, source_config: dict[str, Any]):
         raise ValueError(f"Unknown source type: {source_type}")
 
     connector_class, config_class = connectors[source_type]
-    config = config_class(**source_config)
+
+    # Map API schema field names to connector config field names
+    mapped_config = source_config.copy()
+    if source_type == "filesystem" and "path" in mapped_config:
+        # API uses 'path', connector uses 'base_path'
+        mapped_config["base_path"] = mapped_config.pop("path")
+
+    config = config_class(**mapped_config)
     return connector_class(config)
 
 
 @celery_app.task(
     bind=True,
-    name="services.ingestion.tasks.ingest.batch_ingest",
+    name="tasks.ingest.batch_ingest",
     max_retries=1,
 )
 def batch_ingest(
@@ -423,7 +474,8 @@ def batch_ingest(
 ) -> dict[str, Any]:
     """Ingest multiple documents from a source.
 
-    Creates subtasks for each document and waits for completion.
+    For single document ingestion, processes synchronously.
+    For multiple documents, dispatches subtasks and returns immediately.
 
     Args:
         job_id: Unique identifier for this batch job.
@@ -433,7 +485,7 @@ def batch_ingest(
         acl_context: Access control context.
 
     Returns:
-        Aggregated results from all subtasks.
+        Processing results (immediate for single doc, status for batch).
     """
     # Get list of documents from source
     documents = asyncio.run(_list_documents(source_type, source_config))
@@ -458,17 +510,71 @@ def batch_ingest(
             "results": [],
         }
 
-    # Create group of subtasks
-    tasks = []
-    for i, doc_id in enumerate(documents):
-        task = process_document.s(
-            document_source_id=doc_id,
-            source_type=source_type,
-            source_config=source_config,
-            processing_config=processing_config,
-            acl_context=acl_context,
+    # For single document, process directly in this task (no subtask deadlock)
+    if total == 1:
+        doc_id = documents[0]
+        logger.info(f"Processing single document directly: {doc_id}")
+
+        self.update_state(
+            state="PROGRESS",
+            meta={
+                "stage": "processing",
+                "total": 1,
+                "processed": 0,
+                "message": f"Processing document: {doc_id}",
+            },
         )
-        tasks.append(task)
+
+        try:
+            # Run the document processing directly (not as a subtask)
+            result = asyncio.run(
+                _process_document_async(
+                    task=self,
+                    document_source_id=doc_id,
+                    source_type=source_type,
+                    source_config=source_config,
+                    processing_config=processing_config,
+                    acl_context=acl_context,
+                )
+            )
+
+            chunks_created = result.get("chunks_created", 0)
+            success = chunks_created > 0 or result.get("status") == "duplicate"
+
+            logger.info(f"Batch job {job_id} completed: document processed with {chunks_created} chunks")
+
+            return {
+                "job_id": job_id,
+                "documents_processed": 1 if success else 0,
+                "documents_failed": 0 if success else 1,
+                "total_chunks": chunks_created,
+                "results": [result],
+            }
+        except Exception as e:
+            logger.error(f"Failed to process document {doc_id}: {e}")
+            return {
+                "job_id": job_id,
+                "documents_processed": 0,
+                "documents_failed": 1,
+                "total_chunks": 0,
+                "results": [{"error": str(e), "document_source_id": doc_id}],
+            }
+
+    # For multiple documents, dispatch subtasks (fire and forget)
+    # The caller should track individual task IDs for status
+    task_ids = []
+    for i, doc_id in enumerate(documents):
+        async_result = process_document.apply_async(
+            kwargs={
+                "document_source_id": doc_id,
+                "source_type": source_type,
+                "source_config": source_config,
+                "processing_config": processing_config,
+                "acl_context": acl_context,
+            }
+        )
+        task_ids.append(async_result.id)
+        logger.info(f"Dispatched task {async_result.id} for document: {doc_id}")
 
         # Update progress periodically
         if (i + 1) % 10 == 0 or i + 1 == total:
@@ -482,36 +588,17 @@ def batch_ingest(
                 },
             )
 
-    # Execute group and wait for results
-    job = group(tasks)
-    result = job.apply_async()
+    logger.info(f"Batch job {job_id} dispatched {total} subtasks")
 
-    # Wait for all tasks to complete (2 hour timeout for batch)
-    try:
-        results = result.get(timeout=7200)
-    except Exception as e:
-        logger.error(f"Batch job {job_id} failed: {e}")
-        # Collect partial results
-        results = []
-        for async_result in result.children or []:
-            try:
-                if async_result.ready():
-                    results.append(async_result.get(timeout=1))
-            except Exception:  # noqa: S110
-                pass
-
-    # Aggregate results
-    success_count = sum(
-        1 for r in results if isinstance(r, dict) and r.get("chunks_created", 0) > 0
-    )
-    total_chunks = sum(r.get("chunks_created", 0) for r in results if isinstance(r, dict))
-
+    # Return immediately with subtask IDs - caller should poll for completion
     return {
         "job_id": job_id,
-        "documents_processed": success_count,
-        "documents_failed": total - success_count,
-        "total_chunks": total_chunks,
-        "results": results,
+        "documents_processed": 0,  # Will be updated as subtasks complete
+        "documents_failed": 0,
+        "total_chunks": 0,
+        "subtask_ids": task_ids,
+        "status": "dispatched",
+        "message": f"Dispatched {total} document processing tasks",
     }
 
 

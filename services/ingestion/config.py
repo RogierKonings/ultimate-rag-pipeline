@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # MinIO/S3 credentials
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"  # noqa: S105
-    minio_bucket: str = "documents"
+    minio_bucket: str = "rag-documents"
 
     # Celery
     celery_broker_url: str = "redis://localhost:6379/0"

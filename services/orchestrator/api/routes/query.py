@@ -150,8 +150,9 @@ async def query(
         from gateway import ChatCompletionRequest, ChatMessage
 
         try:
+            # Use the gateway's default model from config
             chat_request = ChatCompletionRequest(
-                model="meta-llama/Llama-3.1-8B-Instruct",
+                model=model_gateway.default_model,
                 messages=[ChatMessage(role="user", content=query_request.query)],
             )
             llm_response = await model_gateway.chat_completion(chat_request)

@@ -4,11 +4,18 @@ This node calls the LLM gateway to generate a response based on
 the constructed prompt messages.
 """
 
+import logging
 import time
 from typing import TYPE_CHECKING
 
+import httpx
+
+from config import get_config
+
 if TYPE_CHECKING:
     from workflow.state import RAGState
+
+logger = logging.getLogger(__name__)
 
 
 async def generation_node(state: "RAGState") -> "RAGState":
@@ -34,6 +41,8 @@ async def generation_node(state: "RAGState") -> "RAGState":
     error = state.get("error")
     messages = state.get("messages", [])
 
+    config = get_config()
+
     # Check for messages
     if not messages:
         error = "No messages available for generation"
@@ -44,11 +53,57 @@ async def generation_node(state: "RAGState") -> "RAGState":
             "error": error,
         }
 
-    # Stub: In production, this would call the LLM gateway
-    # For now, we return a placeholder (will be mocked in tests)
     response = None
-    model_used = None
-    usage = None
+    model_used = config.default_model
+    usage = {}
+
+    try:
+        async with httpx.AsyncClient(timeout=config.stream_timeout) as client:
+            # Build OpenAI-compatible request
+            payload = {
+                "model": config.default_model,
+                "messages": messages,
+                "max_tokens": config.max_tokens,
+                "temperature": config.temperature,
+                "stream": False,
+            }
+
+            llm_response = await client.post(
+                f"{config.llm_gateway_url}/v1/chat/completions",
+                json=payload,
+            )
+            llm_response.raise_for_status()
+
+            result = llm_response.json()
+
+            # Extract response content
+            choices = result.get("choices", [])
+            if choices:
+                response = choices[0].get("message", {}).get("content", "")
+                model_used = result.get("model", config.default_model)
+
+            # Extract usage info
+            usage_data = result.get("usage", {})
+            usage = {
+                "prompt_tokens": usage_data.get("prompt_tokens", 0),
+                "completion_tokens": usage_data.get("completion_tokens", 0),
+                "total_tokens": usage_data.get("total_tokens", 0),
+            }
+
+            logger.info(f"Generated response with {usage.get('total_tokens', 0)} tokens")
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"LLM gateway returned error: {e.response.status_code}")
+        error = f"LLM request failed: {e.response.status_code}"
+        fallbacks_used.append("llm_error")
+    except httpx.RequestError as e:
+        logger.error(f"Failed to connect to LLM gateway: {e}")
+        error = f"LLM connection failed: {e}"
+        fallbacks_used.append("llm_unavailable")
+    except Exception as e:
+        logger.exception(f"Unexpected error during generation: {e}")
+        error = f"Generation failed: {e}"
+        fallbacks_used.append("generation_exception")
 
     timing["generation"] = (time.time() - start) * 1000
 

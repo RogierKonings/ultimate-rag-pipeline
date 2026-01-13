@@ -23,8 +23,10 @@ class RetrievalConfig(BaseSettings):
     # LLM Gateway
     llm_gateway_url: str = "http://localhost:8004"
 
-    # Embedding Service
-    embedding_service_url: str = "http://localhost:8080"
+    # Embedding settings
+    embedding_model: str = "nomic-embed-text"
+    embedding_dimension: int = 768
+    embedding_prefix: str = ""  # nomic-embed-text doesn't need prefix
 
     # Default Search Weights
     semantic_weight: float = Field(default=0.7, ge=0.0, le=1.0)
