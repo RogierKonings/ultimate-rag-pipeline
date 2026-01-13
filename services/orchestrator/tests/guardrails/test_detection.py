@@ -1,8 +1,14 @@
 """Tests for guardrails detection utilities."""
 
+from unittest.mock import patch
+
 from guardrails.detection import (
+    DEFAULT_LANGUAGE,
+    MIN_TEXT_LENGTH_FOR_DETECTION,
+    SUPPORTED_LANGUAGES,
     detect_harmful_content,
     detect_injection,
+    detect_language,
     detect_pii,
 )
 from guardrails.models import PIIType
@@ -203,3 +209,95 @@ class TestDetectHarmfulContent:
         matches = detect_harmful_content(text)
 
         assert len(matches) == 0
+
+
+class TestDetectLanguage:
+    """Tests for the detect_language function."""
+
+    def test_detect_english(self):
+        """Test detection of English text."""
+        text = "What is the capital of France?"
+        language = detect_language(text)
+
+        assert language == "en"
+
+    def test_detect_dutch(self):
+        """Test detection of Dutch text."""
+        text = "Wat is de hoofdstad van Nederland?"
+        language = detect_language(text)
+
+        assert language == "nl"
+
+    def test_detect_dutch_longer_text(self):
+        """Test detection of longer Dutch text."""
+        text = "Kunt u mij vertellen hoe ik dit probleem kan oplossen? Ik heb al geprobeerd om het opnieuw te starten."
+        language = detect_language(text)
+
+        assert language == "nl"
+
+    def test_empty_text_returns_default(self):
+        """Test that empty text returns default language."""
+        text = ""
+        language = detect_language(text)
+
+        assert language == DEFAULT_LANGUAGE
+
+    def test_short_text_returns_default(self):
+        """Test that very short text returns default language."""
+        text = "Hi"
+        language = detect_language(text)
+
+        assert language == DEFAULT_LANGUAGE
+
+    def test_text_at_minimum_length(self):
+        """Test text at minimum length threshold."""
+        # Text with exactly MIN_TEXT_LENGTH_FOR_DETECTION characters
+        text = "Hello test"  # 10 characters
+        assert len(text) >= MIN_TEXT_LENGTH_FOR_DETECTION
+        language = detect_language(text)
+
+        assert language in SUPPORTED_LANGUAGES
+
+    def test_unsupported_language_returns_default(self):
+        """Test that unsupported language returns default."""
+        # German text (not in SUPPORTED_LANGUAGES)
+        text = "Wie geht es Ihnen heute? Ich hoffe, dass alles gut ist."
+        language = detect_language(text)
+
+        assert language == DEFAULT_LANGUAGE
+
+    def test_supported_languages_contains_expected(self):
+        """Test that SUPPORTED_LANGUAGES contains expected languages."""
+        assert "en" in SUPPORTED_LANGUAGES
+        assert "nl" in SUPPORTED_LANGUAGES
+
+    def test_default_language_is_english(self):
+        """Test that default language is English."""
+        assert DEFAULT_LANGUAGE == "en"
+
+    def test_detection_exception_returns_default(self):
+        """Test that detection exception returns default language."""
+        with patch("guardrails.detection.detect") as mock_detect:
+            from langdetect import LangDetectException
+
+            mock_detect.side_effect = LangDetectException(0, "Test error")
+            text = "This is a test sentence for detection."
+            language = detect_language(text)
+
+            assert language == DEFAULT_LANGUAGE
+
+    def test_whitespace_only_returns_default(self):
+        """Test that whitespace-only text returns default."""
+        text = "          "
+        language = detect_language(text)
+
+        assert language == DEFAULT_LANGUAGE
+
+    def test_mixed_language_text(self):
+        """Test text with mixed languages."""
+        # Predominantly Dutch with some English words
+        text = "Dit is een voorbeeld van een mixed language tekst."
+        language = detect_language(text)
+
+        # Should detect the dominant language
+        assert language in SUPPORTED_LANGUAGES

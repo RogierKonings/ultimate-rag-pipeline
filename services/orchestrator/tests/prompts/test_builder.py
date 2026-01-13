@@ -469,3 +469,107 @@ class TestPromptBuilderIntegration:
         # System should not mention context
         system_msg = messages[0]
         assert "Context:" not in system_msg["content"]
+
+
+class TestPromptBuilderLanguageDetection:
+    """Tests for language detection and multi-language support."""
+
+    @pytest.fixture
+    def builder(self):
+        """Create a PromptBuilder instance."""
+        return PromptBuilder()
+
+    def test_build_detects_english_query(self, builder):
+        """build() should detect English and use English template."""
+        messages = builder.build(
+            query="What is the capital of France?",
+            strategy="no_context",
+        )
+
+        system_message = next(m for m in messages if m["role"] == "system")
+        # English template should have "helpful assistant"
+        assert "helpful assistant" in system_message["content"]
+
+    def test_build_detects_dutch_query(self, builder):
+        """build() should detect Dutch and use Dutch template."""
+        messages = builder.build(
+            query="Wat is de hoofdstad van Nederland?",
+            strategy="no_context",
+        )
+
+        system_message = next(m for m in messages if m["role"] == "system")
+        # Dutch template should have "behulpzame assistent"
+        assert "behulpzame assistent" in system_message["content"]
+
+    def test_build_with_explicit_language_override(self, builder):
+        """build() should use explicit language override."""
+        # Query is in English but we force Dutch
+        messages = builder.build(
+            query="What is the capital of France?",
+            strategy="no_context",
+            language="nl",
+        )
+
+        system_message = next(m for m in messages if m["role"] == "system")
+        # Should use Dutch template despite English query
+        assert "behulpzame assistent" in system_message["content"]
+
+    def test_build_with_dutch_rag_prompt(self, builder):
+        """build() should use Dutch RAG template for Dutch query."""
+        messages = builder.build(
+            query="Kunt u mij meer vertellen over Python programmeren en hoe het werkt?",
+            context="Python is een programmeertaal.",
+            strategy="rag",
+        )
+
+        system_message = next(m for m in messages if m["role"] == "system")
+        # Dutch RAG template should have Dutch instructions
+        assert "Instructies:" in system_message["content"]
+        assert "verstrekte context" in system_message["content"]
+
+    def test_build_with_metadata_includes_detected_language(self, builder):
+        """build_with_metadata() should include detected language."""
+        result = builder.build_with_metadata(
+            query="Wat is Python en hoe kan ik het gebruiken voor mijn projecten?",
+            strategy="no_context",
+        )
+
+        assert "language_detected" in result
+        assert result["language_detected"] == "nl"
+
+    def test_build_with_metadata_explicit_language(self, builder):
+        """build_with_metadata() should respect explicit language."""
+        result = builder.build_with_metadata(
+            query="What is Python?",
+            strategy="no_context",
+            language="nl",
+        )
+
+        assert result["language_detected"] == "nl"
+
+    def test_render_template_with_language(self, builder):
+        """render_template() should use specified language."""
+        rendered = builder.render_template(
+            "no_context",
+            language="nl",
+        )
+
+        assert "behulpzame assistent" in rendered
+
+    def test_render_template_default_english(self, builder):
+        """render_template() should default to English."""
+        rendered = builder.render_template("no_context")
+
+        assert "helpful assistant" in rendered
+
+    def test_dutch_citation_format_in_rag(self, builder):
+        """Dutch RAG template should use Dutch citation format."""
+        messages = builder.build(
+            query="Wat is de geschiedenis van Python?",
+            context="Python werd gemaakt door Guido van Rossum.",
+            strategy="rag",
+        )
+
+        system_message = next(m for m in messages if m["role"] == "system")
+        # Dutch template should mention [Bron: ...] format
+        assert "[Bron:" in system_message["content"]

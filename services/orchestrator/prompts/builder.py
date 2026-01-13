@@ -3,12 +3,15 @@
 This module provides the PromptBuilder class which constructs
 formatted message lists for LLM calls based on query, context,
 conversation history, and strategy configuration.
+
+Supports automatic language detection for multi-language prompts.
 """
 
 from typing import Any
 
 from jinja2 import BaseLoader, Environment
 
+from guardrails.detection import detect_language
 from .context import (
     count_tokens,
     format_citations,
@@ -20,7 +23,7 @@ from .models import (
     PromptStrategy,
     TokenLimits,
 )
-from .templates import get_template
+from .templates import DEFAULT_LANGUAGE, get_template
 
 
 class PromptBuilder:
@@ -61,6 +64,7 @@ class PromptBuilder:
         history: list[dict[str, str]] | None = None,
         strategy: str | None = None,
         documents: list[dict[str, Any]] | None = None,
+        language: str | None = None,
     ) -> list[dict[str, str]]:
         """Build a prompt message list for the LLM.
 
@@ -70,12 +74,17 @@ class PromptBuilder:
             history: Optional list of previous messages (role, content dicts).
             strategy: Optional strategy override (e.g., 'rag', 'no_context').
             documents: Optional list of retrieved documents (used if context not provided).
+            language: Optional ISO 639-1 language code (e.g., 'en', 'nl').
+                If not provided, language is auto-detected from the query.
 
         Returns:
             List of message dictionaries with 'role' and 'content' keys.
         """
         history = history or []
         strategy = strategy or self.config.strategy
+
+        # Detect language from query if not explicitly provided
+        detected_language = language or detect_language(query)
 
         # Determine the effective strategy
         effective_strategy = self._determine_strategy(strategy, context, documents)
@@ -102,6 +111,7 @@ class PromptBuilder:
                 effective_strategy,
                 context,
                 documents,
+                detected_language,
             )
             if system_content:
                 messages.append({"role": "system", "content": system_content})
@@ -123,6 +133,7 @@ class PromptBuilder:
         history: list[dict[str, str]] | None = None,
         strategy: str | None = None,
         documents: list[dict[str, Any]] | None = None,
+        language: str | None = None,
     ) -> dict[str, Any]:
         """Build a prompt with additional metadata about the build process.
 
@@ -132,6 +143,8 @@ class PromptBuilder:
             history: Optional list of previous messages.
             strategy: Optional strategy override.
             documents: Optional list of retrieved documents.
+            language: Optional ISO 639-1 language code (e.g., 'en', 'nl').
+                If not provided, language is auto-detected from the query.
 
         Returns:
             Dictionary containing:
@@ -140,9 +153,13 @@ class PromptBuilder:
                 - context_truncated: Whether context was truncated
                 - history_truncated: Whether history was truncated
                 - strategy_used: The effective strategy used
+                - language_detected: The language used for template selection
         """
         history = history or []
         strategy = strategy or self.config.strategy
+
+        # Detect language from query if not explicitly provided
+        detected_language = language or detect_language(query)
 
         # Build the messages
         messages = self.build(
@@ -151,6 +168,7 @@ class PromptBuilder:
             history=history,
             strategy=strategy,
             documents=documents,
+            language=detected_language,
         )
 
         # Calculate token count
@@ -171,6 +189,7 @@ class PromptBuilder:
             "context_truncated": context_truncated,
             "history_truncated": history_truncated,
             "strategy_used": strategy,
+            "language_detected": detected_language,
         }
 
     def _determine_strategy(
@@ -203,18 +222,20 @@ class PromptBuilder:
         strategy: str,
         context: str | None,
         documents: list[dict[str, Any]] | None,
+        language: str = DEFAULT_LANGUAGE,
     ) -> str:
-        """Render the system prompt for the given strategy.
+        """Render the system prompt for the given strategy and language.
 
         Args:
             strategy: The prompt strategy.
             context: The formatted context string.
             documents: The source documents.
+            language: ISO 639-1 language code for template selection.
 
         Returns:
-            The rendered system prompt.
+            The rendered system prompt in the appropriate language.
         """
-        template_str = get_template(strategy)
+        template_str = get_template(strategy, language)
         template = self._jinja_env.from_string(template_str)
 
         # Prepare template variables
@@ -295,18 +316,20 @@ class PromptBuilder:
     def render_template(
         self,
         template_name: str,
+        language: str = DEFAULT_LANGUAGE,
         **kwargs: Any,
     ) -> str:
         """Render a specific template with provided variables.
 
         Args:
             template_name: The name of the template to render.
+            language: ISO 639-1 language code for template selection.
             **kwargs: Variables to pass to the template.
 
         Returns:
             The rendered template string.
         """
-        template_str = get_template(template_name)
+        template_str = get_template(template_name, language)
         template = self._jinja_env.from_string(template_str)
         return template.render(**kwargs).strip()
 

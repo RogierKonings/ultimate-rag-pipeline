@@ -4,12 +4,52 @@ This module provides pattern-based detection for:
 - PII (emails, phone numbers, SSNs, credit cards, IP addresses)
 - Prompt injection attempts
 - Harmful content
+- Language detection
 """
 
 import re
 from dataclasses import dataclass
 
+from langdetect import LangDetectException, detect
+
 from .models import PIIType
+
+
+# =============================================================================
+# Language Detection
+# =============================================================================
+
+# Supported languages for prompt templates
+SUPPORTED_LANGUAGES = {"en", "nl"}
+DEFAULT_LANGUAGE = "en"
+MIN_TEXT_LENGTH_FOR_DETECTION = 10
+
+
+def detect_language(text: str) -> str:
+    """Detect the language of the input text.
+
+    Uses the langdetect library for language detection. Falls back to
+    the default language (English) if detection fails or the detected
+    language is not supported.
+
+    Args:
+        text: The text to analyze for language detection.
+
+    Returns:
+        ISO 639-1 language code (e.g., 'en' for English, 'nl' for Dutch).
+        Returns DEFAULT_LANGUAGE if:
+        - Text is empty or too short
+        - Detection fails
+        - Detected language is not in SUPPORTED_LANGUAGES
+    """
+    if not text or len(text.strip()) < MIN_TEXT_LENGTH_FOR_DETECTION:
+        return DEFAULT_LANGUAGE
+
+    try:
+        detected = detect(text)
+        return detected if detected in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
+    except LangDetectException:
+        return DEFAULT_LANGUAGE
 
 
 @dataclass

@@ -4,13 +4,28 @@ import pytest
 from jinja2 import BaseLoader, Environment
 from prompts.templates import (
     CLARIFICATION_PROMPT,
+    CLARIFICATION_PROMPT_EN,
+    CLARIFICATION_PROMPT_NL,
+    DEFAULT_LANGUAGE,
     FOLLOW_UP_PROMPT,
+    FOLLOW_UP_PROMPT_EN,
+    FOLLOW_UP_PROMPT_NL,
+    Language,
     NO_CONTEXT_PROMPT,
+    NO_CONTEXT_PROMPT_EN,
+    NO_CONTEXT_PROMPT_NL,
     RAG_CITATIONS_PROMPT,
+    RAG_CITATIONS_PROMPT_EN,
+    RAG_CITATIONS_PROMPT_NL,
     RAG_SYSTEM_PROMPT,
+    RAG_SYSTEM_PROMPT_EN,
+    RAG_SYSTEM_PROMPT_NL,
     SUMMARY_PROMPT,
+    SUMMARY_PROMPT_EN,
+    SUMMARY_PROMPT_NL,
     TEMPLATES,
     get_template,
+    list_languages,
     list_templates,
 )
 
@@ -62,8 +77,13 @@ class TestTemplateConstants:
 class TestTemplateRegistry:
     """Tests for the TEMPLATES registry."""
 
-    def test_templates_dict_contains_all_strategies(self):
-        """Templates dict should contain all expected strategies."""
+    def test_templates_dict_contains_all_languages(self):
+        """Templates dict should contain all supported languages."""
+        assert "en" in TEMPLATES
+        assert "nl" in TEMPLATES
+
+    def test_templates_dict_contains_all_strategies_per_language(self):
+        """Templates dict should contain all expected strategies for each language."""
         expected_keys = [
             "rag",
             "rag_citations",
@@ -72,41 +92,67 @@ class TestTemplateRegistry:
             "clarification",
             "summary",
         ]
-        for key in expected_keys:
-            assert key in TEMPLATES
+        for lang in TEMPLATES:
+            for key in expected_keys:
+                assert key in TEMPLATES[lang], f"Template {key} missing for language {lang}"
 
     def test_templates_values_are_strings(self):
         """All template values should be non-empty strings."""
-        for key, value in TEMPLATES.items():
-            assert isinstance(value, str), f"Template {key} should be a string"
-            assert len(value) > 0, f"Template {key} should not be empty"
+        for lang, lang_templates in TEMPLATES.items():
+            for key, value in lang_templates.items():
+                assert isinstance(value, str), f"Template {lang}/{key} should be a string"
+                assert len(value) > 0, f"Template {lang}/{key} should not be empty"
 
-    def test_rag_template_matches_constant(self):
-        """TEMPLATES['rag'] should match RAG_SYSTEM_PROMPT."""
-        assert TEMPLATES["rag"] == RAG_SYSTEM_PROMPT
+    def test_english_rag_template_matches_constant(self):
+        """TEMPLATES['en']['rag'] should match RAG_SYSTEM_PROMPT_EN."""
+        assert TEMPLATES["en"]["rag"] == RAG_SYSTEM_PROMPT_EN
 
-    def test_no_context_template_matches_constant(self):
-        """TEMPLATES['no_context'] should match NO_CONTEXT_PROMPT."""
-        assert TEMPLATES["no_context"] == NO_CONTEXT_PROMPT
+    def test_dutch_rag_template_matches_constant(self):
+        """TEMPLATES['nl']['rag'] should match RAG_SYSTEM_PROMPT_NL."""
+        assert TEMPLATES["nl"]["rag"] == RAG_SYSTEM_PROMPT_NL
+
+    def test_backward_compatibility_constants(self):
+        """Backward compatibility constants should match English templates."""
+        assert RAG_SYSTEM_PROMPT == RAG_SYSTEM_PROMPT_EN
+        assert NO_CONTEXT_PROMPT == NO_CONTEXT_PROMPT_EN
+        assert FOLLOW_UP_PROMPT == FOLLOW_UP_PROMPT_EN
+        assert RAG_CITATIONS_PROMPT == RAG_CITATIONS_PROMPT_EN
+        assert CLARIFICATION_PROMPT == CLARIFICATION_PROMPT_EN
+        assert SUMMARY_PROMPT == SUMMARY_PROMPT_EN
 
 
 class TestGetTemplate:
     """Tests for the get_template function."""
 
-    def test_get_template_returns_rag(self):
-        """get_template('rag') should return RAG template."""
+    def test_get_template_returns_english_rag_by_default(self):
+        """get_template('rag') should return English RAG template by default."""
         template = get_template("rag")
-        assert template == RAG_SYSTEM_PROMPT
+        assert template == RAG_SYSTEM_PROMPT_EN
+
+    def test_get_template_returns_english_rag_explicitly(self):
+        """get_template('rag', 'en') should return English RAG template."""
+        template = get_template("rag", "en")
+        assert template == RAG_SYSTEM_PROMPT_EN
+
+    def test_get_template_returns_dutch_rag(self):
+        """get_template('rag', 'nl') should return Dutch RAG template."""
+        template = get_template("rag", "nl")
+        assert template == RAG_SYSTEM_PROMPT_NL
 
     def test_get_template_returns_no_context(self):
         """get_template('no_context') should return no-context template."""
         template = get_template("no_context")
-        assert template == NO_CONTEXT_PROMPT
+        assert template == NO_CONTEXT_PROMPT_EN
+
+    def test_get_template_returns_dutch_no_context(self):
+        """get_template('no_context', 'nl') should return Dutch no-context template."""
+        template = get_template("no_context", "nl")
+        assert template == NO_CONTEXT_PROMPT_NL
 
     def test_get_template_returns_follow_up(self):
         """get_template('follow_up') should return follow-up template."""
         template = get_template("follow_up")
-        assert template == FOLLOW_UP_PROMPT
+        assert template == FOLLOW_UP_PROMPT_EN
 
     def test_get_template_raises_for_unknown(self):
         """get_template should raise KeyError for unknown template."""
@@ -114,6 +160,11 @@ class TestGetTemplate:
             get_template("nonexistent")
         assert "nonexistent" in str(exc_info.value)
         assert "Available:" in str(exc_info.value)
+
+    def test_get_template_falls_back_to_english_for_unknown_language(self):
+        """get_template should fall back to English for unknown language."""
+        template = get_template("rag", "xx")
+        assert template == RAG_SYSTEM_PROMPT_EN
 
 
 class TestListTemplates:
@@ -131,10 +182,30 @@ class TestListTemplates:
         assert "no_context" in templates
         assert "follow_up" in templates
 
-    def test_list_templates_matches_keys(self):
-        """list_templates should match TEMPLATES keys."""
+    def test_list_templates_matches_default_language_keys(self):
+        """list_templates should match default language TEMPLATES keys."""
         templates = list_templates()
-        assert set(templates) == set(TEMPLATES.keys())
+        assert set(templates) == set(TEMPLATES[DEFAULT_LANGUAGE].keys())
+
+
+class TestListLanguages:
+    """Tests for the list_languages function."""
+
+    def test_list_languages_returns_list(self):
+        """list_languages should return a list."""
+        languages = list_languages()
+        assert isinstance(languages, list)
+
+    def test_list_languages_contains_expected(self):
+        """list_languages should contain expected language codes."""
+        languages = list_languages()
+        assert "en" in languages
+        assert "nl" in languages
+
+    def test_list_languages_matches_templates_keys(self):
+        """list_languages should match TEMPLATES top-level keys."""
+        languages = list_languages()
+        assert set(languages) == set(TEMPLATES.keys())
 
 
 class TestTemplateRendering:
@@ -204,19 +275,80 @@ class TestTemplateStructure:
     def test_all_templates_are_valid_jinja2(self):
         """All templates should be valid Jinja2 templates."""
         env = Environment(loader=BaseLoader())
-        for name, template_str in TEMPLATES.items():
-            try:
-                env.from_string(template_str)
-            except Exception as e:
-                pytest.fail(f"Template '{name}' is not valid Jinja2: {e}")
+        for lang, lang_templates in TEMPLATES.items():
+            for name, template_str in lang_templates.items():
+                try:
+                    env.from_string(template_str)
+                except Exception as e:
+                    pytest.fail(f"Template '{lang}/{name}' is not valid Jinja2: {e}")
 
-    def test_rag_templates_have_citation_instructions(self):
-        """RAG templates should have citation instructions."""
-        assert "[Source:" in RAG_SYSTEM_PROMPT or "Cite sources" in RAG_SYSTEM_PROMPT
-        assert "[Source:" in RAG_CITATIONS_PROMPT or "Cite sources" in RAG_CITATIONS_PROMPT
+    def test_english_rag_templates_have_citation_instructions(self):
+        """English RAG templates should have citation instructions."""
+        assert "[Source:" in RAG_SYSTEM_PROMPT_EN or "Cite sources" in RAG_SYSTEM_PROMPT_EN
+        assert "[Source:" in RAG_CITATIONS_PROMPT_EN or "Cite sources" in RAG_CITATIONS_PROMPT_EN
+
+    def test_dutch_rag_templates_have_citation_instructions(self):
+        """Dutch RAG templates should have Dutch citation instructions."""
+        assert "[Bron:" in RAG_SYSTEM_PROMPT_NL or "Citeer bronnen" in RAG_SYSTEM_PROMPT_NL
+        assert "[Bron:" in RAG_CITATIONS_PROMPT_NL or "Citeer bronnen" in RAG_CITATIONS_PROMPT_NL
 
     def test_templates_have_reasonable_length(self):
         """Templates should not be excessively long."""
         max_length = 2000  # characters
-        for name, template_str in TEMPLATES.items():
-            assert len(template_str) < max_length, f"Template '{name}' exceeds max length"
+        for lang, lang_templates in TEMPLATES.items():
+            for name, template_str in lang_templates.items():
+                assert len(template_str) < max_length, f"Template '{lang}/{name}' exceeds max length"
+
+
+class TestLanguageEnum:
+    """Tests for the Language enum."""
+
+    def test_language_enum_has_english(self):
+        """Language enum should have ENGLISH."""
+        assert Language.ENGLISH.value == "en"
+
+    def test_language_enum_has_dutch(self):
+        """Language enum should have DUTCH."""
+        assert Language.DUTCH.value == "nl"
+
+
+class TestDutchTemplates:
+    """Tests for Dutch template content."""
+
+    def test_dutch_rag_prompt_contains_dutch_text(self):
+        """Dutch RAG prompt should contain Dutch instructions."""
+        assert "behulpzame assistent" in RAG_SYSTEM_PROMPT_NL
+        assert "Instructies:" in RAG_SYSTEM_PROMPT_NL
+        assert "verstrekte context" in RAG_SYSTEM_PROMPT_NL
+
+    def test_dutch_no_context_prompt_contains_dutch_text(self):
+        """Dutch no-context prompt should contain Dutch instructions."""
+        assert "behulpzame assistent" in NO_CONTEXT_PROMPT_NL
+        assert "Instructies:" in NO_CONTEXT_PROMPT_NL
+
+    def test_dutch_templates_have_same_placeholders_as_english(self):
+        """Dutch templates should have the same Jinja2 placeholders as English."""
+        # RAG templates should have {{ context }}
+        assert "{{ context }}" in RAG_SYSTEM_PROMPT_EN
+        assert "{{ context }}" in RAG_SYSTEM_PROMPT_NL
+
+        # Follow-up templates should have {{ summary }}
+        assert "{{ summary }}" in FOLLOW_UP_PROMPT_EN
+        assert "{{ summary }}" in FOLLOW_UP_PROMPT_NL
+
+        # RAG citations should have {{ citations }}
+        assert "{{ citations }}" in RAG_CITATIONS_PROMPT_EN
+        assert "{{ citations }}" in RAG_CITATIONS_PROMPT_NL
+
+        # Clarification should have {{ query }}
+        assert "{{ query }}" in CLARIFICATION_PROMPT_EN
+        assert "{{ query }}" in CLARIFICATION_PROMPT_NL
+
+        # Summary should have {{ conversation }}
+        assert "{{ conversation }}" in SUMMARY_PROMPT_EN
+        assert "{{ conversation }}" in SUMMARY_PROMPT_NL
+
+    def test_dutch_citation_format_differs_from_english(self):
+        """Dutch templates should use Dutch citation format."""
+        assert "[Bron:" in RAG_SYSTEM_PROMPT_NL
+        assert "[Source:" in RAG_SYSTEM_PROMPT_EN
