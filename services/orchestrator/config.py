@@ -14,6 +14,7 @@ class OrchestratorConfig(BaseSettings):
     # Retrieval Service
     retrieval_url: str = "http://localhost:8002"
     retrieval_timeout: float = 10.0
+    retrieval_top_k: int = 100  # Number of documents to retrieve (set high to search all)
 
     # LLM Gateway
     llm_gateway_url: str = "http://localhost:8004"

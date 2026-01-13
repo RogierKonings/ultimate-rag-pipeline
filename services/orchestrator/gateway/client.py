@@ -608,25 +608,41 @@ class ModelGateway:
         client = await self._ensure_client()
         results: dict[str, HealthStatus] = {}
 
+        # Extract base URL without /v1 suffix for root health checks
+        gateway_base = self.config.llm_gateway_url.rstrip("/")
+
         for model_name, model_config in self._gateway_config.models.items():
             try:
                 start_time = time.perf_counter()
-                response = await client.get(
-                    f"{model_config.base_url}/health",
-                    timeout=5.0,
-                )
+
+                # Try multiple health endpoints (vLLM uses /v1/health, Ollama uses /)
+                health_endpoints = [
+                    f"{model_config.base_url}/health",  # vLLM style
+                    gateway_base,  # Ollama root endpoint
+                ]
+
+                response = None
+                for endpoint in health_endpoints:
+                    try:
+                        response = await client.get(endpoint, timeout=5.0)
+                        if response.is_success:
+                            break
+                    except Exception:
+                        continue
+
                 latency_ms = (time.perf_counter() - start_time) * 1000
 
-                if response.is_success:
+                if response is not None and response.is_success:
                     results[model_name] = HealthStatus(
                         status="healthy",
                         latency_ms=latency_ms,
                     )
                 else:
+                    status_code = response.status_code if response else "N/A"
                     results[model_name] = HealthStatus(
                         status="unhealthy",
                         latency_ms=latency_ms,
-                        message=f"HTTP {response.status_code}",
+                        message=f"HTTP {status_code}",
                     )
             except httpx.TimeoutException:
                 results[model_name] = HealthStatus(

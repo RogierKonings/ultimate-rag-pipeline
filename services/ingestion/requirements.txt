@@ -21,8 +21,8 @@ asyncpg>=0.29.0
 aiomysql>=0.2.0
 sqlalchemy[asyncio]>=2.0.0
 
-# Vector store (Qdrant)
-qdrant-client>=1.7.0
+# Vector store (Qdrant) - using latest client with query_points() API
+qdrant-client>=1.16.0
 
 # Keyword search (OpenSearch)
 opensearch-py>=2.4.0

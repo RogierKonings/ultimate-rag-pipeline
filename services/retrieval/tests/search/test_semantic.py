@@ -18,6 +18,13 @@ class MockQdrantResult:
         self.payload = payload
 
 
+class MockQueryResponse:
+    """Mock Qdrant query_points response."""
+
+    def __init__(self, points: list):
+        self.points = points
+
+
 @pytest.fixture
 def config():
     """Create test config."""
@@ -134,7 +141,7 @@ class TestSemanticSearcherSearch:
     async def test_search_returns_results(self, searcher, mock_client, mock_results):
         """Test search returns properly formatted results."""
         searcher._client = mock_client
-        mock_client.search = AsyncMock(return_value=mock_results)
+        mock_client.query_points = AsyncMock(return_value=MockQueryResponse(mock_results))
 
         response = await searcher.search(
             query_embedding=[0.1] * 1024,
@@ -150,7 +157,7 @@ class TestSemanticSearcherSearch:
     async def test_search_normalizes_scores(self, searcher, mock_client, mock_results):
         """Test that scores are normalized to 0-1 range."""
         searcher._client = mock_client
-        mock_client.search = AsyncMock(return_value=mock_results)
+        mock_client.query_points = AsyncMock(return_value=MockQueryResponse(mock_results))
 
         response = await searcher.search(
             query_embedding=[0.1] * 1024,
@@ -164,7 +171,7 @@ class TestSemanticSearcherSearch:
     async def test_search_with_filters(self, searcher, mock_client):
         """Test search with ACL filters."""
         searcher._client = mock_client
-        mock_client.search = AsyncMock(return_value=[])
+        mock_client.query_points = AsyncMock(return_value=MockQueryResponse([]))
 
         filters = {
             "must": [{"key": "tenant_id", "match": {"value": "tenant-123"}}],
@@ -177,15 +184,15 @@ class TestSemanticSearcherSearch:
             filters=filters,
         )
 
-        mock_client.search.assert_called_once()
-        call_kwargs = mock_client.search.call_args.kwargs
+        mock_client.query_points.assert_called_once()
+        call_kwargs = mock_client.query_points.call_args.kwargs
         assert call_kwargs["query_filter"] is not None
 
     @pytest.mark.asyncio
     async def test_search_with_score_threshold(self, searcher, mock_client):
         """Test search with score threshold."""
         searcher._client = mock_client
-        mock_client.search = AsyncMock(return_value=[])
+        mock_client.query_points = AsyncMock(return_value=MockQueryResponse([]))
 
         await searcher.search(
             query_embedding=[0.1] * 1024,
@@ -193,7 +200,7 @@ class TestSemanticSearcherSearch:
             score_threshold=0.5,
         )
 
-        call_kwargs = mock_client.search.call_args.kwargs
+        call_kwargs = mock_client.query_points.call_args.kwargs
         assert call_kwargs["score_threshold"] == 0.5
 
     @pytest.mark.asyncio
@@ -201,7 +208,7 @@ class TestSemanticSearcherSearch:
         """Test search connects lazily if not connected."""
         with patch("search.semantic.AsyncQdrantClient") as mock_class:
             mock_client = AsyncMock()
-            mock_client.search = AsyncMock(return_value=[])
+            mock_client.query_points = AsyncMock(return_value=MockQueryResponse([]))
             mock_class.return_value = mock_client
 
             await searcher.search(query_embedding=[0.1] * 1024)
@@ -327,7 +334,10 @@ class TestSemanticSearcherMultiVector:
             payload={"content": "Doc B", "document_id": str(uuid4())},
         )
 
-        mock_client.search = AsyncMock(side_effect=[[result1, result2], [result1]])
+        mock_client.query_points = AsyncMock(side_effect=[
+            MockQueryResponse([result1, result2]),
+            MockQueryResponse([result1]),
+        ])
 
         response = await searcher.search_multi_vector(
             query_embeddings=[[0.1] * 1024, [0.2] * 1024],

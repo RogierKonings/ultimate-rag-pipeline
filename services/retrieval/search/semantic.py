@@ -94,10 +94,10 @@ class SemanticSearcher(BaseSearcher):
                 rescore=self.config.quantization_rescore,
             )
 
-        # Execute search
-        results = await self._client.search(
+        # Execute search using query_points (replaces deprecated search method)
+        response = await self._client.query_points(
             collection_name=self.config.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=qdrant_filter,
             score_threshold=score_threshold,
@@ -105,6 +105,7 @@ class SemanticSearcher(BaseSearcher):
             with_vectors=include_vectors,
             search_params=search_params,
         )
+        results = response.points
 
         search_time = (time.time() - start_time) * 1000
 

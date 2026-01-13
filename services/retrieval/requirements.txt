@@ -17,8 +17,8 @@ aiohttp>=3.9.0
 # Retry utility
 tenacity>=8.2.0
 
-# Vector store (Qdrant) - pin to match server version 1.12.x
-qdrant-client>=1.7.0,<1.13.0
+# Vector store (Qdrant) - using latest client with query_points() API
+qdrant-client>=1.16.0
 
 # Keyword search (OpenSearch)
 opensearch-py>=2.4.0

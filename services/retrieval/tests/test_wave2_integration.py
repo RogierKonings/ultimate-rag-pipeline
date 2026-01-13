@@ -28,6 +28,13 @@ class MockQdrantResult:
         self.payload = payload
 
 
+class MockQueryResponse:
+    """Mock Qdrant query_points response."""
+
+    def __init__(self, points: list):
+        self.points = points
+
+
 class TestWave2Integration:
     """Integration tests for Wave 2 components."""
 
@@ -107,7 +114,7 @@ class TestWave2Integration:
                 },
             ),
         ]
-        mock_client.search = AsyncMock(return_value=mock_results)
+        mock_client.query_points = AsyncMock(return_value=MockQueryResponse(mock_results))
         searcher._client = mock_client
 
         # Build ACL filter
@@ -122,10 +129,10 @@ class TestWave2Integration:
 
         assert response is not None
         assert len(response.results) == 1
-        mock_client.search.assert_called_once()
+        mock_client.query_points.assert_called_once()
 
         # Verify filter was passed to search
-        call_kwargs = mock_client.search.call_args.kwargs
+        call_kwargs = mock_client.query_points.call_args.kwargs
         assert call_kwargs["query_filter"] is not None
 
     @pytest.mark.asyncio

@@ -79,9 +79,10 @@ class QdrantVectorStore:
         """
         qdrant_filter = self._build_filter(filter_conditions) if filter_conditions else None
 
-        results = self.client.search(
+        # Use query_points (replaces deprecated search method)
+        response = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             limit=top_k,
             query_filter=qdrant_filter,
             score_threshold=score_threshold,
@@ -94,7 +95,7 @@ class QdrantVectorStore:
                 "score": hit.score,
                 "payload": hit.payload,
             }
-            for hit in results
+            for hit in response.points
         ]
 
     async def delete_by_document_id(self, document_id: str) -> None:

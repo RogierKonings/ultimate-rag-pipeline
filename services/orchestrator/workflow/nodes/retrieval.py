@@ -95,7 +95,7 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
             payload = {
                 "query": query,
                 "mode": "hybrid",
-                "top_k": 5,
+                "top_k": config.retrieval_top_k,
                 "rerank": False,  # Disable reranking for faster results
                 "include_metadata": True,
                 "include_highlights": True,

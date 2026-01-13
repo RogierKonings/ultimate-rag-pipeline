@@ -85,7 +85,7 @@ async def health_check(request: Request) -> HealthResponse:
             gateway_latency = (time.perf_counter() - gateway_start) * 1000
 
             # Check if any model is healthy
-            gateway_healthy = any(m.get("status") == "healthy" for m in health_result.values())
+            gateway_healthy = any(m.status == "healthy" for m in health_result.values())
             components.append(
                 ComponentHealth(
                     name="llm_gateway",
