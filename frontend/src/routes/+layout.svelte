@@ -1,0 +1,45 @@
+<script lang="ts">
+	import '../app.css';
+	import { Upload, Scale } from 'lucide-svelte';
+	import { upload } from '$lib/stores/upload';
+
+	let { children } = $props();
+
+	function handleUploadClick() {
+		upload.openModal();
+	}
+</script>
+
+<div class="min-h-screen bg-[var(--color-background)]">
+	<!-- Header -->
+	<header class="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+		<div class="flex h-16 items-center justify-between px-6">
+			<!-- Logo & Title -->
+			<div class="flex items-center gap-3">
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white"
+				>
+					<Scale class="h-5 w-5" />
+				</div>
+				<div>
+					<h1 class="text-lg font-semibold text-[var(--color-text-primary)]">ComplianceAI</h1>
+					<p class="text-xs text-[var(--color-text-secondary)]">Demo</p>
+				</div>
+			</div>
+
+			<!-- Upload Button -->
+			<button
+				onclick={handleUploadClick}
+				class="flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+			>
+				<Upload class="h-4 w-4" />
+				Upload Document
+			</button>
+		</div>
+	</header>
+
+	<!-- Main Content -->
+	<main>
+		{@render children()}
+	</main>
+</div>

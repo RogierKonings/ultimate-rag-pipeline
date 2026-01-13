@@ -1,0 +1,129 @@
+DATA PROCESSING AGREEMENT
+
+This Data Processing Agreement ("DPA") is entered into between:
+
+Data Controller: [CONTROLLER NAME] ("Controller")
+Data Processor: [PROCESSOR NAME] ("Processor")
+
+(collectively, the "Parties")
+
+1. DEFINITIONS
+
+"Personal Data" means any information relating to an identified or identifiable natural person.
+
+"Processing" means any operation performed on Personal Data, including collection, recording, organization, storage, adaptation, retrieval, use, disclosure, erasure, or destruction.
+
+"Sub-processor" means any third party engaged by the Processor to process Personal Data on behalf of the Controller.
+
+"Data Subject" means the individual to whom Personal Data relates.
+
+2. SCOPE AND PURPOSE
+
+The Processor shall process Personal Data only:
+- On documented instructions from the Controller
+- For the purposes specified in this Agreement
+- In accordance with applicable data protection laws
+
+3. DATA PROCESSOR OBLIGATIONS
+
+The Processor agrees to:
+
+3.1 Process Personal Data only on documented instructions from the Controller, unless required by law to do otherwise.
+
+3.2 Ensure that persons authorized to process Personal Data have committed themselves to confidentiality.
+
+3.3 Implement appropriate technical and organizational security measures, including:
+- Pseudonymization and encryption of Personal Data
+- Ability to ensure ongoing confidentiality, integrity, availability
+- Ability to restore data availability in case of incident
+- Regular testing and evaluation of security measures
+
+3.4 Not engage any Sub-processor without prior written authorization from the Controller.
+
+3.5 Assist the Controller in ensuring compliance with:
+- Security obligations
+- Data breach notification requirements
+- Data protection impact assessments
+- Prior consultations with supervisory authorities
+
+3.6 Make available all information necessary to demonstrate compliance and allow for audits.
+
+3.7 Delete or return all Personal Data upon termination of services.
+
+4. SUB-PROCESSING
+
+4.1 The Controller provides general authorization for the Processor to engage Sub-processors listed in Annex A.
+
+4.2 The Processor shall:
+- Inform the Controller of any intended changes to Sub-processors
+- Provide the Controller 30 days to object to new Sub-processors
+- Ensure Sub-processors are bound by equivalent data protection obligations
+
+5. DATA SUBJECT RIGHTS
+
+The Processor shall assist the Controller in responding to requests from Data Subjects exercising their rights under GDPR, including:
+- Right of access
+- Right to rectification
+- Right to erasure
+- Right to restriction of processing
+- Right to data portability
+- Right to object
+
+6. SECURITY INCIDENTS
+
+6.1 The Processor shall notify the Controller without undue delay upon becoming aware of a Personal Data breach.
+
+6.2 Notification shall include:
+- Description of the nature of the breach
+- Categories and approximate number of Data Subjects affected
+- Likely consequences of the breach
+- Measures taken or proposed to address the breach
+
+7. DATA TRANSFERS
+
+The Processor shall not transfer Personal Data outside the European Economic Area without:
+- Prior written authorization from the Controller
+- Appropriate safeguards in place (e.g., Standard Contractual Clauses)
+
+8. AUDIT RIGHTS
+
+8.1 The Controller may conduct audits of the Processor's data processing activities.
+
+8.2 The Processor shall provide reasonable access to:
+- Premises where processing occurs
+- Documentation and records
+- Personnel involved in processing
+
+9. LIABILITY
+
+Each Party shall be liable for damages caused by processing that infringes applicable data protection laws, in accordance with their respective roles and responsibilities.
+
+10. TERM AND TERMINATION
+
+10.1 This DPA shall remain in effect for the duration of the underlying service agreement.
+
+10.2 Upon termination, the Processor shall:
+- Cease all processing of Personal Data
+- Return or delete all Personal Data as instructed
+- Provide certification of deletion
+
+ANNEX A: AUTHORIZED SUB-PROCESSORS
+
+1. [Sub-processor Name] - [Processing Activity] - [Location]
+2. [Sub-processor Name] - [Processing Activity] - [Location]
+
+ANNEX B: TECHNICAL AND ORGANIZATIONAL MEASURES
+
+1. Access Control
+2. Encryption Standards
+3. Data Center Security
+4. Incident Response Procedures
+5. Business Continuity Plans
+
+Signatures:
+
+CONTROLLER:                           PROCESSOR:
+_________________________            _________________________
+Signature                            Signature
+
+Date: _______________                Date: _______________

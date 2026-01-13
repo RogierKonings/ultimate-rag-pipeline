@@ -1,0 +1,89 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Non-Disclosure Agreement ("Agreement") is entered into as of [DATE] by and between:
+
+Party A: [COMPANY A NAME], a [STATE] corporation with its principal place of business at [ADDRESS]
+
+Party B: [COMPANY B NAME], a [STATE] corporation with its principal place of business at [ADDRESS]
+
+(collectively referred to as the "Parties" and individually as a "Party")
+
+1. PURPOSE
+
+The Parties wish to explore a potential business relationship concerning [DESCRIPTION OF PURPOSE]. In connection with this evaluation, each Party may disclose to the other certain confidential technical and business information that the disclosing Party desires the receiving Party to treat as confidential.
+
+2. DEFINITION OF CONFIDENTIAL INFORMATION
+
+"Confidential Information" means any information disclosed by either Party to the other Party, either directly or indirectly, in writing, orally, or by inspection of tangible objects, that is designated as "Confidential," "Proprietary," or some similar designation, or that reasonably should be understood to be confidential given the nature of the information and circumstances of disclosure.
+
+Confidential Information includes, but is not limited to:
+- Trade secrets
+- Technical data and know-how
+- Product plans and designs
+- Software and source code
+- Business strategies and plans
+- Customer and supplier lists
+- Financial information
+- Marketing plans
+
+3. CONFIDENTIALITY OBLIGATIONS
+
+Each receiving Party agrees to:
+(a) Hold the Confidential Information in strict confidence
+(b) Not disclose Confidential Information to any third parties without prior written consent
+(c) Use Confidential Information only for the Purpose stated above
+(d) Protect Confidential Information using the same degree of care used to protect its own confidential information, but no less than reasonable care
+(e) Limit access to Confidential Information to employees and contractors with a need to know
+
+4. TERM AND CONFIDENTIALITY PERIOD
+
+This Agreement shall remain in effect for a period of TWO (2) YEARS from the Effective Date. The confidentiality obligations shall survive for a period of FIVE (5) YEARS following the expiration or termination of this Agreement.
+
+5. EXCLUSIONS
+
+Confidential Information does not include information that:
+(a) Is or becomes publicly available through no fault of the receiving Party
+(b) Was rightfully in the receiving Party's possession prior to disclosure
+(c) Is independently developed by the receiving Party without use of Confidential Information
+(d) Is rightfully obtained from a third party without restriction
+
+6. RETURN OF MATERIALS
+
+Upon termination of this Agreement or upon request, each Party shall:
+- Return or destroy all Confidential Information received
+- Certify in writing the destruction of all copies
+- Delete all electronic copies from systems
+
+7. NO LICENSE
+
+Nothing in this Agreement grants any rights or licenses to any patents, copyrights, or other intellectual property rights.
+
+8. REMEDIES
+
+The Parties acknowledge that monetary damages may be inadequate for breach of this Agreement. Therefore, the non-breaching Party shall be entitled to seek equitable relief, including injunction and specific performance.
+
+9. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws of [STATE], without regard to its conflicts of law provisions.
+
+10. MISCELLANEOUS
+
+(a) This Agreement constitutes the entire agreement between the Parties
+(b) Amendments must be in writing and signed by both Parties
+(c) Neither Party may assign this Agreement without prior written consent
+(d) If any provision is found unenforceable, the remaining provisions shall remain in effect
+
+IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.
+
+PARTY A:                              PARTY B:
+_________________________            _________________________
+Signature                            Signature
+
+_________________________            _________________________
+Name                                 Name
+
+_________________________            _________________________
+Title                                Title
+
+_________________________            _________________________
+Date                                 Date

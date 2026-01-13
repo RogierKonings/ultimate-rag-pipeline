@@ -1,0 +1,193 @@
+SARBANES-OXLEY (SOX) COMPLIANCE CHECKLIST
+
+This checklist provides a comprehensive guide to SOX compliance requirements for publicly traded companies.
+
+SECTION 302: CORPORATE RESPONSIBILITY FOR FINANCIAL REPORTS
+
+CEO and CFO Certification Requirements:
+□ Review all quarterly and annual reports
+□ Certify reports do not contain material misstatements
+□ Certify reports fairly present financial condition
+□ Certify disclosure controls and procedures are effective
+□ Sign certifications personally (no delegation)
+
+Internal Controls Certification:
+□ Design controls to ensure material information is disclosed
+□ Evaluate effectiveness of controls within 90 days
+□ Present conclusions about control effectiveness
+□ Disclose significant control deficiencies to auditors
+□ Disclose any fraud involving management
+
+SECTION 404: MANAGEMENT ASSESSMENT OF INTERNAL CONTROLS
+
+Control Environment:
+□ Document tone at the top
+□ Establish code of ethics
+□ Define organizational structure
+□ Assign authority and responsibility
+□ Document HR policies and procedures
+
+Risk Assessment:
+□ Identify financial reporting risks
+□ Assess fraud risk
+□ Evaluate changes affecting controls
+□ Document risk assessment process
+□ Update assessments annually
+
+Control Activities:
+□ Document all key controls
+□ Implement segregation of duties
+□ Establish authorization procedures
+□ Implement physical safeguards
+□ Create reconciliation processes
+
+Information and Communication:
+□ Document information systems
+□ Establish communication channels
+□ Report control deficiencies
+□ Maintain audit trails
+□ Secure financial data
+
+Monitoring:
+□ Conduct ongoing monitoring
+□ Perform separate evaluations
+□ Remediate identified deficiencies
+□ Report to audit committee
+□ Document monitoring activities
+
+SECTION 409: REAL-TIME DISCLOSURE
+
+Disclosure Requirements:
+□ Establish disclosure committee
+□ Create disclosure evaluation process
+□ Monitor for material events
+□ File 8-K within 4 business days
+□ Update prior disclosures as needed
+
+SECTION 802: DOCUMENT RETENTION
+
+Record Keeping Requirements:
+□ Retain audit workpapers for 7 years
+□ Preserve emails related to audits
+□ Maintain financial records
+□ Document retention policies
+□ Implement litigation hold procedures
+
+Prohibited Actions:
+□ No destruction of audit documents
+□ No alteration of records
+□ No falsification of documents
+□ Criminal penalties: up to 20 years
+
+SECTION 806: WHISTLEBLOWER PROTECTIONS
+
+Required Protections:
+□ Establish anonymous reporting mechanism
+□ Prohibit retaliation
+□ Document all complaints
+□ Investigate promptly
+□ Protect complainant identity
+
+SECTION 906: CEO/CFO CERTIFICATION OF PERIODIC REPORTS
+
+Criminal Certification:
+□ Reports comply with SEC requirements
+□ Information is fairly presented
+□ Criminal penalties for false certifications
+□ Up to $5 million fine / 20 years imprisonment
+
+IT CONTROLS FOR SOX COMPLIANCE
+
+Access Controls:
+□ Implement role-based access
+□ Enforce password policies
+□ Review access rights quarterly
+□ Remove access promptly on termination
+□ Log all access attempts
+
+Change Management:
+□ Document change requests
+□ Test changes before implementation
+□ Obtain proper approvals
+□ Maintain change logs
+□ Separate development and production
+
+Data Backup and Recovery:
+□ Daily backup of financial data
+□ Off-site storage
+□ Regular recovery testing
+□ Documented procedures
+□ Maximum 24-hour recovery time
+
+Security Controls:
+□ Firewall protection
+□ Intrusion detection
+□ Encryption of sensitive data
+□ Security monitoring
+□ Incident response plan
+
+ANNUAL COMPLIANCE ACTIVITIES
+
+Q1 Activities:
+□ Annual control risk assessment
+□ Update control documentation
+□ External auditor planning meetings
+
+Q2 Activities:
+□ Interim control testing
+□ Address identified deficiencies
+□ Management self-assessments
+
+Q3 Activities:
+□ Complete control testing
+□ Prepare management assessment
+□ External auditor interim review
+
+Q4 Activities:
+□ Final control evaluation
+□ Management report preparation
+□ Audit committee presentations
+□ External auditor attestation
+
+COMMON DEFICIENCIES TO AVOID
+
+Material Weaknesses:
+- Inadequate segregation of duties
+- Lack of qualified accounting personnel
+- Insufficient IT general controls
+- Missing or inadequate policies
+- Inadequate review procedures
+
+Significant Deficiencies:
+- Untimely account reconciliations
+- Inadequate documentation
+- Incomplete journal entry review
+- Missing management review evidence
+- Insufficient training
+
+DOCUMENTATION REQUIREMENTS
+
+Required Documents:
+□ Control narratives
+□ Process flowcharts
+□ Risk control matrices
+□ Test procedures
+□ Test results
+□ Deficiency evaluations
+□ Remediation plans
+□ Management certifications
+
+PENALTIES FOR NON-COMPLIANCE
+
+Civil Penalties:
+- SEC enforcement actions
+- Fines up to $5 million (individuals)
+- Fines up to $25 million (companies)
+- Trading suspensions
+
+Criminal Penalties:
+- Section 802: Up to 20 years imprisonment
+- Section 906: Up to 20 years imprisonment
+- Section 1102: Up to 20 years imprisonment
+
+This checklist should be reviewed and updated annually to ensure continued SOX compliance.
