@@ -1,28 +1,28 @@
 # Unit Tests Workflow
 # Runs pytest for all services on push and pull requests
-name: Tests
+name: Quality Assurance - Linting & Tests
 
 on:
   push:
     branches: [main, develop]
     paths:
-      - 'services/**'
-      - 'tests/**'
-      - 'pyproject.toml'
-      - '.github/workflows/tests.yml'
+      - "services/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/quality-assurance-tests.yml"
   pull_request:
     branches: [main, develop]
     paths:
-      - 'services/**'
-      - 'tests/**'
-      - 'pyproject.toml'
+      - "services/**"
+      - "tests/**"
+      - "pyproject.toml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: "3.11"
 
 jobs:
   lint:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: services/ingestion/requirements.txt
 
       - name: Install dependencies
@@ -104,7 +104,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: services/ingestion/requirements.txt
 
       - name: Install dependencies
@@ -149,7 +149,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: services/orchestrator/requirements.txt
 
       - name: Install dependencies
@@ -193,7 +193,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
           cache-dependency-path: services/ingestion/requirements.txt
 
       - name: Install dependencies
