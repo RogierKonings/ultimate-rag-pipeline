@@ -1,6 +1,8 @@
 """API schemas package."""
 
 from .documents import (
+    BatchDeleteRequest,
+    BatchDeleteResponse,
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentResponse,
@@ -86,5 +88,7 @@ __all__ = [
     "DocumentResponse",
     "DocumentListResponse",
     "DocumentDeleteResponse",
+    "BatchDeleteRequest",
+    "BatchDeleteResponse",
     "ReindexRequest",
 ] + _migration_schemas

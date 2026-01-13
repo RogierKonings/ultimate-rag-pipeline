@@ -1,5 +1,5 @@
 import { ApiClient } from './client';
-import type { Document, DocumentListResponse, JobStatusResponse } from './types';
+import type { Document, DocumentListResponse, DocumentDeleteResponse, BatchDeleteResponse, JobStatusResponse } from './types';
 import { PUBLIC_DEMO_TENANT_ID } from '$env/static/public';
 
 // Use proxy route to avoid CORS issues
@@ -39,6 +39,24 @@ export async function getDocument(documentId: string): Promise<Document> {
  */
 export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
 	return client.get<JobStatusResponse>(`/ingest/${jobId}`);
+}
+
+/**
+ * Delete a document and all its chunks
+ */
+export async function deleteDocument(documentId: string): Promise<DocumentDeleteResponse> {
+	return client.delete<DocumentDeleteResponse>(`/documents/${documentId}`, {
+		tenant_id: TENANT_ID
+	});
+}
+
+/**
+ * Delete multiple documents at once
+ */
+export async function batchDeleteDocuments(documentIds: string[]): Promise<BatchDeleteResponse> {
+	return client.post<BatchDeleteResponse>(`/documents/batch-delete?tenant_id=${TENANT_ID}`, {
+		document_ids: documentIds
+	});
 }
 
 /**

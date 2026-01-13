@@ -139,3 +139,49 @@ class ReindexRequest(BaseModel):
             ],
         },
     )
+
+
+class BatchDeleteRequest(BaseModel):
+    """Request to delete multiple documents at once."""
+
+    document_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "document_ids": [
+                        "550e8400-e29b-41d4-a716-446655440000",
+                        "550e8400-e29b-41d4-a716-446655440001",
+                    ],
+                },
+            ],
+        },
+    )
+
+
+class BatchDeleteResponse(BaseModel):
+    """Response after batch deleting documents."""
+
+    deleted_count: int
+    failed_count: int
+    results: list[DocumentDeleteResponse]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "deleted_count": 2,
+                    "failed_count": 0,
+                    "results": [
+                        {
+                            "document_id": "550e8400-e29b-41d4-a716-446655440000",
+                            "deleted": True,
+                            "chunks_deleted": 45,
+                            "message": "Document deleted successfully",
+                        },
+                    ],
+                },
+            ],
+        },
+    )

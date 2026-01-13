@@ -32,6 +32,7 @@ class RAGState(TypedDict, total=False):
     session_id: str | None  # Conversation session ID
     user_id: str | None  # User identifier for ACL
     tenant_id: str | None  # Tenant identifier for ACL
+    options: dict  # Request options (temperature, max_tokens, etc.)
 
     # =========================================================================
     # Routing Fields
@@ -70,6 +71,7 @@ def create_initial_state(
     session_id: str | None = None,
     user_id: str | None = None,
     tenant_id: str | None = None,
+    options: dict | None = None,
 ) -> RAGState:
     """
     Create an initial RAGState with default values.
@@ -80,6 +82,7 @@ def create_initial_state(
         session_id: Optional conversation session ID
         user_id: Optional user identifier for ACL
         tenant_id: Optional tenant identifier for ACL
+        options: Optional request options (temperature, max_tokens, etc.)
 
     Returns:
         RAGState with initialized values
@@ -91,6 +94,7 @@ def create_initial_state(
         session_id=session_id,
         user_id=user_id,
         tenant_id=tenant_id,
+        options=options or {},
         # Routing
         strategy="simple",  # Default strategy
         # Retrieval

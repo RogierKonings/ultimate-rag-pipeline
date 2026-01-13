@@ -64,6 +64,14 @@ function createDocumentsStore() {
 			}));
 		},
 
+		removeDocuments(documentIds: string[]) {
+			const idsSet = new Set(documentIds);
+			update((state) => ({
+				...state,
+				documents: state.documents.filter((doc) => !idsSet.has(doc.document_id))
+			}));
+		},
+
 		reset() {
 			set({
 				documents: [],
@@ -77,6 +85,61 @@ function createDocumentsStore() {
 
 export const documents = createDocumentsStore();
 
+// Selection store for batch operations
+function createSelectionStore() {
+	const { subscribe, set, update } = writable<Set<string>>(new Set());
+
+	return {
+		subscribe,
+
+		toggle(documentId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				if (newSelected.has(documentId)) {
+					newSelected.delete(documentId);
+				} else {
+					newSelected.add(documentId);
+				}
+				return newSelected;
+			});
+		},
+
+		select(documentId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				newSelected.add(documentId);
+				return newSelected;
+			});
+		},
+
+		deselect(documentId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				newSelected.delete(documentId);
+				return newSelected;
+			});
+		},
+
+		selectAll(documentIds: string[]) {
+			set(new Set(documentIds));
+		},
+
+		deselectAll() {
+			set(new Set());
+		},
+
+		isSelected(documentId: string): boolean {
+			let result = false;
+			subscribe((selected) => {
+				result = selected.has(documentId);
+			})();
+			return result;
+		}
+	};
+}
+
+export const selectedDocuments = createSelectionStore();
+
 // Derived stores for filtering
 export const sampleDocuments = derived(documents, ($docs) =>
 	$docs.documents.filter((doc) => doc.source_id.startsWith('sample/'))
@@ -89,3 +152,6 @@ export const userDocuments = derived(documents, ($docs) =>
 export const processingDocuments = derived(documents, ($docs) =>
 	$docs.documents.filter((doc) => doc.status === 'pending')
 );
+
+// Derived store for selection count
+export const selectedCount = derived(selectedDocuments, ($selected) => $selected.size);

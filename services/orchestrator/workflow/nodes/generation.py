@@ -57,14 +57,19 @@ async def generation_node(state: "RAGState") -> "RAGState":
     model_used = config.default_model
     usage = {}
 
+    # Get options from state for per-request overrides
+    options = state.get("options", {})
+    temperature = options.get("temperature", config.temperature)
+    max_tokens = options.get("max_tokens", config.max_tokens)
+
     try:
         async with httpx.AsyncClient(timeout=config.stream_timeout) as client:
             # Build OpenAI-compatible request
             payload = {
                 "model": config.default_model,
                 "messages": messages,
-                "max_tokens": config.max_tokens,
-                "temperature": config.temperature,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
                 "stream": False,
             }
 

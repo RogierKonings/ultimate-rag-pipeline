@@ -5,6 +5,8 @@ from uuid import UUID
 
 from api.dependencies import get_current_user, get_document_service
 from api.schemas import (
+    BatchDeleteRequest,
+    BatchDeleteResponse,
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentResponse,
@@ -157,6 +159,76 @@ async def delete_document(
         deleted=result.success,
         chunks_deleted=result.chunks_deleted,
         message=message,
+    )
+
+
+@router.post(
+    "/batch-delete",
+    response_model=BatchDeleteResponse,
+    summary="Batch delete documents",
+    description="Delete multiple documents at once.",
+)
+async def batch_delete_documents(
+    request: BatchDeleteRequest,
+    hard_delete: bool = Query(
+        default=True,
+        description="If False, marks as deleted instead of removing",
+    ),
+    document_service=Depends(get_document_service),
+    current_user: dict = Depends(get_current_user),
+) -> BatchDeleteResponse:
+    """
+    Delete multiple documents in a single request.
+
+    Processes each document independently - failures for one document
+    don't prevent deletion of others.
+
+    Returns detailed results for each document.
+    """
+    tenant_id = current_user.get("tenant_id")
+    results = []
+    deleted_count = 0
+    failed_count = 0
+
+    for document_id in request.document_ids:
+        # Verify document exists and belongs to tenant
+        document = await document_service.get_document(document_id, tenant_id)
+
+        if document is None:
+            results.append(
+                DocumentDeleteResponse(
+                    document_id=document_id,
+                    deleted=False,
+                    chunks_deleted=0,
+                    message=f"Document {document_id} not found",
+                )
+            )
+            failed_count += 1
+            continue
+
+        # Execute cascade delete
+        result = await document_service.delete_document(document_id, hard_delete=hard_delete)
+
+        if result.success:
+            deleted_count += 1
+            message = "Document deleted successfully"
+        else:
+            failed_count += 1
+            message = f"Deletion failed: {result.error}"
+
+        results.append(
+            DocumentDeleteResponse(
+                document_id=document_id,
+                deleted=result.success,
+                chunks_deleted=result.chunks_deleted,
+                message=message,
+            )
+        )
+
+    return BatchDeleteResponse(
+        deleted_count=deleted_count,
+        failed_count=failed_count,
+        results=results,
     )
 
 

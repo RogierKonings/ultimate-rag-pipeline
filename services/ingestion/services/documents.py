@@ -210,48 +210,45 @@ class DocumentService:
             return None
 
         try:
-            from sqlalchemy import func, select
-
-            from services.shared.database.models.document import Chunk, Document
-
-            query = select(Document).where(
-                Document.id == document_id,
-                Document.tenant_id == UUID(tenant_id),
-            )
-            result = await self._db.execute(query)
-            doc = result.scalar_one_or_none()
-
-            if not doc:
-                return None
-
-            # Get chunk count
-            chunk_query = select(func.count()).where(Chunk.document_id == doc.id)
-            chunk_result = await self._db.execute(chunk_query)
-            chunk_count = chunk_result.scalar() or 0
-
-            # Get total tokens
-            token_query = select(func.sum(Chunk.token_count)).where(Chunk.document_id == doc.id)
-            token_result = await self._db.execute(token_query)
-            total_tokens = token_result.scalar() or 0
+            from sqlalchemy import text
 
             from api.schemas import DocumentResponse
 
+            # Query indexed_documents table directly (same as list_documents)
+            query = text("""
+                SELECT document_id, source_uri, source_type, filename, mime_type,
+                       title, author, chunk_count, total_tokens, content_hash, version,
+                       tenant_id, visibility, allowed_groups, allowed_users, created_at,
+                       updated_at, indexed_at, status, error_message
+                FROM indexed_documents
+                WHERE document_id = :document_id AND tenant_id = :tenant_id
+            """)
+
+            result = await self._db.execute(
+                query,
+                {"document_id": str(document_id), "tenant_id": tenant_id},
+            )
+            row = result.fetchone()
+
+            if not row:
+                return None
+
             return DocumentResponse(
-                document_id=doc.id,
-                source_id=doc.source_id,
-                source_type=doc.source_type,
-                filename=doc.doc_metadata.get("filename"),
-                mime_type=doc.doc_metadata.get("mime_type"),
-                title=doc.title,
-                author=doc.doc_metadata.get("author"),
-                chunk_count=chunk_count,
-                total_tokens=total_tokens,
-                tenant_id=str(doc.tenant_id),
-                visibility=doc.visibility,
-                created_at=doc.created_at,
-                updated_at=doc.updated_at,
-                indexed_at=doc.doc_metadata.get("indexed_at"),
-                status=doc.status,
+                document_id=row.document_id,
+                source_id=row.source_uri,
+                source_type=row.source_type,
+                filename=row.filename,
+                mime_type=row.mime_type,
+                title=row.title,
+                author=row.author,
+                chunk_count=row.chunk_count or 0,
+                total_tokens=row.total_tokens or 0,
+                tenant_id=str(row.tenant_id),
+                visibility=row.visibility,
+                created_at=row.created_at,
+                updated_at=row.updated_at,
+                indexed_at=row.indexed_at,
+                status=row.status,
             )
 
         except Exception as e:
@@ -377,24 +374,27 @@ class DocumentService:
 
         # Get document to find source info
         if self._db:
-            from sqlalchemy import select
+            from sqlalchemy import text
 
-            from services.shared.database.models.document import Document
+            query = text("""
+                SELECT source_uri, source_type, tenant_id, visibility, allowed_groups, metadata
+                FROM indexed_documents
+                WHERE document_id = :document_id
+            """)
+            result = await self._db.execute(query, {"document_id": str(document_id)})
+            row = result.fetchone()
 
-            query = select(Document).where(Document.id == document_id)
-            result = await self._db.execute(query)
-            doc = result.scalar_one_or_none()
-
-            if doc:
+            if row:
+                metadata = row.metadata or {}
                 return process_document.delay(
-                    document_source_id=doc.source_id,
-                    source_type=doc.source_type,
-                    source_config=doc.doc_metadata.get("source_config", {}),
+                    document_source_id=row.source_uri,
+                    source_type=row.source_type,
+                    source_config=metadata.get("source_config", {}),
                     processing_config=processing_config or {},
                     acl_context={
-                        "tenant_id": str(doc.tenant_id),
-                        "visibility": doc.visibility,
-                        "allowed_groups": doc.allowed_groups or [],
+                        "tenant_id": str(row.tenant_id),
+                        "visibility": row.visibility,
+                        "allowed_groups": row.allowed_groups or [],
                     },
                 )
 
@@ -407,14 +407,15 @@ class DocumentService:
         if not self._db:
             return
 
-        from sqlalchemy import update
-
-        from services.shared.database.models.document import Document
+        from sqlalchemy import text
 
         await self._db.execute(
-            update(Document)
-            .where(Document.id == document_id)
-            .values(status="deleting", updated_at=datetime.now(tz=UTC)),
+            text("""
+                UPDATE indexed_documents
+                SET status = 'deleting', updated_at = :updated_at
+                WHERE document_id = :document_id
+            """),
+            {"document_id": str(document_id), "updated_at": datetime.now(tz=UTC)},
         )
 
     async def _get_chunk_ids(self, document_id: UUID) -> list[UUID]:
@@ -422,14 +423,13 @@ class DocumentService:
         if not self._db:
             return []
 
-        from sqlalchemy import select
-
-        from services.shared.database.models.document import Chunk
+        from sqlalchemy import text
 
         result = await self._db.execute(
-            select(Chunk.id).where(Chunk.document_id == document_id),
+            text("SELECT id FROM chunks WHERE document_id = :document_id"),
+            {"document_id": str(document_id)},
         )
-        return [row[0] for row in result.fetchall()]
+        return [UUID(str(row[0])) for row in result.fetchall()]
 
     async def _delete_vectors(
         self,
@@ -444,7 +444,7 @@ class DocumentService:
 
         # Delete by document_id filter (more efficient than individual deletes)
         await self._qdrant.delete(
-            collection_name="rag_chunks",
+            collection_name="documents",
             points_selector=Filter(
                 must=[
                     FieldCondition(
@@ -468,7 +468,7 @@ class DocumentService:
 
         # Delete by query matching document_id
         response = await self._opensearch.delete_by_query(
-            index="rag_chunks",
+            index="documents",
             body={"query": {"term": {"document_id": str(document_id)}}},
         )
 
@@ -479,12 +479,11 @@ class DocumentService:
         if not self._db:
             return 0
 
-        from sqlalchemy import delete
-
-        from services.shared.database.models.document import Chunk
+        from sqlalchemy import text
 
         result = await self._db.execute(
-            delete(Chunk).where(Chunk.document_id == document_id),
+            text("DELETE FROM chunks WHERE document_id = :document_id"),
+            {"document_id": str(document_id)},
         )
         return result.rowcount
 
@@ -493,14 +492,15 @@ class DocumentService:
         if not self._db:
             return 0
 
-        from sqlalchemy import update
-
-        from services.shared.database.models.document import Chunk
+        from sqlalchemy import text
 
         result = await self._db.execute(
-            update(Chunk)
-            .where(Chunk.document_id == document_id)
-            .values(status="deleted", deleted_at=datetime.now(tz=UTC)),
+            text("""
+                UPDATE chunks
+                SET status = 'deleted', deleted_at = :deleted_at
+                WHERE document_id = :document_id
+            """),
+            {"document_id": str(document_id), "deleted_at": datetime.now(tz=UTC)},
         )
         return result.rowcount
 
@@ -509,29 +509,27 @@ class DocumentService:
         if not self._db:
             return
 
-        from sqlalchemy import delete
+        from sqlalchemy import text
 
-        from services.shared.database.models.document import Document
-
-        await self._db.execute(delete(Document).where(Document.id == document_id))
+        await self._db.execute(
+            text("DELETE FROM indexed_documents WHERE document_id = :document_id"),
+            {"document_id": str(document_id)},
+        )
 
     async def _soft_delete_document(self, document_id: UUID) -> None:
         """Soft delete document by marking it as deleted."""
         if not self._db:
             return
 
-        from sqlalchemy import update
-
-        from services.shared.database.models.document import Document
+        from sqlalchemy import text
 
         await self._db.execute(
-            update(Document)
-            .where(Document.id == document_id)
-            .values(
-                status="deleted",
-                deleted_at=datetime.now(tz=UTC),
-                updated_at=datetime.now(tz=UTC),
-            ),
+            text("""
+                UPDATE indexed_documents
+                SET status = 'deleted', updated_at = :updated_at
+                WHERE document_id = :document_id
+            """),
+            {"document_id": str(document_id), "updated_at": datetime.now(tz=UTC)},
         )
 
     async def _delete_raw_file(self, document_id: UUID) -> None:
@@ -539,15 +537,15 @@ class DocumentService:
         if not self._db:
             return
 
-        from sqlalchemy import select
+        from sqlalchemy import text
 
-        from services.shared.database.models.document import Document
-
-        # Get document to find raw_storage_path
+        # Get document metadata to find raw_storage_path
         result = await self._db.execute(
-            select(Document.doc_metadata).where(Document.id == document_id),
+            text("SELECT metadata FROM indexed_documents WHERE document_id = :document_id"),
+            {"document_id": str(document_id)},
         )
-        metadata = result.scalar_one_or_none()
+        row = result.fetchone()
+        metadata = row.metadata if row else None
 
         if metadata and metadata.get("raw_storage_path") and self._storage:
             # Delete from storage (implementation depends on storage client)
@@ -558,13 +556,14 @@ class DocumentService:
         if not self._db:
             return
 
-        from sqlalchemy import update
-
-        from services.shared.database.models.document import Document
+        from sqlalchemy import text
 
         await self._db.execute(
-            update(Document)
-            .where(Document.id == document_id)
-            .values(status="indexed", updated_at=datetime.now(tz=UTC)),
+            text("""
+                UPDATE indexed_documents
+                SET status = 'indexed', updated_at = :updated_at
+                WHERE document_id = :document_id
+            """),
+            {"document_id": str(document_id), "updated_at": datetime.now(tz=UTC)},
         )
         await self._db.commit()

@@ -58,8 +58,21 @@ export class ApiClient {
 		});
 	}
 
-	async delete<T>(path: string): Promise<T> {
-		return this.fetch<T>(path, { method: 'DELETE' });
+	async delete<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+		let url = path;
+		if (params) {
+			const searchParams = new URLSearchParams();
+			for (const [key, value] of Object.entries(params)) {
+				if (value !== undefined) {
+					searchParams.set(key, String(value));
+				}
+			}
+			const queryString = searchParams.toString();
+			if (queryString) {
+				url = `${path}?${queryString}`;
+			}
+		}
+		return this.fetch<T>(url, { method: 'DELETE' });
 	}
 }
 

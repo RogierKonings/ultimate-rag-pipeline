@@ -107,6 +107,28 @@ export interface UploadResponse {
 	status: 'queued';
 }
 
+// Queued file for batch upload modal
+export interface QueuedFile {
+	id: string;
+	file: File;
+	status: 'valid' | 'invalid';
+	error?: string;
+}
+
+// Delete types
+export interface DocumentDeleteResponse {
+	document_id: string;
+	deleted: boolean;
+	chunks_deleted: number;
+	message: string;
+}
+
+export interface BatchDeleteResponse {
+	deleted_count: number;
+	failed_count: number;
+	results: DocumentDeleteResponse[];
+}
+
 // Error types
 export interface ApiError {
 	error: string;
