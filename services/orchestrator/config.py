@@ -17,8 +17,8 @@ class OrchestratorConfig(BaseSettings):
 
     # LLM Gateway
     llm_gateway_url: str = "http://localhost:8004"
-    default_model: str = "meta-llama/Llama-3.1-8B-Instruct"
-    fallback_model: str = "meta-llama/Llama-3.1-70B-Instruct"
+    default_model: str = "meta-llama/Llama-3.1-70B-Instruct"
+    fallback_model: str = "meta-llama/Llama-3.1-8B-Instruct"
     max_tokens: int = 1024
     temperature: float = 0.7
 

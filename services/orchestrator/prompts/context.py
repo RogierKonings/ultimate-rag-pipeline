@@ -45,6 +45,33 @@ def count_tokens(text: str, model_name: str = "gpt-4") -> int:
     return len(encoding.encode(text))
 
 
+def _extract_display_name(source: str, title: str | None, default: str) -> str:
+    """Extract a meaningful display name for a document.
+
+    For S3-uploaded files, extracts the clean filename from the source path.
+    Falls back to title or default if not an S3 document.
+
+    Args:
+        source: The source URI or path.
+        title: The document title (may be auto-extracted from content).
+        default: Default name if nothing else is available.
+
+    Returns:
+        A meaningful display name for the document.
+    """
+    # Check if this is an S3-uploaded document
+    if source and source.startswith("uploads/"):
+        # Extract filename from S3 key
+        filename = source.split("/")[-1] if "/" in source else source
+        # Strip timestamp prefix if present (format: {timestamp}-{filename})
+        if "-" in filename and filename.split("-")[0].isdigit():
+            return filename.split("-", 1)[1]
+        return filename
+
+    # Fall back to title or default
+    return title or default
+
+
 def format_context(documents: list[dict[str, Any]]) -> str:
     """Format a list of retrieved documents into a context string.
 
@@ -69,12 +96,14 @@ def format_context(documents: list[dict[str, Any]]) -> str:
             continue
 
         # Build document header
-        title = doc.get("metadata", {}).get("title") or doc.get("title", f"Document {i}")
         source = doc.get("source", "")
+        raw_title = doc.get("metadata", {}).get("title") or doc.get("title")
+        title = _extract_display_name(source, raw_title, f"Document {i}")
 
         # Format document block
         doc_block = f"[{i}] {title}"
-        if source:
+        if source and not source.startswith("uploads/"):
+            # Only show source for non-S3 documents (filename is already in title)
             doc_block += f"\nSource: {source}"
         doc_block += f"\n{content}"
 
@@ -99,11 +128,13 @@ def format_citations(documents: list[dict[str, Any]], max_citations: int = 10) -
     citations = []
 
     for i, doc in enumerate(documents[:max_citations], start=1):
-        title = doc.get("metadata", {}).get("title") or doc.get("title", f"Document {i}")
         source = doc.get("source", "")
+        raw_title = doc.get("metadata", {}).get("title") or doc.get("title")
+        title = _extract_display_name(source, raw_title, f"Document {i}")
 
         citation = f"[{i}] {title}"
-        if source:
+        if source and not source.startswith("uploads/"):
+            # Only show source for non-S3 documents (filename is already in title)
             citation += f" - {source}"
 
         citations.append(citation)
@@ -265,11 +296,15 @@ def extract_document_metadata(
     metadata_list = []
 
     for i, doc in enumerate(documents):
+        source = doc.get("source", "")
+        raw_title = doc.get("metadata", {}).get("title") or doc.get("title")
+        title = _extract_display_name(source, raw_title, f"Document {i + 1}")
+
         metadata = {
             "index": i + 1,
             "id": doc.get("id", f"doc-{i + 1}"),
-            "title": doc.get("metadata", {}).get("title") or doc.get("title", f"Document {i + 1}"),
-            "source": doc.get("source", ""),
+            "title": title,
+            "source": source,
             "score": doc.get("score"),
         }
         metadata_list.append(metadata)

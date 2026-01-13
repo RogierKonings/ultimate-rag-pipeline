@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-svelte';
+	import { ExternalLink, ChevronDown, ChevronUp, Download, Loader2 } from 'lucide-svelte';
 	import type { SourceDocument } from '$lib/api/types';
 	import { search } from '$lib/stores/search';
 
@@ -10,8 +10,39 @@
 
 	let { source, index }: Props = $props();
 	let expanded = $state(false);
+	let downloading = $state(false);
 
 	const isHighlighted = $derived($search.highlightedSourceId === source.id);
+
+	// Check if URI is an internal S3 path
+	const isS3Document = $derived(source.uri?.startsWith('uploads/') ?? false);
+
+	// Extract clean filename from URI (strip timestamp prefix)
+	const cleanFilename = $derived(() => {
+		if (!source.uri) return null;
+		if (!isS3Document) return null;
+		// Extract filename from S3 key and strip timestamp prefix
+		const filename = source.uri.split('/').pop() || source.uri;
+		if (filename.includes('-') && /^\d+/.test(filename)) {
+			return filename.split('-').slice(1).join('-');
+		}
+		return filename;
+	});
+
+	// For S3 documents, prefer the cleaned filename over auto-extracted title
+	const displayTitle = $derived(() => {
+		if (isS3Document && cleanFilename()) {
+			return cleanFilename();
+		}
+		return source.title || 'Untitled Document';
+	});
+
+	// Display URI for download button or external link
+	const displayUri = $derived(() => {
+		if (!source.uri) return null;
+		if (!isS3Document) return source.uri;
+		return cleanFilename();
+	});
 
 	// Calculate score bar width and color
 	const scorePercent = $derived(source.score ? Math.min(source.score * 100, 100) : 0);
@@ -24,6 +55,31 @@
 
 	function toggleExpanded() {
 		expanded = !expanded;
+	}
+
+	async function handleDownload(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		if (!source.uri || downloading) return;
+
+		downloading = true;
+		try {
+			const response = await fetch(`/api/download?key=${encodeURIComponent(source.uri)}`);
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.message || 'Download failed');
+			}
+
+			const { url } = await response.json();
+			// Open presigned URL in new tab to trigger download
+			window.open(url, '_blank');
+		} catch (error) {
+			console.error('Download failed:', error);
+			// Could show a toast notification here
+		} finally {
+			downloading = false;
+		}
 	}
 </script>
 
@@ -51,7 +107,7 @@
 			<!-- Title -->
 			<div class="flex items-start justify-between gap-2">
 				<h4 class="font-medium text-[var(--color-text-primary)]">
-					{source.title || 'Untitled Document'}
+					{displayTitle()}
 				</h4>
 
 				<div class="flex shrink-0 items-center gap-2">
@@ -100,18 +156,33 @@
 				</div>
 			{/if}
 
-			<!-- Source URI -->
+			<!-- Source URI / Download -->
 			{#if source.uri}
 				<div class="mt-3 flex items-center gap-2">
-					<ExternalLink class="h-3 w-3 text-[var(--color-text-secondary)]" />
-					<a
-						href={source.uri}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="text-xs text-[var(--color-accent)] hover:underline truncate"
-					>
-						{source.uri}
-					</a>
+					{#if isS3Document}
+						<button
+							onclick={handleDownload}
+							disabled={downloading}
+							class="flex items-center gap-2 text-xs text-[var(--color-accent)] hover:underline disabled:opacity-50"
+						>
+							{#if downloading}
+								<Loader2 class="h-3 w-3 animate-spin" />
+							{:else}
+								<Download class="h-3 w-3" />
+							{/if}
+							<span class="truncate">{displayUri()}</span>
+						</button>
+					{:else}
+						<ExternalLink class="h-3 w-3 text-[var(--color-text-secondary)]" />
+						<a
+							href={source.uri}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-xs text-[var(--color-accent)] hover:underline truncate"
+						>
+							{source.uri}
+						</a>
+					{/if}
 				</div>
 			{/if}
 		</div>

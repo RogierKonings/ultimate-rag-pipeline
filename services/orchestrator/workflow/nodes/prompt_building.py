@@ -12,28 +12,24 @@ if TYPE_CHECKING:
 
 
 # System prompt template
-SYSTEM_PROMPT = """You are a helpful AI assistant that ONLY answers questions based on the provided document context. You must follow these rules strictly:
+SYSTEM_PROMPT = """You are a helpful AI assistant. Use the provided context to answer the user's question accurately. If the context doesn't contain relevant information, acknowledge this and provide what help you can.
 
-1. ONLY use information from the provided documents to answer questions
-2. ALWAYS cite the document name/source when using information (e.g., "According to [Document 1: filename.pdf]...")
-3. If the documents don't contain relevant information, say: "I don't have information about this in the provided documents."
-4. NEVER make up or infer information not explicitly stated in the documents
-5. Be concise and direct in your responses
-6. If you're uncertain about something, express that uncertainty"""
+Guidelines:
+- Be concise and direct in your responses
+- Cite sources when using information from the context
+- If you're uncertain, express that uncertainty
+- Do not make up information not present in the context"""
 
-RAG_PROMPT_TEMPLATE = """I have retrieved the following documents that may be relevant to your question:
-
+RAG_PROMPT_TEMPLATE = """Context:
 {context}
-
----
 
 User Question: {query}
 
-Please answer ONLY based on the information in the documents above. Always cite which document your answer comes from."""
+Please provide a helpful response based on the context above."""
 
 NO_CONTEXT_PROMPT_TEMPLATE = """User Question: {query}
 
-I don't have any documents to reference for this question. I cannot provide an answer without relevant document context."""
+Please provide a helpful response."""
 
 
 def _build_messages(

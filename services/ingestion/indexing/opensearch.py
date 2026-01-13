@@ -96,6 +96,8 @@ class OpenSearchWriter(BaseIndexWriter):
                         "visibility": {"type": "keyword"},
                         "allowed_groups": {"type": "keyword"},
                         "allowed_users": {"type": "keyword"},
+                        "source": {"type": "keyword"},
+                        "source_uri": {"type": "keyword"},
                         "source_type": {"type": "keyword"},
                         "source_page": {"type": "integer"},
                         "source_section": {"type": "keyword"},
@@ -132,6 +134,9 @@ class OpenSearchWriter(BaseIndexWriter):
             action = {
                 "index": {"_index": self.config.index_name, "_id": str(chunk.chunk_id)},
             }
+            # Extract source_uri from metadata for aliasing
+            source_uri = chunk.metadata.get("source_uri", "")
+
             doc = {
                 "chunk_id": str(chunk.chunk_id),
                 "document_id": str(chunk.document_id),
@@ -143,6 +148,8 @@ class OpenSearchWriter(BaseIndexWriter):
                 "allowed_groups": chunk.allowed_groups,
                 "allowed_users": chunk.allowed_users,
                 "created_at": datetime.now(tz=UTC).isoformat(),
+                # Add 'source' alias for retrieval service compatibility
+                "source": source_uri,
                 **chunk.metadata,
             }
 

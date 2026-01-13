@@ -42,7 +42,9 @@
 		}
 	});
 
-	const isSpinning = $derived(job.status === 'uploading' || job.status === 'processing');
+	const isSpinning = $derived(
+		job.status === 'pending' || job.status === 'uploading' || job.status === 'processing'
+	);
 </script>
 
 <div class="rounded-lg border border-[var(--color-border)] bg-gray-50 p-3">
@@ -67,7 +69,7 @@
 	</div>
 
 	<!-- Progress Bar -->
-	{#if job.status === 'uploading' || job.status === 'processing'}
+	{#if job.status === 'pending' || job.status === 'uploading' || job.status === 'processing'}
 		<div class="mt-2">
 			<div class="score-bar">
 				<div
@@ -76,7 +78,13 @@
 				></div>
 			</div>
 			<p class="mt-1 text-xs text-[var(--color-text-secondary)]">
-				{job.status === 'uploading' ? 'Uploading...' : 'Processing...'} {job.progress}%
+				{#if job.status === 'pending'}
+					Queued...
+				{:else if job.status === 'uploading'}
+					Uploading... {job.progress}%
+				{:else}
+					Processing... {job.progress}%
+				{/if}
 			</p>
 		</div>
 	{/if}

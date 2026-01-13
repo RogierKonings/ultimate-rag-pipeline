@@ -444,7 +444,19 @@ class FilesystemConnector(BaseConnector):
                     raise FileNotFoundError(f"Object not found: {source_id}") from e
                 raise
 
-        filename = source_id.split("/")[-1] if "/" in source_id else source_id
+        # Prefer original filename from S3 metadata if available
+        s3_metadata = head.get("Metadata", {})
+        original_filename = s3_metadata.get("original-filename")
+        if original_filename:
+            filename = original_filename
+        else:
+            # Fall back to extracting from S3 key
+            key_filename = source_id.split("/")[-1] if "/" in source_id else source_id
+            # Strip timestamp prefix if present (format: {timestamp}-{filename})
+            if "-" in key_filename and key_filename.split("-")[0].isdigit():
+                filename = key_filename.split("-", 1)[1]
+            else:
+                filename = key_filename
         mime_type = head.get("ContentType") or self._detect_mime_type(content, filename)
 
         metadata = DocumentMetadata(
@@ -459,6 +471,8 @@ class FilesystemConnector(BaseConnector):
                 "etag": head.get("ETag", "").strip('"'),
                 "content_encoding": head.get("ContentEncoding"),
                 "version_id": head.get("VersionId"),
+                "original_filename": original_filename,
+                "s3_key": source_id,
             },
         )
 

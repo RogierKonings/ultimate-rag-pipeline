@@ -42,6 +42,11 @@
 	});
 
 	const displayName = $derived.by(() => {
+		// For uploaded files (filesystem source), prefer filename over auto-extracted title
+		// as the title is often just the first line of content which may not be meaningful
+		if (document.source_type === 'filesystem' && document.filename) {
+			return document.filename;
+		}
 		return document.title || document.filename || document.source_id.split('/').pop() || 'Document';
 	});
 

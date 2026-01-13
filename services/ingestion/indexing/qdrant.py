@@ -138,6 +138,9 @@ class QdrantWriter(BaseIndexWriter):
 
         points = []
         for chunk in chunks:
+            # Extract source_uri from metadata for aliasing
+            source_uri = chunk.metadata.get("source_uri", "")
+
             payload = {
                 "document_id": str(chunk.document_id),
                 "content": chunk.content,
@@ -147,6 +150,8 @@ class QdrantWriter(BaseIndexWriter):
                 "visibility": chunk.visibility,
                 "allowed_groups": chunk.allowed_groups,
                 "allowed_users": chunk.allowed_users,
+                # Add 'source' alias for retrieval service compatibility
+                "source": source_uri,
                 **chunk.metadata,
             }
 

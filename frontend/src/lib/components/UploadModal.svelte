@@ -1,12 +1,16 @@
 <script lang="ts">
-	import { X, Upload, FileText, AlertCircle, Loader2 } from 'lucide-svelte';
+	import { X, Upload, FileText, AlertCircle, Loader2, AlertTriangle } from 'lucide-svelte';
 	import { upload } from '$lib/stores/upload';
+	import type { QueuedFile } from '$lib/api/types';
 
 	let dragOver = $state(false);
 	let inputElement: HTMLInputElement;
 
 	const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
 	const MAX_SIZE_MB = 50;
+
+	const validFiles = $derived($upload.queuedFiles.filter((f) => f.status === 'valid'));
+	const hasValidFiles = $derived(validFiles.length > 0);
 
 	function handleClose() {
 		upload.closeModal();
@@ -40,7 +44,7 @@
 
 		const files = e.dataTransfer?.files;
 		if (files && files.length > 0) {
-			validateAndSetFile(files[0]);
+			processFiles(Array.from(files));
 		}
 	}
 
@@ -48,31 +52,40 @@
 		const target = e.target as HTMLInputElement;
 		const files = target.files;
 		if (files && files.length > 0) {
-			validateAndSetFile(files[0]);
+			processFiles(Array.from(files));
 		}
+		// Reset input so same files can be selected again
+		target.value = '';
 	}
 
-	function validateAndSetFile(file: File) {
-		const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+	function processFiles(files: File[]) {
+		const queuedFiles: QueuedFile[] = files.map((file) => {
+			const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+			let status: 'valid' | 'invalid' = 'valid';
+			let error: string | undefined;
 
-		if (!ALLOWED_EXTENSIONS.includes(extension)) {
-			upload.setFile(null);
-			// Show error through uploadError
-			return;
-		}
+			if (!ALLOWED_EXTENSIONS.includes(extension)) {
+				status = 'invalid';
+				error = 'Invalid file type';
+			} else if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+				status = 'invalid';
+				error = `Exceeds ${MAX_SIZE_MB}MB limit`;
+			}
 
-		if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-			upload.setFile(null);
-			return;
-		}
+			return {
+				id: crypto.randomUUID(),
+				file,
+				status,
+				error
+			};
+		});
 
-		upload.setFile(file);
+		upload.addFiles(queuedFiles);
 	}
 
-	function handleUpload() {
-		if ($upload.currentFile) {
-			upload.upload($upload.currentFile);
-		}
+	function handleUploadAll() {
+		const filesToUpload = validFiles.map((qf) => qf.file);
+		upload.uploadBatch(filesToUpload);
 	}
 
 	function handleBrowseClick() {
@@ -97,14 +110,13 @@
 	tabindex="-1"
 >
 	<!-- Modal -->
-	<div
-		class="w-full max-w-lg rounded-xl bg-[var(--color-surface)] shadow-xl"
-		role="document"
-	>
+	<div class="w-full max-w-lg rounded-xl bg-[var(--color-surface)] shadow-xl" role="document">
 		<!-- Header -->
-		<div class="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
+		<div
+			class="flex items-center justify-between border-b border-[var(--color-border)] px-6 py-4"
+		>
 			<h2 id="upload-title" class="text-lg font-semibold text-[var(--color-text-primary)]">
-				Upload Document
+				Upload Documents
 			</h2>
 			<button
 				onclick={handleClose}
@@ -117,9 +129,51 @@
 
 		<!-- Content -->
 		<div class="p-6">
+			<!-- File Queue -->
+			{#if $upload.queuedFiles.length > 0}
+				<div class="mb-4 max-h-48 overflow-y-auto rounded-lg border border-[var(--color-border)]">
+					{#each $upload.queuedFiles as queuedFile (queuedFile.id)}
+						<div
+							class="flex items-center gap-3 border-b border-[var(--color-border)] px-3 py-2 last:border-b-0"
+						>
+							{#if queuedFile.status === 'valid'}
+								<FileText class="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+							{:else}
+								<AlertTriangle class="h-4 w-4 shrink-0 text-amber-500" />
+							{/if}
+
+							<div class="min-w-0 flex-1">
+								<p
+									class="truncate text-sm font-medium {queuedFile.status === 'invalid'
+										? 'text-[var(--color-text-secondary)]'
+										: 'text-[var(--color-text-primary)]'}"
+								>
+									{queuedFile.file.name}
+								</p>
+								{#if queuedFile.error}
+									<p class="text-xs text-amber-600">{queuedFile.error}</p>
+								{:else}
+									<p class="text-xs text-[var(--color-text-secondary)]">
+										{formatFileSize(queuedFile.file.size)}
+									</p>
+								{/if}
+							</div>
+
+							<button
+								onclick={() => upload.removeQueuedFile(queuedFile.id)}
+								class="shrink-0 rounded p-1 text-[var(--color-text-secondary)] hover:bg-gray-100 hover:text-[var(--color-text-primary)]"
+								aria-label="Remove file"
+							>
+								<X class="h-4 w-4" />
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
 			<!-- Drop Zone -->
 			<div
-				class={`relative rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+				class={`relative rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
 					dragOver
 						? 'border-[var(--color-accent)] bg-[var(--color-accent)]/5'
 						: 'border-[var(--color-border)] hover:border-[var(--color-accent)]/50'
@@ -134,54 +188,36 @@
 					bind:this={inputElement}
 					type="file"
 					accept={ALLOWED_EXTENSIONS.join(',')}
+					multiple
 					onchange={handleFileSelect}
 					class="hidden"
 				/>
 
-				{#if $upload.currentFile}
-					<!-- File Selected -->
-					<div class="flex flex-col items-center">
-						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent)]/10">
-							<FileText class="h-6 w-6 text-[var(--color-accent)]" />
-						</div>
-						<p class="mt-3 font-medium text-[var(--color-text-primary)]">
-							{$upload.currentFile.name}
-						</p>
-						<p class="mt-1 text-sm text-[var(--color-text-secondary)]">
-							{formatFileSize($upload.currentFile.size)}
-						</p>
+				<div class="flex flex-col items-center">
+					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+						<Upload class="h-5 w-5 text-[var(--color-text-secondary)]" />
+					</div>
+					<p class="mt-2 text-sm text-[var(--color-text-primary)]">
 						<button
-							onclick={() => upload.setFile(null)}
-							class="mt-3 text-sm text-[var(--color-accent)] hover:underline"
+							onclick={handleBrowseClick}
+							class="font-medium text-[var(--color-accent)] hover:underline"
 						>
-							Choose a different file
+							Click to upload
 						</button>
-					</div>
-				{:else}
-					<!-- No File -->
-					<div class="flex flex-col items-center">
-						<div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-							<Upload class="h-6 w-6 text-[var(--color-text-secondary)]" />
-						</div>
-						<p class="mt-3 text-[var(--color-text-primary)]">
-							<button
-								onclick={handleBrowseClick}
-								class="font-medium text-[var(--color-accent)] hover:underline"
-							>
-								Click to upload
-							</button>
-							{' '}or drag and drop
-						</p>
-						<p class="mt-1 text-sm text-[var(--color-text-secondary)]">
-							PDF, DOCX, TXT, or MD (max {MAX_SIZE_MB}MB)
-						</p>
-					</div>
-				{/if}
+						{' '}or drag and drop
+					</p>
+					<p class="mt-1 text-xs text-[var(--color-text-secondary)]">
+						PDF, DOCX, TXT, or MD (max {MAX_SIZE_MB}MB each)
+					</p>
+				</div>
 			</div>
 
 			<!-- Error Message -->
 			{#if $upload.uploadError}
-				<div class="mt-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">
+				<div
+					class="mt-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+					role="alert"
+				>
 					<AlertCircle class="h-4 w-4 shrink-0" />
 					<span>{$upload.uploadError}</span>
 				</div>
@@ -198,8 +234,8 @@
 				Cancel
 			</button>
 			<button
-				onclick={handleUpload}
-				disabled={!$upload.currentFile || $upload.uploading}
+				onclick={handleUploadAll}
+				disabled={!hasValidFiles || $upload.uploading}
 				class="flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)] disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if $upload.uploading}
@@ -207,7 +243,13 @@
 					Uploading...
 				{:else}
 					<Upload class="h-4 w-4" />
-					Process Document
+					{#if validFiles.length === 1}
+						Upload File
+					{:else if validFiles.length > 1}
+						Upload {validFiles.length} Files
+					{:else}
+						Upload
+					{/if}
 				{/if}
 			</button>
 		</div>

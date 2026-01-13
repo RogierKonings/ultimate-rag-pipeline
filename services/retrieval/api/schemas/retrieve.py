@@ -34,8 +34,8 @@ class RetrieveRequest(BaseModel):
     semantic_weight: float = Field(default=0.7, ge=0.0, le=1.0)
     keyword_weight: float = Field(default=0.3, ge=0.0, le=1.0)
 
-    # Reranking
-    rerank: bool = True
+    # Reranking (disabled by default - requires reranker service)
+    rerank: bool = False
     rerank_top_k: int = Field(default=20, ge=1, le=100)
 
     # Filtering
@@ -54,7 +54,7 @@ class RetrieveRequest(BaseModel):
                 "query": "How does machine learning work?",
                 "mode": "hybrid",
                 "top_k": 10,
-                "rerank": True,
+                "rerank": False,
                 "filters": {"source_type": "documentation"},
             },
         },
@@ -73,7 +73,7 @@ class MultiQueryRequest(BaseModel):
     aggregation: str = Field(default="rrf", pattern="^(max|avg|rrf)$")
     top_k: int = Field(default=10, ge=1, le=100)
     filters: dict[str, Any] | None = None
-    rerank: bool = True
+    rerank: bool = False
 
 
 class RetrievedDocument(BaseModel):

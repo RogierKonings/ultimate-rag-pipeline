@@ -18,6 +18,25 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _extract_display_name(source: str, title: str | None, default: str) -> str:
+    """Extract a meaningful display name for a document.
+
+    For S3-uploaded files, extracts the clean filename from the source path.
+    Falls back to title or default if not an S3 document.
+    """
+    # Check if this is an S3-uploaded document
+    if source and source.startswith("uploads/"):
+        # Extract filename from S3 key
+        filename = source.split("/")[-1] if "/" in source else source
+        # Strip timestamp prefix if present (format: {timestamp}-{filename})
+        if "-" in filename and filename.split("-")[0].isdigit():
+            return filename.split("-", 1)[1]
+        return filename
+
+    # Fall back to title or default
+    return title or default
+
+
 def _format_context(documents: list[dict]) -> str:
     """
     Format retrieved documents into a context string.
@@ -36,7 +55,8 @@ def _format_context(documents: list[dict]) -> str:
         content = doc.get("content", "")
         source = doc.get("source", doc.get("metadata", {}).get("source_uri", "unknown"))
         title = doc.get("metadata", {}).get("title", "")
-        source_label = title if title else source
+        # For S3 uploads, prefer filename over auto-extracted title
+        source_label = _extract_display_name(source, title, f"Document {i}")
         context_parts.append(f"[Document {i}: {source_label}]\n{content}")
 
     return "\n\n".join(context_parts)
