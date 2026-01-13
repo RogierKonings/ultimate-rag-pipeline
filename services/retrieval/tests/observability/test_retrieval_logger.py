@@ -1,6 +1,7 @@
 """Tests for RetrievalLogger."""
 
 import json
+import logging
 from uuid import uuid4
 
 import pytest
@@ -119,52 +120,52 @@ class TestRetrievalLogger:
 
         assert logger.output_format == "console"
 
-    def test_log_retrieval(self, logger, capsys):
+    def test_log_retrieval(self, logger, caplog):
         """Test logging a retrieval operation."""
         query_id = uuid4()
         tenant_id = uuid4()
         user_id = uuid4()
 
-        logger.log_retrieval(
-            query_id=query_id,
-            query="test query",
-            mode="hybrid",
-            tenant_id=tenant_id,
-            user_id=user_id,
-            result_count=5,
-            top_scores=[0.9, 0.8, 0.7],
-            total_ms=150.5,
-            preprocessing_ms=20.0,
-            search_ms=100.0,
-            rerank_ms=30.5,
-            used_semantic=True,
-            used_keyword=True,
-            used_reranking=True,
-        )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_retrieval(
+                query_id=query_id,
+                query="test query",
+                mode="hybrid",
+                tenant_id=tenant_id,
+                user_id=user_id,
+                result_count=5,
+                top_scores=[0.9, 0.8, 0.7],
+                total_ms=150.5,
+                preprocessing_ms=20.0,
+                search_ms=100.0,
+                rerank_ms=30.5,
+                used_semantic=True,
+                used_keyword=True,
+                used_reranking=True,
+            )
 
-        captured = capsys.readouterr()
-        # Just verify something was logged
-        assert len(captured.out) > 0 or len(captured.err) > 0
-
-    def test_log_retrieval_with_error(self, logger, capsys):
-        """Test logging a failed retrieval."""
-        logger.log_retrieval(
-            query_id=uuid4(),
-            query="test query",
-            mode="hybrid",
-            tenant_id=uuid4(),
-            user_id=None,
-            result_count=0,
-            top_scores=[],
-            total_ms=50.0,
-            preprocessing_ms=20.0,
-            search_ms=30.0,
-            error="Connection timeout",
-        )
-
-        captured = capsys.readouterr()
         # Verify something was logged
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
+
+    def test_log_retrieval_with_error(self, logger, caplog):
+        """Test logging a failed retrieval."""
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_retrieval(
+                query_id=uuid4(),
+                query="test query",
+                mode="hybrid",
+                tenant_id=uuid4(),
+                user_id=None,
+                result_count=0,
+                top_scores=[],
+                total_ms=50.0,
+                preprocessing_ms=20.0,
+                search_ms=30.0,
+                error="Connection timeout",
+            )
+
+        # Verify something was logged
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
 
     def test_user_id_hashing(self, logger, capsys):
         """Test that user IDs are hashed for privacy."""
@@ -189,18 +190,18 @@ class TestRetrievalLogger:
         # User ID should not appear in raw form
         assert str(user_id) not in output
 
-    def test_log_query_expansion(self, logger, capsys):
+    def test_log_query_expansion(self, logger, caplog):
         """Test logging query expansion."""
-        logger.log_query_expansion(
-            query_id=uuid4(),
-            original_query="machine learning",
-            expanded_queries=["ML", "deep learning", "AI"],
-            method="synonym",
-            duration_ms=25.5,
-        )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_query_expansion(
+                query_id=uuid4(),
+                original_query="machine learning",
+                expanded_queries=["ML", "deep learning", "AI"],
+                method="synonym",
+                duration_ms=25.5,
+            )
 
-        captured = capsys.readouterr()
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
 
     def test_log_cache_operation(self, logger, capsys):
         """Test logging cache operation."""
@@ -215,19 +216,19 @@ class TestRetrievalLogger:
         # May not output if DEBUG level is filtered
         # Just verify no errors
 
-    def test_log_error(self, logger, capsys):
+    def test_log_error(self, logger, caplog):
         """Test logging an error with context."""
-        try:
-            raise ValueError("Test error message")
-        except Exception as e:
-            logger.log_error(
-                error=e,
-                context={"operation": "search", "component": "qdrant"},
-                query_id=uuid4(),
-            )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            try:
+                raise ValueError("Test error message")
+            except Exception as e:
+                logger.log_error(
+                    error=e,
+                    context={"operation": "search", "component": "qdrant"},
+                    query_id=uuid4(),
+                )
 
-        captured = capsys.readouterr()
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
 
     def test_info_log(self, logger):
         """Test info level logging."""
@@ -249,60 +250,60 @@ class TestRetrievalLogger:
         # Just verify method doesn't raise
         logger.error("Test error message", key="value")
 
-    def test_log_retrieval_no_user_id(self, logger, capsys):
+    def test_log_retrieval_no_user_id(self, logger, caplog):
         """Test logging without user_id."""
-        logger.log_retrieval(
-            query_id=uuid4(),
-            query="test",
-            mode="semantic",
-            tenant_id=uuid4(),
-            user_id=None,
-            result_count=10,
-            top_scores=[0.95],
-            total_ms=100,
-            preprocessing_ms=10,
-            search_ms=90,
-        )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_retrieval(
+                query_id=uuid4(),
+                query="test",
+                mode="semantic",
+                tenant_id=uuid4(),
+                user_id=None,
+                result_count=10,
+                top_scores=[0.95],
+                total_ms=100,
+                preprocessing_ms=10,
+                search_ms=90,
+            )
 
-        captured = capsys.readouterr()
         # Verify no errors - user_id_hash should be None
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
 
-    def test_log_retrieval_with_trace_context(self, logger, capsys):
+    def test_log_retrieval_with_trace_context(self, logger, caplog):
         """Test logging with trace context."""
-        logger.log_retrieval(
-            query_id=uuid4(),
-            query="test",
-            mode="hybrid",
-            tenant_id=uuid4(),
-            user_id=uuid4(),
-            result_count=5,
-            top_scores=[0.8],
-            total_ms=100,
-            preprocessing_ms=10,
-            search_ms=90,
-            trace_id="abc123def456",
-            span_id="789xyz",
-        )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_retrieval(
+                query_id=uuid4(),
+                query="test",
+                mode="hybrid",
+                tenant_id=uuid4(),
+                user_id=uuid4(),
+                result_count=5,
+                top_scores=[0.8],
+                total_ms=100,
+                preprocessing_ms=10,
+                search_ms=90,
+                trace_id="abc123def456",
+                span_id="789xyz",
+            )
 
-        captured = capsys.readouterr()
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0
 
-    def test_log_retrieval_with_extra(self, logger, capsys):
+    def test_log_retrieval_with_extra(self, logger, caplog):
         """Test logging with extra context."""
-        logger.log_retrieval(
-            query_id=uuid4(),
-            query="test",
-            mode="keyword",
-            tenant_id=uuid4(),
-            user_id=None,
-            result_count=3,
-            top_scores=[0.7, 0.6, 0.5],
-            total_ms=50,
-            preprocessing_ms=5,
-            search_ms=45,
-            extra={"custom_field": "custom_value"},
-        )
+        with caplog.at_level(logging.DEBUG, logger="test-service"):
+            logger.log_retrieval(
+                query_id=uuid4(),
+                query="test",
+                mode="keyword",
+                tenant_id=uuid4(),
+                user_id=None,
+                result_count=3,
+                top_scores=[0.7, 0.6, 0.5],
+                total_ms=50,
+                preprocessing_ms=5,
+                search_ms=45,
+                extra={"custom_field": "custom_value"},
+            )
 
-        captured = capsys.readouterr()
-        assert len(captured.out) > 0 or len(captured.err) > 0
+        assert len(caplog.records) > 0 or len(caplog.text) > 0

@@ -81,7 +81,7 @@ jobs:
             --cov-report=xml:coverage-ingestion.xml \
             --cov-report=term-missing
         env:
-          PYTHONPATH: ${{ github.workspace }}/services
+          PYTHONPATH: ${{ github.workspace }}/services:${{ github.workspace }}/services/ingestion
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -126,7 +126,7 @@ jobs:
             --cov-report=xml:coverage-retrieval.xml \
             --cov-report=term-missing
         env:
-          PYTHONPATH: ${{ github.workspace }}/services
+          PYTHONPATH: ${{ github.workspace }}/services:${{ github.workspace }}/services/retrieval
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -170,7 +170,7 @@ jobs:
             --cov-report=xml:coverage-orchestrator.xml \
             --cov-report=term-missing
         env:
-          PYTHONPATH: ${{ github.workspace }}/services
+          PYTHONPATH: ${{ github.workspace }}/services:${{ github.workspace }}/services/orchestrator
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
