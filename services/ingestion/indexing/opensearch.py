@@ -96,6 +96,7 @@ class OpenSearchWriter(BaseIndexWriter):
                         "visibility": {"type": "keyword"},
                         "allowed_groups": {"type": "keyword"},
                         "allowed_users": {"type": "keyword"},
+                        "status": {"type": "keyword"},  # US-10.1.3: Status for deletion filtering
                         "source": {"type": "keyword"},
                         "source_uri": {"type": "keyword"},
                         "source_type": {"type": "keyword"},
@@ -147,6 +148,7 @@ class OpenSearchWriter(BaseIndexWriter):
                 "visibility": chunk.visibility,
                 "allowed_groups": chunk.allowed_groups,
                 "allowed_users": chunk.allowed_users,
+                "status": chunk.status,  # US-10.1.3: Status for deletion filtering
                 "created_at": datetime.now(tz=UTC).isoformat(),
                 # Add 'source' alias for retrieval service compatibility
                 "source": source_uri,

@@ -44,6 +44,9 @@ class IndexedChunk(BaseModel):
     allowed_groups: list[str] = Field(default_factory=list)
     allowed_users: list[str] = Field(default_factory=list)
 
+    # Document status for retrieval filtering (US-10.1.3)
+    status: str = "active"  # active, deleted
+
 
 class DocumentStatus(str, Enum):
     """Status of a document in the indexing pipeline."""

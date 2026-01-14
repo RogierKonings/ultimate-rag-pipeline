@@ -111,6 +111,7 @@ class QdrantWriter(BaseIndexWriter):
             "allowed_groups",
             "allowed_users",
             "source_type",
+            "status",  # US-10.1.3: Filter deleted documents
         ]
 
         for field in filterable_fields:
@@ -150,6 +151,7 @@ class QdrantWriter(BaseIndexWriter):
                 "visibility": chunk.visibility,
                 "allowed_groups": chunk.allowed_groups,
                 "allowed_users": chunk.allowed_users,
+                "status": chunk.status,  # US-10.1.3: Status for deletion filtering
                 # Add 'source' alias for retrieval service compatibility
                 "source": source_uri,
                 **chunk.metadata,

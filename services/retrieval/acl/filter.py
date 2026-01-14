@@ -103,6 +103,12 @@ class ACLFilter:
         should_clauses: list[dict[str, Any]] = []
         must_not_clauses: list[dict[str, Any]] = []
 
+        # US-10.1.3: Always filter deleted documents
+        # This ensures soft-deleted content never appears in search results
+        must_clauses.append(
+            {"key": "status", "match": {"value": "active"}},
+        )
+
         # Tenant isolation (always required unless super tenant)
         if self.config.super_tenant_id is None or user.tenant_id != self.config.super_tenant_id:
             must_clauses.append(
@@ -335,6 +341,8 @@ class AnonymousAccessFilter(ACLFilter):
         """
         return {
             "must": [
+                # US-10.1.3: Always filter deleted documents
+                {"key": "status", "match": {"value": "active"}},
                 {"key": "tenant_id", "match": {"value": str(user.tenant_id)}},
                 {"key": "visibility", "match": {"value": Visibility.PUBLIC.value}},
             ],

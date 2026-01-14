@@ -99,23 +99,50 @@ class QdrantVectorStore:
             for hit in response.points
         ]
 
-    async def delete_by_document_id(self, document_id: str) -> None:
+    async def delete_by_document_id(
+        self,
+        document_id: str,
+        tenant_id: str | None = None,
+    ) -> int:
         """Delete all vectors associated with a document.
 
         Args:
             document_id: The document ID to delete vectors for.
+            tenant_id: Optional tenant ID for scoped deletion (recommended for safety).
+
+        Returns:
+            Number of points deleted.
         """
+        # Build filter conditions
+        must_conditions = [
+            FieldCondition(
+                key="document_id",
+                match=MatchValue(value=document_id),
+            ),
+        ]
+
+        if tenant_id:
+            must_conditions.append(
+                FieldCondition(
+                    key="tenant_id",
+                    match=MatchValue(value=tenant_id),
+                ),
+            )
+
+        # Count existing points before deletion
+        count_result = self.client.count(
+            collection_name=self.collection_name,
+            count_filter=Filter(must=must_conditions),
+        )
+        count_before = count_result.count
+
+        # Perform deletion
         self.client.delete(
             collection_name=self.collection_name,
-            points_selector=Filter(
-                must=[
-                    FieldCondition(
-                        key="document_id",
-                        match=MatchValue(value=document_id),
-                    ),
-                ],
-            ),
+            points_selector=Filter(must=must_conditions),
         )
+
+        return count_before
 
     async def delete_by_ids(self, point_ids: list[str]) -> None:
         """Delete vectors by their IDs.

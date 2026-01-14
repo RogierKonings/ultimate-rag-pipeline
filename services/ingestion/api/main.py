@@ -35,8 +35,12 @@ logger = logging.getLogger(__name__)
 async def initialize_connections() -> None:
     """Initialize database and service connections on startup."""
     logger.info("Initializing service connections...")
-    # Connections are initialized lazily in dependencies
-    # This is a placeholder for any eager initialization
+
+    # Register SQLAlchemy event listeners for soft-delete propagation (US-10.1.3)
+    from shared.database import ensure_events_registered
+
+    ensure_events_registered()
+    logger.info("Database event listeners registered")
 
 
 async def close_connections() -> None:

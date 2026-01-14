@@ -11,6 +11,7 @@ from database.connection import (
     get_db,
     get_session,
 )
+from database.events import ensure_events_registered
 from database.models.audit import AuditLog
 from database.models.base import Base
 from database.models.document import Chunk, Document
@@ -26,4 +27,6 @@ __all__ = [
     "Document",
     "Chunk",
     "AuditLog",
+    # Events
+    "ensure_events_registered",
 ]

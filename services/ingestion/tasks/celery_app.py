@@ -102,6 +102,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     # Route tasks to queues
     app.conf.task_routes = {
         "tasks.ingest.*": {"queue": "ingestion"},
+        "tasks.tombstone.*": {"queue": "ingestion"},  # High priority deletion propagation
         "tasks.video_ingest.*": {"queue": "video"},
         "tasks.reembed.*": {"queue": "reembed"},
         "tasks.reconcile.*": {"queue": "maintenance"},

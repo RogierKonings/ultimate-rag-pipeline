@@ -4,6 +4,7 @@ This module provides Celery-based background job processing for:
 - Document ingestion (process_document, batch_ingest)
 - Video processing (process_video)
 - Re-embedding (reembed_collection)
+- Deletion propagation (propagate_deletion)
 - Job status tracking
 
 Example:
@@ -22,6 +23,7 @@ from .models import (
 )
 from .reembed import reembed_collection
 from .status import JobStatusTracker
+from .tombstone import propagate_deletion
 from .video_ingest import process_video
 
 __all__ = [
@@ -39,6 +41,7 @@ __all__ = [
     "batch_ingest",
     "process_video",
     "reembed_collection",
+    "propagate_deletion",
     "send_to_dlq",
     # Status tracking
     "JobStatusTracker",

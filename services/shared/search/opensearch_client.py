@@ -182,17 +182,40 @@ class OpenSearchClient:
             for hit in response["hits"]["hits"]
         ]
 
-    async def delete_by_document_id(self, document_id: str) -> dict[str, Any]:
+    async def delete_by_document_id(
+        self,
+        document_id: str,
+        tenant_id: str | None = None,
+    ) -> int:
         """Delete all chunks for a document.
 
         Args:
             document_id: The document ID whose chunks should be deleted.
+            tenant_id: Optional tenant ID for scoped deletion (recommended for safety).
 
         Returns:
-            Delete by query response with counts.
+            Number of documents deleted.
         """
-        body = {"query": {"term": {"document_id": document_id}}}
-        return self.client.delete_by_query(index=self.index_name, body=body)
+        must_conditions = [{"term": {"document_id": document_id}}]
+
+        if tenant_id:
+            must_conditions.append({"term": {"tenant_id": tenant_id}})
+
+        body = {
+            "query": {
+                "bool": {
+                    "must": must_conditions,
+                },
+            },
+        }
+
+        response = self.client.delete_by_query(
+            index=self.index_name,
+            body=body,
+            refresh=True,  # Make deletion immediately visible
+        )
+
+        return response.get("deleted", 0)
 
     def health_check(self) -> bool:
         """Check OpenSearch connectivity.
