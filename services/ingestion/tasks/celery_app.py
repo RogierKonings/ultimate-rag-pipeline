@@ -8,12 +8,14 @@ Queue configuration:
 - video: Video processing tasks
 - embedding: Embedding generation tasks
 - reembed: Re-embedding tasks for model migration
+- maintenance: Background maintenance tasks (reconciliation, cleanup)
 - dlq: Dead letter queue for failed tasks
 """
 
 import os
 
 from celery import Celery
+from celery.schedules import crontab
 from kombu import Exchange, Queue
 from pydantic import BaseModel
 
@@ -84,6 +86,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     video_exchange = Exchange("video", type="direct")
     embedding_exchange = Exchange("embedding", type="direct")
     reembed_exchange = Exchange("reembed", type="direct")
+    maintenance_exchange = Exchange("maintenance", type="direct")
     dlq_exchange = Exchange("dlq", type="direct")
 
     # Define queues
@@ -92,6 +95,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
         Queue("video", video_exchange, routing_key="video"),
         Queue("embedding", embedding_exchange, routing_key="embedding"),
         Queue("reembed", reembed_exchange, routing_key="reembed"),
+        Queue("maintenance", maintenance_exchange, routing_key="maintenance"),
         Queue("dlq", dlq_exchange, routing_key="dlq"),
     )
 
@@ -100,11 +104,22 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
         "tasks.ingest.*": {"queue": "ingestion"},
         "tasks.video_ingest.*": {"queue": "video"},
         "tasks.reembed.*": {"queue": "reembed"},
+        "tasks.reconcile.*": {"queue": "maintenance"},
         "tasks.callbacks.*": {"queue": "dlq"},
     }
 
     # Configure dead letter queue behavior
     app.conf.task_reject_on_worker_lost = True
+
+    # Configure Celery Beat schedule for periodic tasks
+    app.conf.beat_schedule = {
+        "nightly-reconciliation": {
+            "task": "tasks.reconcile.reconcile_all_tenants",
+            "schedule": crontab(hour=3, minute=0),  # 3 AM daily
+            "kwargs": {"dry_run": False},
+            "options": {"queue": "maintenance"},
+        },
+    }
 
     return app
 

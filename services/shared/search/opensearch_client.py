@@ -1,11 +1,14 @@
 """OpenSearch client wrapper for BM25 keyword search."""
 
+import logging
 import os
 import ssl
 from pathlib import Path
 from typing import Any
 
 from opensearchpy import OpenSearch, helpers
+
+logger = logging.getLogger(__name__)
 
 
 class OpenSearchClient:
@@ -214,6 +217,107 @@ class OpenSearchClient:
             return response["count"]
         except Exception:
             return 0
+
+    async def get_existing_chunk_ids(
+        self,
+        tenant_id: str,
+        chunk_ids: list[str],
+    ) -> list[str]:
+        """Check which chunk IDs exist in OpenSearch.
+
+        Used by the reconciliation process to find missing chunks.
+
+        Args:
+            tenant_id: The tenant ID to filter by.
+            chunk_ids: List of chunk IDs to check.
+
+        Returns:
+            List of chunk IDs that exist in OpenSearch.
+        """
+        if not chunk_ids:
+            return []
+
+        # Use mget to retrieve documents by ID
+        body = {"ids": chunk_ids}
+        response = self.client.mget(index=self.index_name, body=body)
+
+        # Filter to only include docs matching the tenant
+        existing_ids = []
+        for doc in response.get("docs", []):
+            if doc.get("found"):
+                source = doc.get("_source", {})
+                if source.get("tenant_id") == tenant_id:
+                    existing_ids.append(doc["_id"])
+
+        return existing_ids
+
+    async def get_all_chunk_ids(
+        self,
+        tenant_id: str,
+        batch_size: int = 1000,
+    ) -> list[str]:
+        """Get all chunk IDs for a tenant.
+
+        Used by the reconciliation process to find orphaned entries.
+
+        Args:
+            tenant_id: The tenant ID to filter by.
+            batch_size: Number of documents to retrieve per scroll batch.
+
+        Returns:
+            List of all chunk IDs for the tenant.
+        """
+        chunk_ids: list[str] = []
+
+        # Use scroll API for efficient iteration over large result sets
+        body = {
+            "query": {"term": {"tenant_id": tenant_id}},
+            "_source": False,
+            "size": batch_size,
+        }
+
+        # Initial search with scroll
+        response = self.client.search(
+            index=self.index_name,
+            body=body,
+            scroll="2m",
+        )
+
+        scroll_id = response.get("_scroll_id")
+        hits = response.get("hits", {}).get("hits", [])
+
+        while hits:
+            for hit in hits:
+                chunk_ids.append(hit["_id"])
+
+            # Get next batch
+            response = self.client.scroll(scroll_id=scroll_id, scroll="2m")
+            scroll_id = response.get("_scroll_id")
+            hits = response.get("hits", {}).get("hits", [])
+
+        # Clean up scroll context
+        if scroll_id:
+            try:
+                self.client.clear_scroll(scroll_id=scroll_id)
+            except Exception as e:
+                logger.debug("Failed to clear scroll context: %s", e)
+
+        return chunk_ids
+
+    async def delete_by_chunk_id(self, chunk_id: str, tenant_id: str) -> None:
+        """Delete a single document by chunk ID.
+
+        Used by the reconciliation process to clean up orphaned entries.
+
+        Args:
+            chunk_id: The chunk ID (document ID) to delete.
+            tenant_id: The tenant ID for validation (unused but kept for API consistency).
+        """
+        try:
+            self.client.delete(index=self.index_name, id=chunk_id)
+        except Exception as e:
+            # Document may not exist, log and continue
+            logger.debug("Failed to delete chunk %s: %s", chunk_id, e)
 
 
 def get_opensearch_client(

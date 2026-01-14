@@ -60,6 +60,12 @@ EMBEDDING_LATENCY_SECONDS: Histogram | None = None
 INDEXING_LATENCY_SECONDS: Histogram | None = None
 DOCUMENTS_BY_INDEX_STATUS: Gauge | None = None
 
+# Reconciliation metrics (US-10.1.2)
+RECONCILIATION_RUNS: Counter | None = None
+RECONCILIATION_DURATION: Histogram | None = None
+RECONCILIATION_ORPHANS_CLEANED: Counter | None = None
+RECONCILIATION_MISSING_REINDEXED: Counter | None = None
+
 
 def setup_telemetry() -> None:
     """Initialize OpenTelemetry tracing and Prometheus metrics.
@@ -69,6 +75,8 @@ def setup_telemetry() -> None:
     global _tracer, _meter, _initialized
     global INGEST_DOCUMENTS_TOTAL, INGEST_CHUNKS_TOTAL, INGEST_LATENCY_SECONDS
     global EMBEDDING_LATENCY_SECONDS, INDEXING_LATENCY_SECONDS, DOCUMENTS_BY_INDEX_STATUS
+    global RECONCILIATION_RUNS, RECONCILIATION_DURATION
+    global RECONCILIATION_ORPHANS_CLEANED, RECONCILIATION_MISSING_REINDEXED
 
     if _initialized:
         return
@@ -144,6 +152,29 @@ def setup_telemetry() -> None:
         "documents_by_index_status",
         "Number of documents by indexing status (US-10.1.1)",
         ["store", "status", "tenant_id"],
+    )
+
+    # Reconciliation metrics (US-10.1.2)
+    RECONCILIATION_RUNS = Counter(
+        "index_reconciliation_runs_total",
+        "Total reconciliation runs",
+        ["tenant_id", "status"],  # status: success, failure, partial
+    )
+    RECONCILIATION_DURATION = Histogram(
+        "index_reconciliation_duration_seconds",
+        "Duration of reconciliation runs",
+        ["tenant_id"],
+        buckets=[60, 300, 600, 1800, 3600],  # 1min, 5min, 10min, 30min, 1hr
+    )
+    RECONCILIATION_ORPHANS_CLEANED = Counter(
+        "index_orphans_cleaned_total",
+        "Total orphaned entries cleaned",
+        ["store"],  # qdrant, opensearch
+    )
+    RECONCILIATION_MISSING_REINDEXED = Counter(
+        "index_missing_reindexed_total",
+        "Total missing entries re-indexed",
+        ["store"],
     )
 
     # Start Prometheus metrics server

@@ -8,6 +8,7 @@ from qdrant_client.models import (
     FieldCondition,
     Filter,
     MatchValue,
+    PointIdsList,
     PointStruct,
 )
 
@@ -173,3 +174,100 @@ class QdrantVectorStore:
             }
         except Exception:
             return None
+
+    async def get_existing_chunk_ids(
+        self,
+        tenant_id: str,
+        chunk_ids: list[str],
+    ) -> list[str]:
+        """Check which chunk IDs exist in Qdrant.
+
+        Used by the reconciliation process to find missing chunks.
+
+        Args:
+            tenant_id: The tenant ID to filter by.
+            chunk_ids: List of chunk IDs to check.
+
+        Returns:
+            List of chunk IDs that exist in Qdrant.
+        """
+        if not chunk_ids:
+            return []
+
+        # Use retrieve to get points by IDs, filtered by tenant
+        # Points are stored with chunk_id as the point ID
+        result = self.client.retrieve(
+            collection_name=self.collection_name,
+            ids=chunk_ids,
+            with_payload=["tenant_id"],
+        )
+
+        # Filter to only include points matching the tenant
+        return [
+            str(point.id)
+            for point in result
+            if point.payload and point.payload.get("tenant_id") == tenant_id
+        ]
+
+    async def get_all_chunk_ids(
+        self,
+        tenant_id: str,
+        batch_size: int = 100,
+    ) -> list[str]:
+        """Get all chunk IDs for a tenant.
+
+        Used by the reconciliation process to find orphaned entries.
+
+        Args:
+            tenant_id: The tenant ID to filter by.
+            batch_size: Number of points to retrieve per scroll batch.
+
+        Returns:
+            List of all chunk IDs for the tenant.
+        """
+        chunk_ids: list[str] = []
+        offset = None
+
+        tenant_filter = Filter(
+            must=[
+                FieldCondition(
+                    key="tenant_id",
+                    match=MatchValue(value=tenant_id),
+                ),
+            ],
+        )
+
+        while True:
+            result = self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=tenant_filter,
+                limit=batch_size,
+                offset=offset,
+                with_payload=False,
+                with_vectors=False,
+            )
+
+            points, next_offset = result
+
+            for point in points:
+                chunk_ids.append(str(point.id))
+
+            if next_offset is None:
+                break
+            offset = next_offset
+
+        return chunk_ids
+
+    async def delete_by_chunk_id(self, chunk_id: str, tenant_id: str) -> None:
+        """Delete a single point by chunk ID.
+
+        Used by the reconciliation process to clean up orphaned entries.
+
+        Args:
+            chunk_id: The chunk ID (point ID) to delete.
+            tenant_id: The tenant ID for validation (unused but kept for API consistency).
+        """
+        self.client.delete(
+            collection_name=self.collection_name,
+            points_selector=PointIdsList(points=[chunk_id]),
+        )

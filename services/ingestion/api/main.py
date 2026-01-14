@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
 from api.routes import (
+    admin_router,
     documents_router,
     ingest_router,
     migrations_router,
@@ -134,6 +135,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             prefix="/migrations",
             tags=["Migrations"],
         )
+
+    # Admin router for maintenance operations (US-10.1.2)
+    app.include_router(
+        admin_router,
+        prefix="/admin",
+        tags=["Admin"],
+    )
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])
