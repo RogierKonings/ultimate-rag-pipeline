@@ -20,7 +20,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Create video status enum
+    # Create video status enum (create_type=False to avoid double creation)
     video_status_enum = postgresql.ENUM(
         "pending",
         "uploaded",
@@ -28,11 +28,11 @@ def upgrade() -> None:
         "completed",
         "failed",
         name="video_status",
-        create_type=True,
+        create_type=False,
     )
     video_status_enum.create(op.get_bind(), checkfirst=True)
 
-    # Create processing stage enum
+    # Create processing stage enum (create_type=False to avoid double creation)
     processing_stage_enum = postgresql.ENUM(
         "uploaded",
         "validating",
@@ -48,7 +48,7 @@ def upgrade() -> None:
         "completed",
         "failed",
         name="processing_stage",
-        create_type=True,
+        create_type=False,
     )
     processing_stage_enum.create(op.get_bind(), checkfirst=True)
 

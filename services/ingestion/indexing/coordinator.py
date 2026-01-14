@@ -1,12 +1,16 @@
 """Index coordinator for managing writes across all stores."""
 
 import asyncio
+import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from .models import DocumentRecord, IndexedChunk, WriteResult
 from .opensearch import OpenSearchWriter
 from .postgres import PostgresWriter
 from .qdrant import QdrantWriter
+
+logger = logging.getLogger(__name__)
 
 
 class IndexCoordinator:
@@ -63,6 +67,9 @@ class IndexCoordinator:
         Returns:
             Dictionary mapping store names to their WriteResult.
         """
+        # Set index status to PENDING before starting
+        await self._set_pending_status(document.document_id)
+
         # Write to all stores in parallel
         results = await asyncio.gather(
             self.qdrant.write(chunks),
@@ -123,7 +130,115 @@ class IndexCoordinator:
 
         await self.postgres.update_status(document.document_id, status, error_msg)
 
+        # Update index status tracking in the main documents table
+        await self._update_index_status(
+            document_id=document.document_id,
+            qdrant_success=result_dict["qdrant"].success,
+            opensearch_success=result_dict["opensearch"].success,
+            errors=error_msg,
+        )
+
         return result_dict
+
+    async def _update_index_status(
+        self,
+        document_id: UUID,
+        qdrant_success: bool,
+        opensearch_success: bool,
+        errors: str | None = None,
+    ) -> None:
+        """Update index status in the main documents table.
+
+        This method updates the qdrant_status and opensearch_status fields
+        in the documents table (managed by SQLAlchemy) to track indexing
+        state across all stores.
+
+        Args:
+            document_id: UUID of the document to update.
+            qdrant_success: Whether Qdrant indexing succeeded.
+            opensearch_success: Whether OpenSearch indexing succeeded.
+            errors: Combined error message if any store failed.
+        """
+        from database.models.document import IndexStatus
+
+        # Determine status for each store
+        qdrant_status = IndexStatus.OK if qdrant_success else IndexStatus.ERROR
+        opensearch_status = IndexStatus.OK if opensearch_success else IndexStatus.ERROR
+
+        # Update timestamp only if both succeeded
+        last_indexed_at = datetime.now(UTC) if (qdrant_success and opensearch_success) else None
+
+        # Use the postgres writer's pool to update the documents table
+        if not self.postgres._pool:
+            logger.warning(
+                "Cannot update index status: PostgreSQL pool not connected",
+                extra={"document_id": str(document_id)},
+            )
+            return
+
+        try:
+            async with self.postgres._pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE documents
+                    SET qdrant_status = $1,
+                        opensearch_status = $2,
+                        last_indexed_at = COALESCE($3, last_indexed_at),
+                        last_index_error = $4,
+                        index_attempts = index_attempts + 1,
+                        updated_at = NOW()
+                    WHERE id = $5
+                    """,
+                    qdrant_status.value,
+                    opensearch_status.value,
+                    last_indexed_at,
+                    errors,
+                    document_id,
+                )
+                logger.info(
+                    "index_status_updated",
+                    extra={
+                        "document_id": str(document_id),
+                        "qdrant_status": qdrant_status.value,
+                        "opensearch_status": opensearch_status.value,
+                    },
+                )
+        except Exception as e:
+            # Log but don't fail the operation - status tracking is secondary
+            logger.error(
+                "index_status_update_failed",
+                extra={"document_id": str(document_id), "error": str(e)},
+            )
+
+    async def _set_pending_status(self, document_id: UUID) -> None:
+        """Set index status to PENDING before indexing starts.
+
+        Args:
+            document_id: UUID of the document being indexed.
+        """
+        from database.models.document import IndexStatus
+
+        if not self.postgres._pool:
+            return
+
+        try:
+            async with self.postgres._pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE documents
+                    SET qdrant_status = $1,
+                        opensearch_status = $1,
+                        updated_at = NOW()
+                    WHERE id = $2
+                    """,
+                    IndexStatus.PENDING.value,
+                    document_id,
+                )
+        except Exception as e:
+            logger.warning(
+                "set_pending_status_failed",
+                extra={"document_id": str(document_id), "error": str(e)},
+            )
 
     async def delete_document(self, document_id: UUID) -> dict[str, WriteResult]:
         """Delete document from all stores.

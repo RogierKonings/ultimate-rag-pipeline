@@ -4,12 +4,23 @@ Document and Chunk models for storing document metadata and chunked content.
 
 import uuid
 from datetime import datetime
+from enum import Enum
 
-from sqlalchemy import ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.base import Base, SoftDeleteMixin, TimestampMixin
+
+
+class IndexStatus(str, Enum):
+    """Indexing status for external stores (Qdrant, OpenSearch)."""
+
+    PENDING = "pending"  # Indexing not yet attempted or in progress
+    OK = "ok"  # Successfully indexed
+    ERROR = "error"  # Indexing failed (see last_index_error)
+    STALE = "stale"  # Document updated, needs re-indexing
 
 
 class Document(Base, TimestampMixin, SoftDeleteMixin):
@@ -77,6 +88,38 @@ class Document(Base, TimestampMixin, SoftDeleteMixin):
         comment="List of group UUIDs with access",
     )
 
+    # Indexing status tracking
+    qdrant_status: Mapped[IndexStatus] = mapped_column(
+        SQLEnum(IndexStatus, name="index_status", create_constraint=True),
+        default=IndexStatus.PENDING,
+        nullable=False,
+        index=True,
+        comment="Qdrant vector store indexing status",
+    )
+    opensearch_status: Mapped[IndexStatus] = mapped_column(
+        SQLEnum(IndexStatus, name="index_status", create_constraint=True),
+        default=IndexStatus.PENDING,
+        nullable=False,
+        index=True,
+        comment="OpenSearch keyword index status",
+    )
+    last_indexed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of last successful indexing to any store",
+    )
+    last_index_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Last indexing error message for debugging",
+    )
+    index_attempts: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Number of indexing attempts (for exponential backoff)",
+    )
+
     # Relationships
     chunks: Mapped[list["Chunk"]] = relationship(
         "Chunk",
@@ -90,6 +133,13 @@ class Document(Base, TimestampMixin, SoftDeleteMixin):
         Index("ix_documents_source_id", "source_id"),
         Index("ix_documents_content_hash", "content_hash"),
         Index("ix_documents_tenant_status", "tenant_id", "status"),
+        Index(
+            "ix_documents_sync_status",
+            "tenant_id",
+            "qdrant_status",
+            "opensearch_status",
+            postgresql_where="status = 'active'",
+        ),
     )
 
     def __repr__(self) -> str:

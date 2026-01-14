@@ -6,7 +6,12 @@ from .documents import (
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentResponse,
+    DocumentSyncStatus,
+    IndexStatusValue,
     ReindexRequest,
+    SyncStatusFilter,
+    SyncStatusResponse,
+    SyncStatusSummary,
 )
 from .ingest import (
     ACLContext,
@@ -106,6 +111,12 @@ __all__ = [
     "BatchDeleteRequest",
     "BatchDeleteResponse",
     "ReindexRequest",
+    # Sync status schemas (US-10.1.1)
+    "IndexStatusValue",
+    "SyncStatusFilter",
+    "DocumentSyncStatus",
+    "SyncStatusSummary",
+    "SyncStatusResponse",
     # Video schemas
     "VideoStatus",
     "ProcessingStage",

@@ -4,7 +4,7 @@ Database models package.
 
 from database.models.audit import AuditLog
 from database.models.base import Base, SoftDeleteMixin, TimestampMixin
-from database.models.document import Chunk, Document
+from database.models.document import Chunk, Document, IndexStatus
 from database.models.user import (
     ApiKey,
     Group,
@@ -30,6 +30,7 @@ __all__ = [
     # Documents
     "Document",
     "Chunk",
+    "IndexStatus",
     # Videos
     "SourceVideo",
     "VideoTranscript",

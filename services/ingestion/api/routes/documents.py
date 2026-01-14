@@ -1,6 +1,7 @@
 """Document management API routes."""
 
 import logging
+from datetime import datetime
 from uuid import UUID
 
 from api.dependencies import get_current_user, get_document_service
@@ -10,8 +11,13 @@ from api.schemas import (
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentResponse,
+    DocumentSyncStatus,
+    IndexStatusValue,
     IngestResponse,
     ReindexRequest,
+    SyncStatusFilter,
+    SyncStatusResponse,
+    SyncStatusSummary,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -67,6 +73,54 @@ async def list_documents(
         page_size=page_size,
         pages=total_pages,
     )
+
+
+@router.get(
+    "/sync-status",
+    response_model=SyncStatusResponse,
+    summary="Get document sync status",
+    description="Get indexing sync status across all stores (Qdrant, OpenSearch).",
+)
+async def get_sync_status(
+    status_filter: SyncStatusFilter = Query(
+        default=SyncStatusFilter.ALL,
+        description="Filter documents by sync status",
+    ),
+    since: datetime | None = Query(
+        default=None,
+        description="Only include documents updated since this timestamp",
+    ),
+    limit: int = Query(default=100, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
+    document_service=Depends(get_document_service),
+    current_user: dict = Depends(get_current_user),
+) -> SyncStatusResponse:
+    """
+    Get document indexing sync status across all stores.
+
+    Returns status summary and detailed list of documents with their
+    Qdrant and OpenSearch indexing status.
+
+    **Filters:**
+    - `status_filter`: Filter by status (all, ok, error, pending, any_error)
+    - `since`: Only include documents updated after this timestamp
+
+    **Use Cases:**
+    - Monitor sync health across stores
+    - Identify failed indexing operations
+    - Support automated reconciliation (US-10.1.2)
+    """
+    tenant_id = current_user.get("tenant_id")
+
+    result = await document_service.get_sync_status(
+        tenant_id=tenant_id,
+        status_filter=status_filter.value,
+        since=since,
+        limit=limit,
+        offset=offset,
+    )
+
+    return result
 
 
 @router.get(

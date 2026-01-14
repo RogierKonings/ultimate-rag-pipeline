@@ -41,7 +41,7 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Status, StatusCode
-from prometheus_client import Counter, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 from config import get_settings
 
@@ -58,6 +58,7 @@ INGEST_CHUNKS_TOTAL: Counter | None = None
 INGEST_LATENCY_SECONDS: Histogram | None = None
 EMBEDDING_LATENCY_SECONDS: Histogram | None = None
 INDEXING_LATENCY_SECONDS: Histogram | None = None
+DOCUMENTS_BY_INDEX_STATUS: Gauge | None = None
 
 
 def setup_telemetry() -> None:
@@ -67,7 +68,7 @@ def setup_telemetry() -> None:
     """
     global _tracer, _meter, _initialized
     global INGEST_DOCUMENTS_TOTAL, INGEST_CHUNKS_TOTAL, INGEST_LATENCY_SECONDS
-    global EMBEDDING_LATENCY_SECONDS, INDEXING_LATENCY_SECONDS
+    global EMBEDDING_LATENCY_SECONDS, INDEXING_LATENCY_SECONDS, DOCUMENTS_BY_INDEX_STATUS
 
     if _initialized:
         return
@@ -138,6 +139,11 @@ def setup_telemetry() -> None:
         "Indexing latency in seconds",
         ["store"],
         buckets=[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0],
+    )
+    DOCUMENTS_BY_INDEX_STATUS = Gauge(
+        "documents_by_index_status",
+        "Number of documents by indexing status (US-10.1.1)",
+        ["store", "status", "tenant_id"],
     )
 
     # Start Prometheus metrics server
@@ -429,3 +435,63 @@ def record_indexing_latency(duration_seconds: float, store: str) -> None:
     """
     if INDEXING_LATENCY_SECONDS:
         INDEXING_LATENCY_SECONDS.labels(store=store).observe(duration_seconds)
+
+
+async def update_index_status_metrics(db_session) -> None:
+    """Update Prometheus gauges with current index status counts (US-10.1.1).
+
+    This function queries the documents table and updates the
+    documents_by_index_status gauge with current counts per store/status/tenant.
+
+    Should be called periodically (e.g., every 60 seconds) by a background task
+    or on-demand when status changes.
+
+    Args:
+        db_session: Async SQLAlchemy session.
+    """
+    if not DOCUMENTS_BY_INDEX_STATUS:
+        return
+
+    try:
+        from sqlalchemy import text
+
+        # Query aggregated counts grouped by tenant and status
+        query = text("""
+            SELECT
+                tenant_id::text as tenant_id,
+                qdrant_status,
+                opensearch_status,
+                COUNT(*) as count
+            FROM documents
+            WHERE status = 'active'
+            GROUP BY tenant_id, qdrant_status, opensearch_status
+        """)
+
+        result = await db_session.execute(query)
+        rows = result.fetchall()
+
+        # Clear existing gauge values to avoid stale data
+        DOCUMENTS_BY_INDEX_STATUS.clear()
+
+        # Update gauges for each combination
+        for row in rows:
+            tenant_id = row.tenant_id[:8] if row.tenant_id else "unknown"  # Truncate for cardinality
+
+            # Update Qdrant status gauge
+            DOCUMENTS_BY_INDEX_STATUS.labels(
+                store="qdrant",
+                status=row.qdrant_status,
+                tenant_id=tenant_id,
+            ).set(row.count)
+
+            # Update OpenSearch status gauge
+            DOCUMENTS_BY_INDEX_STATUS.labels(
+                store="opensearch",
+                status=row.opensearch_status,
+                tenant_id=tenant_id,
+            ).set(row.count)
+
+        logger.debug("Index status metrics updated successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to update index status metrics: {e}")

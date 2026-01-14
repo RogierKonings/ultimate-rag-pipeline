@@ -1,9 +1,20 @@
 """Pydantic schemas for document management API endpoints."""
 
 from datetime import datetime
+from enum import Enum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class IndexStatusValue(str, Enum):
+    """Indexing status values for stores."""
+
+    PENDING = "pending"
+    OK = "ok"
+    ERROR = "error"
+    STALE = "stale"
 
 
 class DocumentResponse(BaseModel):
@@ -181,6 +192,99 @@ class BatchDeleteResponse(BaseModel):
                             "message": "Document deleted successfully",
                         },
                     ],
+                },
+            ],
+        },
+    )
+
+
+# Sync Status Schemas (US-10.1.1)
+
+
+class SyncStatusFilter(str, Enum):
+    """Filter options for sync status queries."""
+
+    ALL = "all"
+    OK = "ok"
+    ERROR = "error"
+    PENDING = "pending"
+    ANY_ERROR = "any_error"  # Any store not OK
+
+
+class DocumentSyncStatus(BaseModel):
+    """Individual document's sync status across all stores."""
+
+    document_id: UUID
+    source_id: str
+    title: str | None = None
+    qdrant_status: IndexStatusValue
+    opensearch_status: IndexStatusValue
+    last_indexed_at: datetime | None = None
+    last_index_error: str | None = None
+    index_attempts: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "document_id": "550e8400-e29b-41d4-a716-446655440000",
+                    "source_id": "report-2025-q4.pdf",
+                    "title": "Q4 2025 Financial Report",
+                    "qdrant_status": "ok",
+                    "opensearch_status": "ok",
+                    "last_indexed_at": "2025-12-18T10:05:30Z",
+                    "last_index_error": None,
+                    "index_attempts": 1,
+                    "created_at": "2025-12-18T10:00:00Z",
+                    "updated_at": "2025-12-18T10:05:30Z",
+                },
+            ],
+        },
+    )
+
+
+class SyncStatusSummary(BaseModel):
+    """Aggregated counts by status."""
+
+    ok: int = Field(description="Documents where both stores are OK")
+    pending: int = Field(description="Documents with at least one store pending")
+    error: int = Field(description="Documents with at least one store in error")
+    stale: int = Field(description="Documents with at least one store stale")
+
+
+class SyncStatusResponse(BaseModel):
+    """Response for sync status query."""
+
+    summary: SyncStatusSummary
+    documents: list[DocumentSyncStatus]
+    total: int
+    limit: int
+    offset: int
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "summary": {"ok": 145, "pending": 2, "error": 3, "stale": 0},
+                    "documents": [
+                        {
+                            "document_id": "550e8400-e29b-41d4-a716-446655440000",
+                            "source_id": "report-2025-q4.pdf",
+                            "title": "Q4 2025 Financial Report",
+                            "qdrant_status": "error",
+                            "opensearch_status": "ok",
+                            "last_indexed_at": None,
+                            "last_index_error": "Qdrant: Connection refused",
+                            "index_attempts": 3,
+                            "created_at": "2025-12-18T10:00:00Z",
+                            "updated_at": "2025-12-18T10:05:30Z",
+                        },
+                    ],
+                    "total": 3,
+                    "limit": 100,
+                    "offset": 0,
                 },
             ],
         },

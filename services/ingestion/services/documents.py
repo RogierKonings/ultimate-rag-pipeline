@@ -255,6 +255,150 @@ class DocumentService:
             logger.error(f"Failed to get document: {e}")
             return None
 
+    async def get_sync_status(
+        self,
+        tenant_id: str,
+        status_filter: str = "all",
+        since: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ):
+        """
+        Get document sync status across all stores (US-10.1.1).
+
+        Args:
+            tenant_id: Tenant to filter by.
+            status_filter: Status filter (all, ok, error, pending, any_error).
+            since: Only include documents updated after this timestamp.
+            limit: Maximum number of documents to return.
+            offset: Offset for pagination.
+
+        Returns:
+            SyncStatusResponse with summary and document list.
+        """
+        from api.schemas import (
+            DocumentSyncStatus,
+            IndexStatusValue,
+            SyncStatusResponse,
+            SyncStatusSummary,
+        )
+
+        if not self._db:
+            return SyncStatusResponse(
+                summary=SyncStatusSummary(ok=0, pending=0, error=0, stale=0),
+                documents=[],
+                total=0,
+                limit=limit,
+                offset=offset,
+            )
+
+        try:
+            from sqlalchemy import text
+
+            # Build WHERE clause based on filters
+            conditions = ["tenant_id = :tenant_id", "status = 'active'"]
+            params: dict[str, Any] = {"tenant_id": tenant_id}
+
+            if status_filter == "error":
+                conditions.append(
+                    "(qdrant_status = 'error' OR opensearch_status = 'error')"
+                )
+            elif status_filter == "pending":
+                conditions.append(
+                    "(qdrant_status = 'pending' OR opensearch_status = 'pending')"
+                )
+            elif status_filter == "ok":
+                conditions.append(
+                    "(qdrant_status = 'ok' AND opensearch_status = 'ok')"
+                )
+            elif status_filter == "any_error":
+                conditions.append(
+                    "(qdrant_status != 'ok' OR opensearch_status != 'ok')"
+                )
+            # "all" means no status filter
+
+            if since:
+                conditions.append("updated_at >= :since")
+                params["since"] = since
+
+            where_clause = " AND ".join(conditions)
+
+            # Get summary counts (for the tenant, not affected by pagination)
+            summary_query = text("""
+                SELECT
+                    COUNT(*) FILTER (WHERE qdrant_status = 'ok' AND opensearch_status = 'ok') as ok_count,
+                    COUNT(*) FILTER (WHERE qdrant_status = 'pending' OR opensearch_status = 'pending') as pending_count,
+                    COUNT(*) FILTER (WHERE qdrant_status = 'error' OR opensearch_status = 'error') as error_count,
+                    COUNT(*) FILTER (WHERE qdrant_status = 'stale' OR opensearch_status = 'stale') as stale_count
+                FROM documents
+                WHERE tenant_id = :tenant_id AND status = 'active'
+            """)
+            summary_result = await self._db.execute(summary_query, {"tenant_id": tenant_id})
+            summary_row = summary_result.fetchone()
+
+            summary = SyncStatusSummary(
+                ok=summary_row.ok_count or 0,
+                pending=summary_row.pending_count or 0,
+                error=summary_row.error_count or 0,
+                stale=summary_row.stale_count or 0,
+            )
+
+            # Get total count for pagination
+            count_query = text(f"SELECT COUNT(*) FROM documents WHERE {where_clause}")
+            count_result = await self._db.execute(count_query, params)
+            total = count_result.scalar() or 0
+
+            # Get paginated documents
+            params["limit"] = limit
+            params["offset"] = offset
+
+            query = text(f"""
+                SELECT id, source_id, title, qdrant_status, opensearch_status,
+                       last_indexed_at, last_index_error, index_attempts,
+                       created_at, updated_at
+                FROM documents
+                WHERE {where_clause}
+                ORDER BY updated_at DESC
+                LIMIT :limit OFFSET :offset
+            """)
+
+            result = await self._db.execute(query, params)
+            rows = result.fetchall()
+
+            documents = [
+                DocumentSyncStatus(
+                    document_id=row.id,
+                    source_id=row.source_id,
+                    title=row.title,
+                    qdrant_status=IndexStatusValue(row.qdrant_status),
+                    opensearch_status=IndexStatusValue(row.opensearch_status),
+                    last_indexed_at=row.last_indexed_at,
+                    last_index_error=row.last_index_error,
+                    index_attempts=row.index_attempts,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
+                for row in rows
+            ]
+
+            return SyncStatusResponse(
+                summary=summary,
+                documents=documents,
+                total=total,
+                limit=limit,
+                offset=offset,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to get sync status: {e}")
+            return SyncStatusResponse(
+                summary=SyncStatusSummary(ok=0, pending=0, error=0, stale=0),
+                documents=[],
+                total=0,
+                limit=limit,
+                offset=offset,
+            )
+
     async def delete_document(
         self,
         document_id: UUID,
