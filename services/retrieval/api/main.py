@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from acl.context import UserContextExtractor
 from acl.filter import ACLFilter
 from acl.models import ACLFilterConfig
+from acl.safety_net import ACLSafetyNet
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -77,6 +78,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         algorithm=config.jwt_algorithm,
     )
 
+    # Initialize ACL safety net (defense-in-depth filter)
+    safety_net = ACLSafetyNet()
+
     # Initialize video retriever
     video_retriever = VideoRetriever(
         config=VideoRetrieverConfig(
@@ -102,6 +106,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.reranker = reranker
     app.state.acl_filter = acl_filter
     app.state.user_extractor = user_extractor
+    app.state.safety_net = safety_net
     app.state.video_retriever = video_retriever
     app.state.clip_cache = clip_cache
 

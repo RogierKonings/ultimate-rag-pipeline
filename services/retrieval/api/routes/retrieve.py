@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from acl.filter import ACLFilter
+from acl.safety_net import ACLSafetyNet
 from fastapi import APIRouter, HTTPException, Request, status
 from query.preprocessor import QueryPreprocessor
 from reranking.reranker import RerankerService
@@ -136,6 +137,13 @@ async def retrieve(
             top_k=body.top_k,
         )
         rerank_time = (time.time() - rerank_start) * 1000
+
+    # Apply ACL safety net (defense in depth)
+    # This should filter nothing if query-level ACL is correct
+    safety_net: ACLSafetyNet = request.app.state.safety_net
+    pre_safety_count = len(results)
+    results = safety_net.filter(results, user)
+    _safety_net_filtered = pre_safety_count - len(results)  # noqa: F841 - tracked for future debug metrics
 
     # Apply score threshold
     if body.min_score > 0:
@@ -270,6 +278,11 @@ async def retrieve_multi(
             fused_results=results,
             top_k=body.top_k,
         )
+
+    # Apply ACL safety net (defense in depth)
+    # This should filter nothing if query-level ACL is correct
+    safety_net: ACLSafetyNet = request.app.state.safety_net
+    results = safety_net.filter(results, user)
 
     results = results[: body.top_k]
 

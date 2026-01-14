@@ -15,6 +15,7 @@ import pytest
 from acl.context import UserContextExtractor
 from acl.filter import ACLFilter
 from acl.models import ACLFilterConfig
+from acl.safety_net import ACLSafetyNet
 from api.routes import health, retrieve
 from api.schemas.retrieve import (
     DebugInfo,
@@ -337,6 +338,11 @@ class TestHybridOrdering:
         return ACLFilter(ACLFilterConfig(enabled=False))
 
     @pytest.fixture
+    def mock_safety_net(self):
+        """Mock ACLSafetyNet for testing."""
+        return ACLSafetyNet()
+
+    @pytest.fixture
     def mock_user_extractor(self, jwt_secret):
         """Mock UserContextExtractor."""
         return UserContextExtractor(secret_key=jwt_secret)
@@ -349,6 +355,7 @@ class TestHybridOrdering:
         mock_hybrid_searcher,
         mock_reranker,
         mock_acl_filter,
+        mock_safety_net,
         mock_user_extractor,
     ):
         """Create test FastAPI app."""
@@ -359,6 +366,7 @@ class TestHybridOrdering:
         app.state.hybrid = mock_hybrid_searcher
         app.state.reranker = mock_reranker
         app.state.acl_filter = mock_acl_filter
+        app.state.safety_net = mock_safety_net
         app.state.user_extractor = mock_user_extractor
 
         app.include_router(retrieve.router, prefix="/api/v1", tags=["Retrieval"])
@@ -487,3 +495,318 @@ class TestConfigurableBounds:
             RetrieveRequest(query="test", min_score=-0.1)
         with pytest.raises(Exception):
             RetrieveRequest(query="test", min_score=1.1)
+
+
+class TestACLSafetyNetIntegration:
+    """Test ACL safety net integration in retrieve endpoint.
+
+    The safety net is a defense-in-depth filter applied AFTER reranking
+    but BEFORE score threshold and top_k limiting.
+    """
+
+    @pytest.fixture
+    def jwt_secret(self):
+        """JWT secret for testing."""
+        return "test-secret-key"
+
+    @pytest.fixture
+    def config(self, jwt_secret):
+        """Test configuration."""
+        return RetrievalConfig(jwt_secret=jwt_secret, debug=True)
+
+    @pytest.fixture
+    def tenant_id(self):
+        """Consistent tenant ID for tests."""
+        return uuid4()
+
+    @pytest.fixture
+    def user_id(self):
+        """Consistent user ID for tests."""
+        return uuid4()
+
+    @pytest.fixture
+    def mock_preprocessor(self):
+        """Mock QueryPreprocessor."""
+        preprocessor = AsyncMock(spec=QueryPreprocessor)
+        preprocessor.process.return_value = ProcessedQuery(
+            original_query="test query",
+            normalized_query="test query",
+            expanded_queries=[],
+            hyde_document=None,
+            embedding=[0.1] * 1024,
+            query_type=QueryType.HYBRID,
+            tokens=10,
+            processing_time_ms=5.0,
+        )
+        return preprocessor
+
+    @pytest.fixture
+    def mock_hybrid_searcher_with_acl_metadata(self, tenant_id, user_id):
+        """Mock HybridSearcher returning results with ACL metadata."""
+        searcher = AsyncMock(spec=HybridSearcher)
+        searcher.semantic = AsyncMock(spec=SemanticSearcher)
+        searcher.keyword = AsyncMock(spec=KeywordSearcher)
+        searcher.health_check.return_value = True
+
+        # Create results with proper ACL metadata
+        # These should all pass through safety net since tenant matches
+        results = [
+            FusedResult(
+                chunk_id=uuid4(),
+                document_id=uuid4(),
+                content=f"Content {i}",
+                fused_score=0.9 - (i * 0.1),
+                semantic_score=0.9 - (i * 0.05),
+                keyword_score=0.8 - (i * 0.1),
+                semantic_rank=i + 1,
+                keyword_rank=i + 1,
+                metadata={
+                    "tenant_id": str(tenant_id),
+                    "visibility": "public",
+                    "status": "active",
+                },
+            )
+            for i in range(3)
+        ]
+
+        searcher.search.return_value = HybridSearchResponse(
+            results=results,
+            total_semantic=50,
+            total_keyword=50,
+            search_time_ms=25.0,
+            fusion_method=FusionMethod.RRF,
+        )
+
+        return searcher
+
+    @pytest.fixture
+    def mock_reranker(self):
+        """Mock RerankerService."""
+        reranker = AsyncMock(spec=RerankerService)
+        reranker.health_check.return_value = True
+
+        async def mock_rerank_fused(query, fused_results, top_k=None):
+            return fused_results[:top_k] if top_k else fused_results
+
+        reranker.rerank_fused_results.side_effect = mock_rerank_fused
+        return reranker
+
+    @pytest.fixture
+    def mock_acl_filter(self):
+        """Mock ACLFilter that passes all results."""
+        return ACLFilter(ACLFilterConfig(enabled=False))
+
+    @pytest.fixture
+    def safety_net(self):
+        """Real ACLSafetyNet for integration testing."""
+        return ACLSafetyNet()
+
+    @pytest.fixture
+    def mock_user_extractor(self, jwt_secret):
+        """Mock UserContextExtractor."""
+        return UserContextExtractor(secret_key=jwt_secret)
+
+    @pytest.fixture
+    def app(
+        self,
+        config,
+        mock_preprocessor,
+        mock_hybrid_searcher_with_acl_metadata,
+        mock_reranker,
+        mock_acl_filter,
+        safety_net,
+        mock_user_extractor,
+    ):
+        """Create test FastAPI app with safety net."""
+        app = FastAPI()
+
+        app.state.config = config
+        app.state.preprocessor = mock_preprocessor
+        app.state.hybrid = mock_hybrid_searcher_with_acl_metadata
+        app.state.reranker = mock_reranker
+        app.state.acl_filter = mock_acl_filter
+        app.state.safety_net = safety_net
+        app.state.user_extractor = mock_user_extractor
+
+        app.include_router(retrieve.router, prefix="/api/v1", tags=["Retrieval"])
+        app.include_router(health.router, tags=["Health"])
+
+        return app
+
+    @pytest.fixture
+    def client(self, app):
+        """Test client."""
+        return TestClient(app)
+
+    @pytest.fixture
+    def auth_header(self, jwt_secret, tenant_id, user_id):
+        """Generate auth header with valid JWT matching tenant."""
+        token = jwt.encode(
+            {
+                "sub": str(user_id),
+                "tenant_id": str(tenant_id),
+                "groups": ["users"],
+                "roles": ["user"],
+            },
+            jwt_secret,
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_safety_net_passes_all_accessible_results(self, client, auth_header):
+        """Safety net should pass all results when ACL metadata matches user."""
+        response = client.post(
+            "/api/v1/retrieve",
+            json={"query": "test query"},
+            headers=auth_header,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # All 3 results should pass through (tenant matches, public visibility)
+        assert data["total_results"] == 3
+
+    def test_safety_net_filters_wrong_tenant(
+        self, config, mock_preprocessor, mock_reranker, mock_acl_filter,
+        safety_net, mock_user_extractor, jwt_secret
+    ):
+        """Safety net should filter results from wrong tenant."""
+        # Create a searcher that returns a result from a different tenant
+        wrong_tenant_id = uuid4()
+        user_tenant_id = uuid4()
+
+        searcher = AsyncMock(spec=HybridSearcher)
+        searcher.semantic = AsyncMock(spec=SemanticSearcher)
+        searcher.keyword = AsyncMock(spec=KeywordSearcher)
+        searcher.health_check.return_value = True
+
+        results = [
+            FusedResult(
+                chunk_id=uuid4(),
+                document_id=uuid4(),
+                content="Content from wrong tenant",
+                fused_score=0.9,
+                semantic_score=0.85,
+                keyword_score=0.75,
+                metadata={
+                    "tenant_id": str(wrong_tenant_id),  # Different tenant
+                    "visibility": "public",
+                    "status": "active",
+                },
+            ),
+        ]
+
+        searcher.search.return_value = HybridSearchResponse(
+            results=results,
+            total_semantic=1,
+            total_keyword=1,
+            search_time_ms=25.0,
+            fusion_method=FusionMethod.RRF,
+        )
+
+        app = FastAPI()
+        app.state.config = config
+        app.state.preprocessor = mock_preprocessor
+        app.state.hybrid = searcher
+        app.state.reranker = mock_reranker
+        app.state.acl_filter = mock_acl_filter
+        app.state.safety_net = safety_net
+        app.state.user_extractor = mock_user_extractor
+
+        app.include_router(retrieve.router, prefix="/api/v1", tags=["Retrieval"])
+
+        client = TestClient(app)
+
+        # Create token with user's tenant
+        token = jwt.encode(
+            {
+                "sub": str(uuid4()),
+                "tenant_id": str(user_tenant_id),  # User's tenant
+                "groups": ["users"],
+                "roles": ["user"],
+            },
+            jwt_secret,
+        )
+
+        response = client.post(
+            "/api/v1/retrieve",
+            json={"query": "test query"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Result should be filtered out by safety net (wrong tenant)
+        assert data["total_results"] == 0
+
+    def test_safety_net_filters_deleted_documents(
+        self, config, mock_preprocessor, mock_reranker, mock_acl_filter,
+        safety_net, mock_user_extractor, jwt_secret
+    ):
+        """Safety net should filter soft-deleted documents."""
+        tenant_id = uuid4()
+
+        searcher = AsyncMock(spec=HybridSearcher)
+        searcher.semantic = AsyncMock(spec=SemanticSearcher)
+        searcher.keyword = AsyncMock(spec=KeywordSearcher)
+        searcher.health_check.return_value = True
+
+        results = [
+            FusedResult(
+                chunk_id=uuid4(),
+                document_id=uuid4(),
+                content="Deleted document content",
+                fused_score=0.9,
+                semantic_score=0.85,
+                keyword_score=0.75,
+                metadata={
+                    "tenant_id": str(tenant_id),
+                    "visibility": "public",
+                    "status": "deleted",  # Soft-deleted
+                },
+            ),
+        ]
+
+        searcher.search.return_value = HybridSearchResponse(
+            results=results,
+            total_semantic=1,
+            total_keyword=1,
+            search_time_ms=25.0,
+            fusion_method=FusionMethod.RRF,
+        )
+
+        app = FastAPI()
+        app.state.config = config
+        app.state.preprocessor = mock_preprocessor
+        app.state.hybrid = searcher
+        app.state.reranker = mock_reranker
+        app.state.acl_filter = mock_acl_filter
+        app.state.safety_net = safety_net
+        app.state.user_extractor = mock_user_extractor
+
+        app.include_router(retrieve.router, prefix="/api/v1", tags=["Retrieval"])
+
+        client = TestClient(app)
+
+        token = jwt.encode(
+            {
+                "sub": str(uuid4()),
+                "tenant_id": str(tenant_id),
+                "groups": ["users"],
+                "roles": ["user"],
+            },
+            jwt_secret,
+        )
+
+        response = client.post(
+            "/api/v1/retrieve",
+            json={"query": "test query"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Deleted document should be filtered out
+        assert data["total_results"] == 0
