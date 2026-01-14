@@ -321,6 +321,160 @@ retrieval-service/
 
 > **Full Documentation:** See [docs/retrieval-service/README.md](retrieval-service/README.md) for detailed API reference, configuration, and usage examples.
 
+### 2.1 Video RAG Pipeline
+
+The Retrieval Service includes comprehensive video search and retrieval capabilities, enabling semantic search within video content using multi-modal analysis.
+
+**Video Processing Pipeline:**
+
+```mermaid
+flowchart LR
+    V[Video Upload] --> VAL[Validation]
+    VAL --> T[Transcription<br/>Whisper]
+    VAL --> SD[Scene Detection<br/>PySceneDetect]
+
+    SD --> KF[Keyframe<br/>Extraction]
+    KF --> VIS[Vision Analysis<br/>LLaVA]
+    KF --> OCR[OCR<br/>Tesseract]
+
+    T --> CF[Content Fusion]
+    VIS --> CF
+    OCR --> CF
+
+    CF --> CHK[Chunking]
+    CHK --> EMB[Embedding]
+    EMB --> IDX[Indexing]
+
+    IDX --> QD[(Qdrant<br/>video_chunks)]
+    IDX --> OS[(OpenSearch<br/>video_chunks)]
+    IDX --> PG[(PostgreSQL<br/>video_chunks)]
+```
+
+**Video Processing Stages:**
+
+| Stage | Technology | Output |
+|-------|------------|--------|
+| **Validation** | FFprobe | Duration, resolution, codec validation |
+| **Transcription** | Whisper (large-v3) | Word-level timestamped transcript |
+| **Scene Detection** | PySceneDetect | Scene boundaries with timestamps |
+| **Keyframe Extraction** | FFmpeg | Representative frame per scene |
+| **Vision Analysis** | LLaVA / GPT-4V | Scene descriptions, object detection |
+| **OCR** | Tesseract | On-screen text extraction |
+| **Content Fusion** | LLM | Combined multi-modal chunk text |
+| **Chunking** | Scene-based | 10-60 second segments with overlap |
+
+**Video Chunk Schema:**
+
+```python
+# Qdrant video_chunks collection
+video_chunk_payload = {
+    "tenant_id": "uuid",
+    "video_id": "uuid",
+    "chunk_id": "uuid",
+    "chunk_index": 0,
+    "start_time_ms": 0,
+    "end_time_ms": 30000,
+    "transcript": "Hello and welcome to...",
+    "scene_description": "Person speaking at desk with laptop",
+    "ocr_text": "Company Logo",
+    "fused_text": "Combined content for embedding...",
+    "keyframe_path": "videos/{tenant}/{video}/keyframes/0.jpg",
+    "source_modalities": ["transcript", "vision", "ocr"],
+    "created_at": "2025-01-14T12:00:00Z"
+}
+```
+
+**Video Retrieval Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/retrieve/video` | POST | Hybrid search across video chunks |
+| `/api/v1/retrieve/video/{id}` | GET | Search within a specific video |
+| `/api/v1/videos/{id}/clip` | GET | Generate and cache video clip |
+| `/api/v1/videos/{id}/chunks` | GET | List all chunks for a video |
+
+**Timeline Response Format:**
+
+The video retrieval API returns results grouped by video with timeline information:
+
+```json
+{
+  "videos": [
+    {
+      "video_id": "uuid",
+      "title": "Product Demo",
+      "matches": [
+        {
+          "chunk_id": "uuid",
+          "start_time_ms": 30000,
+          "end_time_ms": 60000,
+          "start_seconds": 30.0,
+          "end_seconds": 60.0,
+          "score": 0.92,
+          "transcript_preview": "To reset your password...",
+          "scene_description": "Settings screen with password form",
+          "keyframe_url": "https://minio/presigned-keyframe.jpg"
+        }
+      ],
+      "total_matches": 3
+    }
+  ],
+  "metrics": {
+    "total_videos": 5,
+    "total_matches": 12,
+    "latency_ms": 185
+  }
+}
+```
+
+**Clip Generation & Caching:**
+
+The clip service extracts video segments on-demand with intelligent caching:
+
+```
+retrieval-service/
+├── video/
+│   ├── retriever.py         # VideoRetriever with hybrid search
+│   ├── models.py             # VideoMatch, VideoResult, VideoTimelineResponse
+│   ├── clip_generator.py     # FFmpeg-based clip extraction
+│   ├── clip_cache.py         # MinIO-backed clip caching
+│   └── exceptions.py         # VideoRetrievalError
+```
+
+**Clip Cache Configuration:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `cache_ttl_hours` | 24 | Time before cached clips expire |
+| `presigned_url_expiry_hours` | 4 | Presigned URL validity |
+| `max_clip_duration_seconds` | 120 | Maximum clip length |
+| `padding_seconds` | 2.0 | Padding around requested segment |
+| `use_stream_copy` | true | Fast copy vs re-encode |
+
+**Video Management API:**
+
+The Ingestion Service provides full CRUD operations for videos:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/videos` | GET | List videos with pagination & filtering |
+| `/api/v1/videos` | POST | Upload new video |
+| `/api/v1/videos/{id}` | GET | Get video details |
+| `/api/v1/videos/{id}` | PUT | Update video metadata |
+| `/api/v1/videos/{id}` | DELETE | Delete video with cascade |
+| `/api/v1/videos/{id}/reprocess` | POST | Re-process video |
+
+**Cascade Deletion:**
+
+When a video is deleted, all associated data is removed:
+
+1. Qdrant vectors (video_chunks collection)
+2. OpenSearch documents (video_chunks index)
+3. PostgreSQL chunks (video_chunks table)
+4. MinIO objects (source video, keyframes, cached clips)
+
+Deletion counts are returned in the response for audit purposes.
+
 ### 3. Orchestrator Service
 
 **Responsibilities:**

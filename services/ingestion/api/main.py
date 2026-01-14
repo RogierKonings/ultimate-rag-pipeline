@@ -10,7 +10,13 @@ import logging
 from contextlib import asynccontextmanager
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
-from api.routes import documents_router, ingest_router, migrations_router
+from api.routes import (
+    documents_router,
+    ingest_router,
+    migrations_router,
+    video_management_router,
+    video_router,
+)
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -105,6 +111,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         documents_router,
         prefix="/documents",
         tags=["Documents"],
+    )
+
+    # Video router for Video RAG Pipeline
+    app.include_router(
+        video_router,
+        prefix="/videos",
+        tags=["Videos"],
+    )
+
+    # Video management router for CRUD operations
+    app.include_router(
+        video_management_router,
+        prefix="/api/v1/videos",
+        tags=["Video Management"],
     )
 
     # Migrations router is optional

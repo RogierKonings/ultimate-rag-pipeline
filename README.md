@@ -52,6 +52,16 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 - Automated metadata enrichment and PII detection
 - Async processing with Celery for scalable ingestion
 
+### Video RAG Pipeline
+
+- Multi-modal video processing (transcription, vision, OCR)
+- Scene-based chunking with temporal alignment
+- Whisper transcription with word-level timestamps
+- Vision analysis via LLaVA/GPT-4V for scene descriptions
+- Hybrid search across video content with timeline responses
+- On-demand clip generation with MinIO caching
+- Full video CRUD with cascade deletion
+
 ### Hybrid Retrieval
 - Semantic search via Qdrant (HNSW indexing, cosine similarity)
 - Keyword search via OpenSearch (BM25 with fuzzy matching)
@@ -358,6 +368,41 @@ GET  /health                # Health check
 ```
 
 [Full Documentation](docs/retrieval-service/README.md)
+
+### Video Retrieval
+
+**Included in Retrieval Service (Port 8002)**
+
+Enables semantic search within video content using multi-modal analysis.
+
+**Features:**
+
+- Hybrid search across video chunks (semantic + keyword)
+- Timeline-based result grouping by video
+- Keyframe previews with presigned URLs
+- On-demand clip generation with FFmpeg
+- MinIO-backed clip caching with TTL expiration
+- RRF fusion and cross-encoder reranking
+
+**Key Endpoints:**
+
+```
+POST /api/v1/retrieve/video           # Search across all videos
+GET  /api/v1/retrieve/video/{id}      # Search within specific video
+GET  /api/v1/videos/{id}/clip         # Generate/retrieve video clip
+GET  /api/v1/videos/{id}/chunks       # List video chunks
+```
+
+**Video Management (Ingestion Service):**
+
+```
+GET    /api/v1/videos                 # List videos with pagination
+POST   /api/v1/videos                 # Upload new video
+GET    /api/v1/videos/{id}            # Get video details
+PUT    /api/v1/videos/{id}            # Update video metadata
+DELETE /api/v1/videos/{id}            # Delete with cascade
+POST   /api/v1/videos/{id}/reprocess  # Re-process video
+```
 
 ### Orchestrator Service
 

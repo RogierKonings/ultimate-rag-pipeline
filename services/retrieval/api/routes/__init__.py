@@ -1,5 +1,5 @@
 """API route modules for the Retrieval Service."""
 
-from api.routes import health, retrieve
+from api.routes import clips, health, retrieve, video_retrieve
 
-__all__ = ["health", "retrieve"]
+__all__ = ["clips", "health", "retrieve", "video_retrieve"]

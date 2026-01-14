@@ -2,12 +2,13 @@
 
 This module provides Celery-based background job processing for:
 - Document ingestion (process_document, batch_ingest)
+- Video processing (process_video)
 - Re-embedding (reembed_collection)
 - Job status tracking
 
 Example:
     Start a worker:
-    $ celery -A services.ingestion.tasks.celery_app worker --loglevel=info --queues=ingestion,embedding,reembed
+    $ celery -A services.ingestion.tasks.celery_app worker --loglevel=info --queues=ingestion,video,embedding,reembed
 """
 
 from .callbacks import send_to_dlq
@@ -21,6 +22,7 @@ from .models import (
 )
 from .reembed import reembed_collection
 from .status import JobStatusTracker
+from .video_ingest import process_video
 
 __all__ = [
     # Celery app
@@ -35,6 +37,7 @@ __all__ = [
     # Tasks
     "process_document",
     "batch_ingest",
+    "process_video",
     "reembed_collection",
     "send_to_dlq",
     # Status tracking

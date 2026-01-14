@@ -5,6 +5,7 @@ processing. It defines queues for different task types and routing rules.
 
 Queue configuration:
 - ingestion: Document ingestion tasks
+- video: Video processing tasks
 - embedding: Embedding generation tasks
 - reembed: Re-embedding tasks for model migration
 - dlq: Dead letter queue for failed tasks
@@ -80,6 +81,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
 
     # Define exchanges
     ingestion_exchange = Exchange("ingestion", type="direct")
+    video_exchange = Exchange("video", type="direct")
     embedding_exchange = Exchange("embedding", type="direct")
     reembed_exchange = Exchange("reembed", type="direct")
     dlq_exchange = Exchange("dlq", type="direct")
@@ -87,6 +89,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     # Define queues
     app.conf.task_queues = (
         Queue("ingestion", ingestion_exchange, routing_key="ingestion"),
+        Queue("video", video_exchange, routing_key="video"),
         Queue("embedding", embedding_exchange, routing_key="embedding"),
         Queue("reembed", reembed_exchange, routing_key="reembed"),
         Queue("dlq", dlq_exchange, routing_key="dlq"),
@@ -95,6 +98,7 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     # Route tasks to queues
     app.conf.task_routes = {
         "tasks.ingest.*": {"queue": "ingestion"},
+        "tasks.video_ingest.*": {"queue": "video"},
         "tasks.reembed.*": {"queue": "reembed"},
         "tasks.callbacks.*": {"queue": "dlq"},
     }

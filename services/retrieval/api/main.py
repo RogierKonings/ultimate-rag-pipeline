@@ -14,12 +14,14 @@ from query.models import QueryPreprocessorConfig
 from query.preprocessor import QueryPreprocessor
 from reranking.models import RerankerConfig
 from reranking.reranker import RerankerService
+from retrieval.video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher, OpenSearchConfig
 from search.semantic import QdrantConfig, SemanticSearcher
+from video.clip_cache import ClipCacheConfig, ClipCacheService
 
-from api.routes import health, retrieve
+from api.routes import clips, health, retrieve, video_retrieve
 from config import RetrievalConfig
 
 
@@ -75,12 +77,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         algorithm=config.jwt_algorithm,
     )
 
+    # Initialize video retriever
+    video_retriever = VideoRetriever(
+        config=VideoRetrieverConfig(
+            qdrant_url=config.qdrant_url,
+            opensearch_url=config.opensearch_url,
+        ),
+        reranker=reranker,
+    )
+
+    # Initialize clip cache service
+    clip_cache = ClipCacheService(
+        ClipCacheConfig(
+            minio_url=getattr(config, "minio_url", "localhost:9000"),
+            access_key=getattr(config, "minio_access_key", "minioadmin"),
+            secret_key=getattr(config, "minio_secret_key", "minioadmin"),
+            bucket_name=getattr(config, "minio_bucket", "rag-pipeline"),
+        )
+    )
+
     # Store in app state
     app.state.preprocessor = preprocessor
     app.state.hybrid = hybrid
     app.state.reranker = reranker
     app.state.acl_filter = acl_filter
     app.state.user_extractor = user_extractor
+    app.state.video_retriever = video_retriever
+    app.state.clip_cache = clip_cache
 
     yield
 
@@ -89,6 +112,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await semantic.close()
     await keyword.close()
     await reranker.close()
+    video_retriever.close()
 
 
 def create_app(config: RetrievalConfig | None = None) -> FastAPI:
@@ -144,6 +168,8 @@ def create_app(config: RetrievalConfig | None = None) -> FastAPI:
 
     # Include routers
     app.include_router(retrieve.router, prefix="/api/v1", tags=["Retrieval"])
+    app.include_router(video_retrieve.router, prefix="/api/v1", tags=["Video Retrieval"])
+    app.include_router(clips.router, prefix="/api/v1", tags=["Video Clips"])
     app.include_router(health.router, tags=["Health"])
 
     return app

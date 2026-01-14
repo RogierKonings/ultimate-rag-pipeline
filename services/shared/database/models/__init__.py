@@ -14,6 +14,13 @@ from database.models.user import (
     UserGroup,
     UserRole,
 )
+from database.models.video import (
+    ProcessingStage,
+    SourceVideo,
+    VideoKeyframe,
+    VideoStatus,
+    VideoTranscript,
+)
 
 __all__ = [
     # Base
@@ -23,6 +30,12 @@ __all__ = [
     # Documents
     "Document",
     "Chunk",
+    # Videos
+    "SourceVideo",
+    "VideoTranscript",
+    "VideoKeyframe",
+    "VideoStatus",
+    "ProcessingStage",
     # Audit
     "AuditLog",
     # User management

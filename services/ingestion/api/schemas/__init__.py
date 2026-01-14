@@ -28,6 +28,21 @@ from .ingest import (
     SyncResponse,
     SyncSourceConfig,
 )
+from .video import (
+    PresignedUploadRequest,
+    PresignedUploadResponse,
+    ProcessingStage,
+    VideoErrorResponse,
+    VideoListItem,
+    VideoListResponse,
+    VideoMetadataResponse,
+    VideoProcessingOptions,
+    VideoStatus,
+    VideoStatusResponse,
+    VideoUploadRequest,
+    VideoUploadResponse,
+    VideoVisibility,
+)
 
 # Migration schemas are optional - depend on external modules
 try:
@@ -91,4 +106,18 @@ __all__ = [
     "BatchDeleteRequest",
     "BatchDeleteResponse",
     "ReindexRequest",
+    # Video schemas
+    "VideoStatus",
+    "ProcessingStage",
+    "VideoVisibility",
+    "VideoProcessingOptions",
+    "VideoUploadRequest",
+    "VideoUploadResponse",
+    "PresignedUploadRequest",
+    "PresignedUploadResponse",
+    "VideoStatusResponse",
+    "VideoMetadataResponse",
+    "VideoListItem",
+    "VideoListResponse",
+    "VideoErrorResponse",
 ] + _migration_schemas

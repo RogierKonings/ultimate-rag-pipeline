@@ -2,6 +2,8 @@
 
 from .documents import router as documents_router
 from .ingest import router as ingest_router
+from .video import router as video_router
+from .video_management import router as video_management_router
 
 # Migrations router is optional - depends on external modules
 try:
@@ -9,4 +11,10 @@ try:
 except ImportError:
     migrations_router = None
 
-__all__ = ["ingest_router", "documents_router", "migrations_router"]
+__all__ = [
+    "ingest_router",
+    "documents_router",
+    "migrations_router",
+    "video_router",
+    "video_management_router",
+]
