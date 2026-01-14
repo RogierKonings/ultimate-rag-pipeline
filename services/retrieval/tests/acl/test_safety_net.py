@@ -5,10 +5,10 @@ If query-level ACL is working correctly, this safety net should NEVER
 filter anything. Any filtering indicates a BUG and should be logged as a warning.
 """
 
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from acl.models import UserContext
 from acl.safety_net import ACLSafetyNet
 from search.fusion import FusedResult
@@ -416,3 +416,154 @@ class TestACLSafetyNetEdgeCases:
         filtered = safety_net.filter([result], user_context)
 
         assert len(filtered) == 0
+
+
+class TestACLSafetyNetMetrics:
+    """Tests for Prometheus metrics tracking when filtering occurs."""
+
+    def test_metric_incremented_on_wrong_tenant(self, safety_net, user_context):
+        """Metric should be incremented with reason 'wrong_tenant' for tenant mismatch."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            other_tenant_id = str(uuid4())
+            result = make_fused_result(
+                tenant_id=other_tenant_id,
+                visibility="public",
+            )
+
+            safety_net.filter([result], user_context)
+
+            # Verify metric was called with correct labels
+            mock_metrics.acl_safety_net_filtered.labels.assert_called_once_with(
+                tenant_id=str(user_context.tenant_id),
+                reason="wrong_tenant",
+            )
+            mock_counter.inc.assert_called_once()
+
+    def test_metric_incremented_on_inactive_document(self, safety_net, user_context):
+        """Metric should be incremented with reason 'inactive_document' for deleted docs."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            result = make_fused_result(
+                tenant_id=str(user_context.tenant_id),
+                visibility="public",
+                status="deleted",
+            )
+
+            safety_net.filter([result], user_context)
+
+            mock_metrics.acl_safety_net_filtered.labels.assert_called_once_with(
+                tenant_id=str(user_context.tenant_id),
+                reason="inactive_document",
+            )
+            mock_counter.inc.assert_called_once()
+
+    def test_metric_incremented_on_group_mismatch(self, safety_net, user_context):
+        """Metric should be incremented with reason 'group_mismatch' for group access denial."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            result = make_fused_result(
+                tenant_id=str(user_context.tenant_id),
+                visibility="group",
+                allowed_groups=["finance", "hr"],  # User not in these groups
+            )
+
+            safety_net.filter([result], user_context)
+
+            mock_metrics.acl_safety_net_filtered.labels.assert_called_once_with(
+                tenant_id=str(user_context.tenant_id),
+                reason="group_mismatch",
+            )
+            mock_counter.inc.assert_called_once()
+
+    def test_metric_incremented_on_private_unauthorized(self, safety_net, user_context):
+        """Metric should be incremented with reason 'private_unauthorized' for private doc denial."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            other_owner = str(uuid4())
+            result = make_fused_result(
+                tenant_id=str(user_context.tenant_id),
+                visibility="private",
+                owner_id=other_owner,
+            )
+
+            safety_net.filter([result], user_context)
+
+            mock_metrics.acl_safety_net_filtered.labels.assert_called_once_with(
+                tenant_id=str(user_context.tenant_id),
+                reason="private_unauthorized",
+            )
+            mock_counter.inc.assert_called_once()
+
+    def test_metric_incremented_on_unknown_visibility(self, safety_net, user_context):
+        """Metric should be incremented with reason 'unknown' for unknown visibility level."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            result = make_fused_result(
+                tenant_id=str(user_context.tenant_id),
+                visibility="unknown_level",
+            )
+
+            safety_net.filter([result], user_context)
+
+            mock_metrics.acl_safety_net_filtered.labels.assert_called_once_with(
+                tenant_id=str(user_context.tenant_id),
+                reason="unknown",
+            )
+            mock_counter.inc.assert_called_once()
+
+    def test_metric_not_incremented_when_all_pass(self, safety_net, user_context):
+        """Metric should NOT be incremented when all results pass through."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            accessible = make_fused_result(
+                tenant_id=str(user_context.tenant_id),
+                visibility="public",
+            )
+
+            filtered = safety_net.filter([accessible], user_context)
+
+            assert len(filtered) == 1
+            mock_metrics.acl_safety_net_filtered.labels.assert_not_called()
+
+    def test_metric_incremented_multiple_times_for_multiple_filtered(
+        self, safety_net, user_context
+    ):
+        """Metric should be incremented once per filtered result."""
+        with patch("acl.safety_net.metrics") as mock_metrics:
+            mock_counter = MagicMock()
+            mock_metrics.acl_safety_net_filtered.labels.return_value = mock_counter
+
+            results = [
+                make_fused_result(
+                    tenant_id=str(uuid4()),  # Wrong tenant
+                    visibility="public",
+                ),
+                make_fused_result(
+                    tenant_id=str(user_context.tenant_id),
+                    visibility="public",
+                    status="deleted",  # Inactive
+                ),
+                make_fused_result(
+                    tenant_id=str(user_context.tenant_id),
+                    visibility="public",  # This one should pass
+                ),
+            ]
+
+            filtered = safety_net.filter(results, user_context)
+
+            # Only one result should pass
+            assert len(filtered) == 1
+
+            # Metric should be called twice (for the two filtered results)
+            assert mock_metrics.acl_safety_net_filtered.labels.call_count == 2
+            assert mock_counter.inc.call_count == 2

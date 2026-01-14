@@ -160,6 +160,13 @@ class RetrievalMetrics:
             "Service information",
         )
 
+        # ACL safety net metrics (should be zero in normal operation)
+        self.acl_safety_net_filtered = Counter(
+            f"{service_name}_acl_safety_net_filtered_total",
+            "Documents filtered by ACL safety net (should be zero in normal operation)",
+            ["tenant_id", "reason"],
+        )
+
     def record_request(
         self,
         mode: str,

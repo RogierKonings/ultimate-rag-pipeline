@@ -12,6 +12,7 @@ and security auditing.
 import logging
 from typing import Any
 
+from observability.metrics import metrics
 from search.fusion import FusedResult
 
 from .models import UserContext, Visibility
@@ -84,11 +85,17 @@ class ACLSafetyNet:
         filtered_count = 0
 
         for result in results:
-            if self._is_accessible(result, user_context):
+            is_accessible, reason = self._check_access(result, user_context)
+            if is_accessible:
                 accessible_results.append(result)
             else:
                 filtered_count += 1
-                self._log_filtered_result(result, user_context)
+                # Increment Prometheus counter for each filtered result
+                metrics.acl_safety_net_filtered.labels(
+                    tenant_id=str(user_context.tenant_id),
+                    reason=reason,
+                ).inc()
+                self._log_filtered_result(result, user_context, reason)
 
         if filtered_count > 0:
             # This warning indicates a potential bug in query-level ACL
@@ -103,19 +110,21 @@ class ACLSafetyNet:
 
         return accessible_results
 
-    def _is_accessible(
+    def _check_access(
         self,
         result: FusedResult,
         user_context: UserContext,
-    ) -> bool:
-        """Check if a result is accessible to the user.
+    ) -> tuple[bool, str]:
+        """Check if a result is accessible to the user and return the reason if not.
 
         Args:
             result: Single fused result with metadata.
             user_context: User's authentication context.
 
         Returns:
-            True if user can access the result, False otherwise.
+            Tuple of (is_accessible, reason). Reason is empty string if accessible,
+            otherwise one of: "wrong_tenant", "inactive_document", "group_mismatch",
+            "private_unauthorized", "unknown".
         """
         metadata = result.metadata
 
@@ -129,16 +138,16 @@ class ACLSafetyNet:
 
         # 1. Tenant isolation (MANDATORY)
         if doc_tenant_id is None or doc_tenant_id != str(user_context.tenant_id):
-            return False
+            return False, "wrong_tenant"
 
         # 2. Status check - must be active
         if doc_status != "active":
-            return False
+            return False, "inactive_document"
 
         # 3. Visibility check
         if doc_visibility is None:
             # Missing visibility - block for safety
-            return False
+            return False, "unknown"
 
         return self._check_visibility_access(
             visibility=doc_visibility,
@@ -155,7 +164,7 @@ class ACLSafetyNet:
         allowed_groups: list[str],
         allowed_users: list[str],
         user_context: UserContext,
-    ) -> bool:
+    ) -> tuple[bool, str]:
         """Check access based on visibility level.
 
         Args:
@@ -166,47 +175,51 @@ class ACLSafetyNet:
             user_context: User's authentication context.
 
         Returns:
-            True if visibility rules allow access.
+            Tuple of (is_accessible, reason). Reason is empty string if accessible.
         """
         user_id_str = str(user_context.user_id)
 
         if visibility == Visibility.PUBLIC.value:
             # Public: accessible to all in tenant (tenant already checked)
-            return True
+            return True, ""
 
         if visibility == Visibility.TENANT.value:
             # Tenant: accessible to all in tenant (tenant already checked)
-            return True
+            return True, ""
 
         if visibility == Visibility.GROUP.value:
             # Group: user must be in at least one allowed group
             if not allowed_groups:
-                return False
+                return False, "group_mismatch"
             user_groups = set(user_context.groups)
             allowed_set = set(allowed_groups)
-            return bool(user_groups & allowed_set)
+            if user_groups & allowed_set:
+                return True, ""
+            return False, "group_mismatch"
 
         if visibility == Visibility.PRIVATE.value:
             # Private: owner OR explicit allowed_user
             if owner_id is not None and owner_id == user_id_str:
-                return True
+                return True, ""
             if user_id_str in allowed_users:
-                return True
-            return False
+                return True, ""
+            return False, "private_unauthorized"
 
         # Unknown visibility level - block for safety
-        return False
+        return False, "unknown"
 
     def _log_filtered_result(
         self,
         result: FusedResult,
         user_context: UserContext,
+        reason: str,
     ) -> None:
         """Log details about a filtered result for debugging.
 
         Args:
             result: The result that was filtered out.
             user_context: User's authentication context.
+            reason: The reason for filtering (e.g., "wrong_tenant", "group_mismatch").
         """
         metadata = result.metadata
 
@@ -222,5 +235,6 @@ class ACLSafetyNet:
             user_tenant_id=str(user_context.tenant_id),
             user_id=str(user_context.user_id),
             user_groups=user_context.groups,
-            reason="Result blocked by safety net - investigate query-level ACL",
+            filter_reason=reason,
+            detail="Result blocked by safety net - investigate query-level ACL",
         )
