@@ -15,12 +15,19 @@ from query.models import QueryPreprocessorConfig
 from query.preprocessor import QueryPreprocessor
 from reranking.models import RerankerConfig
 from reranking.reranker import RerankerService
+from resilience import (
+    CircuitBreakerConfig,
+    ResilienceConfig,
+    RetrievalDegradationManager,
+    reset_degradation_manager,
+)
 from retrieval.video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher, OpenSearchConfig
 from search.models import OpenSearchConfig as OpenSearchSearchConfig
 from search.models import QdrantConfig as QdrantSearchConfig
+from search.resilient_hybrid import ResilientHybridSearcher
 from search.semantic import QdrantConfig, SemanticSearcher
 from search.tenant_aware import TenantAwareHybridSearcher
 from tenant.config_service import get_tenant_config_service
@@ -69,6 +76,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             keyword_weight=config.keyword_weight,
         ),
     )
+
+    # Initialize resilience components
+    reset_degradation_manager()  # Clear any previous state
+    circuit_config = CircuitBreakerConfig(
+        failure_threshold=config.circuit_failure_threshold,
+        recovery_timeout=config.circuit_recovery_timeout,
+        half_open_max_calls=config.circuit_half_open_max_calls,
+    )
+    resilience_config = ResilienceConfig(
+        qdrant_circuit=circuit_config,
+        opensearch_circuit=circuit_config,
+        reranker_circuit=circuit_config,
+    )
+    degradation_manager = RetrievalDegradationManager(resilience_config)
+
+    # Create resilient hybrid searcher
+    resilient_hybrid = ResilientHybridSearcher(hybrid, degradation_manager)
 
     # Initialize tenant-aware hybrid searcher for multi-tenant routing
     tenant_aware_hybrid = TenantAwareHybridSearcher(
@@ -125,6 +149,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Store in app state
     app.state.preprocessor = preprocessor
     app.state.hybrid = hybrid
+    app.state.resilient_hybrid = resilient_hybrid
+    app.state.degradation_manager = degradation_manager
     app.state.tenant_aware_hybrid = tenant_aware_hybrid
     app.state.reranker = reranker
     app.state.acl_filter = acl_filter

@@ -57,6 +57,11 @@ class RetrievalConfig(BaseSettings):
     metrics_enabled: bool = True
     metrics_port: int = 9090
 
+    # Circuit Breaker settings
+    circuit_failure_threshold: int = 5
+    circuit_recovery_timeout: float = 30.0
+    circuit_half_open_max_calls: int = 3
+
     model_config = {
         "env_prefix": "RETRIEVAL_",
         "env_file": ".env",
