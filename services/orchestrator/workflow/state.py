@@ -59,6 +59,11 @@ class RAGState(TypedDict, total=False):
     timing: dict  # Timing metrics per stage
 
     # =========================================================================
+    # Verification Fields (CRAG-style answer verification)
+    # =========================================================================
+    verification_result: dict | None  # VerificationResult as dict
+
+    # =========================================================================
     # Error Handling Fields
     # =========================================================================
     error: str | None  # Error message if workflow failed
@@ -107,6 +112,8 @@ def create_initial_state(
         model_used=None,
         usage=None,
         timing={},
+        # Verification
+        verification_result=None,
         # Error handling
         error=None,
         fallbacks_used=[],

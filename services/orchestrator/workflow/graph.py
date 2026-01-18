@@ -14,6 +14,7 @@ from workflow.nodes import (
     prompt_building_node,
     retrieval_node,
     routing_node,
+    verification_node,
 )
 from workflow.state import RAGState
 
@@ -85,7 +86,8 @@ def build_rag_workflow() -> StateGraph:
     3. retrieval - Fetch relevant context (conditional on strategy)
     4. prompt_building - Construct the LLM prompt
     5. generation - Generate response with LLM
-    6. output_validation - Check output for safety
+    6. verification - Verify answer is grounded in context (CRAG-style)
+    7. output_validation - Check output for safety
 
     Conditional edges:
     - After routing: Skip retrieval for no_retrieval strategy
@@ -103,6 +105,7 @@ def build_rag_workflow() -> StateGraph:
     graph.add_node("retrieval", retrieval_node)
     graph.add_node("prompt_building", prompt_building_node)
     graph.add_node("generation", generation_node)
+    graph.add_node("verification", verification_node)
     graph.add_node("output_validation", output_validation_node)
 
     # Set entry point
@@ -134,8 +137,11 @@ def build_rag_workflow() -> StateGraph:
     # Prompt Building -> Generation
     graph.add_edge("prompt_building", "generation")
 
-    # Generation -> Output Validation
-    graph.add_edge("generation", "output_validation")
+    # Generation -> Verification
+    graph.add_edge("generation", "verification")
+
+    # Verification -> Output Validation
+    graph.add_edge("verification", "output_validation")
 
     # Output Validation -> END
     graph.add_edge("output_validation", END)

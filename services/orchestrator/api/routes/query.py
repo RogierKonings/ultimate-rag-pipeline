@@ -24,6 +24,7 @@ from api.models.responses import (
     QueryResponse,
     SourceDocument,
     UsageInfo,
+    VerificationInfo,
 )
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -135,6 +136,7 @@ async def query(
             model_used = result.get("model_used", "unknown")
             usage = result.get("usage", {})
             strategy_used = result.get("strategy_used")
+            verification_result = result.get("verification_result")
 
         except Exception as e:
             raise HTTPException(
@@ -165,6 +167,7 @@ async def query(
                 "total_tokens": llm_response.usage.total_tokens,
             }
             strategy_used = "direct"
+            verification_result = None  # No verification in direct mode
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -183,6 +186,21 @@ async def query(
 
     latency_ms = (time.perf_counter() - start_time) * 1000
 
+    # Build verification info if available
+    verification_info = None
+    if verification_result:
+        verification_info = VerificationInfo(
+            score=verification_result.get("score", 1.0),
+            label=verification_result.get("label", "skipped"),
+            claims_total=verification_result.get("claims_total", 0),
+            claims_supported=verification_result.get("claims_supported", 0),
+            claims_partial=verification_result.get("claims_partial", 0),
+            claims_unsupported=verification_result.get("claims_unsupported", 0),
+            verification_time_ms=verification_result.get("verification_time_ms", 0.0),
+            skipped=verification_result.get("skipped", True),
+            skip_reason=verification_result.get("skip_reason"),
+        )
+
     return QueryResponse(
         request_id=request_id,
         response=response_text,
@@ -196,6 +214,7 @@ async def query(
         ),
         latency_ms=round(latency_ms, 2),
         strategy_used=strategy_used,
+        verification=verification_info,
     )
 
 

@@ -36,6 +36,12 @@ class OrchestratorConfig(BaseSettings):
     enable_output_guardrails: bool = True
     max_input_length: int = 4000
 
+    # Answer Verification (CRAG-style)
+    verification_enabled: bool = False  # Opt-in by default
+    verification_max_claims: int = 5
+    verification_confidence_threshold: float = 0.7
+    verification_add_disclaimer: bool = True
+
     # Streaming
     stream_timeout: float = 60.0
 

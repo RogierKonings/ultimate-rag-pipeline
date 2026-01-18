@@ -38,6 +38,32 @@ class UsageInfo(BaseModel):
     total_tokens: int = Field(default=0, description="Total tokens used")
 
 
+class VerificationInfo(BaseModel):
+    """Answer verification result (CRAG-style claim verification).
+
+    Attributes:
+        score: Verification score from 0-1 (proportion of supported claims).
+        label: Verification label (supported, partial, unsupported, skipped).
+        claims_total: Total number of claims verified.
+        claims_supported: Number of fully supported claims.
+        claims_partial: Number of partially supported claims.
+        claims_unsupported: Number of unsupported claims.
+        verification_time_ms: Time taken for verification.
+        skipped: Whether verification was skipped.
+        skip_reason: Reason for skipping verification.
+    """
+
+    score: float = Field(default=1.0, ge=0.0, le=1.0, description="Verification score")
+    label: str = Field(default="skipped", description="Verification label")
+    claims_total: int = Field(default=0, description="Total claims verified")
+    claims_supported: int = Field(default=0, description="Supported claims")
+    claims_partial: int = Field(default=0, description="Partially supported claims")
+    claims_unsupported: int = Field(default=0, description="Unsupported claims")
+    verification_time_ms: float = Field(default=0.0, description="Verification time")
+    skipped: bool = Field(default=True, description="Whether verification was skipped")
+    skip_reason: str | None = Field(default=None, description="Reason for skipping")
+
+
 class QueryResponse(BaseModel):
     """Response model for synchronous RAG query.
 
@@ -50,6 +76,7 @@ class QueryResponse(BaseModel):
         usage: Token usage statistics.
         latency_ms: Response latency in milliseconds.
         strategy_used: The retrieval strategy used (simple, rerank, etc.).
+        verification: Answer verification result (if enabled).
     """
 
     request_id: str = Field(..., description="Unique request identifier")
@@ -71,6 +98,10 @@ class QueryResponse(BaseModel):
     strategy_used: str | None = Field(
         default=None,
         description="Retrieval strategy used",
+    )
+    verification: VerificationInfo | None = Field(
+        default=None,
+        description="Answer verification result (CRAG-style)",
     )
 
 
