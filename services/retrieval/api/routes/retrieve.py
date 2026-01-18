@@ -10,6 +10,7 @@ from acl.safety_net import ACLSafetyNet
 from fastapi import APIRouter, HTTPException, Request, status
 from query.preprocessor import QueryPreprocessor
 from reranking.reranker import RerankerService
+from resilience.degradation import get_degradation_manager
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 
@@ -161,6 +162,10 @@ async def retrieve(
 
     total_time = (time.time() - start_time) * 1000
 
+    # Get degradation status (US-10.2.2)
+    degradation_manager = get_degradation_manager()
+    degradation_status = degradation_manager.get_status()
+
     return RetrieveResponse(
         results=response_results,
         total_results=len(response_results),
@@ -181,6 +186,10 @@ async def retrieve(
         ),
         query_id=query_id,
         processed_at=datetime.now(tz=UTC),
+        # Degradation info (US-10.2.2)
+        degradation_mode=degradation_status.mode.value,
+        components_used=degradation_status.components_available,
+        components_skipped=degradation_status.components_unavailable,
     )
 
 

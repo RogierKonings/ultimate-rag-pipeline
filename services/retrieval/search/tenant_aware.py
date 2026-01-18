@@ -11,9 +11,10 @@ from uuid import UUID
 
 import structlog
 
+from .fusion import HybridSearchResponse
 from .hybrid import HybridSearchConfig, HybridSearcher
 from .keyword import KeywordSearcher
-from .models import HybridSearchResponse, OpenSearchConfig, QdrantConfig
+from .models import OpenSearchConfig, QdrantConfig
 from .semantic import SemanticSearcher
 
 if TYPE_CHECKING:
