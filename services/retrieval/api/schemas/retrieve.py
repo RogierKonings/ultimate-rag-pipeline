@@ -183,6 +183,20 @@ class RetrieveResponse(BaseModel):
     # Debug info (US-3.10)
     debug: DebugInfo | None = None
 
+    # Degradation info (US-10.2.1)
+    degradation_mode: str | None = Field(
+        default=None,
+        description="Current degradation mode if service is degraded",
+    )
+    components_used: list[str] = Field(
+        default_factory=list,
+        description="List of components used for this search",
+    )
+    components_skipped: list[str] = Field(
+        default_factory=list,
+        description="List of components skipped due to failures",
+    )
+
     model_config = {
         "json_schema_extra": {
             "example": {
