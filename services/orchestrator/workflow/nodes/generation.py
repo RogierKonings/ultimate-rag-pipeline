@@ -1,7 +1,10 @@
 """Generation node for the RAG workflow.
 
 This node calls the LLM gateway to generate a response based on
-the constructed prompt messages.
+the constructed prompt messages, using dynamic model selection
+based on tenant tier and query complexity.
+
+Reference: US-10.5.2 - LLM Model Tiering
 """
 
 import logging
@@ -11,22 +14,45 @@ from typing import TYPE_CHECKING
 import httpx
 
 from config import get_config
+from model_router import ModelRouter
+from observability.llm_metrics import (
+    record_llm_duration,
+    record_llm_request,
+    record_model_fallback,
+)
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
 logger = logging.getLogger(__name__)
 
+# Module-level router instance
+_model_router = ModelRouter()
+
+
+def _get_complexity_from_strategy(strategy: str) -> str:
+    """Map routing strategy to complexity level.
+
+    Args:
+        strategy: The routing strategy (simple, complex, no_retrieval).
+
+    Returns:
+        Complexity level (simple, complex).
+    """
+    return "complex" if strategy == "complex" else "simple"
+
 
 async def generation_node(state: "RAGState") -> "RAGState":
     """
-    Generate response using LLM.
+    Generate response using LLM with dynamic model selection.
 
     This node:
+    - Selects model based on tenant tier and query complexity
     - Sends messages to LLM gateway
     - Captures the generated response
     - Records model used and token usage
-    - Handles generation failures
+    - Handles generation failures with fallback
+    - Records metrics for model usage
 
     Args:
         state: Current RAGState with messages for LLM
@@ -56,19 +82,59 @@ async def generation_node(state: "RAGState") -> "RAGState":
     response = None
     model_used = config.default_model
     usage = {}
+    selected_tier = "default"
 
     # Get options from state for per-request overrides
     options = state.get("options", {})
     temperature = options.get("temperature", config.temperature)
-    max_tokens = options.get("max_tokens", config.max_tokens)
+    max_tokens_override = options.get("max_tokens")
 
-    try:
+    # Get tenant tier and complexity for model selection
+    tenant_tier = options.get("tenant_tier", "standard")
+    strategy = state.get("strategy", "simple")
+    complexity = _get_complexity_from_strategy(strategy)
+
+    # Get intent from routing (if available)
+    intent = options.get("intent", "FACTUAL")
+
+    # Dynamic model selection (US-10.5.2)
+    if config.enable_model_tiering:
+        try:
+            selection = _model_router.select_model(
+                tenant_tier=tenant_tier,
+                complexity=complexity,
+                intent=intent,
+            )
+            model_to_use = selection.model
+            max_tokens = max_tokens_override or selection.max_tokens
+            selected_tier = selection.tier
+
+            logger.info(
+                f"Model router selected: {model_to_use} (tier={selected_tier})",
+                extra={
+                    "model": model_to_use,
+                    "tier": selected_tier,
+                    "tenant_tier": tenant_tier,
+                    "complexity": complexity,
+                    "intent": intent,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Model router failed, using default: {e}")
+            model_to_use = config.default_model
+            max_tokens = max_tokens_override or config.max_tokens
+    else:
+        # Feature flag disabled - use default model
+        model_to_use = config.default_model
+        max_tokens = max_tokens_override or config.max_tokens
+
+    async def _call_llm(model: str, max_tok: int) -> dict | None:
+        """Make LLM call with given model."""
         async with httpx.AsyncClient(timeout=config.stream_timeout) as client:
-            # Build OpenAI-compatible request
             payload = {
-                "model": config.default_model,
+                "model": model,
                 "messages": messages,
-                "max_tokens": max_tokens,
+                "max_tokens": max_tok,
                 "temperature": temperature,
                 "stream": False,
             }
@@ -78,14 +144,47 @@ async def generation_node(state: "RAGState") -> "RAGState":
                 json=payload,
             )
             llm_response.raise_for_status()
+            return llm_response.json()
 
-            result = llm_response.json()
+    try:
+        result = await _call_llm(model_to_use, max_tokens)
+
+        # Extract response content
+        choices = result.get("choices", [])
+        if choices:
+            response = choices[0].get("message", {}).get("content", "")
+            model_used = result.get("model", model_to_use)
+
+        # Extract usage info
+        usage_data = result.get("usage", {})
+        usage = {
+            "prompt_tokens": usage_data.get("prompt_tokens", 0),
+            "completion_tokens": usage_data.get("completion_tokens", 0),
+            "total_tokens": usage_data.get("total_tokens", 0),
+        }
+
+        # Record metrics
+        record_llm_request(model_used, selected_tier, tenant_tier)
+        record_llm_duration(selected_tier, time.time() - start)
+
+        logger.info(f"Generated response with {usage.get('total_tokens', 0)} tokens")
+
+    except (httpx.HTTPStatusError, httpx.RequestError) as e:
+        # Try fallback model
+        logger.warning(f"Primary model {model_to_use} failed: {e}, trying fallback")
+        fallbacks_used.append("llm_primary_failed")
+
+        try:
+            fallback_model = await _model_router.get_fallback_model(model_to_use)
+            fallback_max_tokens = config.max_tokens  # Use default for fallback
+
+            result = await _call_llm(fallback_model, fallback_max_tokens)
 
             # Extract response content
             choices = result.get("choices", [])
             if choices:
                 response = choices[0].get("message", {}).get("content", "")
-                model_used = result.get("model", config.default_model)
+                model_used = result.get("model", fallback_model)
 
             # Extract usage info
             usage_data = result.get("usage", {})
@@ -95,16 +194,18 @@ async def generation_node(state: "RAGState") -> "RAGState":
                 "total_tokens": usage_data.get("total_tokens", 0),
             }
 
-            logger.info(f"Generated response with {usage.get('total_tokens', 0)} tokens")
+            # Record fallback metrics
+            record_model_fallback(model_to_use, fallback_model)
+            record_llm_request(model_used, "small", tenant_tier)  # Fallback is always small
+            record_llm_duration("small", time.time() - start)
 
-    except httpx.HTTPStatusError as e:
-        logger.error(f"LLM gateway returned error: {e.response.status_code}")
-        error = f"LLM request failed: {e.response.status_code}"
-        fallbacks_used.append("llm_error")
-    except httpx.RequestError as e:
-        logger.error(f"Failed to connect to LLM gateway: {e}")
-        error = f"LLM connection failed: {e}"
-        fallbacks_used.append("llm_unavailable")
+            logger.info(f"Fallback succeeded with {usage.get('total_tokens', 0)} tokens")
+
+        except Exception as fallback_error:
+            logger.error(f"Fallback also failed: {fallback_error}")
+            error = f"LLM request failed (primary and fallback): {e}"
+            fallbacks_used.append("llm_fallback_failed")
+
     except Exception as e:
         logger.exception(f"Unexpected error during generation: {e}")
         error = f"Generation failed: {e}"
@@ -121,3 +222,4 @@ async def generation_node(state: "RAGState") -> "RAGState":
         "error": error,
         "fallbacks_used": fallbacks_used,
     }
+

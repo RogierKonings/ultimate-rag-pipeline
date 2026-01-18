@@ -25,6 +25,13 @@ class OrchestratorConfig(BaseSettings):
     max_tokens: int = 1024
     temperature: float = 0.7
 
+    # Model Tiering (US-10.5.2)
+    small_model: str = "qwen2.5-7b"
+    medium_model: str = "llama-3.1-13b"
+    large_model: str = "llama-3.1-70b"
+    enable_model_tiering: bool = True  # Feature flag for gradual rollout
+
+
     # Redis
     redis_url: str = "redis://localhost:6379"
     session_ttl: int = 3600  # 1 hour

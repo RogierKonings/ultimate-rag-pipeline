@@ -334,7 +334,8 @@ class TestGenerationNode:
         assert result["response"] is None
         assert result["error"] is not None
         assert "generation" in result["timing"]
-        assert "llm_unavailable" in result.get("fallbacks_used", [])
+        # With model tiering, we try primary then fallback model
+        assert "llm_primary_failed" in result.get("fallbacks_used", [])
 
     @pytest.mark.asyncio
     async def test_generation_fails_without_messages(self):
