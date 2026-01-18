@@ -19,7 +19,11 @@ from retrieval.video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher, OpenSearchConfig
+from search.models import OpenSearchConfig as OpenSearchSearchConfig
+from search.models import QdrantConfig as QdrantSearchConfig
 from search.semantic import QdrantConfig, SemanticSearcher
+from search.tenant_aware import TenantAwareHybridSearcher
+from tenant.config_service import get_tenant_config_service
 from video.clip_cache import ClipCacheConfig, ClipCacheService
 
 from api.routes import clips, health, retrieve, video_retrieve
@@ -66,6 +70,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ),
     )
 
+    # Initialize tenant-aware hybrid searcher for multi-tenant routing
+    tenant_aware_hybrid = TenantAwareHybridSearcher(
+        base_qdrant_config=QdrantSearchConfig(
+            url=config.qdrant_url,
+            collection_name=config.qdrant_collection,
+        ),
+        base_opensearch_config=OpenSearchSearchConfig(
+            url=config.opensearch_url,
+            index_name=config.opensearch_index,
+        ),
+        hybrid_config=HybridSearchConfig(
+            semantic_weight=config.semantic_weight,
+            keyword_weight=config.keyword_weight,
+        ),
+        config_service=get_tenant_config_service(),
+    )
+    await tenant_aware_hybrid.connect()
+
     reranker = RerankerService(
         RerankerConfig(
             llm_gateway_url=config.llm_gateway_url,
@@ -103,6 +125,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Store in app state
     app.state.preprocessor = preprocessor
     app.state.hybrid = hybrid
+    app.state.tenant_aware_hybrid = tenant_aware_hybrid
     app.state.reranker = reranker
     app.state.acl_filter = acl_filter
     app.state.user_extractor = user_extractor
@@ -116,6 +139,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await preprocessor.close()
     await semantic.close()
     await keyword.close()
+    await tenant_aware_hybrid.close()
     await reranker.close()
     video_retriever.close()
 

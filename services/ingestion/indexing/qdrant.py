@@ -121,13 +121,18 @@ class QdrantWriter(BaseIndexWriter):
                 field_schema=PayloadSchemaType.KEYWORD,
             )
 
-    async def write(self, chunks: list[IndexedChunk]) -> WriteResult:
+    async def write(
+        self,
+        chunks: list[IndexedChunk],
+        collection_name: str | None = None,
+    ) -> WriteResult:
         """Upsert chunks to Qdrant.
 
         Uses upsert for idempotency - same chunk_id will be updated.
 
         Args:
             chunks: List of IndexedChunk objects to write.
+            collection_name: Optional collection override (uses config default if None).
 
         Returns:
             WriteResult with success status and counts.
@@ -135,6 +140,7 @@ class QdrantWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_collection = collection_name or self.config.collection_name
         start = time.time()
 
         points = []
@@ -180,7 +186,7 @@ class QdrantWriter(BaseIndexWriter):
             batch = points[i : i + self.config.batch_size]
             try:
                 await self._client.upsert(
-                    collection_name=self.config.collection_name,
+                    collection_name=target_collection,
                     points=batch,
                     wait=True,
                 )
@@ -198,11 +204,16 @@ class QdrantWriter(BaseIndexWriter):
             duration_ms=duration,
         )
 
-    async def delete(self, chunk_ids: list[UUID]) -> WriteResult:
+    async def delete(
+        self,
+        chunk_ids: list[UUID],
+        collection_name: str | None = None,
+    ) -> WriteResult:
         """Delete chunks by ID.
 
         Args:
             chunk_ids: List of chunk UUIDs to delete.
+            collection_name: Optional collection override (uses config default if None).
 
         Returns:
             WriteResult with success status.
@@ -210,11 +221,12 @@ class QdrantWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_collection = collection_name or self.config.collection_name
         start = time.time()
 
         try:
             await self._client.delete(
-                collection_name=self.config.collection_name,
+                collection_name=target_collection,
                 points_selector=[str(chunk_id) for chunk_id in chunk_ids],
                 wait=True,
             )
@@ -234,11 +246,16 @@ class QdrantWriter(BaseIndexWriter):
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def delete_by_document(self, document_id: UUID) -> WriteResult:
+    async def delete_by_document(
+        self,
+        document_id: UUID,
+        collection_name: str | None = None,
+    ) -> WriteResult:
         """Delete all chunks for a document.
 
         Args:
             document_id: UUID of the document whose chunks should be deleted.
+            collection_name: Optional collection override (uses config default if None).
 
         Returns:
             WriteResult with success status.
@@ -246,11 +263,12 @@ class QdrantWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_collection = collection_name or self.config.collection_name
         start = time.time()
 
         try:
             await self._client.delete(
-                collection_name=self.config.collection_name,
+                collection_name=target_collection,
                 points_selector=Filter(
                     must=[
                         FieldCondition(

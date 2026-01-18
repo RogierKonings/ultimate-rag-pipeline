@@ -113,13 +113,18 @@ class OpenSearchWriter(BaseIndexWriter):
                 body=mappings,
             )
 
-    async def write(self, chunks: list[IndexedChunk]) -> WriteResult:
+    async def write(
+        self,
+        chunks: list[IndexedChunk],
+        index_name: str | None = None,
+    ) -> WriteResult:
         """Bulk index chunks to OpenSearch.
 
         Uses index action (upsert) for idempotency.
 
         Args:
             chunks: List of IndexedChunk objects to write.
+            index_name: Optional index override (uses config default if None).
 
         Returns:
             WriteResult with success status and counts.
@@ -127,13 +132,14 @@ class OpenSearchWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_index = index_name or self.config.index_name
         start = time.time()
 
         # Prepare bulk actions
         actions: list[dict] = []
         for chunk in chunks:
             action = {
-                "index": {"_index": self.config.index_name, "_id": str(chunk.chunk_id)},
+                "index": {"_index": target_index, "_id": str(chunk.chunk_id)},
             }
             # Extract source_uri from metadata for aliasing
             source_uri = chunk.metadata.get("source_uri", "")
@@ -197,11 +203,16 @@ class OpenSearchWriter(BaseIndexWriter):
             duration_ms=duration,
         )
 
-    async def delete(self, chunk_ids: list[UUID]) -> WriteResult:
+    async def delete(
+        self,
+        chunk_ids: list[UUID],
+        index_name: str | None = None,
+    ) -> WriteResult:
         """Delete chunks by ID using bulk delete.
 
         Args:
             chunk_ids: List of chunk UUIDs to delete.
+            index_name: Optional index override (uses config default if None).
 
         Returns:
             WriteResult with success status.
@@ -209,12 +220,13 @@ class OpenSearchWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_index = index_name or self.config.index_name
         start = time.time()
 
         actions = []
         for chunk_id in chunk_ids:
             actions.append(
-                {"delete": {"_index": self.config.index_name, "_id": str(chunk_id)}},
+                {"delete": {"_index": target_index, "_id": str(chunk_id)}},
             )
 
         try:
@@ -242,11 +254,16 @@ class OpenSearchWriter(BaseIndexWriter):
                 duration_ms=(time.time() - start) * 1000,
             )
 
-    async def delete_by_document(self, document_id: UUID) -> WriteResult:
+    async def delete_by_document(
+        self,
+        document_id: UUID,
+        index_name: str | None = None,
+    ) -> WriteResult:
         """Delete all chunks for a document using delete by query.
 
         Args:
             document_id: UUID of the document whose chunks should be deleted.
+            index_name: Optional index override (uses config default if None).
 
         Returns:
             WriteResult with success status.
@@ -254,11 +271,12 @@ class OpenSearchWriter(BaseIndexWriter):
         if not self._client:
             raise RuntimeError("Client not connected. Call connect() first.")
 
+        target_index = index_name or self.config.index_name
         start = time.time()
 
         try:
             await self._client.delete_by_query(
-                index=self.config.index_name,
+                index=target_index,
                 body={"query": {"term": {"document_id": str(document_id)}}},
                 refresh=True,
             )

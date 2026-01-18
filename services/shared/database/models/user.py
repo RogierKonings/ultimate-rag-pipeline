@@ -108,6 +108,34 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         nullable=True,
     )
 
+    # Index isolation configuration
+    isolation_mode: Mapped[str] = mapped_column(
+        String(20),
+        default="shared",
+        nullable=False,
+        comment="Index isolation mode: shared or dedicated",
+    )
+    qdrant_collection_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Custom Qdrant collection name (null = use default)",
+    )
+    qdrant_settings: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Custom HNSW/optimization settings for Qdrant",
+    )
+    opensearch_index_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Custom OpenSearch index name (null = use default)",
+    )
+    opensearch_settings: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Custom OpenSearch index settings",
+    )
+
     # Relationships
     users: Mapped[list["User"]] = relationship(
         "User",
@@ -129,6 +157,22 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
         Index("ix_tenants_slug", "slug"),
         Index("ix_tenants_type_active", "tenant_type", "is_active"),
     )
+
+    def get_qdrant_collection(self) -> str:
+        """Get Qdrant collection name for this tenant."""
+        if self.isolation_mode == "dedicated":
+            return self.qdrant_collection_name or f"documents_{self.id}"
+        return "documents"
+
+    def get_opensearch_index(self) -> str:
+        """Get OpenSearch index name for this tenant."""
+        if self.isolation_mode == "dedicated":
+            return self.opensearch_index_name or f"documents-{self.id}"
+        return "documents"
+
+    def is_isolated(self) -> bool:
+        """Check if tenant uses dedicated indices."""
+        return self.isolation_mode == "dedicated"
 
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, name='{self.name}', slug='{self.slug}')>"

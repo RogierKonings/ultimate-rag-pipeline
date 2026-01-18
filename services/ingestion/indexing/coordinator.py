@@ -1,14 +1,21 @@
 """Index coordinator for managing writes across all stores."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from .models import DocumentRecord, IndexedChunk, WriteResult
 from .opensearch import OpenSearchWriter
 from .postgres import PostgresWriter
 from .qdrant import QdrantWriter
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +33,7 @@ class IndexCoordinator:
         qdrant: QdrantWriter,
         opensearch: OpenSearchWriter,
         postgres: PostgresWriter,
+        session_factory: Callable[[], AsyncSession] | None = None,
     ):
         """Initialize IndexCoordinator.
 
@@ -33,10 +41,54 @@ class IndexCoordinator:
             qdrant: QdrantWriter instance for vector store.
             opensearch: OpenSearchWriter instance for keyword store.
             postgres: PostgresWriter instance for metadata store.
+            session_factory: Optional async session factory for tenant config lookup.
+                If not provided, uses default (shared) collection/index names.
         """
         self.qdrant = qdrant
         self.opensearch = opensearch
         self.postgres = postgres
+        self._session_factory = session_factory
+        self._config_service = None
+
+    def _get_config_service(self):
+        """Lazy-load the tenant config service."""
+        if self._config_service is None:
+            from tenant.config_service import get_tenant_config_service
+            self._config_service = get_tenant_config_service()
+        return self._config_service
+
+    async def _get_tenant_routing(
+        self,
+        tenant_id: str,
+    ) -> tuple[str, str]:
+        """Get collection and index names for tenant.
+
+        Args:
+            tenant_id: Tenant ID string.
+
+        Returns:
+            Tuple of (qdrant_collection, opensearch_index).
+        """
+        if self._session_factory is None:
+            # No session factory - use default routing
+            return "documents", "documents"
+
+        try:
+            from uuid import UUID as UUIDType
+            tenant_uuid = UUIDType(tenant_id) if isinstance(tenant_id, str) else tenant_id
+
+            async with self._session_factory() as session:
+                config = await self._get_config_service().get_index_config(
+                    tenant_uuid, session
+                )
+                return config.qdrant_collection, config.opensearch_index
+        except Exception as e:
+            logger.warning(
+                "tenant_routing_lookup_failed",
+                extra={"tenant_id": tenant_id, "error": str(e)},
+            )
+            # Fall back to default
+            return "documents", "documents"
 
     async def ensure_indices(self) -> None:
         """Create all indices/tables.
@@ -70,10 +122,15 @@ class IndexCoordinator:
         # Set index status to PENDING before starting
         await self._set_pending_status(document.document_id)
 
-        # Write to all stores in parallel
+        # Get tenant-specific routing
+        qdrant_collection, opensearch_index = await self._get_tenant_routing(
+            document.tenant_id
+        )
+
+        # Write to all stores in parallel with tenant-aware routing
         results = await asyncio.gather(
-            self.qdrant.write(chunks),
-            self.opensearch.write(chunks),
+            self.qdrant.write(chunks, collection_name=qdrant_collection),
+            self.opensearch.write(chunks, index_name=opensearch_index),
             self.postgres.write([document]),
             return_exceptions=True,
         )
@@ -240,7 +297,11 @@ class IndexCoordinator:
                 extra={"document_id": str(document_id), "error": str(e)},
             )
 
-    async def delete_document(self, document_id: UUID) -> dict[str, WriteResult]:
+    async def delete_document(
+        self,
+        document_id: UUID,
+        tenant_id: str | None = None,
+    ) -> dict[str, WriteResult]:
         """Delete document from all stores.
 
         Removes the document metadata from PostgreSQL and all associated
@@ -248,13 +309,23 @@ class IndexCoordinator:
 
         Args:
             document_id: UUID of the document to delete.
+            tenant_id: Optional tenant ID for routing. If not provided,
+                deletes from default (shared) collection/index.
 
         Returns:
             Dictionary mapping store names to their WriteResult.
         """
+        # Get tenant-specific routing if tenant_id provided
+        if tenant_id:
+            qdrant_collection, opensearch_index = await self._get_tenant_routing(
+                tenant_id
+            )
+        else:
+            qdrant_collection, opensearch_index = "documents", "documents"
+
         results = await asyncio.gather(
-            self.qdrant.delete_by_document(document_id),
-            self.opensearch.delete_by_document(document_id),
+            self.qdrant.delete_by_document(document_id, collection_name=qdrant_collection),
+            self.opensearch.delete_by_document(document_id, index_name=opensearch_index),
             self.postgres.delete([document_id]),
             return_exceptions=True,
         )
@@ -315,10 +386,19 @@ class IndexCoordinator:
         Returns:
             Dictionary mapping store names to their WriteResult.
         """
+        # Get tenant-specific routing
+        qdrant_collection, opensearch_index = await self._get_tenant_routing(
+            document.tenant_id
+        )
+
         # First delete existing chunks from vector and keyword stores
         delete_results = await asyncio.gather(
-            self.qdrant.delete_by_document(document.document_id),
-            self.opensearch.delete_by_document(document.document_id),
+            self.qdrant.delete_by_document(
+                document.document_id, collection_name=qdrant_collection
+            ),
+            self.opensearch.delete_by_document(
+                document.document_id, index_name=opensearch_index
+            ),
             return_exceptions=True,
         )
 
@@ -354,7 +434,7 @@ class IndexCoordinator:
             self.postgres.disconnect(),
         )
 
-    async def __aenter__(self) -> "IndexCoordinator":
+    async def __aenter__(self) -> IndexCoordinator:
         """Enter async context manager."""
         await self.connect_all()
         return self

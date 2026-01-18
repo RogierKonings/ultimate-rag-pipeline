@@ -15,6 +15,7 @@ from api.routes import (
     documents_router,
     ingest_router,
     migrations_router,
+    tenant_isolation_router,
     video_management_router,
     video_router,
 )
@@ -145,6 +146,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         admin_router,
         prefix="/admin",
         tags=["Admin"],
+    )
+
+    # Tenant isolation admin router (US-10.1.5)
+    app.include_router(
+        tenant_isolation_router,
+        prefix="/admin",
+        tags=["Tenant Isolation"],
     )
 
     # Health check endpoint
