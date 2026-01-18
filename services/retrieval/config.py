@@ -3,6 +3,8 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+from shared.config import get_timeout_seconds
+
 
 class RetrievalConfig(BaseSettings):
     """Retrieval service configuration."""
@@ -45,9 +47,9 @@ class RetrievalConfig(BaseSettings):
     cache_enabled: bool = True
     cache_ttl_seconds: int = 3600
 
-    # Timeouts
-    search_timeout_seconds: float = 30.0
-    rerank_timeout_seconds: float = 30.0
+    # Timeouts (from shared config, overridable via environment)
+    search_timeout_seconds: float = get_timeout_seconds("RETRIEVAL_TOTAL")
+    rerank_timeout_seconds: float = get_timeout_seconds("RETRIEVAL_RERANKER")
 
     # Logging
     log_level: str = "INFO"
