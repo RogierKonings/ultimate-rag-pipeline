@@ -2,6 +2,8 @@
 
 from pydantic_settings import BaseSettings
 
+from shared.config import get_timeout_seconds
+
 
 class OrchestratorConfig(BaseSettings):
     """Configuration settings for the Orchestrator Service."""
@@ -13,7 +15,7 @@ class OrchestratorConfig(BaseSettings):
 
     # Retrieval Service
     retrieval_url: str = "http://localhost:8002"
-    retrieval_timeout: float = 10.0
+    retrieval_timeout: float = get_timeout_seconds("ORCHESTRATOR_RETRIEVAL")
     retrieval_top_k: int = 100  # Number of documents to retrieve (set high to search all)
 
     # LLM Gateway
@@ -43,7 +45,7 @@ class OrchestratorConfig(BaseSettings):
     verification_add_disclaimer: bool = True
 
     # Streaming
-    stream_timeout: float = 60.0
+    stream_timeout: float = get_timeout_seconds("ORCHESTRATOR_LLM")
 
     # JWT Authentication
     jwt_secret: str = "secret"  # noqa: S105
