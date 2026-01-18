@@ -71,12 +71,13 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
     - Processes and ranks results
     - Formats context for prompt building
     - Handles retrieval failures gracefully
+    - Parses degradation info from retrieval response (US-10.2.2)
 
     Args:
         state: Current RAGState with query and strategy
 
     Returns:
-        Updated RAGState with documents and context
+        Updated RAGState with documents, context, and retrieval quality info
     """
     start = time.time()
 
@@ -88,6 +89,8 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
     tenant_id = state.get("tenant_id")
 
     documents: list[dict] = []
+    retrieval_quality: dict | None = None
+    context_quality: str | None = None
 
     try:
         async with httpx.AsyncClient(timeout=config.retrieval_timeout) as client:
@@ -126,6 +129,39 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
                 }
                 documents.append(doc)
 
+            # Parse degradation info (US-10.2.2)
+            degradation_mode = result.get("degradation_mode", "hybrid_full")
+            components_used = result.get("components_used", [])
+            components_skipped = result.get("components_skipped", [])
+
+            # Determine degradation level from mode
+            if degradation_mode == "hybrid_full":
+                degradation_level = "normal"
+            elif degradation_mode == "minimal":
+                degradation_level = "minimal"
+            else:
+                degradation_level = "degraded"
+
+            # Build retrieval quality info
+            retrieval_quality = {
+                "degradation_level": degradation_level,
+                "mode": degradation_mode,
+                "components_used": components_used,
+                "components_skipped": components_skipped,
+            }
+
+            # Set context quality based on degradation
+            if degradation_level == "minimal":
+                context_quality = "minimal"
+            elif degradation_level == "degraded":
+                context_quality = "partial"
+            else:
+                context_quality = "full"
+
+            # Track degradation as fallback if not normal
+            if degradation_level != "normal":
+                fallbacks_used.append(f"retrieval:{degradation_mode}")
+
             logger.info(f"Retrieved {len(documents)} documents for query: {query[:50]}...")
 
     except httpx.HTTPStatusError as e:
@@ -138,6 +174,16 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
         logger.exception(f"Unexpected error during retrieval: {e}")
         fallbacks_used.append("retrieval_exception")
 
+    # Set default retrieval quality if retrieval failed
+    if retrieval_quality is None:
+        retrieval_quality = {
+            "degradation_level": "unknown",
+            "mode": "unknown",
+            "components_used": [],
+            "components_skipped": [],
+        }
+        context_quality = "minimal"
+
     # Format context from retrieved documents
     context = _format_context(documents)
 
@@ -149,4 +195,6 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
         "context": context,
         "timing": timing,
         "fallbacks_used": fallbacks_used,
+        "retrieval_quality": retrieval_quality,
+        "context_quality": context_quality,
     }

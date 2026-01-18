@@ -8,14 +8,17 @@ from uuid import UUID, uuid4
 from acl.filter import ACLFilter
 from acl.safety_net import ACLSafetyNet
 from fastapi import APIRouter, HTTPException, Request, status
+from observability.metrics import record_retrieval_metrics
 from query.preprocessor import QueryPreprocessor
 from reranking.reranker import RerankerService
 from resilience.degradation import get_degradation_manager
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
+from tier_config import get_effective_params
 
 from api.dependencies import UserContextDep
 from api.schemas.retrieve import (
+    DebugInfo,
     ExplainResponse,
     MultiQueryRequest,
     RetrievedDocument,
@@ -70,6 +73,21 @@ async def retrieve(
     processed = await preprocessor.process(body.query)
     preprocess_time = (time.time() - preprocess_start) * 1000
 
+    # Get dynamic parameters based on tenant tier and query type (US-10.5.1)
+    dynamic_params = get_effective_params(
+        tenant_tier=user.tier.value,
+        query_type=processed.query_type.value,
+    )
+
+    # Record metrics for top_k used
+    record_retrieval_metrics(
+        tier=dynamic_params.tenant_tier,
+        query_type=dynamic_params.query_type,
+        semantic_top_k=dynamic_params.semantic_top_k,
+        keyword_top_k=dynamic_params.keyword_top_k,
+        use_reranker=dynamic_params.use_reranker,
+    )
+
     # Execute search based on mode
     semantic_time = None
     keyword_time = None
@@ -79,10 +97,12 @@ async def retrieve(
     fused_count = 0
 
     if body.mode == SearchMode.HYBRID:
-        # Update hybrid config with request weights
+        # Update hybrid config with request weights and dynamic top_k (US-10.5.1)
         config = HybridSearchConfig(
             semantic_weight=body.semantic_weight,
             keyword_weight=body.keyword_weight,
+            semantic_top_k=dynamic_params.semantic_top_k,
+            keyword_top_k=dynamic_params.keyword_top_k,
             top_k=body.rerank_top_k if body.rerank else body.top_k,
         )
 
@@ -126,18 +146,23 @@ async def retrieve(
         keyword_count = search_response.total_keyword
         fused_count = len(search_response.results)
 
-    # Rerank if enabled
+    # Rerank if enabled (based on dynamic params or explicit request)
     rerank_time = None
     results = search_response.results
+    reranker_used = False
 
-    if body.rerank and results:
+    # Use dynamic reranker decision if not explicitly overridden by request
+    should_rerank = body.rerank or (dynamic_params.use_reranker and not body.rerank)
+
+    if should_rerank and results:
         rerank_start = time.time()
         results = await reranker.rerank_fused_results(
             query=body.query,
             fused_results=results,
-            top_k=body.top_k,
+            top_k=dynamic_params.rerank_top_k if dynamic_params.use_reranker else body.top_k,
         )
         rerank_time = (time.time() - rerank_start) * 1000
+        reranker_used = True
 
     # Apply ACL safety net (defense in depth)
     # This should filter nothing if query-level ACL is correct
@@ -186,6 +211,32 @@ async def retrieve(
         ),
         query_id=query_id,
         processed_at=datetime.now(tz=UTC),
+        # Debug info with effective parameters (US-10.5.1)
+        debug=DebugInfo(
+            semantic_candidates=semantic_count,
+            keyword_candidates=keyword_count,
+            after_fusion=fused_count,
+            after_rerank=len(results) if reranker_used else 0,
+            after_acl=len(response_results),
+            preprocessing_latency_ms=preprocess_time,
+            embedding_latency_ms=processed.processing_time_ms,
+            semantic_search_latency_ms=semantic_time or 0.0,
+            keyword_search_latency_ms=keyword_time or 0.0,
+            fusion_latency_ms=fusion_time or 0.0,
+            rerank_latency_ms=rerank_time or 0.0,
+            total_latency_ms=total_time,
+            semantic_weight=body.semantic_weight,
+            keyword_weight=body.keyword_weight,
+            top_k_semantic=dynamic_params.semantic_top_k,
+            top_k_keyword=dynamic_params.keyword_top_k,
+            rerank_top_k=dynamic_params.rerank_top_k,
+            effective_semantic_top_k=dynamic_params.semantic_top_k,
+            effective_keyword_top_k=dynamic_params.keyword_top_k,
+            effective_use_reranker=dynamic_params.use_reranker,
+            effective_rerank_top_k=dynamic_params.rerank_top_k,
+            tenant_tier=dynamic_params.tenant_tier,
+            query_type_detected=dynamic_params.query_type,
+        ),
         # Degradation info (US-10.2.2)
         degradation_mode=degradation_status.mode.value,
         components_used=degradation_status.components_available,

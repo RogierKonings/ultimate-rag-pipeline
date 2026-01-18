@@ -186,6 +186,20 @@ class RetrievalMetrics:
             ["mode"],
         )
 
+        # US-10.5.1: Dynamic retrieval parameter metrics
+        self.retrieval_top_k_used = Histogram(
+            f"{service_name}_retrieval_top_k_used",
+            "Distribution of top_k values used in retrieval",
+            ["tier", "query_type", "search_type"],
+            buckets=[10, 20, 35, 50, 100],
+        )
+
+        self.reranker_invocations_total = Counter(
+            f"{service_name}_reranker_invocations_total",
+            "Total number of reranker invocations",
+            ["tier", "query_type"],
+        )
+
     def record_request(
         self,
         mode: str,
@@ -361,3 +375,40 @@ def get_metrics_output() -> tuple[bytes, str]:
         Tuple of (metrics bytes, content type)
     """
     return generate_latest(), CONTENT_TYPE_LATEST
+
+
+def record_retrieval_metrics(
+    tier: str,
+    query_type: str,
+    semantic_top_k: int,
+    keyword_top_k: int,
+    use_reranker: bool,
+) -> None:
+    """Record dynamic retrieval parameter metrics (US-10.5.1).
+
+    Args:
+        tier: Tenant tier (basic, standard, premium)
+        query_type: Detected query type (SIMPLE, QUESTION, SEMANTIC, HYBRID)
+        semantic_top_k: Number of semantic search candidates used
+        keyword_top_k: Number of keyword search candidates used
+        use_reranker: Whether the reranker was invoked
+    """
+    # Record top_k histograms
+    metrics.retrieval_top_k_used.labels(
+        tier=tier,
+        query_type=query_type,
+        search_type="semantic",
+    ).observe(semantic_top_k)
+
+    metrics.retrieval_top_k_used.labels(
+        tier=tier,
+        query_type=query_type,
+        search_type="keyword",
+    ).observe(keyword_top_k)
+
+    # Record reranker invocation if used
+    if use_reranker:
+        metrics.reranker_invocations_total.labels(
+            tier=tier,
+            query_type=query_type,
+        ).inc()

@@ -1,9 +1,9 @@
 """Tests for degradation handling in retrieval node."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-import httpx
 
+import httpx
+import pytest
 from workflow.nodes.retrieval import retrieval_node
 from workflow.state import RAGState
 

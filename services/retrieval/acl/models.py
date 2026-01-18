@@ -9,6 +9,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from tier_config import TenantTier
+
 
 class Visibility(str, Enum):
     """Document visibility levels.
@@ -43,6 +45,12 @@ class UserContext(BaseModel):
     permissions: list[str] = Field(
         default_factory=list,
         description="Explicit permissions granted",
+    )
+
+    # Tenant tier for retrieval parameter adjustment (US-10.5.1)
+    tier: TenantTier = Field(
+        default=TenantTier.STANDARD,
+        description="Tenant subscription tier for cost-aware retrieval",
     )
 
     # Optional metadata

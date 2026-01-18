@@ -166,6 +166,14 @@ class DebugInfo(BaseModel):
     top_k_keyword: int = 50
     rerank_top_k: int = 10
 
+    # Effective parameters used (US-10.5.1)
+    effective_semantic_top_k: int | None = None
+    effective_keyword_top_k: int | None = None
+    effective_use_reranker: bool | None = None
+    effective_rerank_top_k: int | None = None
+    tenant_tier: str | None = None
+    query_type_detected: str | None = None
+
 
 class RetrieveResponse(BaseModel):
     """Response from retrieval endpoint."""
