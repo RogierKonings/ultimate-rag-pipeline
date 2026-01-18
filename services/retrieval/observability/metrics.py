@@ -167,6 +167,25 @@ class RetrievalMetrics:
             ["tenant_id", "reason"],
         )
 
+        # Degradation metrics
+        self.degradation_mode = Gauge(
+            f"{service_name}_degradation_mode",
+            "Current degradation mode (1 = active)",
+            ["mode"],
+        )
+
+        self.circuit_breaker_state = Gauge(
+            f"{service_name}_circuit_breaker_state",
+            "Circuit breaker state (0=closed, 1=open, 2=half_open)",
+            ["component"],
+        )
+
+        self.degraded_searches = Counter(
+            f"{service_name}_degraded_searches_total",
+            "Total searches executed in degraded mode",
+            ["mode"],
+        )
+
     def record_request(
         self,
         mode: str,
@@ -258,6 +277,44 @@ class RetrievalMetrics:
             **extra: Additional info fields
         """
         self.service_info.info({"version": version, **extra})
+
+    def update_degradation_metrics(
+        self,
+        mode: str,
+        circuit_states: dict[str, str],
+    ) -> None:
+        """Update degradation-related metrics.
+
+        Args:
+            mode: Current degradation mode
+            circuit_states: Dict mapping component name to circuit state
+        """
+        # Set active mode
+        all_modes = [
+            "hybrid_full",
+            "semantic_only",
+            "keyword_only",
+            "hybrid_no_rerank",
+            "minimal",
+        ]
+        for m in all_modes:
+            self.degradation_mode.labels(mode=m).set(1 if m == mode else 0)
+
+        # Set circuit states
+        state_map = {"closed": 0, "open": 1, "half_open": 2}
+        for component, state in circuit_states.items():
+            self.circuit_breaker_state.labels(component=component).set(
+                state_map.get(state, 0)
+            )
+
+    def record_degraded_search(self, mode: str) -> None:
+        """Record a search executed in degraded mode.
+
+        Args:
+            mode: The degradation mode used for the search
+        """
+        if mode != "hybrid_full":
+            self.degraded_searches.labels(mode=mode).inc()
 
     def request_tracking(self, mode: str = "hybrid") -> Callable:
         """
