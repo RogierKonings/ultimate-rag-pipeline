@@ -15,11 +15,26 @@ from .config import (
     CircuitBreakerConfig,
     ResilienceConfig,
 )
+from .degradation import (
+    DegradationMode,
+    DegradationStatus,
+    RetrievalDegradationManager,
+    get_degradation_manager,
+    reset_degradation_manager,
+)
 
 __all__ = [
+    # Circuit Breaker
     "CircuitBreaker",
     "CircuitOpenError",
     "CircuitState",
+    # Configuration
     "CircuitBreakerConfig",
     "ResilienceConfig",
+    # Degradation
+    "DegradationMode",
+    "DegradationStatus",
+    "RetrievalDegradationManager",
+    "get_degradation_manager",
+    "reset_degradation_manager",
 ]
