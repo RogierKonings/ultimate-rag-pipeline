@@ -1,6 +1,7 @@
 """Circuit breaker pattern implementation for retrieval backends."""
 
 import asyncio
+import inspect
 import logging
 import time
 from enum import Enum
@@ -140,7 +141,7 @@ class CircuitBreaker:
         **kwargs: Any,
     ) -> T:
         """Execute fallback function."""
-        if asyncio.iscoroutinefunction(fallback):
+        if inspect.iscoroutinefunction(fallback):
             return await fallback(*args, **kwargs)
         return fallback(*args, **kwargs)
 
