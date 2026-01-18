@@ -1,13 +1,20 @@
 """FastAPI dependencies for dependency injection."""
 
 import logging
+import os
 
+import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from rate_limiting.limiter import IngestionRateLimiter
 
 from config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Singleton rate limiter for API
+_api_redis_client: aioredis.Redis | None = None
+_api_rate_limiter: IngestionRateLimiter | None = None
 
 security = HTTPBearer(auto_error=False)
 
@@ -131,3 +138,44 @@ async def get_document_service():
         yield service
     finally:
         await service.disconnect()
+
+
+async def get_rate_limiter() -> IngestionRateLimiter:
+    """
+    Get rate limiter instance for admin API endpoints.
+
+    Returns:
+        IngestionRateLimiter instance with Redis connection.
+    """
+    global _api_redis_client, _api_rate_limiter
+
+    if _api_rate_limiter is None:
+        settings = get_settings()
+        redis_url = settings.redis_url
+        default_max = int(os.getenv("RATE_LIMIT_DEFAULT_MAX_CONCURRENT", "10"))
+        _api_redis_client = aioredis.from_url(redis_url)
+        _api_rate_limiter = IngestionRateLimiter(_api_redis_client, default_max)
+
+    return _api_rate_limiter
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    """
+    Dependency that requires admin role.
+
+    Args:
+        user: Current user from JWT token.
+
+    Returns:
+        User dict if admin.
+
+    Raises:
+        HTTPException: If user is not an admin.
+    """
+    roles = user.get("roles", [])
+    if "admin" not in roles:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin role required",
+        )
+    return user

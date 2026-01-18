@@ -66,8 +66,8 @@ if __name__ == "__main__":
 
     logger.info("Starting Celery worker for ingestion service...")
 
-    # Default queues to listen on
-    default_queues = "ingestion,embedding,reembed,dlq"
+    # Default queues to listen on (including priority queues from US-10.2.3)
+    default_queues = "ingestion_high,ingestion_normal,ingestion_low,ingestion,embedding,reembed,dlq"
     queues = os.getenv("CELERY_QUEUES", default_queues)
 
     # Start the worker

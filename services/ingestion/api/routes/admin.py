@@ -1,15 +1,18 @@
-"""Admin API routes for maintenance operations (US-10.1.2).
+"""Admin API routes for maintenance operations (US-10.1.2, US-10.2.3).
 
 These endpoints require admin privileges and provide access to
-maintenance operations like index reconciliation.
+maintenance operations like index reconciliation and rate limiting.
 """
 
 import logging
+from typing import Literal
 
-from api.dependencies import get_current_user
+from api.dependencies import get_current_user, get_rate_limiter
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from rate_limiting.limiter import IngestionRateLimiter
+from rate_limiting.models import TenantLimits
 
 logger = logging.getLogger(__name__)
 
@@ -220,3 +223,255 @@ async def list_reconciliation_jobs(
     )
 
     return []
+
+
+# =============================================================================
+# Rate Limiting Endpoints (US-10.2.3)
+# =============================================================================
+
+
+class TenantLimitsRequest(BaseModel):
+    """Request body for updating tenant rate limits."""
+
+    max_concurrent_jobs: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum concurrent ingestion jobs allowed",
+    )
+    priority: Literal["high", "normal", "low"] = Field(
+        default="normal",
+        description="Priority level for this tenant's jobs",
+    )
+    hard_limit: bool = Field(
+        default=False,
+        description="If True, reject jobs exceeding limit. If False, queue them.",
+    )
+
+
+class TenantJobStats(BaseModel):
+    """Statistics about a tenant's ingestion jobs."""
+
+    tenant_id: str = Field(..., description="Tenant ID")
+    active_jobs: int = Field(..., description="Number of currently active jobs")
+    queued_jobs: int = Field(..., description="Number of jobs waiting in queue")
+    max_concurrent: int = Field(..., description="Maximum concurrent jobs allowed")
+    priority: str = Field(..., description="Priority level")
+    hard_limit: bool = Field(..., description="Whether hard limit is enabled")
+
+
+class RateLimitsOverview(BaseModel):
+    """Overview of all tenant rate limits."""
+
+    total_active_tenants: int = Field(..., description="Number of tenants with active jobs")
+    tenants: list[TenantJobStats] = Field(..., description="Per-tenant statistics")
+
+
+class ClearQueueResponse(BaseModel):
+    """Response from clearing a tenant's queue."""
+
+    status: str = Field(..., description="Operation status")
+    jobs_removed: int = Field(..., description="Number of jobs removed from queue")
+
+
+@router.get(
+    "/tenants/{tenant_id}/rate-limits",
+    response_model=TenantJobStats,
+    summary="Get tenant rate limits",
+    description="Get rate limit configuration and current job counts for a tenant.",
+)
+async def get_tenant_rate_limits(
+    tenant_id: str,
+    current_user: dict = Depends(require_admin),
+    rate_limiter: IngestionRateLimiter = Depends(get_rate_limiter),
+) -> TenantJobStats:
+    """Get rate limit configuration and job counts for a tenant.
+
+    Args:
+        tenant_id: The tenant ID.
+        current_user: Authenticated admin user.
+        rate_limiter: Rate limiter instance.
+
+    Returns:
+        Tenant job statistics.
+    """
+    limits = await rate_limiter.get_tenant_limits(tenant_id)
+    active = await rate_limiter.get_active_count(tenant_id)
+    queued = await rate_limiter.get_queued_count(tenant_id)
+
+    return TenantJobStats(
+        tenant_id=tenant_id,
+        active_jobs=active,
+        queued_jobs=queued,
+        max_concurrent=limits.max_concurrent_jobs,
+        priority=limits.priority,
+        hard_limit=limits.hard_limit,
+    )
+
+
+@router.put(
+    "/tenants/{tenant_id}/rate-limits",
+    response_model=TenantJobStats,
+    summary="Update tenant rate limits",
+    description="Update rate limit configuration for a tenant.",
+)
+async def update_tenant_rate_limits(
+    tenant_id: str,
+    request: TenantLimitsRequest,
+    current_user: dict = Depends(require_admin),
+    rate_limiter: IngestionRateLimiter = Depends(get_rate_limiter),
+) -> TenantJobStats:
+    """Update rate limit configuration for a tenant.
+
+    Args:
+        tenant_id: The tenant ID.
+        request: New limit configuration.
+        current_user: Authenticated admin user.
+        rate_limiter: Rate limiter instance.
+
+    Returns:
+        Updated tenant job statistics.
+    """
+    limits = TenantLimits(
+        max_concurrent_jobs=request.max_concurrent_jobs,
+        priority=request.priority,
+        hard_limit=request.hard_limit,
+    )
+    await rate_limiter.set_tenant_limits(tenant_id, limits)
+
+    logger.info(
+        "Admin updated tenant rate limits",
+        extra={
+            "admin_user_id": current_user.get("user_id"),
+            "tenant_id": tenant_id,
+            "max_concurrent": limits.max_concurrent_jobs,
+            "priority": limits.priority,
+            "hard_limit": limits.hard_limit,
+        },
+    )
+
+    active = await rate_limiter.get_active_count(tenant_id)
+    queued = await rate_limiter.get_queued_count(tenant_id)
+
+    return TenantJobStats(
+        tenant_id=tenant_id,
+        active_jobs=active,
+        queued_jobs=queued,
+        max_concurrent=limits.max_concurrent_jobs,
+        priority=limits.priority,
+        hard_limit=limits.hard_limit,
+    )
+
+
+@router.delete(
+    "/tenants/{tenant_id}/rate-limits",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Reset tenant rate limits",
+    description="Reset tenant rate limits to defaults.",
+)
+async def reset_tenant_rate_limits(
+    tenant_id: str,
+    current_user: dict = Depends(require_admin),
+    rate_limiter: IngestionRateLimiter = Depends(get_rate_limiter),
+) -> None:
+    """Reset tenant rate limits to defaults.
+
+    Args:
+        tenant_id: The tenant ID.
+        current_user: Authenticated admin user.
+        rate_limiter: Rate limiter instance.
+    """
+    await rate_limiter.delete_tenant_limits(tenant_id)
+
+    logger.info(
+        "Admin reset tenant rate limits to defaults",
+        extra={
+            "admin_user_id": current_user.get("user_id"),
+            "tenant_id": tenant_id,
+        },
+    )
+
+
+@router.get(
+    "/rate-limits/overview",
+    response_model=RateLimitsOverview,
+    summary="Get rate limits overview",
+    description="Get overview of all tenants with active jobs.",
+)
+async def get_rate_limits_overview(
+    current_user: dict = Depends(require_admin),
+    rate_limiter: IngestionRateLimiter = Depends(get_rate_limiter),
+) -> RateLimitsOverview:
+    """Get overview of all tenant job activity.
+
+    Args:
+        current_user: Authenticated admin user.
+        rate_limiter: Rate limiter instance.
+
+    Returns:
+        Overview with all active tenants.
+    """
+    tenant_ids = await rate_limiter.get_all_active_tenants()
+
+    tenants = []
+    for tenant_id in tenant_ids:
+        limits = await rate_limiter.get_tenant_limits(tenant_id)
+        active = await rate_limiter.get_active_count(tenant_id)
+        queued = await rate_limiter.get_queued_count(tenant_id)
+
+        tenants.append(
+            TenantJobStats(
+                tenant_id=tenant_id,
+                active_jobs=active,
+                queued_jobs=queued,
+                max_concurrent=limits.max_concurrent_jobs,
+                priority=limits.priority,
+                hard_limit=limits.hard_limit,
+            )
+        )
+
+    return RateLimitsOverview(
+        total_active_tenants=len(tenants),
+        tenants=tenants,
+    )
+
+
+@router.post(
+    "/tenants/{tenant_id}/clear-queue",
+    response_model=ClearQueueResponse,
+    summary="Clear tenant queue",
+    description="Clear all queued jobs for a tenant. Use for emergency situations only.",
+)
+async def clear_tenant_queue(
+    tenant_id: str,
+    current_user: dict = Depends(require_admin),
+    rate_limiter: IngestionRateLimiter = Depends(get_rate_limiter),
+) -> ClearQueueResponse:
+    """Clear all queued jobs for a tenant.
+
+    This is an emergency operation that removes all waiting jobs.
+    Jobs will not be processed and are not recoverable.
+
+    Args:
+        tenant_id: The tenant ID.
+        current_user: Authenticated admin user.
+        rate_limiter: Rate limiter instance.
+
+    Returns:
+        Response with number of jobs removed.
+    """
+    count = await rate_limiter.clear_queue(tenant_id)
+
+    logger.warning(
+        "Admin cleared tenant queue",
+        extra={
+            "admin_user_id": current_user.get("user_id"),
+            "tenant_id": tenant_id,
+            "jobs_cleared": count,
+        },
+    )
+
+    return ClearQueueResponse(
+        status="cleared",
+        jobs_removed=count,
+    )

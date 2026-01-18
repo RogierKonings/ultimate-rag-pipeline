@@ -5,27 +5,52 @@ This module provides Celery tasks for document ingestion:
 - batch_ingest: Process multiple documents in parallel
 
 The pipeline stages are:
-1. Fetch document from source
-2. Parse document content
-3. Enrich with metadata
-4. Chunk document
-5. Generate embeddings
-6. Index to stores (Qdrant, OpenSearch, PostgreSQL)
+1. Rate limit check (acquire slot or queue)
+2. Fetch document from source
+3. Parse document content
+4. Enrich with metadata
+5. Chunk document
+6. Generate embeddings
+7. Index to stores (Qdrant, OpenSearch, PostgreSQL)
+8. Release rate limit slot
 """
 
 import asyncio
 import logging
+import os
 import traceback
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+import redis.asyncio as aioredis
 from celery.exceptions import Reject, SoftTimeLimitExceeded
+from rate_limiting.exceptions import RateLimitExceeded
+from rate_limiting.limiter import IngestionRateLimiter
+from rate_limiting.metrics import record_rate_limit_hit, update_tenant_gauges
 
 from .callbacks import send_to_dlq
 from .celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+
+# Redis client for rate limiting (lazy initialized)
+_redis_client: aioredis.Redis | None = None
+_rate_limiter: IngestionRateLimiter | None = None
+
+
+async def _get_rate_limiter() -> IngestionRateLimiter:
+    """Get or create the rate limiter instance."""
+    global _redis_client, _rate_limiter
+
+    if _rate_limiter is None:
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        default_max = int(os.getenv("RATE_LIMIT_DEFAULT_MAX_CONCURRENT", "10"))
+        _redis_client = aioredis.from_url(redis_url)
+        _rate_limiter = IngestionRateLimiter(_redis_client, default_max)
+
+    return _rate_limiter
 
 
 @celery_app.task(
@@ -48,6 +73,10 @@ def process_document(
 ) -> dict[str, Any]:
     """Process a single document through the ingestion pipeline.
 
+    Rate limiting is applied based on tenant configuration. If the tenant
+    has reached their concurrent job limit, the task is either queued for
+    later execution (soft limit) or rejected with an error (hard limit).
+
     Args:
         document_source_id: Unique ID of the document in the source.
         source_type: Type of source (filesystem, database, web, api).
@@ -57,22 +86,23 @@ def process_document(
 
     Returns:
         Dict with processing results including document_id, chunks_created, etc.
+        If rate limited with soft limit, returns {"status": "queued", "job_id": ...}.
 
     Raises:
+        RateLimitExceeded: If rate limit exceeded and hard_limit is True.
         Reject: If task times out.
         Exception: On unrecoverable errors after max retries.
     """
-    try:
-        # Update task state to STARTED
-        self.update_state(
-            state="STARTED",
-            meta={"stage": "initializing", "message": "Starting document processing..."},
-        )
+    tenant_id = acl_context.get("tenant_id", "unknown")
+    job_id = self.request.id
 
-        # Run async pipeline
+    try:
+        # Run rate-limited processing
         return asyncio.run(
-            _process_document_async(
+            _process_document_with_rate_limit(
                 task=self,
+                job_id=job_id,
+                tenant_id=tenant_id,
                 document_source_id=document_source_id,
                 source_type=source_type,
                 source_config=source_config,
@@ -81,9 +111,18 @@ def process_document(
             ),
         )
 
+    except RateLimitExceeded as e:
+        # Hard limit mode - reject the task
+        logger.warning(
+            f"Rate limit exceeded (hard) for tenant {tenant_id}: {e}",
+        )
+        record_rate_limit_hit(tenant_id, "rejected")
+        raise
+
     except SoftTimeLimitExceeded:
-        # Task taking too long
+        # Task taking too long - release slot before rejecting
         logger.error(f"Task timed out for document: {document_source_id}")
+        asyncio.run(_release_slot_safe(tenant_id, job_id))
         self.update_state(
             state="FAILURE",
             meta={"error": "Task timed out", "document_source_id": document_source_id},
@@ -100,9 +139,12 @@ def process_document(
         logger.error(f"Error processing document {document_source_id}: {e}")
 
         if self.request.retries < self.max_retries:
-            # Retry with exponential backoff
+            # Release slot before retry (will re-acquire on retry)
+            asyncio.run(_release_slot_safe(tenant_id, job_id))
             raise self.retry(exc=e) from e
-        # Max retries exceeded, send to DLQ
+
+        # Max retries exceeded, release slot and send to DLQ
+        asyncio.run(_release_slot_safe(tenant_id, job_id))
         send_to_dlq.delay(
             {
                 "task_name": "process_document",
@@ -116,6 +158,118 @@ def process_document(
             },
         )
         raise
+
+
+async def _release_slot_safe(tenant_id: str, job_id: str) -> None:
+    """Safely release a rate limit slot, ignoring errors."""
+    try:
+        rate_limiter = await _get_rate_limiter()
+        await rate_limiter.release_slot(tenant_id, job_id)
+    except Exception as e:
+        logger.warning(f"Failed to release slot for {tenant_id}/{job_id}: {e}")
+
+
+async def _process_document_with_rate_limit(
+    task,
+    job_id: str,
+    tenant_id: str,
+    document_source_id: str,
+    source_type: str,
+    source_config: dict[str, Any],
+    processing_config: dict[str, Any],
+    acl_context: dict[str, Any],
+) -> dict[str, Any]:
+    """Process document with rate limiting applied.
+
+    Args:
+        task: Celery task instance.
+        job_id: Celery task ID.
+        tenant_id: Tenant ID for rate limiting.
+        document_source_id: Source identifier for the document.
+        source_type: Type of source connector.
+        source_config: Configuration for the connector.
+        processing_config: Processing options.
+        acl_context: Access control context.
+
+    Returns:
+        Processing results or queued status.
+
+    Raises:
+        RateLimitExceeded: If hard limit mode and limit exceeded.
+    """
+    rate_limiter = await _get_rate_limiter()
+
+    # Try to acquire a slot
+    acquired, reason = await rate_limiter.try_acquire_slot(tenant_id, job_id)
+
+    if not acquired:
+        limits = await rate_limiter.get_tenant_limits(tenant_id)
+
+        # Update metrics
+        active = await rate_limiter.get_active_count(tenant_id)
+        queued = await rate_limiter.get_queued_count(tenant_id)
+        update_tenant_gauges(tenant_id, active, queued)
+
+        if limits.hard_limit:
+            # Hard limit mode - raise exception to reject task
+            record_rate_limit_hit(tenant_id, "rejected")
+            raise RateLimitExceeded(
+                tenant_id=tenant_id,
+                current_jobs=active,
+                max_jobs=limits.max_concurrent_jobs,
+            )
+
+        # Soft limit mode - queue for later
+        record_rate_limit_hit(tenant_id, "queued")
+        await rate_limiter.queue_job(
+            tenant_id=tenant_id,
+            job_id=job_id,
+            task_data={
+                "document_source_id": document_source_id,
+                "source_type": source_type,
+                "source_config": source_config,
+                "processing_config": processing_config,
+                "acl_context": acl_context,
+            },
+        )
+
+        # Update queued count metric
+        queued = await rate_limiter.get_queued_count(tenant_id)
+        update_tenant_gauges(tenant_id, active, queued)
+
+        return {"status": "queued", "job_id": job_id, "tenant_id": tenant_id}
+
+    # Slot acquired - process the document
+    try:
+        # Update task state
+        task.update_state(
+            state="STARTED",
+            meta={"stage": "initializing", "message": "Starting document processing..."},
+        )
+
+        # Update metrics
+        active = await rate_limiter.get_active_count(tenant_id)
+        queued = await rate_limiter.get_queued_count(tenant_id)
+        update_tenant_gauges(tenant_id, active, queued)
+
+        # Run the actual processing
+        return await _process_document_async(
+            task=task,
+            document_source_id=document_source_id,
+            source_type=source_type,
+            source_config=source_config,
+            processing_config=processing_config,
+            acl_context=acl_context,
+        )
+
+    finally:
+        # Always release the slot
+        await rate_limiter.release_slot(tenant_id, job_id)
+
+        # Update metrics after release
+        active = await rate_limiter.get_active_count(tenant_id)
+        queued = await rate_limiter.get_queued_count(tenant_id)
+        update_tenant_gauges(tenant_id, active, queued)
 
 
 async def _process_document_async(
