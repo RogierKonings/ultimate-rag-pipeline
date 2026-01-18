@@ -46,6 +46,12 @@ class RAGState(TypedDict, total=False):
     context: str  # Formatted context string for prompt
 
     # =========================================================================
+    # Retrieval Quality Fields (US-10.2.2)
+    # =========================================================================
+    retrieval_quality: dict  # {degradation_level, mode, components_used, components_skipped}
+    context_quality: str  # "full", "partial", "minimal"
+
+    # =========================================================================
     # Generation Fields
     # =========================================================================
     messages: list[dict]  # Conversation messages for LLM
