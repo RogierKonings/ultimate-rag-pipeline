@@ -78,6 +78,10 @@ class HybridSearchResponse(BaseModel):
     total_keyword: int
     search_time_ms: float
     fusion_method: FusionMethod
+    # Degradation fields (optional, set by ResilientHybridSearcher)
+    degradation_mode: str | None = None
+    components_used: list[str] = Field(default_factory=list)
+    components_skipped: list[str] = Field(default_factory=list)
 
 
 class ReciprocalRankFusion:
