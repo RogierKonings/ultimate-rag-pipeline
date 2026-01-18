@@ -10,6 +10,7 @@ Usage:
         RETRIEVAL_EMBEDDING_TIMEOUT,
         get_timeout,
         get_timeout_seconds,
+        validate_on_startup,
     )
 """
 
@@ -42,6 +43,11 @@ from shared.config.timeouts import (
     get_timeout_seconds,
     get_timeout_ms,
 )
+from shared.config.validation import (
+    ConfigurationError,
+    validate_on_startup,
+    validate_timeout_cascade,
+)
 
 __all__ = [
     # Core class
@@ -71,4 +77,8 @@ __all__ = [
     "get_timeout",
     "get_timeout_seconds",
     "get_timeout_ms",
+    # Validation
+    "ConfigurationError",
+    "validate_timeout_cascade",
+    "validate_on_startup",
 ]
