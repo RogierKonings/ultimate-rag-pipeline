@@ -22,6 +22,7 @@ from api.routes import (
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from shared.config import validate_on_startup
 from telemetry import (
     get_current_trace_context,
     instrument_fastapi,
@@ -54,6 +55,9 @@ async def close_connections() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager."""
+    # Validate timeout configuration at startup
+    validate_on_startup(fail_fast=True)
+
     # Startup
     logger.info("Starting Ingestion Service...")
 

@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from shared.config import validate_on_startup
 
 from config import OrchestratorConfig, get_config
 
@@ -35,6 +36,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Yields:
         None during the application lifecycle.
     """
+    # Validate timeout configuration at startup
+    validate_on_startup(fail_fast=True)
+
     config = get_config()
     logger.info(f"Starting {config.service_name}...")
 

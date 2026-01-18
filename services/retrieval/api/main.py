@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from acl.context import UserContextExtractor
+from shared.config import validate_on_startup
 from acl.filter import ACLFilter
 from acl.models import ACLFilterConfig
 from acl.safety_net import ACLSafetyNet
@@ -40,6 +41,9 @@ from config import RetrievalConfig
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler for startup and shutdown."""
+    # Validate timeout configuration at startup
+    validate_on_startup(fail_fast=True)
+
     config = app.state.config
 
     # Initialize components
