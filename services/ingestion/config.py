@@ -9,10 +9,19 @@ Architecture defaults (from docs/architecture.md):
 - Chunking target: 300 tokens
 - Chunking max: 512 tokens
 - Chunking overlap: 50 tokens
+
+Timeout configuration (US-10.2.4):
+- Parsing timeout: 60 seconds
+- Embedding timeout: 30 seconds
+- Qdrant upsert timeout: 10 seconds
+- OpenSearch index timeout: 10 seconds
+- Document total timeout: 300 seconds (5 minutes)
 """
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
+
+from shared.config import get_timeout_seconds
 
 # Architecture-defined constants (US-2.12)
 ARCHITECTURE_EMBEDDING_DIMENSIONS = 1024
@@ -76,6 +85,20 @@ class Settings(BaseSettings):
     # Prometheus metrics (US-2.12)
     metrics_enabled: bool = True
     metrics_port: int = 9090
+
+    # Rate limiting configuration (US-10.2.3)
+    rate_limit_default_max_concurrent: int = 10
+    rate_limit_enabled: bool = True
+
+    # Timeout configuration (US-10.2.4) - uses shared config defaults
+    # These can be overridden via environment variables (INGESTION_{OPERATION}_TIMEOUT_MS)
+    parsing_timeout_seconds: float = get_timeout_seconds("INGESTION_PARSING")
+    embedding_timeout_seconds: float = get_timeout_seconds("INGESTION_EMBEDDING")
+    qdrant_upsert_timeout_seconds: float = get_timeout_seconds("INGESTION_QDRANT_UPSERT")
+    opensearch_index_timeout_seconds: float = get_timeout_seconds(
+        "INGESTION_OPENSEARCH_INDEX"
+    )
+    document_timeout_seconds: float = get_timeout_seconds("INGESTION_DOCUMENT")
 
     @field_validator("embedding_dimensions")
     @classmethod
