@@ -7,6 +7,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 
 from api.schemas.common import ComponentHealth, HealthResponse
+from resilience import DegradationMode, get_degradation_manager
 
 router = APIRouter()
 
@@ -23,6 +24,8 @@ async def health_check(request: Request) -> HealthResponse:
     - OpenSearch (keyword search)
     - Reranker (LLM Gateway)
 
+    Also includes degradation mode and capabilities.
+
     **Status Values:**
     - `healthy`: All components operational
     - `degraded`: Some components down but service functional
@@ -30,6 +33,11 @@ async def health_check(request: Request) -> HealthResponse:
     """
     components: dict[str, bool] = {}
     component_details: list[ComponentHealth] = []
+
+    # Get degradation manager for circuit states
+    degradation_manager = get_degradation_manager()
+    degradation_status = degradation_manager.get_status()
+    circuit_statuses = degradation_manager.get_circuit_statuses()
 
     # Check Qdrant (semantic search)
     try:
@@ -42,12 +50,18 @@ async def health_check(request: Request) -> HealthResponse:
                 name="qdrant",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
+                circuit_state=circuit_statuses["qdrant"]["state"],
             ),
         )
     except Exception as e:
         components["qdrant"] = False
         component_details.append(
-            ComponentHealth(name="qdrant", healthy=False, error=str(e)),
+            ComponentHealth(
+                name="qdrant",
+                healthy=False,
+                error=str(e),
+                circuit_state=circuit_statuses["qdrant"]["state"],
+            ),
         )
 
     # Check OpenSearch (keyword search)
@@ -61,12 +75,18 @@ async def health_check(request: Request) -> HealthResponse:
                 name="opensearch",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
+                circuit_state=circuit_statuses["opensearch"]["state"],
             ),
         )
     except Exception as e:
         components["opensearch"] = False
         component_details.append(
-            ComponentHealth(name="opensearch", healthy=False, error=str(e)),
+            ComponentHealth(
+                name="opensearch",
+                healthy=False,
+                error=str(e),
+                circuit_state=circuit_statuses["opensearch"]["state"],
+            ),
         )
 
     # Check Reranker (LLM Gateway)
@@ -80,29 +100,46 @@ async def health_check(request: Request) -> HealthResponse:
                 name="reranker",
                 healthy=True,
                 latency_ms=(time.time() - start) * 1000,
+                circuit_state=circuit_statuses["reranker"]["state"],
             ),
         )
     except Exception as e:
         components["reranker"] = False
         component_details.append(
-            ComponentHealth(name="reranker", healthy=False, error=str(e)),
+            ComponentHealth(
+                name="reranker",
+                healthy=False,
+                error=str(e),
+                circuit_state=circuit_statuses["reranker"]["state"],
+            ),
         )
 
-    # Determine overall status
-    all_healthy = all(components.values())
-    any_healthy = any(components.values())
-
-    if all_healthy:
+    # Determine overall status based on degradation mode
+    mode = degradation_status.mode
+    if mode == DegradationMode.HYBRID_FULL:
         status: Literal["healthy", "degraded", "unhealthy"] = "healthy"
-    elif any_healthy:
-        status = "degraded"
-    else:
+    elif mode == DegradationMode.MINIMAL:
         status = "unhealthy"
+    else:
+        status = "degraded"
+
+    # Capabilities based on circuit states
+    capabilities = {
+        "semantic_search": degradation_status.qdrant_healthy,
+        "keyword_search": degradation_status.opensearch_healthy,
+        "reranking": degradation_status.reranker_healthy,
+        "hybrid_search": (
+            degradation_status.qdrant_healthy and degradation_status.opensearch_healthy
+        ),
+    }
 
     return HealthResponse(
         status=status,
         version=VERSION,
         components=components,
+        component_details=component_details,
+        degradation_level=mode.value,
+        capabilities=capabilities,
         timestamp=datetime.now(tz=UTC),
     )
 
@@ -119,23 +156,30 @@ async def liveness() -> dict[str, str]:
 
 
 @router.get("/health/ready")
-async def readiness(request: Request) -> dict[str, str]:
+async def readiness(request: Request) -> dict[str, str | None]:
     """
     Kubernetes readiness probe.
 
     Returns 200 if the service is ready to accept requests.
-    Checks if core search backends are connected.
+    Checks if at least one search backend is available based on
+    degradation mode.
 
     Raises:
         HTTPException: 503 if service is not ready
     """
-    try:
-        # Check if we can handle requests
-        if hasattr(request.app.state, "hybrid"):
-            await request.app.state.hybrid.semantic.health_check()
-        return {"status": "ready"}
-    except Exception as e:
+    degradation_manager = get_degradation_manager()
+    mode = degradation_manager.get_current_mode()
+
+    # Ready if at least one search backend is available
+    ready = mode != DegradationMode.MINIMAL
+
+    if not ready:
         raise HTTPException(
             status_code=503,
-            detail=f"Service not ready: {e}",
-        ) from e
+            detail="Service not ready: all search backends unavailable",
+        )
+
+    return {
+        "status": "ready",
+        "degradation_mode": mode.value,
+    }

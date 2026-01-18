@@ -22,15 +22,6 @@ class PaginationParams(BaseModel):
     limit: int = Field(default=10, ge=1, le=100)
 
 
-class HealthResponse(BaseModel):
-    """Health check response."""
-
-    status: Literal["healthy", "degraded", "unhealthy"]
-    version: str
-    components: dict[str, bool]
-    timestamp: datetime
-
-
 class ComponentHealth(BaseModel):
     """Health status for a single component."""
 
@@ -38,6 +29,19 @@ class ComponentHealth(BaseModel):
     healthy: bool
     latency_ms: float | None = None
     error: str | None = None
+    circuit_state: str | None = None
+
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+
+    status: Literal["healthy", "degraded", "unhealthy"]
+    version: str
+    components: dict[str, bool]
+    component_details: list[ComponentHealth] = Field(default_factory=list)
+    degradation_level: str | None = None
+    capabilities: dict[str, bool] = Field(default_factory=dict)
+    timestamp: datetime
 
 
 class MetadataFilter(BaseModel):
