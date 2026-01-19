@@ -688,23 +688,43 @@ The pipeline implements defense-in-depth security:
 
 ### Authentication
 - JWT tokens with RS256 asymmetric signing
+- JWT-based inter-service authentication with RSA-2048 key pairs
 - API key support for service-to-service communication
 - Redis-backed token blocklist for revocation
 
 ### Authorization
 - Role-based access control (RBAC) with 9 predefined roles
 - Document-level ACLs with visibility levels
+- Authorization matrix for service-to-endpoint permissions
 - Mandatory tenant isolation on all operations
 
 ### Data Protection
 - AES-256-GCM field encryption for sensitive data
 - TLS 1.3 for all network communication
+- SSL/TLS for all database connections (PostgreSQL, Redis, OpenSearch)
 - Encrypted storage volumes (EBS, GCE PD)
 - MinIO server-side encryption
+- Credential sanitization in logs
+
+### Privacy & PII
+
+- Enhanced PII detection and redaction via Microsoft Presidio
+- Multiple redaction modes (mask, hash, encrypt, remove, synthetic)
+- PII handling at ingestion, query, and response stages
+- Per-tenant custom PII patterns
+
+### Secrets Management
+
+- HashiCorp Vault integration for production
+- Dynamic credential rotation with zero-downtime
+- Kubernetes Secrets support with External Secrets Operator
+- Automatic lease renewal and health monitoring
 
 ### Audit & Compliance
-- Tamper-evident audit logging with hash chaining
-- PII detection and redaction
+
+- Tamper-evident audit logging with SHA-256 hash chaining
+- Multi-backend storage (PostgreSQL + OpenSearch)
+- REST API for query, export, and chain validation
 - SOC 2 Type II, GDPR, HIPAA compliance support
 
 [Full Security Documentation](docs/security/README.md)
@@ -803,7 +823,11 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 | [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
 | [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration, answer verification, multi-hop RAG, cost optimization |
 | [LLM Serving](docs/llm-serving/README.md) | Model serving infrastructure |
-| [Security](docs/security/README.md) | Security and compliance |
+| [Security](docs/security/README.md) | Security and compliance overview |
+| [Inter-Service Auth](docs/security/inter-service-authentication.md) | JWT-based service-to-service authentication |
+| [Database Security](docs/security/database-security.md) | SSL/TLS for PostgreSQL, Redis, OpenSearch |
+| [PII Handling](docs/security/pii-handling.md) | PII detection, redaction modes, compliance |
+| [Audit Logging](docs/audit-logging.md) | Hash-chained audit trails, multi-backend storage |
 | [Observability](docs/observability/README.md) | Tracing, metrics, logging |
 | [Correlation ID Propagation](docs/observability/correlation-id-propagation.md) | Request correlation across services |
 | [Trace Hierarchy](docs/observability/trace-hierarchy.md) | Span naming and distributed tracing |

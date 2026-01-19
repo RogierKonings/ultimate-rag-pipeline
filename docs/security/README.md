@@ -1,6 +1,6 @@
 # Security & Compliance Documentation
 
-> **Version:** 1.0
+> **Version:** 1.1
 > **Status:** Production Implementation
 > **Last Updated:** January 2026
 
@@ -13,16 +13,18 @@ This document provides comprehensive documentation for the security and complian
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Authentication (JWT)](#authentication-jwt)
-4. [Authorization (RBAC)](#authorization-rbac)
-5. [Document Access Control (ACL)](#document-access-control-acl)
-6. [Encryption](#encryption)
-7. [PII Detection](#pii-detection)
-8. [Secrets Management](#secrets-management)
-9. [Audit Logging](#audit-logging)
-10. [TLS/mTLS Configuration](#tlsmtls-configuration)
-11. [Security Scanning](#security-scanning)
-12. [Quick Start](#quick-start)
-13. [Compliance](#compliance)
+4. [Inter-Service Authentication](#inter-service-authentication)
+5. [Authorization (RBAC)](#authorization-rbac)
+6. [Document Access Control (ACL)](#document-access-control-acl)
+7. [Database Security](#database-security)
+8. [Encryption](#encryption)
+9. [PII Detection](#pii-detection)
+10. [Secrets Management](#secrets-management)
+11. [Audit Logging](#audit-logging)
+12. [TLS/mTLS Configuration](#tlsmtls-configuration)
+13. [Security Scanning](#security-scanning)
+14. [Quick Start](#quick-start)
+15. [Compliance](#compliance)
 
 ---
 
@@ -192,6 +194,34 @@ The system supports JWKS (JSON Web Key Set) for public key distribution:
 # Fetch public keys from JWKS endpoint
 jwks_url = "https://auth.example.com/.well-known/jwks.json"
 ```
+
+---
+
+## Inter-Service Authentication
+
+The RAG Pipeline implements JWT-based service-to-service authentication to prevent unauthorized internal communication between microservices.
+
+**Key Features:**
+
+- Each service has unique RSA-2048 key pairs for identity
+- RS256-signed JWT tokens with 5-minute TTL
+- Authorization matrix defines permitted service-to-endpoint access
+- All service-to-service auth events logged for compliance
+
+**Quick Usage:**
+
+```python
+from shared.security.jwt import ServiceAuthClient, ServiceAuthMiddleware
+
+# Client side: generate auth headers
+auth_client = ServiceAuthClient(service_name="orchestrator", private_key=key)
+headers = auth_client.get_auth_headers("retrieval")
+
+# Server side: add middleware
+app.add_middleware(ServiceAuthMiddleware, service_name="retrieval", config=config)
+```
+
+For complete documentation, see **[Inter-Service Authentication](./inter-service-authentication.md)**.
 
 ---
 
@@ -510,6 +540,40 @@ chunk_payload = build_chunk_acl_payload(document_acl.dict())
 
 ---
 
+## Database Security
+
+The RAG Pipeline implements comprehensive security for all database connections including SSL/TLS encryption, strong authentication, and credential sanitization.
+
+| Database | Security Features |
+|----------|-------------------|
+| **PostgreSQL** | SSL/TLS with certificate verification, password from secrets |
+| **Redis** | TLS connections, ACL-based command restrictions, strong passwords |
+| **OpenSearch** | HTTPS, basic/certificate auth, role-based access control |
+
+**Key Features:**
+
+- SSL mode configuration: `disable`, `require`, `verify-ca`, `verify-full`
+- Credentials never appear in connection strings or logs
+- Automatic log sanitization masks passwords, tokens, and API keys
+- Health checks verify SSL is active in production
+
+**Quick Configuration:**
+
+```python
+# Environment variables
+# POSTGRES_SSL_MODE=verify-full
+# POSTGRES_SSL_CA=/certs/ca.crt
+# REDIS_TLS_ENABLED=true
+# OPENSEARCH_SSL_ENABLED=true
+
+from shared.database.connection import create_engine_with_ssl
+engine = create_engine_with_ssl()
+```
+
+For complete documentation, see **[Database Security](./database-security.md)**.
+
+---
+
 ## Encryption
 
 ### Overview
@@ -755,6 +819,23 @@ for chunk in document.chunks:
         chunk.metadata["pii_types"] = [e.type for e in pii_entities]
 ```
 
+### Enhanced PII Handling
+
+The RAG Pipeline provides comprehensive PII handling at three stages:
+
+1. **Ingestion Pipeline**: Detect and redact PII in documents before indexing
+2. **Query Sanitization**: Redact PII in user queries before logging
+3. **Response Filtering**: Filter PII from LLM responses before returning to users
+
+**Additional Features:**
+
+- Multiple redaction modes: mask, hash, encrypt, remove, synthetic
+- Per-tenant custom PII patterns
+- Tenant-specific configuration via API
+- Compliance support for GDPR, HIPAA, CCPA
+
+For complete documentation, see **[Enhanced PII Handling](./pii-handling.md)**.
+
 ---
 
 ## Secrets Management
@@ -845,6 +926,35 @@ creds = vault.get_database_credentials("rag-pipeline-db")
 # Use Vault Transit for encryption
 ciphertext = vault.encrypt("plaintext", key_name="rag-encryption")
 plaintext = vault.decrypt(ciphertext, key_name="rag-encryption")
+```
+
+### Dynamic Credential Rotation
+
+The secrets management system supports automatic credential rotation with zero-downtime deployment:
+
+| Feature | Description |
+|---------|-------------|
+| **Lease Management** | Automatic renewal of Vault leases before expiration |
+| **Graceful Rotation** | New credentials activated before old ones expire |
+| **Health Monitoring** | Continuous validation of credential validity |
+| **Fallback Support** | Automatic fallback to static credentials if dynamic fails |
+
+```python
+from shared.security.secrets import DynamicCredentialManager
+
+# Initialize with automatic rotation
+manager = DynamicCredentialManager(
+    vault_client=vault,
+    credential_type="database",
+    role="rag-pipeline-db",
+    renewal_buffer_seconds=300,  # Renew 5 min before expiry
+)
+
+# Get current credentials (auto-renewed)
+creds = await manager.get_credentials()
+
+# Register callback for rotation events
+manager.on_rotation(lambda new_creds: update_connection_pool(new_creds))
 ```
 
 ### FastAPI Integration

@@ -1,5 +1,6 @@
 # Audit Logging
 
+> **Version:** 1.1
 > **Applies to:** All Services
 > **Priority:** Critical for Compliance
 > **Cross-Reference:** US-10.7.5 (Security Hardening)
@@ -15,6 +16,8 @@ The audit logging system provides comprehensive tracking of security-relevant ev
 - **Multi-Backend Storage**: PostgreSQL for persistence, OpenSearch for analytics
 - **Automatic Request Logging**: FastAPI middleware captures all API requests
 - **Query & Export**: REST API for searching, filtering, and exporting audit logs
+- **End-to-End Integration**: Full pipeline testing from API to storage backends
+- **Compliance Ready**: GDPR, HIPAA, and SOC 2 audit trail support
 
 ## Architecture
 
@@ -306,6 +309,53 @@ Environment variables:
 | `AUDIT_OPENSEARCH_PASSWORD` | OpenSearch password | - |
 | `AUDIT_INDEX_PREFIX` | Index name prefix | `audit-logs` |
 | `AUDIT_RETENTION_DAYS` | Days to retain audit logs | `365` |
+
+## Integration Testing
+
+The audit logging system includes comprehensive end-to-end integration tests:
+
+```bash
+# Run audit logging integration tests
+pytest services/shared/security/audit/tests/test_integration.py -v
+
+# Run with coverage
+pytest services/shared/security/audit/tests/ --cov=services.shared.security.audit -v
+```
+
+### Test Coverage
+
+| Test Category | Description |
+|---------------|-------------|
+| **Middleware Integration** | Verifies automatic request logging via FastAPI middleware |
+| **PostgreSQL Backend** | Tests persistence, querying, and hash chain validation |
+| **OpenSearch Backend** | Tests indexing, search, and statistics aggregation |
+| **API Endpoints** | Tests query, export, and validation REST endpoints |
+| **Hash Chain Integrity** | Verifies tamper detection across storage backends |
+
+### Example Integration Test
+
+```python
+@pytest.mark.integration
+async def test_audit_end_to_end(client, audit_logger, opensearch_backend):
+    """Test complete audit flow from API to storage."""
+    # Log event via middleware
+    response = await client.post("/api/v1/documents", json={...})
+
+    # Verify in PostgreSQL
+    entries = await audit_logger.query(action=AuditAction.DOCUMENT_CREATE)
+    assert len(entries) == 1
+
+    # Verify in OpenSearch
+    os_entries = await opensearch_backend.query(
+        tenant_id=tenant_id,
+        actions=[AuditAction.DOCUMENT_CREATE],
+    )
+    assert len(os_entries) == 1
+
+    # Verify hash chain
+    valid, _ = await audit_logger.validate_hash_chain(tenant_id=tenant_id)
+    assert valid is True
+```
 
 ## Best Practices
 
