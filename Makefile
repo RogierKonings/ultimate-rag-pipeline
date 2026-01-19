@@ -1,4 +1,4 @@
-.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama
+.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama e2e e2e-full
 
 help:
 	@echo "RAG Pipeline Development Commands"
@@ -11,6 +11,8 @@ help:
 	@echo "  make status       - Show service status"
 	@echo "  make health       - Check health endpoints"
 	@echo "  make test         - Run all tests"
+	@echo "  make e2e          - Run E2E smoke tests (requires running services)"
+	@echo "  make e2e-full     - Start services, run E2E tests, stop services"
 	@echo "  make lint         - Run linting"
 	@echo "  make clean        - Tear down environment and remove volumes"
 	@echo ""
@@ -170,3 +172,20 @@ postgres-restore:
 	@echo ""
 	@echo "3. See full restore procedures:"
 	@echo "   docs/infrastructure/postgres-backup-restore.md"
+
+# E2E Testing Commands
+e2e:
+	@echo "Running E2E smoke tests..."
+	pytest tests/e2e/ -v --e2e --tb=short
+
+e2e-full:
+	@echo "Starting services for E2E tests..."
+	docker-compose up -d
+	docker-compose --profile app up -d
+	@echo "Waiting for services to be healthy (60s)..."
+	@sleep 60
+	@echo "Running E2E tests..."
+	pytest tests/e2e/ -v --e2e --tb=short || (docker-compose --profile app down && exit 1)
+	@echo "Stopping services..."
+	docker-compose --profile app down
+	@echo "E2E tests complete!"
