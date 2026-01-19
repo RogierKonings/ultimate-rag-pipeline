@@ -1047,9 +1047,69 @@ curl http://localhost:8002/health | jq '.components.redis'
 
 ---
 
+## Resilience & Degradation
+
+The retrieval service implements circuit breakers and graceful degradation to handle backend failures without complete service outage.
+
+### Circuit Breakers
+
+Each backend component has a dedicated circuit breaker:
+
+| Component | Breaker | Default Threshold | Recovery Timeout |
+|-----------|---------|-------------------|------------------|
+| Qdrant | `qdrant_breaker` | 5 failures | 30 seconds |
+| OpenSearch | `opensearch_breaker` | 5 failures | 30 seconds |
+| Reranker | `reranker_breaker` | 5 failures | 30 seconds |
+
+### Degradation Modes
+
+Based on circuit breaker states, the service automatically selects a degradation mode:
+
+| Mode | Description | Search Behavior |
+|------|-------------|-----------------|
+| `HYBRID_FULL` | All healthy | Full hybrid search with reranking |
+| `SEMANTIC_ONLY` | OpenSearch down | Vector search only (no keyword) |
+| `KEYWORD_ONLY` | Qdrant down | Keyword search only (no vectors) |
+| `HYBRID_NO_RERANK` | Reranker down | Hybrid search without reranking |
+| `MINIMAL` | Both search backends down | Return empty results |
+
+### Response Metadata
+
+Search responses include degradation information:
+
+```json
+{
+  "results": [...],
+  "degradation": {
+    "level": "degraded",
+    "mode": "semantic_only",
+    "components": [
+      {"name": "qdrant", "available": true, "circuit_state": "closed"},
+      {"name": "opensearch", "available": false, "circuit_state": "open"}
+    ],
+    "message": "Keyword search unavailable, using semantic search only"
+  }
+}
+```
+
+### Directory Structure (Resilience)
+
+```
+services/retrieval/
+├── resilience/
+│   ├── circuit_breaker.py     # CircuitBreaker class with state management
+│   ├── degradation.py         # RetrievalDegradationManager
+│   └── config.py              # CircuitBreakerConfig, ResilienceConfig
+```
+
+For full details, see [Resilience & Degradation](../resilience-degradation.md).
+
+---
+
 ## Related Documentation
 
 - [Architecture Overview](../architecture.md)
 - [Health Check Specification](../health-check-specification.md)
+- [Resilience & Degradation](../resilience-degradation.md)
 - [LLM Serving Layer](../llm-serving/README.md)
 - [Orchestrator Service](../orchestrator-service/README.md)

@@ -197,8 +197,11 @@ flowchart LR
 - Document parsing and validation
 - Chunking with configurable strategies
 - Embedding generation (batched, parallelized)
-- Index writing to vector and keyword stores
+- Multi-store indexing with status tracking (Qdrant, OpenSearch, PostgreSQL)
+- Background reconciliation for store consistency
+- Soft-delete propagation to all stores
 - Metadata enrichment and PII detection
+- Optional per-tenant index isolation
 
 **Components:**
 
@@ -228,8 +231,73 @@ ingestion-service/
 │   └── postgres.py        # Metadata store
 └── tasks/
     ├── ingest.py          # Celery ingestion tasks
-    └── reembed.py         # Re-embedding tasks
+    ├── reembed.py         # Re-embedding tasks
+    ├── reconcile.py       # Background index reconciliation
+    └── tombstone.py       # Soft-delete propagation
 ```
+
+#### Multi-Store Indexing Architecture
+
+The ingestion service maintains consistency across three stores with explicit status tracking:
+
+```mermaid
+flowchart LR
+    subgraph Ingestion["Ingestion Pipeline"]
+        DOC[Document] --> CHUNK[Chunking]
+        CHUNK --> EMBED[Embedding]
+        EMBED --> COORD[Index Coordinator]
+    end
+
+    subgraph Stores["Data Stores"]
+        COORD --> QD[(Qdrant<br/>Vectors)]
+        COORD --> OS[(OpenSearch<br/>Keywords)]
+        COORD --> PG[(PostgreSQL<br/>Metadata + Status)]
+    end
+
+    subgraph Maintenance["Background Maintenance"]
+        RECON[Reconciler] -.-> QD
+        RECON -.-> OS
+        RECON -.-> PG
+        TOMB[Tombstone Task] -.-> QD
+        TOMB -.-> OS
+    end
+```
+
+**Index Status Tracking:**
+
+Each document tracks its indexing status per store:
+
+| Status    | Description                                          |
+| --------- | ---------------------------------------------------- |
+| `PENDING` | Indexing not yet attempted or in progress            |
+| `OK`      | Successfully indexed                                 |
+| `ERROR`   | Indexing failed (error stored in `last_index_error`) |
+| `STALE`   | Document updated, needs re-indexing                  |
+
+**Background Reconciliation:**
+
+A Celery Beat task runs nightly to:
+
+- Detect chunks missing from Qdrant/OpenSearch
+- Remove orphaned entries after deletion
+- Update status fields in PostgreSQL
+
+**Soft-Delete Propagation:**
+
+When a document is soft-deleted (`status='deleted'`):
+
+1. SQLAlchemy event listener triggers tombstone task
+2. Tombstone task deletes from Qdrant and OpenSearch
+3. Safety net: All queries filter by `status='active'`
+
+**Tenant-Scoped Isolation:**
+
+Large tenants can be configured to use dedicated collections/indices:
+
+- Shared mode (default): `documents` collection/index
+- Dedicated mode: `documents_{tenant_id}` with custom settings
+
+> **Full Documentation:** See [docs/ingestion-service/multi-store-indexing.md](ingestion-service/multi-store-indexing.md)
 
 ### 2. Retrieval Service
 
@@ -241,6 +309,7 @@ The Retrieval Service is the core search component, implementing a multi-stage h
 - Hybrid search combining semantic (Qdrant) and keyword (OpenSearch) search
 - Result fusion using Reciprocal Rank Fusion (RRF) with configurable weights
 - Cross-encoder reranking via LLM Gateway
+- Circuit breakers with graceful degradation (semantic-only, keyword-only, no-rerank modes)
 - ACL enforcement based on user context (tenant, groups, visibility)
 - Query and result caching (Redis-backed)
 - Comprehensive observability (structured logging, Prometheus metrics, OpenTelemetry tracing)
@@ -302,6 +371,10 @@ retrieval-service/
 │   ├── metrics.py           # Prometheus metrics
 │   ├── tracing.py           # OpenTelemetry setup for Jaeger
 │   └── middleware.py        # LoggingMiddleware
+├── resilience/              # Circuit Breakers & Degradation
+│   ├── circuit_breaker.py   # CircuitBreaker class with state management
+│   ├── degradation.py       # RetrievalDegradationManager
+│   └── config.py            # CircuitBreakerConfig, ResilienceConfig
 ├── config.py                # RetrievalConfig with pydantic-settings
 ├── run.py                   # Uvicorn entry point
 └── tests/                   # Comprehensive test suite (190+ tests, >90% coverage)
@@ -648,6 +721,9 @@ serving:
 ### PostgreSQL Schema
 
 ```sql
+-- Enum for indexing status
+CREATE TYPE index_status AS ENUM ('pending', 'ok', 'error', 'stale');
+
 -- Source documents metadata
 CREATE TABLE source_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -658,6 +734,7 @@ CREATE TABLE source_documents (
     title TEXT,
     raw_location TEXT,  -- S3/MinIO URI
     content_hash VARCHAR(64),  -- SHA-256 for deduplication
+    status VARCHAR(20) DEFAULT 'active',  -- active, deleted (soft delete)
     ingested_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     version INTEGER DEFAULT 1,
@@ -665,13 +742,24 @@ CREATE TABLE source_documents (
     visibility VARCHAR(50) DEFAULT 'private',
     allowed_groups UUID[],
     metadata JSONB DEFAULT '{}',
-    
+
+    -- Multi-store indexing status tracking
+    qdrant_status index_status NOT NULL DEFAULT 'pending',
+    opensearch_status index_status NOT NULL DEFAULT 'pending',
+    last_indexed_at TIMESTAMPTZ,
+    last_index_error TEXT,
+    index_attempts INTEGER NOT NULL DEFAULT 0,
+
     CONSTRAINT unique_tenant_source UNIQUE (tenant_id, source_uri, content_hash)
 );
 
 CREATE INDEX idx_docs_tenant ON source_documents(tenant_id);
 CREATE INDEX idx_docs_source_type ON source_documents(source_type);
 CREATE INDEX idx_docs_metadata ON source_documents USING GIN(metadata);
+CREATE INDEX idx_docs_qdrant_status ON source_documents(qdrant_status);
+CREATE INDEX idx_docs_opensearch_status ON source_documents(opensearch_status);
+CREATE INDEX idx_docs_sync_status ON source_documents(tenant_id, qdrant_status, opensearch_status)
+    WHERE status = 'active';
 
 -- Document chunks
 CREATE TABLE chunks (
@@ -794,12 +882,16 @@ collection_config = {
         "tenant_id": PayloadSchemaType.KEYWORD,
         "document_id": PayloadSchemaType.KEYWORD,
         "chunk_index": PayloadSchemaType.INTEGER,
+        "status": PayloadSchemaType.KEYWORD,  # For soft-delete safety net
         "source_type": PayloadSchemaType.KEYWORD,
         "source_uri": PayloadSchemaType.TEXT,
         "title": PayloadSchemaType.TEXT,
         "section_heading": PayloadSchemaType.TEXT,
+        "visibility": PayloadSchemaType.KEYWORD,  # For ACL filtering
+        "owner_id": PayloadSchemaType.KEYWORD,    # For private doc access
         "language": PayloadSchemaType.KEYWORD,
         "allowed_groups": PayloadSchemaType.KEYWORD,
+        "allowed_users": PayloadSchemaType.KEYWORD,
         "created_at": PayloadSchemaType.DATETIME
     }
 }

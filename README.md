@@ -320,7 +320,10 @@ Handles document intake, processing, and indexing.
 - Document parsing: PDF, DOCX, HTML, Markdown, plain text
 - Chunking strategies: recursive (default), semantic, hierarchical
 - Embedding generation with caching
-- Multi-store indexing (Qdrant, OpenSearch, PostgreSQL)
+- Multi-store indexing with explicit status tracking and background reconciliation
+- Soft-delete propagation across all stores (Qdrant, OpenSearch, PostgreSQL)
+- Optional per-tenant index isolation for large tenants
+- Per-tenant rate limiting with priority queues (high/normal/low)
 - PII detection with Microsoft Presidio
 - Async processing via Celery
 
@@ -345,7 +348,8 @@ Core search component implementing hybrid search with reranking.
 - Hybrid search combining semantic (Qdrant) and keyword (OpenSearch)
 - Reciprocal Rank Fusion (RRF) with configurable weights
 - Cross-encoder reranking via LLM Gateway
-- ACL enforcement based on user context
+- Circuit breakers with graceful degradation (semantic-only, keyword-only modes)
+- Early ACL filtering at query level with safety net verification
 - Query and result caching
 
 **Hybrid Search Parameters:**
@@ -733,7 +737,10 @@ docker-compose exec retrieval-service pytest --cov=. --cov-report=html
 |----------|-------------|
 | [Architecture](docs/architecture.md) | Comprehensive architecture reference |
 | [Ingestion Service](docs/ingestion-service/README.md) | Document processing and indexing |
+| [Multi-Store Indexing](docs/ingestion-service/multi-store-indexing.md) | Index status tracking, reconciliation, ACL filtering |
+| [Ingestion Rate Limiting](docs/ingestion-service/rate-limiting.md) | Per-tenant rate limiting and priority queues |
 | [Retrieval Service](docs/retrieval-service/README.md) | Hybrid search and reranking |
+| [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
 | [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration |
 | [LLM Serving](docs/llm-serving/README.md) | Model serving infrastructure |
 | [Security](docs/security/README.md) | Security and compliance |

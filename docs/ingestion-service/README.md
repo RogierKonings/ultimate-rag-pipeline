@@ -13,6 +13,7 @@ The Ingestion Service is responsible for document intake, processing, and indexi
 - [Metadata Enrichment](#metadata-enrichment)
 - [Async Processing](#async-processing)
 - [API Reference](#api-reference)
+- [Multi-Store Indexing](#multi-store-indexing)
 - [Configuration](#configuration)
 
 ---
@@ -753,6 +754,72 @@ Authorization: Bearer <token>
 ```
 
 Tenant isolation is enforced via the `tenant_id` claim in the JWT.
+
+---
+
+## Multi-Store Indexing
+
+The ingestion service implements a robust multi-store indexing architecture that ensures consistency across Qdrant (vectors), OpenSearch (keywords), and PostgreSQL (metadata).
+
+### Key Features
+
+- **Explicit Status Tracking**: Per-store status (`PENDING`, `OK`, `ERROR`, `STALE`) with retry metadata
+- **Background Reconciliation**: Automated detection and repair of inconsistencies
+- **Soft-Delete Propagation**: Cascading deletions across all stores via tombstone tasks
+- **Early ACL Filtering**: Query-level access control enforcement
+- **Tenant Index Isolation**: Optional dedicated collections/indices for large tenants
+
+### Index Status Model
+
+Each document tracks indexing status per store:
+
+```python
+class IndexStatus(str, Enum):
+    PENDING = "pending"   # Not yet indexed or in progress
+    OK = "ok"             # Successfully indexed
+    ERROR = "error"       # Indexing failed (see last_index_error)
+    STALE = "stale"       # Source updated, re-indexing needed
+```
+
+### Directory Structure (Additional)
+
+```
+services/ingestion/
+├── tasks/
+│   ├── reconcile.py     # Background index reconciliation
+│   └── tombstone.py     # Soft-delete propagation
+└── indexing/
+    └── coordinator.py   # Multi-store coordination with status tracking
+```
+
+### Background Tasks
+
+| Task | Schedule | Purpose |
+| ---- | -------- | ------- |
+| `reconcile_indexes` | Every 5 min | Detect and repair store inconsistencies |
+| `process_tombstones` | Every 1 min | Propagate deletions to all stores |
+
+### Related Documentation
+
+For comprehensive details on multi-store indexing, including:
+
+- State machine specifications
+- Reconciliation algorithms
+- ACL filtering implementation
+- Tenant isolation modes
+- Prometheus metrics
+- Troubleshooting guides
+
+See: **[Multi-Store Indexing Documentation](./multi-store-indexing.md)**
+
+For per-tenant rate limiting, including:
+
+- Concurrency limits configuration
+- Priority queue setup (high/normal/low)
+- Admin API for tenant limits management
+- Prometheus metrics for monitoring
+
+See: **[Rate Limiting Documentation](./rate-limiting.md)**
 
 ---
 
