@@ -444,3 +444,20 @@ class TestSLO:
         tenant_slo = SLO_CATALOG["tenant_error_rate"]
         assert tenant_slo.target == 0.99
         assert tenant_slo.tenant_scoped is True
+
+    def test_tenant_scoped_recording_rules_preserve_label(self):
+        """Test that tenant-scoped SLOs generate rules preserving tenant_id label."""
+        from shared.observability.metrics.definitions import SLO_CATALOG
+        from shared.observability.metrics.definitions.slo import generate_slo_recording_rules
+
+        slo = SLO_CATALOG["tenant_error_rate"]
+        rules = generate_slo_recording_rules(slo)
+
+        # Find the error_budget_remaining rule
+        budget_rule = next(
+            (r for r in rules if "error_budget_remaining" in r["record"]),
+            None,
+        )
+        assert budget_rule is not None
+        # Should preserve tenant_id grouping from SLI
+        assert "tenant_id" in budget_rule["expr"]
