@@ -137,6 +137,10 @@ async def query(
             usage = result.get("usage", {})
             strategy_used = result.get("strategy_used")
             verification_result = result.get("verification_result")
+            # Quality metadata (US-10.2.2)
+            retrieval_quality = result.get("retrieval_quality", {})
+            context_quality = result.get("context_quality", "full")
+            fallbacks_used = result.get("fallbacks_used", [])
 
         except Exception as e:
             raise HTTPException(
@@ -168,6 +172,10 @@ async def query(
             }
             strategy_used = "direct"
             verification_result = None  # No verification in direct mode
+            # Quality metadata defaults for direct mode (US-10.2.2)
+            retrieval_quality = {}
+            context_quality = "full"  # No retrieval = no degradation
+            fallbacks_used = []
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -201,6 +209,17 @@ async def query(
             skip_reason=verification_result.get("skip_reason"),
         )
 
+    # Build components_available from retrieval_quality (US-10.2.2)
+    components_available = None
+    if retrieval_quality:
+        components_used = retrieval_quality.get("components_used", [])
+        components_skipped = retrieval_quality.get("components_skipped", [])
+        all_components = set(components_used) | set(components_skipped)
+        if all_components:
+            components_available = {
+                comp: comp in components_used for comp in all_components
+            }
+
     return QueryResponse(
         request_id=request_id,
         response=response_text,
@@ -215,6 +234,11 @@ async def query(
         latency_ms=round(latency_ms, 2),
         strategy_used=strategy_used,
         verification=verification_info,
+        # Quality metadata (US-10.2.2)
+        retrieval_mode=retrieval_quality.get("mode") if retrieval_quality else None,
+        context_quality=context_quality,
+        components_available=components_available,
+        fallbacks_used=fallbacks_used,
     )
 
 
@@ -282,10 +306,53 @@ async def query_stream(
         # Get retrieval client for documents (if available)
         retrieval_client = getattr(request.app.state, "retrieval_client", None)
         documents = []
+        degradation = None
+        retrieval_quality = None
 
         if retrieval_client is not None:
             try:
-                documents = await retrieval_client.search(query_request.query)
+                retrieval_result = await retrieval_client.search(query_request.query)
+                # Handle both old format (list) and new format (dict with documents)
+                if isinstance(retrieval_result, dict):
+                    documents = retrieval_result.get("documents", [])
+                    # Extract degradation info (US-10.2.2)
+                    degradation_mode = retrieval_result.get("degradation_mode", "hybrid_full")
+                    components_used = retrieval_result.get("components_used", [])
+                    components_skipped = retrieval_result.get("components_skipped", [])
+
+                    # Build retrieval_quality
+                    if degradation_mode == "hybrid_full":
+                        degradation_level = "normal"
+                    elif degradation_mode == "minimal":
+                        degradation_level = "minimal"
+                    else:
+                        degradation_level = "degraded"
+
+                    retrieval_quality = {
+                        "degradation_level": degradation_level,
+                        "mode": degradation_mode,
+                        "components_used": components_used,
+                        "components_skipped": components_skipped,
+                    }
+
+                    # Build degradation info for start event (only if degraded)
+                    if degradation_level != "normal":
+                        mode_messages = {
+                            "semantic_only": "Keyword search unavailable",
+                            "keyword_only": "Semantic search unavailable",
+                            "hybrid_no_rerank": "Reranking unavailable",
+                            "minimal": "Search capabilities significantly limited",
+                        }
+                        degradation = {
+                            "level": degradation_level,
+                            "mode": degradation_mode,
+                            "message": mode_messages.get(
+                                degradation_mode, "Search running in degraded mode"
+                            ),
+                        }
+                else:
+                    # Old format: just a list of documents
+                    documents = retrieval_result
             except Exception:  # noqa: S110
                 # Continue without documents on retrieval failure
                 pass
@@ -301,7 +368,7 @@ async def query_stream(
             context_message = f"Use the following context to answer the question:\n\n{context}"
             messages.insert(0, {"role": "system", "content": context_message})
 
-        # Stream response from LLM
+        # Stream response from LLM (with degradation info if present - US-10.2.2)
         async for event in stream_manager.stream_response(
             request_id=request_id,
             model="meta-llama/Llama-3.1-8B-Instruct",
@@ -309,6 +376,8 @@ async def query_stream(
             session_id=str(query_request.session_id) if query_request.session_id else None,
             documents=documents,
             gateway=model_gateway,
+            degradation=degradation,
+            retrieval_quality=retrieval_quality,
         ):
             yield event.to_sse()
 

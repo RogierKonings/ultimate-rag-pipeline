@@ -612,3 +612,165 @@ class TestSourceDocumentTransformation:
         data = response.json()
         # Snippet should be truncated to 200 chars
         assert len(data["sources"][0]["snippet"]) <= 200
+
+
+class TestQualityMetadata:
+    """Tests for quality metadata in query responses (US-10.2.2)."""
+
+    def test_query_includes_quality_metadata_when_degraded(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+    ):
+        """Test that query response includes quality metadata when retrieval is degraded."""
+        workflow = AsyncMock()
+        workflow.ainvoke = AsyncMock(
+            return_value={
+                "response": "Test response",
+                "documents": [],
+                "model_used": "llama",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+                "strategy_used": "simple",
+                "retrieval_quality": {
+                    "degradation_level": "degraded",
+                    "mode": "semantic_only",
+                    "components_used": ["qdrant"],
+                    "components_skipped": ["opensearch"],
+                },
+                "context_quality": "partial",
+                "fallbacks_used": ["semantic_only_fallback"],
+            },
+        )
+
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.workflow = workflow
+
+        response = client.post(
+            "/api/v1/query",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["retrieval_mode"] == "semantic_only"
+        assert data["context_quality"] == "partial"
+        assert data["fallbacks_used"] == ["semantic_only_fallback"]
+        assert data["components_available"] is not None
+        assert data["components_available"]["qdrant"] is True
+        assert data["components_available"]["opensearch"] is False
+
+    def test_query_quality_defaults_when_normal(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+    ):
+        """Test that quality metadata has sensible defaults for normal operation."""
+        workflow = AsyncMock()
+        workflow.ainvoke = AsyncMock(
+            return_value={
+                "response": "Test response",
+                "documents": [],
+                "model_used": "llama",
+                "usage": {},
+                "strategy_used": "simple",
+                # No retrieval_quality = normal operation
+            },
+        )
+
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.workflow = workflow
+
+        response = client.post(
+            "/api/v1/query",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should have default values
+        assert data["context_quality"] == "full"
+        assert data["fallbacks_used"] == []
+        assert data["retrieval_mode"] is None  # No mode = no degradation
+        assert data["components_available"] is None
+
+    def test_query_direct_mode_quality_defaults(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+    ):
+        """Test that direct LLM mode has appropriate quality defaults."""
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.workflow = None  # No workflow = direct mode
+
+        response = client.post(
+            "/api/v1/query",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["strategy_used"] == "direct"
+        assert data["context_quality"] == "full"
+        assert data["fallbacks_used"] == []
+
+    def test_query_minimal_degradation_quality(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+    ):
+        """Test query response with minimal degradation level."""
+        workflow = AsyncMock()
+        workflow.ainvoke = AsyncMock(
+            return_value={
+                "response": "Limited response",
+                "documents": [],
+                "model_used": "llama",
+                "usage": {},
+                "strategy_used": "simple",
+                "retrieval_quality": {
+                    "degradation_level": "minimal",
+                    "mode": "minimal",
+                    "components_used": ["qdrant"],
+                    "components_skipped": ["opensearch", "reranker"],
+                },
+                "context_quality": "minimal",
+                "fallbacks_used": ["minimal_fallback", "no_rerank_fallback"],
+            },
+        )
+
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.workflow = workflow
+
+        response = client.post(
+            "/api/v1/query",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["retrieval_mode"] == "minimal"
+        assert data["context_quality"] == "minimal"
+        assert len(data["fallbacks_used"]) == 2
+        assert data["components_available"]["qdrant"] is True
+        assert data["components_available"]["opensearch"] is False
+        assert data["components_available"]["reranker"] is False
