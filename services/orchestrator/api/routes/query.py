@@ -9,8 +9,9 @@ This module provides endpoints for RAG queries:
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Annotated, Any
 
+import structlog
 from api.dependencies import (
     GuardrailPipelineDep,
     ModelGatewayDep,
@@ -26,10 +27,20 @@ from api.models.responses import (
     UsageInfo,
     VerificationInfo,
 )
-from fastapi import APIRouter, HTTPException, Request, status
+from database.connection import get_db
+from database.models.feedback import QueryFeedback
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from observability.business_metrics import rag_feedback_total
+from observability.metrics_collector import QueryMetrics, metrics_collector
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Query"])
+
+# Type alias for database session dependency
+DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
 def _transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument]:
@@ -220,6 +231,26 @@ async def query(
                 comp: comp in components_used for comp in all_components
             }
 
+    # Record business metrics (US-10.3.3)
+    is_degraded = context_quality != "full"
+    metrics_collector.record_query(
+        QueryMetrics(
+            request_id=request_id,
+            tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
+            tenant_tier="standard",  # TODO: Get from tenant config
+            strategy=strategy_used or "direct",
+            rag_used=strategy_used != "direct",
+            degraded=is_degraded,
+            degradation_mode=retrieval_quality.get("mode") if is_degraded else None,
+            fallbacks_used=fallbacks_used,
+            e2e_latency_ms=latency_ms,
+            component_timings={},  # TODO: Collect from workflow state
+            context_relevance_score=None,  # TODO: Get from reranker scores
+            citation_count=len(documents),
+            status="success",
+        )
+    )
+
     return QueryResponse(
         request_id=request_id,
         response=response_text,
@@ -392,6 +423,23 @@ async def query_stream(
     )
 
 
+def _rating_to_label(rating: int) -> str:
+    """Convert numeric rating (1-5) to feedback label.
+
+    Args:
+        rating: User rating from 1 to 5.
+
+    Returns:
+        Label: "positive" (4-5), "neutral" (3), or "negative" (1-2).
+    """
+    if rating >= 4:
+        return "positive"
+    elif rating == 3:
+        return "neutral"
+    else:
+        return "negative"
+
+
 @router.post(
     "/feedback",
     response_model=FeedbackResponse,
@@ -404,6 +452,8 @@ async def query_stream(
 )
 async def submit_feedback(
     feedback_request: FeedbackRequest,
+    db: DbSessionDep,
+    request: Request,
 ) -> FeedbackResponse:
     """Submit user feedback for a query response.
 
@@ -414,25 +464,48 @@ async def submit_feedback(
 
     Args:
         feedback_request: The feedback request payload.
+        db: Database session for storing feedback.
+        request: The FastAPI request object.
 
     Returns:
         FeedbackResponse confirming the feedback was recorded.
     """
-    # In a production system, this would store feedback in a database
-    # For now, we just acknowledge receipt
-    feedback_id = str(uuid.uuid4())
+    feedback_id = uuid.uuid4()
 
-    # TODO: Store feedback in PostgreSQL
-    # await store_feedback(
-    #     request_id=feedback_request.request_id,
-    #     rating=feedback_request.rating,
-    #     feedback_type=feedback_request.feedback_type,
-    #     comment=feedback_request.comment,
-    #     session_id=feedback_request.session_id,
-    # )
+    # Get tenant_id from request context if available
+    tenant_id = getattr(request.state, "tenant_id", None)
+
+    # Store feedback in database (US-10.3.3)
+    feedback_record = QueryFeedback(
+        id=feedback_id,
+        request_id=feedback_request.request_id,
+        tenant_id=tenant_id,
+        rating=feedback_request.rating,
+        feedback_type=feedback_request.feedback_type,
+        comment=feedback_request.comment,
+        session_id=str(feedback_request.session_id) if feedback_request.session_id else None,
+    )
+    db.add(feedback_record)
+    await db.commit()
+
+    # Record Prometheus metrics (US-10.3.3)
+    rating_label = _rating_to_label(feedback_request.rating)
+    rag_feedback_total.labels(
+        rating=rating_label,
+        tenant_id=tenant_id or "anonymous",
+    ).inc()
+
+    logger.info(
+        "feedback_recorded",
+        feedback_id=str(feedback_id),
+        request_id=feedback_request.request_id,
+        rating=feedback_request.rating,
+        rating_label=rating_label,
+        tenant_id=tenant_id,
+    )
 
     return FeedbackResponse(
         success=True,
         message="Feedback recorded successfully",
-        feedback_id=feedback_id,
+        feedback_id=str(feedback_id),
     )

@@ -5,6 +5,7 @@ Database models package.
 from database.models.audit import AuditLog
 from database.models.base import Base, SoftDeleteMixin, TimestampMixin
 from database.models.document import Chunk, Document, IndexStatus
+from database.models.feedback import QueryFeedback
 from database.models.user import (
     ApiKey,
     Group,
@@ -39,6 +40,8 @@ __all__ = [
     "ProcessingStage",
     # Audit
     "AuditLog",
+    # Feedback (US-10.3.3)
+    "QueryFeedback",
     # User management
     "Tenant",
     "User",

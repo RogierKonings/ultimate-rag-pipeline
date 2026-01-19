@@ -301,6 +301,16 @@ class TestSLI:
 
         assert "1 -" in error_query
 
+    def test_tenant_error_rate_sli_exists(self):
+        """Test that tenant_error_rate SLI is registered."""
+        from shared.observability.metrics.definitions import SLI_CATALOG
+
+        assert "tenant_error_rate" in SLI_CATALOG
+        sli = SLI_CATALOG["tenant_error_rate"]
+        assert "tenant_id" in sli.query_good
+        assert "tenant_id" in sli.query_total
+        assert sli.category == "availability"
+
 
 class TestSLO:
     """Tests for SLO definitions."""
