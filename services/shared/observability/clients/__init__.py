@@ -5,5 +5,8 @@ These wrappers add OpenTelemetry tracing to database and search clients,
 creating proper span hierarchies for distributed tracing.
 """
 
-# Imports added after client implementations
-__all__: list[str] = []
+from .traced_qdrant import TracedQdrantClient
+
+__all__: list[str] = [
+    "TracedQdrantClient",
+]
