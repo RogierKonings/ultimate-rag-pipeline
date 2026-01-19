@@ -257,3 +257,59 @@ def shutdown_tracing() -> None:
     _tracer_provider = None
     _tracer = None
     _initialized = False
+
+
+# Global flag to track if auto-instrumentation has been set up
+_auto_instrumented = False
+
+
+def setup_auto_instrumentation() -> None:
+    """
+    Activate all OTEL auto-instrumentors.
+
+    This function is idempotent - calling it multiple times has no effect
+    after the first call.
+
+    Instruments:
+    - httpx: HTTP client calls
+    - asyncpg: PostgreSQL async queries
+    - redis: Redis operations
+    """
+    global _auto_instrumented
+
+    if _auto_instrumented:
+        logger.debug("Auto-instrumentation already configured, skipping")
+        return
+
+    try:
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentation
+
+        HTTPXClientInstrumentation().instrument()
+        logger.info("HTTPXClientInstrumentation enabled")
+    except ImportError:
+        logger.warning("opentelemetry-instrumentation-httpx not installed, skipping")
+    except Exception as e:
+        logger.warning(f"Failed to instrument httpx: {e}")
+
+    try:
+        from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentation
+
+        AsyncPGInstrumentation().instrument()
+        logger.info("AsyncPGInstrumentation enabled")
+    except ImportError:
+        logger.warning("opentelemetry-instrumentation-asyncpg not installed, skipping")
+    except Exception as e:
+        logger.warning(f"Failed to instrument asyncpg: {e}")
+
+    try:
+        from opentelemetry.instrumentation.redis import RedisInstrumentation
+
+        RedisInstrumentation().instrument()
+        logger.info("RedisInstrumentation enabled")
+    except ImportError:
+        logger.warning("opentelemetry-instrumentation-redis not installed, skipping")
+    except Exception as e:
+        logger.warning(f"Failed to instrument redis: {e}")
+
+    _auto_instrumented = True
+    logger.info("Auto-instrumentation setup complete")

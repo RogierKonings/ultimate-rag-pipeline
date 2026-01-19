@@ -308,3 +308,22 @@ class TestContextPropagation:
         # Extract context
         context = KafkaTracePropagator.extract_message_context(headers)
         assert context is not None
+
+
+class TestAutoInstrumentation:
+    """Tests for auto-instrumentation setup."""
+
+    def test_setup_auto_instrumentation_is_idempotent(self):
+        """Test that setup_auto_instrumentation can be called multiple times."""
+        from shared.observability.otel.tracer import setup_auto_instrumentation
+
+        # Should not raise even when called multiple times
+        setup_auto_instrumentation()
+        setup_auto_instrumentation()
+
+    def test_setup_auto_instrumentation_returns_none(self):
+        """Test that setup_auto_instrumentation returns None."""
+        from shared.observability.otel.tracer import setup_auto_instrumentation
+
+        result = setup_auto_instrumentation()
+        assert result is None
