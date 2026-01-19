@@ -20,6 +20,7 @@ Usage:
 """
 
 from .attributes import RAGAttributes, RAGOperation, set_rag_attributes
+from .span_names import SpanNames
 from .context import (
     TraceContextPropagator,
     extract_trace_context,
@@ -53,6 +54,8 @@ __all__ = [
     "RAGOperation",
     "RAGAttributes",
     "set_rag_attributes",
+    # Span Names
+    "SpanNames",
     # Context
     "TraceContextPropagator",
     "inject_trace_context",
