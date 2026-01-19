@@ -91,6 +91,16 @@ _register_sli(
     ),
 )
 
+_register_sli(
+    SLI(
+        name="tenant_error_rate",
+        description="Per-tenant success rate for RAG queries",
+        query_good='sum(rate(rag_queries_total{status="success"}[{{window}}])) by (tenant_id)',
+        query_total="sum(rate(rag_queries_total[{{window}}])) by (tenant_id)",
+        category="availability",
+    ),
+)
+
 # -----------------------------------------------------------------------------
 # Latency SLIs
 # -----------------------------------------------------------------------------
