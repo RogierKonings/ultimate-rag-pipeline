@@ -15,10 +15,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from shared.config import validate_on_startup
-from shared.observability.correlation import CorrelationMiddleware
 
 from config import OrchestratorConfig, get_config
+from shared.config import validate_on_startup
+from shared.observability.correlation import CorrelationMiddleware
+from shared.security.audit import AuditMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +244,13 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
     app.add_middleware(
         CorrelationMiddleware,
         service_name="orchestrator-service",
+    )
+
+    # Audit middleware for compliance logging (US-10.7.5)
+    app.add_middleware(
+        AuditMiddleware,
+        service_name="orchestrator-service",
+        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
     )
 
     # Global exception handler

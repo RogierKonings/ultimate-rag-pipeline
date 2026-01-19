@@ -5,17 +5,17 @@ Reference: US-10.7.5 - Comprehensive Audit Logging
 
 import csv
 import io
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
+from database.connection import get_db
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.connection import get_db
-from services.shared.security.audit import (
+from shared.security.audit import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,
@@ -23,7 +23,7 @@ from services.shared.security.audit import (
     AuditSeverity,
     AuditStats,
 )
-from services.shared.security.audit.repository import AuditRepository
+from shared.security.audit.repository import AuditRepository
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 
