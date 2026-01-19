@@ -260,11 +260,12 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
         )
 
     # Register routers
-    from api.routes import admin_router, health_router, query_router, sessions_router
+    from api.routes import admin_router, audit_router, health_router, query_router, sessions_router
 
     app.include_router(health_router)
     app.include_router(query_router)
     app.include_router(sessions_router)
     app.include_router(admin_router)  # Usage tracking (US-10.5.4)
+    app.include_router(audit_router)  # Audit logging API (US-10.7.5)
 
     return app
