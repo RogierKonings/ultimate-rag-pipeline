@@ -22,6 +22,13 @@ from .responses import (
     SourceDocument,
     UsageInfo,
 )
+from .usage import (
+    QuotaStatusResponse,
+    QuotaUpdateRequest,
+    QuotaUpdateResponse,
+    UsageByModel,
+    UsageStatsResponse,
+)
 
 __all__ = [
     # Requests
@@ -44,4 +51,10 @@ __all__ = [
     "FeedbackResponse",
     "ClearSessionResponse",
     "DeleteSessionResponse",
+    # Usage (US-10.5.4)
+    "UsageByModel",
+    "UsageStatsResponse",
+    "QuotaStatusResponse",
+    "QuotaUpdateRequest",
+    "QuotaUpdateResponse",
 ]

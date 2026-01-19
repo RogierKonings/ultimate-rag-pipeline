@@ -271,3 +271,354 @@ spec:
     - port: http
       path: /metrics
       interval: 30s
+
+---
+# Grafana Dashboards ConfigMap
+# Dashboards are stored in config/grafana/dashboards/ and referenced here
+# To add new dashboards, create JSON files in config/grafana/dashboards/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/component: dashboards
+  annotations:
+    description: "Grafana dashboards - see config/grafana/dashboards/ for full versions"
+data:
+  # SLO Overview Dashboard - monitors all SLOs with error budgets
+  # Full dashboard at config/grafana/dashboards/slo-overview.json
+  slo-overview.json: |
+    {
+      "annotations": {"list": []},
+      "description": "SLO Overview Dashboard - Error budgets and burn rates",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "targets": [
+            {"expr": "slo:query_availability:error_budget_remaining * 100", "legendFormat": "Query Availability"}
+          ],
+          "title": "Query Availability Error Budget",
+          "type": "stat"
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "slo:retrieval_latency_p95:error_budget_remaining * 100", "legendFormat": "Retrieval p95"}
+          ],
+          "title": "Retrieval Latency Error Budget",
+          "type": "stat"
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "slo:rag_e2e_latency_p95:error_budget_remaining * 100", "legendFormat": "E2E p95"}
+          ],
+          "title": "E2E Latency Error Budget",
+          "type": "stat"
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "avg(slo:tenant_error_rate:error_budget_remaining) * 100", "legendFormat": "Tenant Avg"}
+          ],
+          "title": "Tenant Error Budget (Avg)",
+          "type": "stat"
+        },
+        {
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 5,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "slo:query_availability:ratio_5m", "legendFormat": "Availability (5m)"},
+            {"expr": "slo:retrieval_latency_p95:ratio_5m", "legendFormat": "Retrieval Latency (5m)"},
+            {"expr": "slo:rag_e2e_latency_p95:ratio_5m", "legendFormat": "E2E Latency (5m)"}
+          ],
+          "title": "SLI Ratios Over Time",
+          "type": "timeseries"
+        },
+        {
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 6,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "slo:tenant_error_rate:ratio_5m", "legendFormat": "{{tenant_id}}"}
+          ],
+          "title": "Tenant Error Rate by Tenant",
+          "type": "timeseries"
+        },
+        {
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 12},
+          "id": 7,
+          "options": {"footer": {"show": false}, "showHeader": true},
+          "targets": [
+            {"expr": "topk(10, slo:tenant_error_rate:error_budget_remaining)", "format": "table", "instant": true}
+          ],
+          "title": "Tenant Error Budget Remaining",
+          "type": "table",
+          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true}}}]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["slo", "rag-pipeline"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "SLO Overview",
+      "uid": "slo-overview",
+      "version": 1,
+      "weekStart": ""
+    }
+  # Verification Dashboard - monitors answer verification quality (US-10.4.2)
+  verification.json: |
+    {
+      "annotations": {"list": []},
+      "description": "Answer Verification Dashboard - Quality metrics and trends",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+            "textMode": "auto"
+          },
+          "targets": [
+            {"expr": "sum(rate(rag_verification_label_total{label=\"supported\"}[5m])) / sum(rate(rag_verification_label_total{label!=\"skipped\"}[5m])) * 100", "legendFormat": "Success Rate"}
+          ],
+          "title": "Verification Success Rate",
+          "type": "stat",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 70},
+                  {"color": "green", "value": 90}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "histogram_quantile(0.5, sum(rate(rag_verification_score_bucket[5m])) by (le))", "legendFormat": "Median Score"}
+          ],
+          "title": "Median Verification Score",
+          "type": "stat",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "red", "value": null},
+                  {"color": "yellow", "value": 0.7},
+                  {"color": "green", "value": 0.9}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "histogram_quantile(0.95, sum(rate(rag_verification_latency_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p95 Latency"}
+          ],
+          "title": "Verification Latency (p95)",
+          "type": "stat",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 500},
+                  {"color": "red", "value": 1000}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "sum(increase(rag_verification_label_total[24h]))", "legendFormat": "Total"}
+          ],
+          "title": "Verifications (24h)",
+          "type": "stat"
+        },
+        {
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 5,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "sum(rate(rag_verification_label_total{label=\"supported\"}[5m])) / sum(rate(rag_verification_label_total{label!=\"skipped\"}[5m])) * 100", "legendFormat": "Supported"},
+            {"expr": "sum(rate(rag_verification_label_total{label=\"partial\"}[5m])) / sum(rate(rag_verification_label_total{label!=\"skipped\"}[5m])) * 100", "legendFormat": "Partial"},
+            {"expr": "sum(rate(rag_verification_label_total{label=\"unsupported\"}[5m])) / sum(rate(rag_verification_label_total{label!=\"skipped\"}[5m])) * 100", "legendFormat": "Unsupported"}
+          ],
+          "title": "Verification Success Rate Over Time",
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 6,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.5, sum(rate(rag_verification_score_bucket[5m])) by (le))", "legendFormat": "p50"},
+            {"expr": "histogram_quantile(0.75, sum(rate(rag_verification_score_bucket[5m])) by (le))", "legendFormat": "p75"},
+            {"expr": "histogram_quantile(0.95, sum(rate(rag_verification_score_bucket[5m])) by (le))", "legendFormat": "p95"}
+          ],
+          "title": "Score Distribution Over Time",
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+          "id": 7,
+          "options": {
+            "legend": {"displayMode": "list", "placement": "right"},
+            "pieType": "pie",
+            "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+          },
+          "targets": [
+            {"expr": "sum(increase(rag_verification_label_total{label!=\"skipped\"}[24h])) by (label)", "legendFormat": "{{label}}"}
+          ],
+          "title": "Verification Labels (24h)",
+          "type": "piechart"
+        },
+        {
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+          "id": 8,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "sum(rate(rag_verification_claims_total{status=\"supported\"}[5m]))", "legendFormat": "Supported"},
+            {"expr": "sum(rate(rag_verification_claims_total{status=\"partial\"}[5m]))", "legendFormat": "Partial"},
+            {"expr": "sum(rate(rag_verification_claims_total{status=\"unsupported\"}[5m]))", "legendFormat": "Unsupported"}
+          ],
+          "title": "Claims by Status Over Time",
+          "type": "timeseries"
+        },
+        {
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+          "id": 9,
+          "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.5, sum(rate(rag_verification_latency_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p50"},
+            {"expr": "histogram_quantile(0.95, sum(rate(rag_verification_latency_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p95"},
+            {"expr": "histogram_quantile(0.99, sum(rate(rag_verification_latency_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p99"}
+          ],
+          "title": "Verification Latency Over Time",
+          "type": "timeseries",
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            }
+          }
+        },
+        {
+          "gridPos": {"h": 6, "w": 24, "x": 0, "y": 20},
+          "id": 10,
+          "options": {"footer": {"show": false}, "showHeader": true},
+          "targets": [
+            {"expr": "sum(increase(rag_verification_label_total{label!=\"skipped\"}[24h])) by (tenant_id, label)", "format": "table", "instant": true}
+          ],
+          "title": "Verification by Tenant (24h)",
+          "type": "table",
+          "transformations": [
+            {"id": "organize", "options": {"excludeByName": {"Time": true}}}
+          ]
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["verification", "rag-pipeline", "quality"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Answer Verification",
+      "uid": "verification",
+      "version": 1,
+      "weekStart": ""
+    }

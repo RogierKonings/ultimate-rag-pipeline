@@ -24,13 +24,21 @@ class TestRouteAfterRouting:
 
         assert result == "retrieval"
 
-    def test_route_complex_strategy_to_retrieval(self):
-        """Test complex strategy routes to retrieval."""
+    def test_route_complex_strategy_to_multi_retrieval(self):
+        """Test complex strategy routes to multi_retrieval (US-10.4.4)."""
         state: RAGState = {"strategy": "complex"}
 
         result = _route_after_routing(state)
 
-        assert result == "retrieval"
+        assert result == "multi_retrieval"
+
+    def test_route_with_sub_questions_to_multi_retrieval(self):
+        """Test state with sub_questions routes to multi_retrieval (US-10.4.4)."""
+        state: RAGState = {"strategy": "simple", "sub_questions": ["q1", "q2"]}
+
+        result = _route_after_routing(state)
+
+        assert result == "multi_retrieval"
 
     def test_route_no_retrieval_strategy_to_prompt_building(self):
         """Test no_retrieval strategy skips to prompt_building."""

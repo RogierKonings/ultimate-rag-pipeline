@@ -17,6 +17,7 @@ from api.dependencies import (
     ModelGatewayDep,
     SessionManagerDep,
     StreamManagerDep,
+    UsageTrackerDep,
 )
 from api.models.requests import FeedbackRequest, QueryRequest, StreamQueryRequest
 from api.models.responses import (
@@ -29,6 +30,7 @@ from api.models.responses import (
 )
 from database.connection import get_db
 from database.models.feedback import QueryFeedback
+from database.models.verification_log import VerificationLog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from observability.business_metrics import rag_feedback_total
@@ -84,15 +86,19 @@ async def query(
     session_manager: SessionManagerDep,
     guardrail_pipeline: GuardrailPipelineDep,
     model_gateway: ModelGatewayDep,
+    db: DbSessionDep,
+    usage_tracker: UsageTrackerDep,
 ) -> QueryResponse:
     """Process a synchronous RAG query.
 
     This endpoint:
-    1. Validates input through guardrails
-    2. Retrieves relevant documents
-    3. Generates a response with the LLM
-    4. Validates output through guardrails
-    5. Returns the response with sources
+    1. Checks quota limits (if enabled)
+    2. Validates input through guardrails
+    3. Retrieves relevant documents
+    4. Generates a response with the LLM
+    5. Validates output through guardrails
+    6. Records token usage
+    7. Returns the response with sources
 
     Args:
         request: The FastAPI request object.
@@ -100,15 +106,33 @@ async def query(
         session_manager: Injected session manager.
         guardrail_pipeline: Injected guardrail pipeline.
         model_gateway: Injected model gateway.
+        db: Database session.
+        usage_tracker: Token usage tracker (US-10.5.4).
 
     Returns:
         QueryResponse with generated answer and sources.
 
     Raises:
-        HTTPException: On validation failure or processing error.
+        HTTPException: On validation failure, quota exceeded, or processing error.
     """
     request_id = str(uuid.uuid4())
     start_time = time.perf_counter()
+    tenant_id = str(query_request.tenant_id) if query_request.tenant_id else None
+
+    # Check quota before processing (US-10.5.4)
+    if usage_tracker and tenant_id:
+        allowed, remaining = await usage_tracker.check_quota(tenant_id)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "error": "Quota exceeded",
+                    "tenant_id": tenant_id,
+                    "remaining_tokens": remaining,
+                    "request_id": request_id,
+                },
+                headers={"Retry-After": "3600"},
+            )
 
     # Check input guardrails
     input_result = await guardrail_pipeline.check_input(query_request.query)
@@ -220,6 +244,21 @@ async def query(
             skip_reason=verification_result.get("skip_reason"),
         )
 
+        # Store verification log for correlation analysis (US-10.4.2)
+        verification_log = VerificationLog(
+            request_id=request_id,
+            tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
+            score=verification_result.get("score", 1.0),
+            label=verification_result.get("label", "skipped"),
+            claims_total=verification_result.get("claims_total", 0),
+            claims_supported=verification_result.get("claims_supported", 0),
+            claims_partial=verification_result.get("claims_partial", 0),
+            claims_unsupported=verification_result.get("claims_unsupported", 0),
+            verification_time_ms=verification_result.get("verification_time_ms", 0.0),
+        )
+        db.add(verification_log)
+        await db.commit()
+
     # Build components_available from retrieval_quality (US-10.2.2)
     components_available = None
     if retrieval_quality:
@@ -236,7 +275,7 @@ async def query(
     metrics_collector.record_query(
         QueryMetrics(
             request_id=request_id,
-            tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
+            tenant_id=tenant_id,
             tenant_tier="standard",  # TODO: Get from tenant config
             strategy=strategy_used or "direct",
             rag_used=strategy_used != "direct",
@@ -250,6 +289,15 @@ async def query(
             status="success",
         )
     )
+
+    # Record token usage (US-10.5.4)
+    if usage_tracker and tenant_id:
+        await usage_tracker.record_llm_usage(
+            tenant_id=tenant_id,
+            model=model_used,
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+        )
 
     return QueryResponse(
         request_id=request_id,

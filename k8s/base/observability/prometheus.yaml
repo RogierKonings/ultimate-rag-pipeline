@@ -311,7 +311,9 @@ subjects:
     namespace: rag-pipeline
 
 ---
-# Prometheus Rules ConfigMap (placeholder for SLO rules)
+# Prometheus SLO Rules ConfigMap
+# Full rules generated from Python definitions using: python scripts/generate_slo_rules.py
+# Regenerate: python scripts/generate_slo_rules.py --output-dir config/prometheus/
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -320,9 +322,171 @@ metadata:
   labels:
     app: prometheus
     component: observability
+  annotations:
+    description: "SLO recording and alerting rules - regenerate with scripts/generate_slo_rules.py"
 data:
-  slo_rules.yaml: |
+  # SLO recording rules for error budget tracking
+  slo_recording_rules.yaml: |
     groups:
-      - name: slo_rules
-        interval: 30s
-        rules: []
+    - name: slo_recording_rules
+      interval: 30s
+      rules:
+      # Query Availability SLO (99.9%)
+      - record: slo:query_availability:ratio_5m
+        expr: (sum(rate(rag_query_total{status="success"}[5m]))) / (sum(rate(rag_query_total[5m])))
+        labels:
+          slo: query_availability
+          window: 5m
+      - record: slo:query_availability:error_budget_remaining
+        expr: |
+          1 - (
+            (1 - (sum(rate(rag_query_total{status="success"}[30d]))) / (sum(rate(rag_query_total[30d]))))
+            / 0.001
+          )
+        labels:
+          slo: query_availability
+
+      # Retrieval Latency p95 SLO (95% under 250ms)
+      - record: slo:retrieval_latency_p95:ratio_5m
+        expr: (sum(rate(retrieval_service_search_duration_seconds_bucket{le="0.25"}[5m]))) / (sum(rate(retrieval_service_search_duration_seconds_count[5m])))
+        labels:
+          slo: retrieval_latency_p95
+          window: 5m
+      - record: slo:retrieval_latency_p95:error_budget_remaining
+        expr: |
+          1 - (
+            (1 - (sum(rate(retrieval_service_search_duration_seconds_bucket{le="0.25"}[30d]))) / (sum(rate(retrieval_service_search_duration_seconds_count[30d]))))
+            / 0.05
+          )
+        labels:
+          slo: retrieval_latency_p95
+
+      # RAG E2E Latency p95 SLO (95% under 2000ms)
+      - record: slo:rag_e2e_latency_p95:ratio_5m
+        expr: (sum(rate(rag_e2e_latency_seconds_bucket{le="2.0"}[5m]))) / (sum(rate(rag_e2e_latency_seconds_count[5m])))
+        labels:
+          slo: rag_e2e_latency_p95
+          window: 5m
+      - record: slo:rag_e2e_latency_p95:error_budget_remaining
+        expr: |
+          1 - (
+            (1 - (sum(rate(rag_e2e_latency_seconds_bucket{le="2.0"}[30d]))) / (sum(rate(rag_e2e_latency_seconds_count[30d]))))
+            / 0.05
+          )
+        labels:
+          slo: rag_e2e_latency_p95
+
+      # Tenant Error Rate SLO (99% per tenant)
+      - record: slo:tenant_error_rate:ratio_5m
+        expr: (sum(rate(rag_queries_total{status="success"}[5m])) by (tenant_id)) / (sum(rate(rag_queries_total[5m])) by (tenant_id))
+        labels:
+          slo: tenant_error_rate
+          window: 5m
+      - record: slo:tenant_error_rate:error_budget_remaining
+        expr: |
+          1 - (
+            (1 - (sum(rate(rag_queries_total{status="success"}[30d])) by (tenant_id)) / (sum(rate(rag_queries_total[30d])) by (tenant_id)))
+            / 0.01
+          )
+        labels:
+          slo: tenant_error_rate
+
+  # SLO alerting rules for burn rate alerts
+  slo_alerting_rules.yaml: |
+    groups:
+    - name: slo_alerting_rules
+      rules:
+      # Query Availability alerts
+      - alert: SLOQueryAvailabilityBurnRateCritical
+        expr: |
+          (
+            (1 - ((sum(rate(rag_query_total{status="success"}[5m]))) / (sum(rate(rag_query_total[5m]))))) > 0.0144
+            and
+            (1 - ((sum(rate(rag_query_total{status="success"}[1h]))) / (sum(rate(rag_query_total[1h]))))) > 0.0144
+          )
+        for: 2m
+        labels:
+          severity: critical
+          slo: query_availability
+          burn_rate: "14.4"
+        annotations:
+          summary: "SLO query_availability burn rate is 14.4x"
+          description: "Error budget is being consumed 14.4x faster than sustainable"
+          runbook_url: "https://docs.example.com/runbooks/slo/service-availability"
+
+      # Retrieval Latency p95 alerts
+      - alert: SLORetrievalLatencyP95BurnRateCritical
+        expr: |
+          (
+            (1 - ((sum(rate(retrieval_service_search_duration_seconds_bucket{le="0.25"}[5m]))) / (sum(rate(retrieval_service_search_duration_seconds_count[5m]))))) > 0.72
+            and
+            (1 - ((sum(rate(retrieval_service_search_duration_seconds_bucket{le="0.25"}[1h]))) / (sum(rate(retrieval_service_search_duration_seconds_count[1h]))))) > 0.72
+          )
+        for: 2m
+        labels:
+          severity: critical
+          slo: retrieval_latency_p95
+          burn_rate: "14.4"
+        annotations:
+          summary: "SLO retrieval_latency_p95 burn rate is 14.4x"
+          description: "Retrieval latency error budget is being consumed 14.4x faster than sustainable"
+          runbook_url: "https://docs.example.com/runbooks/slo/retrieval-latency"
+
+      # RAG E2E Latency p95 alerts
+      - alert: SLORagE2ELatencyP95BurnRateCritical
+        expr: |
+          (
+            (1 - ((sum(rate(rag_e2e_latency_seconds_bucket{le="2.0"}[5m]))) / (sum(rate(rag_e2e_latency_seconds_count[5m]))))) > 0.72
+            and
+            (1 - ((sum(rate(rag_e2e_latency_seconds_bucket{le="2.0"}[1h]))) / (sum(rate(rag_e2e_latency_seconds_count[1h]))))) > 0.72
+          )
+        for: 2m
+        labels:
+          severity: critical
+          slo: rag_e2e_latency_p95
+          burn_rate: "14.4"
+        annotations:
+          summary: "SLO rag_e2e_latency_p95 burn rate is 14.4x"
+          description: "RAG E2E latency error budget is being consumed 14.4x faster than sustainable"
+          runbook_url: "https://docs.example.com/runbooks/slo/rag-e2e-latency"
+
+      # Tenant Error Rate alerts (per-tenant)
+      - alert: SLOTenantErrorRateBurnRateCritical
+        expr: |
+          (
+            (1 - ((sum(rate(rag_queries_total{status="success"}[5m])) by (tenant_id)) / (sum(rate(rag_queries_total[5m])) by (tenant_id)))) > 0.144
+            and
+            (1 - ((sum(rate(rag_queries_total{status="success"}[1h])) by (tenant_id)) / (sum(rate(rag_queries_total[1h])) by (tenant_id)))) > 0.144
+          )
+        for: 2m
+        labels:
+          severity: critical
+          slo: tenant_error_rate
+          burn_rate: "14.4"
+        annotations:
+          summary: "SLO tenant_error_rate burn rate is 14.4x for tenant {{ $labels.tenant_id }}"
+          description: "Tenant {{ $labels.tenant_id }} error budget is being consumed 14.4x faster than sustainable"
+          runbook_url: "https://docs.example.com/runbooks/slo/rag-error-budget-burn"
+
+      # Error budget exhaustion alerts
+      - alert: SLOQueryAvailabilityErrorBudgetExhausted
+        expr: slo:query_availability:error_budget_remaining <= 0
+        for: 5m
+        labels:
+          severity: critical
+          slo: query_availability
+        annotations:
+          summary: "SLO query_availability error budget exhausted"
+          description: "The error budget has been completely consumed. Immediate action required."
+          runbook_url: "https://docs.example.com/runbooks/slo/service-availability"
+
+      - alert: SLOTenantErrorBudgetExhausted
+        expr: slo:tenant_error_rate:error_budget_remaining <= 0
+        for: 5m
+        labels:
+          severity: critical
+          slo: tenant_error_rate
+        annotations:
+          summary: "SLO tenant_error_rate error budget exhausted for tenant {{ $labels.tenant_id }}"
+          description: "The error budget for tenant {{ $labels.tenant_id }} has been completely consumed."
+          runbook_url: "https://docs.example.com/runbooks/slo/rag-error-budget-burn"

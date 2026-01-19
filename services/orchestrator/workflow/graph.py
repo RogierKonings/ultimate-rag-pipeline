@@ -12,6 +12,7 @@ from workflow.nodes import (
     cache_store_node,
     generation_node,
     input_validation_node,
+    multi_retrieval_node,
     output_validation_node,
     prompt_building_node,
     retrieval_node,
@@ -21,7 +22,9 @@ from workflow.nodes import (
 from workflow.state import RAGState
 
 
-def _route_after_routing(state: RAGState) -> Literal["retrieval", "prompt_building"]:
+def _route_after_routing(
+    state: RAGState,
+) -> Literal["retrieval", "multi_retrieval", "prompt_building"]:
     """
     Route based on query strategy after routing node.
 
@@ -29,14 +32,20 @@ def _route_after_routing(state: RAGState) -> Literal["retrieval", "prompt_buildi
         state: Current RAGState with strategy set
 
     Returns:
-        Next node to execute: "retrieval" or "prompt_building"
+        Next node to execute: "retrieval", "multi_retrieval", or "prompt_building"
     """
     strategy = state.get("strategy", "simple")
+    sub_questions = state.get("sub_questions", [])
 
     if strategy == "no_retrieval":
         # Skip retrieval for no_retrieval strategy
         return "prompt_building"
-    # For simple and complex strategies, perform retrieval
+
+    # Use multi_retrieval for complex queries with sub-questions (US-10.4.4)
+    if strategy == "complex" or len(sub_questions) > 1:
+        return "multi_retrieval"
+
+    # Default: simple retrieval
     return "retrieval"
 
 
@@ -110,6 +119,7 @@ def build_rag_workflow() -> StateGraph:
     2. cache_check - Check answer cache for instant response (US-10.5.3)
     3. routing - Determine handling strategy (simple/complex/no_retrieval)
     4. retrieval - Fetch relevant context (conditional on strategy)
+       OR multi_retrieval - Parallel retrieval for sub-questions (US-10.4.4)
     5. prompt_building - Construct the LLM prompt
     6. generation - Generate response with LLM
     7. cache_store - Store response in cache for future hits (US-10.5.3)
@@ -119,7 +129,8 @@ def build_rag_workflow() -> StateGraph:
     Conditional edges:
     - After input_validation: Skip to output if error detected
     - After cache_check: Skip to output if cache hit (US-10.5.3)
-    - After routing: Skip retrieval for no_retrieval strategy
+    - After routing: Skip retrieval for no_retrieval strategy,
+                     use multi_retrieval for complex strategy (US-10.4.4)
 
     Returns:
         Compiled StateGraph ready for execution
@@ -132,6 +143,7 @@ def build_rag_workflow() -> StateGraph:
     graph.add_node("cache_check", cache_check_node)
     graph.add_node("routing", routing_node)
     graph.add_node("retrieval", retrieval_node)
+    graph.add_node("multi_retrieval", multi_retrieval_node)  # US-10.4.4
     graph.add_node("prompt_building", prompt_building_node)
     graph.add_node("generation", generation_node)
     graph.add_node("cache_store", cache_store_node)
@@ -167,12 +179,16 @@ def build_rag_workflow() -> StateGraph:
         _route_after_routing,
         {
             "retrieval": "retrieval",
+            "multi_retrieval": "multi_retrieval",  # US-10.4.4
             "prompt_building": "prompt_building",
         },
     )
 
     # Retrieval -> Prompt Building
     graph.add_edge("retrieval", "prompt_building")
+
+    # Multi-Retrieval -> Prompt Building (US-10.4.4)
+    graph.add_edge("multi_retrieval", "prompt_building")
 
     # Prompt Building -> Generation
     graph.add_edge("prompt_building", "generation")

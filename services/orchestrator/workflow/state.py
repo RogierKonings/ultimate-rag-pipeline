@@ -46,6 +46,13 @@ class RAGState(TypedDict, total=False):
     context: str  # Formatted context string for prompt
 
     # =========================================================================
+    # Multi-Retrieval Fields (US-10.4.4)
+    # =========================================================================
+    sub_questions: list[str]  # Decomposed sub-questions from query
+    sub_question_mapping: dict  # Maps chunk_id -> list of sub-questions that retrieved it
+    retrieval_stats: dict  # {sub_questions, total_retrieved, after_dedup, latency_ms}
+
+    # =========================================================================
     # Retrieval Quality Fields (US-10.2.2)
     # =========================================================================
     retrieval_quality: dict  # {degradation_level, mode, components_used, components_skipped}
@@ -116,6 +123,10 @@ def create_initial_state(
         # Retrieval
         documents=[],
         context="",
+        # Multi-retrieval (US-10.4.4)
+        sub_questions=[],
+        sub_question_mapping={},
+        retrieval_stats={},
         # Generation
         messages=[],
         response=None,

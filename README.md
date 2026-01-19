@@ -699,21 +699,40 @@ The pipeline implements defense-in-depth security:
 
 ## Observability
 
+### Correlation ID Propagation
+- Strict correlation ID propagation across all services (US-10.3.1)
+- Standard headers: `X-Request-ID`, `X-Trace-ID`, `X-Tenant-ID`
+- Automatic propagation via HTTP clients and Celery tasks
+- All logs joinable by `request_id` for cross-service debugging
+
 ### Distributed Tracing
 - OpenTelemetry instrumentation across all services
-- Jaeger for trace visualization
+- End-to-end trace hierarchy with consistent span naming (US-10.3.2)
+- Jaeger for trace visualization with complete request lifecycle
 - RAG-specific semantic attributes
+- Traced client wrappers for Qdrant and OpenSearch
 
 ### Metrics
 - Prometheus metrics following `rag_<subsystem>_<metric>_<unit>` naming
-- Pre-defined SLOs with burn rate alerting
+- Business & quality metrics: feedback scores, context relevance, citations (US-10.3.3)
+- Per-tenant query success rates and latency tracking
 - Key metrics: query latency, TTFT, cache hit rate, error rate
+
+### SLO Definitions & Alerts
+- Defined SLOs with automated alerting (US-10.3.4):
+  - Retrieval p95 latency < 250ms
+  - RAG E2E p95 latency < 2000ms
+  - Error rate < 1% per tenant
+  - Availability > 99.9%
+- Multi-window burn rate alerts with severity escalation
+- Error budget tracking with Grafana dashboards
 
 ### Dashboards
 - **RAG Pipeline Overview**: Request rate, latency, errors
 - **Retrieval Service**: Search strategy comparison, reranking metrics
 - **LLM Service**: Model performance, token throughput, costs
 - **SLO Dashboard**: Compliance gauges, error budget, burn rates
+- **RAG Quality Dashboard**: Feedback scores, degradation events
 
 ### Evaluation
 - Automated RAG quality evaluation with Ragas

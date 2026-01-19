@@ -17,6 +17,7 @@ class TokenType(str, Enum):
 
     ACCESS = "access"
     REFRESH = "refresh"
+    SERVICE = "service"  # For service-to-service authentication
 
 
 class TokenClaims(BaseModel):
@@ -274,3 +275,106 @@ class TokenRevocationRequest(BaseModel):
         description="Type of token: access_token or refresh_token",
         pattern="^(access_token|refresh_token)$",
     )
+
+
+class ServiceTokenClaims(BaseModel):
+    """
+    JWT claims for service-to-service authentication.
+
+    Unlike user TokenClaims, service tokens identify a calling service
+    rather than a user. They are used for internal API authentication.
+
+    Claims:
+        service_name: Identity of the calling service (e.g., "orchestrator")
+        target_service: The service this token is for (audience)
+        allowed_endpoints: Endpoint patterns the service can access
+        iss: Issuer (typically "rag-pipeline")
+        aud: Audience (same as target_service)
+        exp: Expiration time
+        iat: Issued at
+        jti: Unique token ID
+    """
+
+    # Service identity
+    service_name: str = Field(..., description="Name of the calling service")
+    target_service: str = Field(..., description="Target service (audience)")
+    allowed_endpoints: list[str] = Field(
+        default_factory=list,
+        description="Endpoint patterns this service can call (e.g., '/internal/*')",
+    )
+
+    # Standard JWT claims
+    iss: str | None = Field(default=None, description="Issuer")
+    aud: str | None = Field(default=None, description="Audience")
+    exp: datetime | None = Field(default=None, description="Expiration time")
+    iat: datetime | None = Field(default=None, description="Issued at")
+    jti: str | None = Field(default=None, description="JWT ID")
+
+    # Token type marker
+    token_type: TokenType = Field(
+        default=TokenType.SERVICE,
+        description="Token type (always 'service' for service tokens)",
+    )
+
+    def to_dict(self) -> dict:
+        """Convert claims to dictionary for JWT encoding."""
+        data = {
+            "service_name": self.service_name,
+            "target_service": self.target_service,
+            "allowed_endpoints": self.allowed_endpoints,
+            "token_type": self.token_type.value,
+        }
+
+        if self.iss:
+            data["iss"] = self.iss
+        if self.aud:
+            data["aud"] = self.aud
+        if self.exp:
+            data["exp"] = int(self.exp.timestamp())
+        if self.iat:
+            data["iat"] = int(self.iat.timestamp())
+        if self.jti:
+            data["jti"] = self.jti
+
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ServiceTokenClaims":
+        """Create ServiceTokenClaims from decoded JWT payload."""
+        exp = None
+        if "exp" in data:
+            exp = datetime.fromtimestamp(data["exp"], tz=UTC)
+
+        iat = None
+        if "iat" in data:
+            iat = datetime.fromtimestamp(data["iat"], tz=UTC)
+
+        return cls(
+            service_name=data["service_name"],
+            target_service=data["target_service"],
+            allowed_endpoints=data.get("allowed_endpoints", []),
+            iss=data.get("iss"),
+            aud=data.get("aud"),
+            exp=exp,
+            iat=iat,
+            jti=data.get("jti"),
+            token_type=TokenType.SERVICE,
+        )
+
+    def can_access_endpoint(self, endpoint: str) -> bool:
+        """
+        Check if this service token allows access to the given endpoint.
+
+        Uses fnmatch-style pattern matching (e.g., '/internal/*' matches '/internal/search').
+
+        Args:
+            endpoint: The endpoint path to check
+
+        Returns:
+            True if access is allowed
+        """
+        import fnmatch
+
+        return any(
+            fnmatch.fnmatch(endpoint, pattern) for pattern in self.allowed_endpoints
+        )

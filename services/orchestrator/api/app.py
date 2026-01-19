@@ -109,6 +109,53 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     app.state.retrieval_client = None
 
+    # Initialize usage tracker and flusher (US-10.5.4)
+    app.state.usage_tracker = None
+    app.state.usage_flusher = None
+    app.state.usage_scheduler = None
+
+    try:
+        from database.connection import get_session_factory
+        from usage import UsageFlusher, UsageFlusherConfig, UsageTracker, UsageTrackerConfig
+
+        usage_tracker_config = UsageTrackerConfig(
+            redis_url=config.redis_url,
+            key_prefix="usage",
+        )
+        session_factory = get_session_factory()
+        usage_tracker = UsageTracker(usage_tracker_config, session_factory)
+        await usage_tracker.connect()
+        app.state.usage_tracker = usage_tracker
+        logger.info("Usage tracker initialized")
+
+        # Initialize usage flusher with scheduler
+        flusher_config = UsageFlusherConfig(
+            redis_url=config.redis_url,
+            key_prefix="usage",
+            flush_interval_seconds=300,  # 5 minutes
+        )
+        usage_flusher = UsageFlusher(flusher_config, session_factory)
+        await usage_flusher.connect()
+        app.state.usage_flusher = usage_flusher
+
+        # Set up APScheduler for periodic flush
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            usage_flusher.flush,
+            "interval",
+            seconds=flusher_config.flush_interval_seconds,
+            id="usage_flush",
+            name="Flush usage counters to PostgreSQL",
+        )
+        scheduler.start()
+        app.state.usage_scheduler = scheduler
+        logger.info("Usage flusher and scheduler initialized (5 min interval)")
+
+    except Exception as e:
+        logger.warning(f"Failed to initialize usage tracking: {e}")
+
     logger.info(f"{config.service_name} started successfully")
 
     yield
@@ -131,6 +178,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Session store disconnected")
         except Exception as e:
             logger.warning(f"Error closing session store: {e}")
+
+    # Shutdown usage scheduler and flush remaining data (US-10.5.4)
+    if app.state.usage_scheduler is not None:
+        try:
+            app.state.usage_scheduler.shutdown(wait=False)
+            logger.info("Usage scheduler stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping usage scheduler: {e}")
+
+    # Final flush before shutdown
+    if app.state.usage_flusher is not None:
+        try:
+            flushed = await app.state.usage_flusher.flush()
+            logger.info(f"Final usage flush completed: {flushed} records")
+            await app.state.usage_flusher.disconnect()
+            logger.info("Usage flusher disconnected")
+        except Exception as e:
+            logger.warning(f"Error during final usage flush: {e}")
+
+    if app.state.usage_tracker is not None:
+        try:
+            await app.state.usage_tracker.disconnect()
+            logger.info("Usage tracker disconnected")
+        except Exception as e:
+            logger.warning(f"Error closing usage tracker: {e}")
 
     logger.info(f"{config.service_name} shutdown complete")
 
@@ -188,10 +260,11 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
         )
 
     # Register routers
-    from api.routes import health_router, query_router, sessions_router
+    from api.routes import admin_router, health_router, query_router, sessions_router
 
     app.include_router(health_router)
     app.include_router(query_router)
     app.include_router(sessions_router)
+    app.include_router(admin_router)  # Usage tracking (US-10.5.4)
 
     return app

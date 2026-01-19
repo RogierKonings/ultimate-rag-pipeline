@@ -11,6 +11,7 @@ from gateway import ModelGateway
 from guardrails import GuardrailPipeline
 from memory import SessionManager
 from streaming import StreamManager
+from usage import UsageTracker
 
 from config import OrchestratorConfig, get_config
 
@@ -136,3 +137,18 @@ def get_start_time(request: Request) -> float:
 
 
 StartTimeDep = Annotated[float, Depends(get_start_time)]
+
+
+def get_usage_tracker(request: Request) -> UsageTracker | None:
+    """Get the usage tracker from application state.
+
+    Args:
+        request: The incoming request with app state.
+
+    Returns:
+        UsageTracker instance or None if not configured.
+    """
+    return getattr(request.app.state, "usage_tracker", None)
+
+
+UsageTrackerDep = Annotated[UsageTracker | None, Depends(get_usage_tracker)]

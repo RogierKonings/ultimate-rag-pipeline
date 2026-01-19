@@ -304,6 +304,46 @@ class TestPromptBuildingNode:
         assert "prompt_building" in result["timing"]
         assert result["timing"]["prompt_building"] >= 0
 
+    @pytest.mark.asyncio
+    async def test_builds_multi_hop_messages_with_sub_questions(self):
+        """Test multi-hop prompt building includes sub-questions (US-10.4.4)."""
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="Compare Python and Java",
+        )
+        state["strategy"] = "complex"
+        state["sub_questions"] = ["What is Python?", "What is Java?"]
+        state["context"] = "Python is a language.\n\nJava is another language."
+
+        result = await prompt_building_node(state)
+
+        # Should have system message with multi-hop prompt
+        system_message = next(m for m in result["messages"] if m["role"] == "system")
+        assert "sub-questions" in system_message["content"].lower()
+
+        # User message should include original question and sub-questions
+        user_message = next(m for m in result["messages"] if m["role"] == "user")
+        assert "Compare Python and Java" in user_message["content"]
+        assert "What is Python?" in user_message["content"]
+        assert "What is Java?" in user_message["content"]
+
+    @pytest.mark.asyncio
+    async def test_uses_standard_prompt_for_single_sub_question(self):
+        """Test standard prompt used when only one sub-question (original query)."""
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="What is Python?",
+        )
+        state["strategy"] = "simple"
+        state["sub_questions"] = ["What is Python?"]  # Single sub-question
+        state["context"] = "Python is a programming language."
+
+        result = await prompt_building_node(state)
+
+        # Should use standard prompt (not multi-hop)
+        system_message = next(m for m in result["messages"] if m["role"] == "system")
+        assert "sub-questions" not in system_message["content"].lower()
+
 
 class TestGenerationNode:
     """Tests for generation_node."""

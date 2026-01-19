@@ -15,12 +15,14 @@ from .dependencies import (
     SessionManagerDep,
     StartTimeDep,
     StreamManagerDep,
+    UsageTrackerDep,
     get_config_dep,
     get_guardrail_pipeline,
     get_model_gateway,
     get_session_manager,
     get_start_time,
     get_stream_manager,
+    get_usage_tracker,
 )
 from .models import (
     ClearSessionResponse,
@@ -42,7 +44,7 @@ from .models import (
     StreamQueryRequest,
     UsageInfo,
 )
-from .routes import health_router, query_router, sessions_router
+from .routes import admin_router, health_router, query_router, sessions_router
 
 __all__ = [
     # Application
@@ -60,6 +62,8 @@ __all__ = [
     "GuardrailPipelineDep",
     "StreamManagerDep",
     "StartTimeDep",
+    "UsageTrackerDep",
+    "get_usage_tracker",
     # Request models
     "QueryRequest",
     "StreamQueryRequest",
@@ -81,6 +85,7 @@ __all__ = [
     "ClearSessionResponse",
     "DeleteSessionResponse",
     # Routers
+    "admin_router",
     "health_router",
     "query_router",
     "sessions_router",

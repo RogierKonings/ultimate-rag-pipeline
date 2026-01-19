@@ -13,16 +13,20 @@ The Ultimate RAG Pipeline includes a comprehensive observability stack providing
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [OpenTelemetry Integration](#opentelemetry-integration)
-3. [Prometheus Metrics](#prometheus-metrics)
-4. [Structured Logging](#structured-logging)
-5. [Grafana Dashboards](#grafana-dashboards)
-6. [Alerting](#alerting)
-7. [Ragas Evaluation](#ragas-evaluation)
-8. [Arize Phoenix Integration](#arize-phoenix-integration)
-9. [Trace/Log Validation](#tracelog-validation)
-10. [Configuration Reference](#configuration-reference)
-11. [Runbooks](#runbooks)
+2. [Correlation ID Propagation](#correlation-id-propagation)
+3. [OpenTelemetry Integration](#opentelemetry-integration)
+4. [End-to-End Trace Hierarchy](#end-to-end-trace-hierarchy)
+5. [Prometheus Metrics](#prometheus-metrics)
+6. [Business & Quality Metrics](#business--quality-metrics)
+7. [SLO Definitions & Alerts](#slo-definitions--alerts)
+8. [Structured Logging](#structured-logging)
+9. [Grafana Dashboards](#grafana-dashboards)
+10. [Alerting](#alerting)
+11. [Ragas Evaluation](#ragas-evaluation)
+12. [Arize Phoenix Integration](#arize-phoenix-integration)
+13. [Trace/Log Validation](#tracelog-validation)
+14. [Configuration Reference](#configuration-reference)
+15. [Runbooks](#runbooks)
 
 ---
 
@@ -108,6 +112,50 @@ flowchart TB
 5. **Grafana** provides unified visualization with trace-log correlation
 6. **Alertmanager** routes alerts to Slack/PagerDuty based on severity
 7. **Ragas** runs scheduled evaluations and stores results in PostgreSQL
+
+---
+
+## Correlation ID Propagation
+
+The RAG pipeline implements strict correlation ID propagation across all services (US-10.3.1), enabling complete request tracing from ingestion through retrieval to generation.
+
+### Key Features
+
+- **Standardized Headers**: `X-Request-ID`, `X-Trace-ID`, `X-Tenant-ID`, `X-User-ID-Hash`
+- **Automatic ID Generation**: UUIDs generated for missing request/trace IDs
+- **Context Propagation**: Correlation context flows through HTTP calls and Celery tasks
+- **Log Joinability**: All logs include correlation IDs for cross-service debugging
+
+### Quick Start
+
+```python
+from fastapi import FastAPI
+from shared.observability.correlation import CorrelationMiddleware
+
+app = FastAPI()
+app.add_middleware(CorrelationMiddleware)
+```
+
+### Inter-Service Communication
+
+```python
+from shared.observability.correlation import create_service_client
+
+# Headers automatically propagated
+client = create_service_client("retrieval", "http://retrieval:8002")
+response = await client.post("/api/v1/retrieve", json={"query": "..."})
+```
+
+### Celery Integration
+
+```python
+from shared.observability.correlation import setup_celery_correlation_signals
+
+# At worker startup
+setup_celery_correlation_signals()
+```
+
+**Full Documentation:** [Correlation ID Propagation](./correlation-id-propagation.md)
 
 ---
 
@@ -214,6 +262,62 @@ The middleware automatically:
 
 ---
 
+## End-to-End Trace Hierarchy
+
+Consistent span naming and parent-child relationships across all services (US-10.3.2), enabling complete visualization of request lifecycle in Jaeger.
+
+### Span Naming Convention
+
+All spans follow the pattern: `{service}.{component}.{operation}`
+
+| Service | Example Spans |
+|---------|---------------|
+| **Orchestrator** | `orchestrator.query.process`, `orchestrator.workflow.routing`, `orchestrator.workflow.generation` |
+| **Retrieval** | `retrieval.search.hybrid`, `retrieval.search.semantic`, `retrieval.fusion.rrf` |
+| **Ingestion** | `ingestion.document.process`, `ingestion.chunk.split`, `ingestion.embed.batch` |
+| **External** | `qdrant.query.search`, `opensearch.query.search`, `llm.completion.stream` |
+
+### Complete Trace Hierarchy
+
+```
+orchestrator.query.process (root)
+├── orchestrator.workflow.routing
+├── orchestrator.workflow.retrieval
+│   └── retrieval.search.hybrid (child - HTTP call)
+│       ├── retrieval.preprocess.query
+│       ├── retrieval.embed.query
+│       ├── retrieval.search.semantic
+│       │   └── qdrant.query.search
+│       ├── retrieval.search.keyword
+│       │   └── opensearch.query.search
+│       ├── retrieval.fusion.rrf
+│       └── retrieval.rerank.crossencoder
+├── orchestrator.workflow.prompt_building
+├── orchestrator.workflow.generation
+│   └── llm.completion.stream
+└── orchestrator.workflow.validation
+```
+
+### Traced Client Wrappers
+
+Custom traced wrappers ensure proper parent-child relationships:
+
+```python
+from shared.observability.clients import TracedQdrantClient, TracedOpenSearchClient
+
+# Qdrant with automatic span creation
+qdrant = TracedQdrantClient(client, collection_name="documents")
+results = await qdrant.query_points(query=embedding, limit=10)
+
+# OpenSearch with automatic span creation
+opensearch = TracedOpenSearchClient(client, index_name="documents")
+results = await opensearch.search(body=query)
+```
+
+**Full Documentation:** [Trace Hierarchy](./trace-hierarchy.md)
+
+---
+
 ## Prometheus Metrics
 
 Centralized metrics collection following naming convention: `rag_<subsystem>_<metric>_<unit>`
@@ -305,15 +409,6 @@ metrics.record_embedding(duration=0.02, token_count=100, model="bge-large-en-v1.
 | `rag_cache_misses_total` | Counter | service, cache_type | Cache misses |
 | `rag_cache_size_bytes` | Gauge | service, cache_type | Cache size |
 
-### SLO Definitions
-
-| SLO | Target | Window | Burn Rate Alert |
-|-----|--------|--------|-----------------|
-| Query Latency | 99% < 2s | 30 days | 14.4x/1h, 6x/6h |
-| Availability | 99.9% | 30 days | 14.4x/1h, 6x/6h |
-| LLM TTFT | 95% < 1s | 7 days | 6x/6h |
-| Retrieval Latency | 99% < 500ms | 30 days | 6x/6h |
-
 ### FastAPI Middleware
 
 ```python
@@ -325,6 +420,117 @@ app.add_middleware(PrometheusMiddleware)
 
 # Exposes /metrics endpoint automatically
 ```
+
+---
+
+## Business & Quality Metrics
+
+Business-level metrics for RAG quality, user feedback correlation, and query success rates (US-10.3.3).
+
+### RAG Query Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `rag_queries_total` | Counter | strategy, rag_used, degraded, tenant_id, status | Total RAG queries |
+| `rag_e2e_latency_seconds` | Histogram | strategy, tenant_tier, degraded | End-to-end latency |
+| `rag_component_latency_seconds` | Histogram | component | Per-component latency |
+
+### User Feedback Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `rag_feedback_total` | Counter | rating, tenant_id | User feedback counts |
+| `rag_feedback_score` | Gauge | tenant_id | Rolling feedback score |
+
+### Quality Indicators
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `rag_context_relevance_score` | Histogram | tenant_id | Reranker relevance scores |
+| `rag_citations_per_response` | Histogram | tenant_id | Citation count distribution |
+| `rag_fallback_usage_total` | Counter | fallback_type, tenant_id | Fallback/degradation usage |
+| `rag_degraded_queries_total` | Counter | degradation_mode, tenant_id | Degraded mode queries |
+
+### Feedback API
+
+```python
+# Submit user feedback
+POST /api/v1/feedback
+{
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "rating": "positive",  # positive, negative, neutral
+    "comment": "Very helpful response!",
+    "categories": ["accurate", "well-cited"]
+}
+```
+
+---
+
+## SLO Definitions & Alerts
+
+Service Level Objectives with automated alerting based on error budgets and burn rates (US-10.3.4).
+
+### SLO Targets
+
+| SLO | Target | Window | Description |
+|-----|--------|--------|-------------|
+| Retrieval Latency p95 | 95% < 250ms | 30 days | Retrieval requests complete quickly |
+| RAG E2E Latency p95 | 95% < 2000ms | 30 days | Complete RAG queries respond within target |
+| RAG Error Rate | < 1% per tenant | 30 days | Queries succeed reliably |
+| Service Availability | > 99.9% | 30 days | Services remain available |
+
+### Error Budget Calculation
+
+```
+Error Budget = 1 - SLO Target
+Example: 99.9% availability → 0.1% error budget → ~43 minutes/month allowed downtime
+```
+
+### Burn Rate Alerts
+
+Multi-window burn rate alerts fire when error budget is consumed too quickly:
+
+| Severity | Burn Rate | Short Window | Long Window | Action |
+|----------|-----------|--------------|-------------|--------|
+| Critical | 14.4x | 5m | 1h | Page immediately |
+| Critical | 6.0x | 30m | 6h | Page |
+| Warning | 1.0x | 6h | 3d | Create ticket |
+
+### Prometheus Recording Rules
+
+```yaml
+# SLI ratio over time windows
+- record: slo:rag_error_rate:ratio_rate5m
+  expr: |
+    sum(rate(rag_queries_total{status="success"}[5m]))
+    / sum(rate(rag_queries_total[5m]))
+
+# Error budget remaining
+- record: slo:rag_error_rate:error_budget_remaining
+  expr: |
+    1 - ((1 - slo:rag_error_rate:ratio_rate30d) / 0.01)
+
+# Burn rate calculation
+- record: slo:rag_error_rate:burn_rate_1h
+  expr: |
+    (1 - slo:rag_error_rate:ratio_rate1h) / 0.01
+```
+
+### SLO Dashboard Panels
+
+- **Error Budget Remaining**: Gauge showing % of monthly budget left
+- **Burn Rate (1h)**: Current consumption rate (1x = sustainable)
+- **SLI Trends**: Success rate over time with SLO target line
+- **30-Day Compliance**: Historical SLO compliance table
+
+### Runbooks
+
+SLO alerts link to runbooks with investigation and mitigation steps:
+
+- [RAG Error Budget Burn](../runbooks/slo/rag-error-budget-burn.md)
+- [Retrieval Latency SLO](../runbooks/slo/retrieval-latency.md)
+- [RAG E2E Latency SLO](../runbooks/slo/rag-e2e-latency.md)
+- [Service Availability](../runbooks/slo/service-availability.md)
 
 ---
 

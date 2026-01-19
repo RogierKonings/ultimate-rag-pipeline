@@ -21,7 +21,7 @@ from jwt.exceptions import (
 )
 
 from .config import JWTSettings
-from .models import TokenClaims, TokenPair, TokenType
+from .models import ServiceTokenClaims, TokenClaims, TokenPair, TokenType
 
 
 class JWTError(Exception):
@@ -535,6 +535,170 @@ class JWTHandler:
             token,
             options={"verify_signature": False, "verify_exp": False},
         )
+
+    # -------------------------------------------------------------------------
+    # Service-to-Service Authentication Methods
+    # -------------------------------------------------------------------------
+
+    def create_service_token(
+        self,
+        service_name: str,
+        target_service: str,
+        allowed_endpoints: list[str] | None = None,
+        expires_delta: timedelta | None = None,
+    ) -> str:
+        """
+        Create a JWT token for service-to-service authentication.
+
+        Args:
+            service_name: Name of the calling service (e.g., "orchestrator")
+            target_service: Name of the target service (e.g., "retrieval")
+            allowed_endpoints: List of endpoint patterns the service can access
+                              (e.g., ["/internal/*", "/api/v1/search"])
+            expires_delta: Token expiration time (default: 5 minutes)
+
+        Returns:
+            Encoded JWT service token
+
+        Example:
+            ```python
+            token = handler.create_service_token(
+                service_name="orchestrator",
+                target_service="retrieval",
+                allowed_endpoints=["/internal/*"],
+            )
+            headers = {"Authorization": f"Bearer {token}"}
+            ```
+        """
+        if not self._private_key:
+            raise JWTError("Private key not configured for token creation")
+
+        if expires_delta is None:
+            expires_delta = timedelta(minutes=5)  # Short-lived by default
+
+        now = datetime.now(UTC)
+        expires = now + expires_delta
+
+        claims = ServiceTokenClaims(
+            service_name=service_name,
+            target_service=target_service,
+            allowed_endpoints=allowed_endpoints or [],
+            iss=self.settings.issuer,
+            aud=target_service,  # Audience is the target service
+            iat=now,
+            exp=expires,
+            jti=str(uuid.uuid4()),
+            token_type=TokenType.SERVICE,
+        )
+
+        payload = claims.to_dict()
+        return jwt.encode(
+            payload,
+            self._private_key,
+            algorithm=self.settings.algorithm.value,
+        )
+
+    def verify_service_token(
+        self,
+        token: str,
+        expected_audience: str,
+        endpoint: str | None = None,
+    ) -> ServiceTokenClaims:
+        """
+        Verify a service-to-service JWT token.
+
+        Args:
+            token: JWT token string
+            expected_audience: Expected target service (must match token's audience)
+            endpoint: Optional endpoint to check against allowed_endpoints
+
+        Returns:
+            Decoded service token claims
+
+        Raises:
+            TokenExpiredError: Token has expired
+            TokenInvalidError: Token is invalid or not a service token
+            TokenRevokedError: Token has been revoked
+
+        Example:
+            ```python
+            claims = handler.verify_service_token(
+                token=bearer_token,
+                expected_audience="retrieval",
+                endpoint="/internal/search",
+            )
+            print(f"Request from service: {claims.service_name}")
+            ```
+        """
+        if not self._public_key:
+            raise JWTError("Public key not configured for token verification")
+
+        try:
+            # Decode and verify
+            options = {
+                "verify_signature": True,
+                "verify_exp": self.settings.verify_exp,
+                "verify_aud": True,
+                "verify_iss": True,
+                "require": ["exp", "iat", "service_name", "target_service"],
+            }
+
+            payload = jwt.decode(
+                token,
+                self._public_key,
+                algorithms=[self.settings.algorithm.value],
+                audience=expected_audience,
+                issuer=self.settings.issuer,
+                leeway=self.settings.leeway_seconds,
+                options=options,
+            )
+
+            # Verify this is a service token
+            if payload.get("token_type") != TokenType.SERVICE.value:
+                raise TokenInvalidError(
+                    f"Expected service token, got {payload.get('token_type')}"
+                )
+
+            claims = ServiceTokenClaims.from_dict(payload)
+
+            # Check endpoint authorization if provided
+            if endpoint and not claims.can_access_endpoint(endpoint):
+                raise TokenInvalidError(
+                    f"Service '{claims.service_name}' not authorized for endpoint '{endpoint}'"
+                )
+
+            # Check blocklist
+            if self.blocklist and claims.jti and self.blocklist.is_blocked(claims.jti):
+                raise TokenRevokedError("Token has been revoked")
+
+            return claims
+
+        except ExpiredSignatureError:
+            raise TokenExpiredError("Service token has expired") from None
+        except (InvalidSignatureError, DecodeError):
+            raise TokenInvalidError("Invalid service token signature") from None
+        except InvalidAudienceError:
+            raise TokenInvalidError("Invalid service token audience") from None
+        except InvalidIssuerError:
+            raise TokenInvalidError("Invalid service token issuer") from None
+        except InvalidTokenError as e:
+            raise TokenInvalidError(f"Invalid service token: {e}") from e
+
+    def is_service_token(self, token: str) -> bool:
+        """
+        Check if a token is a service-to-service token.
+
+        Args:
+            token: JWT token string
+
+        Returns:
+            True if the token is a service token
+        """
+        try:
+            payload = self.decode_token_unverified(token)
+            return payload.get("token_type") == TokenType.SERVICE.value
+        except Exception:
+            return False
 
 
 class TokenBlocklist:

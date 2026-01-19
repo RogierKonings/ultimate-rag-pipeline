@@ -15,6 +15,7 @@ from database.models.user import (
     UserGroup,
     UserRole,
 )
+from database.models.usage import TenantQuota, TokenUsage
 from database.models.verification_log import VerificationLog
 from database.models.video import (
     ProcessingStage,
@@ -53,4 +54,7 @@ __all__ = [
     "UserRole",
     "UserGroup",
     "ApiKey",
+    # Usage tracking (US-10.5.4)
+    "TokenUsage",
+    "TenantQuota",
 ]
