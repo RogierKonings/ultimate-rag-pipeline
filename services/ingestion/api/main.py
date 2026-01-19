@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
 from shared.observability.correlation import CorrelationMiddleware
+from shared.security.audit import AuditMiddleware
 from api.routes import (
     admin_router,
     documents_router,
@@ -112,6 +113,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CorrelationMiddleware,
         service_name="ingestion-service",
     )
+
+    # Audit middleware for compliance logging (US-10.7.5)
+    app.add_middleware(
+        AuditMiddleware,
+        service_name="ingestion-service",
+        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
+    )
+
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(TenantMiddleware)
 
