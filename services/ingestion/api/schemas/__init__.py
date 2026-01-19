@@ -48,6 +48,20 @@ from .video import (
     VideoUploadResponse,
     VideoVisibility,
 )
+from .pii import (
+    AddCustomPatternRequest,
+    CustomPatternResponse,
+    CustomPatternSchema,
+    IngestionPIIConfig,
+    PIIEntityConfigSchema,
+    PIIEntityDetected,
+    PIITestRequest,
+    PIITestResponse,
+    QueryPIIConfig,
+    ResponsePIIConfig,
+    TenantPIISettingsResponse,
+    TenantPIISettingsUpdate,
+)
 
 # Migration schemas are optional - depend on external modules
 try:
@@ -131,4 +145,17 @@ __all__ = [
     "VideoListItem",
     "VideoListResponse",
     "VideoErrorResponse",
+    # PII schemas (US-10.7.4)
+    "IngestionPIIConfig",
+    "QueryPIIConfig",
+    "ResponsePIIConfig",
+    "PIIEntityConfigSchema",
+    "CustomPatternSchema",
+    "TenantPIISettingsResponse",
+    "TenantPIISettingsUpdate",
+    "PIITestRequest",
+    "PIITestResponse",
+    "PIIEntityDetected",
+    "AddCustomPatternRequest",
+    "CustomPatternResponse",
 ] + _migration_schemas

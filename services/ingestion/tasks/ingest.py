@@ -308,6 +308,8 @@ async def _process_document_async(
     from processors import ChunkingConfig, ChunkingEngine
     from processors.enrichment import EnrichmentContext, EnrichmentPipeline
     from processors.parsers import create_default_registry
+    from shared.database.connection import get_session
+    from shared.security.pii import get_tenant_pii_config_service
 
     from config import get_settings
     from services.deduplication import (
@@ -396,13 +398,17 @@ async def _process_document_async(
         parser_registry = create_default_registry()
         parsed_doc = await parser_registry.parse(raw_doc.content, raw_doc.metadata.mime_type)
 
-        # Stage 4: Enrich metadata
+        # Stage 4: Enrich metadata (using tenant-specific PII settings)
         task.update_state(
             state="PROGRESS",
             meta={"stage": "enriching", "progress": 35, "message": "Enriching metadata..."},
         )
 
-        enrichment = EnrichmentPipeline()
+        # Get tenant PII config service for tenant-specific PII detection
+        tenant_pii_config_service = get_tenant_pii_config_service()
+        enrichment = EnrichmentPipeline(
+            tenant_pii_config_service=tenant_pii_config_service,
+        )
         context = EnrichmentContext(
             tenant_id=acl_context["tenant_id"],
             visibility=acl_context.get("visibility", "private"),
@@ -410,7 +416,9 @@ async def _process_document_async(
             allowed_users=acl_context.get("allowed_users", []),
             custom_metadata=acl_context.get("custom_metadata", {}),
         )
-        metadata = await enrichment.enrich(parsed_doc, context)
+        # Use database session for tenant config lookup
+        async with get_session() as session:
+            metadata = await enrichment.enrich(parsed_doc, context, session=session)
 
         # Stage 5: Chunk document
         task.update_state(

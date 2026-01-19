@@ -72,6 +72,11 @@ from .response_filter import (
     PIIQueryFilter,
     PIIResponseFilter,
 )
+from .tenant_config import (
+    TenantPIIConfigService,
+    get_tenant_pii_config_service,
+    reset_tenant_pii_config_service,
+)
 
 __all__ = [
     # Config
@@ -98,4 +103,8 @@ __all__ = [
     # Filters
     "PIIResponseFilter",
     "PIIQueryFilter",
+    # Tenant config
+    "TenantPIIConfigService",
+    "get_tenant_pii_config_service",
+    "reset_tenant_pii_config_service",
 ]

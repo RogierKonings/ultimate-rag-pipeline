@@ -16,6 +16,7 @@ from api.routes import (
     documents_router,
     ingest_router,
     migrations_router,
+    pii_admin_router,
     tenant_isolation_router,
     video_management_router,
     video_router,
@@ -163,6 +164,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         tenant_isolation_router,
         prefix="/admin",
         tags=["Tenant Isolation"],
+    )
+
+    # PII admin router (US-10.7.4)
+    app.include_router(
+        pii_admin_router,
+        prefix="/admin",
+        tags=["PII Configuration"],
     )
 
     # Health check endpoint

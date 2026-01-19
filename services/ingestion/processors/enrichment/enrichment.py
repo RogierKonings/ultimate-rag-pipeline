@@ -9,11 +9,18 @@ from .models import (
     EnrichmentConfig,
     EnrichmentContext,
     LanguageResult,
+    PIIEntity,
     PIIResult,
+    PIIType,
 )
 from .pii_detector import PIIDetector, PIIDetectorConfig
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from services.shared.security.pii import PIIDetector as SharedPIIDetector
+    from services.shared.security.pii import TenantPIIConfigService
+
     from ..parsers.base import ParsedDocument
 
 
@@ -24,35 +31,80 @@ class EnrichmentPipeline:
     Stages:
     1. Extract document properties (from parser output)
     2. Detect language
-    3. Detect PII
+    3. Detect PII (using tenant-specific settings if available)
     4. Inject ACL metadata
 
     The pipeline processes each stage sequentially and combines
     all results into a single enriched metadata object.
+
+    Supports tenant-specific PII configuration via TenantPIIConfigService.
+    If a tenant config service is provided, PII detection will use the
+    tenant's configured settings, entity configs, and custom patterns.
     """
 
-    def __init__(self, config: EnrichmentConfig | None = None):
+    def __init__(
+        self,
+        config: EnrichmentConfig | None = None,
+        tenant_pii_config_service: "TenantPIIConfigService | None" = None,
+    ):
         """
         Initialize the enrichment pipeline.
 
         Args:
             config: Configuration for enrichment. If None, uses defaults.
+            tenant_pii_config_service: Optional service for tenant-specific PII config.
+                If provided, PII detection will use tenant settings instead of defaults.
         """
         self.config = config or EnrichmentConfig()
         self._language_detector = LanguageDetector()
         self._pii_detector: PIIDetector | None = None
+        self._tenant_pii_config_service = tenant_pii_config_service
 
-        if self.config.enable_pii_detection:
+        # Only create default PII detector if no tenant config service is provided
+        if self.config.enable_pii_detection and not tenant_pii_config_service:
             pii_config = PIIDetectorConfig(
                 languages=self.config.pii_languages,
                 score_threshold=self.config.pii_score_threshold,
             )
             self._pii_detector = PIIDetector(pii_config)
 
+    async def _get_pii_detector_for_tenant(
+        self,
+        tenant_id: str,
+        session: "AsyncSession",
+    ) -> "SharedPIIDetector | PIIDetector | None":
+        """
+        Get PII detector for a specific tenant.
+
+        Uses tenant-specific settings if a config service is available,
+        otherwise falls back to the default detector.
+
+        Args:
+            tenant_id: The tenant ID
+            session: Database session for loading tenant config
+
+        Returns:
+            PIIDetector configured for the tenant, or None if disabled
+        """
+        if self._tenant_pii_config_service:
+            # Get tenant-specific settings
+            settings = await self._tenant_pii_config_service.get_pii_settings(
+                tenant_id, session
+            )
+            if not settings.enabled:
+                return None
+            # Get detector with tenant's settings
+            return await self._tenant_pii_config_service.get_detector(
+                tenant_id, session
+            )
+        # Fall back to default detector
+        return self._pii_detector
+
     async def enrich(
         self,
         parsed_doc: "ParsedDocument",
         context: EnrichmentContext,
+        session: "AsyncSession | None" = None,
     ) -> DocumentMetadataEnriched:
         """
         Enrich a parsed document with metadata.
@@ -60,6 +112,7 @@ class EnrichmentPipeline:
         Args:
             parsed_doc: Output from document parser
             context: Enrichment context with tenant/ACL info
+            session: Database session (required if using tenant PII config)
 
         Returns:
             Enriched metadata
@@ -75,10 +128,14 @@ class EnrichmentPipeline:
         if self.config.enable_language_detection and parsed_doc.text:
             language = await self._language_detector.detect(parsed_doc.text)
 
-        # Detect PII
+        # Detect PII using tenant-specific settings if available
         pii: PIIResult | None = None
-        if self._pii_detector and parsed_doc.text:
-            pii = await self._pii_detector.detect(parsed_doc.text)
+        if self.config.enable_pii_detection and parsed_doc.text:
+            pii = await self._detect_pii(
+                text=parsed_doc.text,
+                tenant_id=context.tenant_id,
+                session=session,
+            )
 
         return DocumentMetadataEnriched(
             title=title,
@@ -93,6 +150,61 @@ class EnrichmentPipeline:
             allowed_users=context.allowed_users,
             custom=context.custom_metadata,
         )
+
+    async def _detect_pii(
+        self,
+        text: str,
+        tenant_id: str,
+        session: "AsyncSession | None" = None,
+    ) -> PIIResult | None:
+        """
+        Detect PII in text using appropriate detector.
+
+        Uses tenant-specific detector if config service is available
+        and a session is provided.
+
+        Args:
+            text: Text to scan for PII
+            tenant_id: Tenant ID for tenant-specific settings
+            session: Database session (required for tenant config)
+
+        Returns:
+            PIIResult with detected entities, or None if detection disabled
+        """
+        if self._tenant_pii_config_service and session:
+            detector = await self._get_pii_detector_for_tenant(tenant_id, session)
+            if detector is None:
+                return None
+            # Shared PIIDetector returns shared PIIResult, convert to local model
+            shared_result = await detector.detect(text)
+
+            # Convert entities, skipping unknown types
+            entities = []
+            for e in shared_result.entities:
+                try:
+                    pii_type = PIIType(e.entity_type)
+                    entities.append(
+                        PIIEntity(
+                            entity_type=pii_type,
+                            text=e.text,
+                            start=e.start,
+                            end=e.end,
+                            score=e.score,
+                        )
+                    )
+                except ValueError:
+                    # Unknown entity type from custom pattern, skip
+                    pass
+
+            return PIIResult(
+                entities=entities,
+                entity_counts=shared_result.entity_counts,
+                has_pii=shared_result.has_pii,
+                high_sensitivity=shared_result.has_high_sensitivity,
+            )
+        elif self._pii_detector:
+            return await self._pii_detector.detect(text)
+        return None
 
     def _extract_title(self, parsed_doc: "ParsedDocument") -> str | None:
         """
@@ -121,6 +233,7 @@ class EnrichmentPipeline:
         context: EnrichmentContext,
         title: str | None = None,
         author: str | None = None,
+        session: "AsyncSession | None" = None,
     ) -> DocumentMetadataEnriched:
         """
         Enrich raw text with metadata.
@@ -132,6 +245,7 @@ class EnrichmentPipeline:
             context: Enrichment context with tenant/ACL info
             title: Optional document title
             author: Optional document author
+            session: Database session (required if using tenant PII config)
 
         Returns:
             Enriched metadata
@@ -141,10 +255,14 @@ class EnrichmentPipeline:
         if self.config.enable_language_detection and text:
             language = await self._language_detector.detect(text)
 
-        # Detect PII
+        # Detect PII using tenant-specific settings if available
         pii: PIIResult | None = None
-        if self._pii_detector and text:
-            pii = await self._pii_detector.detect(text)
+        if self.config.enable_pii_detection and text:
+            pii = await self._detect_pii(
+                text=text,
+                tenant_id=context.tenant_id,
+                session=session,
+            )
 
         # Extract title from text if not provided
         extracted_title = title

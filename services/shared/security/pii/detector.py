@@ -172,6 +172,60 @@ class PIIDetector:
         except Exception as e:
             logger.error(f"Failed to load custom recognizers: {e}")
 
+    def add_custom_pattern(
+        self,
+        tenant_id: str,
+        name: str,
+        pattern: str,
+        entity_type: str = "CUSTOM",
+        score: float = 0.85,
+    ) -> None:
+        """Add a custom regex pattern recognizer at runtime.
+
+        Used for tenant-specific PII patterns.
+
+        Args:
+            tenant_id: Tenant identifier (used in recognizer name)
+            name: Pattern name
+            pattern: Regex pattern to match
+            entity_type: Entity type for matches
+            score: Confidence score for matches
+        """
+        try:
+            from presidio_analyzer import Pattern, PatternRecognizer
+
+            recognizer_name = f"{tenant_id}_{name}"
+            recognizer = PatternRecognizer(
+                supported_entity=entity_type,
+                name=recognizer_name,
+                patterns=[
+                    Pattern(name=name, regex=pattern, score=score),
+                ],
+            )
+
+            analyzer = self._get_analyzer()
+            analyzer.registry.add_recognizer(recognizer)
+
+            logger.info(
+                "custom_recognizer_added",
+                extra={
+                    "tenant_id": tenant_id,
+                    "recognizer_name": recognizer_name,
+                    "entity_type": entity_type,
+                },
+            )
+
+        except Exception as e:
+            logger.error(
+                "failed_to_add_custom_recognizer",
+                extra={
+                    "tenant_id": tenant_id,
+                    "name": name,
+                    "error": str(e),
+                },
+            )
+            raise
+
     def _get_anonymizer(self):
         """Lazily initialize Presidio anonymizer."""
         if self._anonymizer is None:
