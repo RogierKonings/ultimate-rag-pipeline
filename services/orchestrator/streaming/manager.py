@@ -70,6 +70,8 @@ class StreamManager:
         session_id: str | None = None,
         documents: list[dict[str, Any]] | None = None,
         gateway: ModelGateway | None = None,
+        degradation: dict[str, Any] | None = None,
+        retrieval_quality: dict[str, Any] | None = None,
     ) -> AsyncGenerator[StreamEvent, None]:
         """Stream an LLM response with proper event sequencing.
 
@@ -88,6 +90,10 @@ class StreamManager:
             session_id: Optional session identifier.
             documents: Optional list of source documents for citations.
             gateway: Optional gateway override (uses instance gateway if None).
+            degradation: Optional degradation info for start event (US-10.2.2).
+                Contains level, mode, and message fields.
+            retrieval_quality: Optional retrieval quality info for done event (US-10.2.2).
+                Contains mode and degradation_level fields.
 
         Yields:
             StreamEvent objects in the proper sequence.
@@ -118,8 +124,8 @@ class StreamManager:
             "total_tokens": 0,
         }
 
-        # Emit start event
-        yield self._create_start_event(request_id, model, session_id)
+        # Emit start event (with degradation info if provided)
+        yield self._create_start_event(request_id, model, session_id, degradation)
 
         try:
             # Convert messages to ChatMessage objects
@@ -164,9 +170,23 @@ class StreamManager:
             if documents:
                 yield self._create_citations_event(request_id, documents)
 
-            # Emit done event
+            # Emit done event (with quality metadata if provided)
             latency_ms = (time.perf_counter() - start_time) * 1000
-            yield self._create_done_event(request_id, usage, latency_ms)
+            context_quality = "full"
+            retrieval_mode = "hybrid_full"
+            if retrieval_quality:
+                # Map degradation level to context quality
+                degradation_level = retrieval_quality.get("degradation_level", "normal")
+                if degradation_level == "normal":
+                    context_quality = "full"
+                elif degradation_level == "degraded":
+                    context_quality = "partial"
+                elif degradation_level == "minimal":
+                    context_quality = "minimal"
+                retrieval_mode = retrieval_quality.get("mode", "hybrid_full")
+            yield self._create_done_event(
+                request_id, usage, latency_ms, context_quality, retrieval_mode
+            )
 
         except ModelGatewayError as e:
             yield self._create_error_event(
@@ -186,6 +206,7 @@ class StreamManager:
         request_id: str,
         model: str,
         session_id: str | None,
+        degradation: dict[str, Any] | None = None,
     ) -> StreamEvent:
         """Create a start event.
 
@@ -193,11 +214,12 @@ class StreamManager:
             request_id: Unique request identifier.
             model: The model being used.
             session_id: Optional session identifier.
+            degradation: Optional degradation info (US-10.2.2).
 
         Returns:
             A StreamEvent with START type.
         """
-        return StreamEvent.start(request_id, model, session_id)
+        return StreamEvent.start(request_id, model, session_id, degradation)
 
     def _create_delta_event(self, request_id: str, token: str) -> StreamEvent:
         """Create a delta event with a token.
@@ -244,6 +266,8 @@ class StreamManager:
         request_id: str,
         usage: dict[str, int],
         latency_ms: float,
+        context_quality: str = "full",
+        retrieval_mode: str = "hybrid_full",
     ) -> StreamEvent:
         """Create a done event.
 
@@ -251,11 +275,15 @@ class StreamManager:
             request_id: Unique request identifier.
             usage: Token usage statistics.
             latency_ms: Total latency in milliseconds.
+            context_quality: Quality of retrieved context (US-10.2.2).
+            retrieval_mode: The retrieval mode used (US-10.2.2).
 
         Returns:
             A StreamEvent with DONE type.
         """
-        return StreamEvent.done(request_id, usage, latency_ms)
+        return StreamEvent.done(
+            request_id, usage, latency_ms, context_quality, retrieval_mode
+        )
 
     def _create_error_event(
         self,

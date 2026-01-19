@@ -614,3 +614,186 @@ class TestStreamManagerIntegration:
             messages=[{"role": "user", "content": "Hi"}],
         ):
             assert event.request_id == request_id
+
+
+class TestStreamManagerDegradation:
+    """Tests for StreamManager degradation info support (US-10.2.2)."""
+
+    @pytest.fixture
+    def mock_gateway(self):
+        """Create a mock gateway."""
+        gateway = MagicMock(spec=ModelGateway)
+
+        async def mock_stream(request):
+            for token in ["Response", " with", " tokens"]:
+                yield token
+
+        gateway.chat_completion_stream = mock_stream
+        return gateway
+
+    @pytest.mark.asyncio
+    async def test_start_event_includes_degradation(self, mock_gateway):
+        """Test that start event includes degradation info when provided."""
+        manager = StreamManager(gateway=mock_gateway)
+        degradation = {
+            "level": "degraded",
+            "mode": "semantic_only",
+            "message": "Keyword search unavailable",
+        }
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+            degradation=degradation,
+        ):
+            events.append(event)
+
+        start_event = events[0]
+        assert start_event.event == StreamEventType.START
+        assert start_event.data["degradation"] == degradation
+        assert start_event.data["degradation"]["level"] == "degraded"
+        assert start_event.data["degradation"]["mode"] == "semantic_only"
+
+    @pytest.mark.asyncio
+    async def test_start_event_no_degradation_by_default(self, mock_gateway):
+        """Test that start event has no degradation when not provided."""
+        manager = StreamManager(gateway=mock_gateway)
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+        ):
+            events.append(event)
+
+        start_event = events[0]
+        assert start_event.event == StreamEventType.START
+        assert start_event.data.get("degradation") is None
+
+    @pytest.mark.asyncio
+    async def test_done_event_includes_quality_metadata(self, mock_gateway):
+        """Test that done event includes quality metadata from retrieval_quality."""
+        manager = StreamManager(gateway=mock_gateway)
+        retrieval_quality = {
+            "degradation_level": "degraded",
+            "mode": "semantic_only",
+            "components_used": ["qdrant"],
+            "components_skipped": ["opensearch"],
+        }
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+            retrieval_quality=retrieval_quality,
+        ):
+            events.append(event)
+
+        done_event = events[-1]
+        assert done_event.event == StreamEventType.DONE
+        assert done_event.data["context_quality"] == "partial"
+        assert done_event.data["retrieval_mode"] == "semantic_only"
+
+    @pytest.mark.asyncio
+    async def test_done_event_quality_defaults(self, mock_gateway):
+        """Test that done event has default quality values when not provided."""
+        manager = StreamManager(gateway=mock_gateway)
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+        ):
+            events.append(event)
+
+        done_event = events[-1]
+        assert done_event.event == StreamEventType.DONE
+        assert done_event.data["context_quality"] == "full"
+        assert done_event.data["retrieval_mode"] == "hybrid_full"
+
+    @pytest.mark.asyncio
+    async def test_done_event_minimal_degradation(self, mock_gateway):
+        """Test that minimal degradation level maps to minimal context quality."""
+        manager = StreamManager(gateway=mock_gateway)
+        retrieval_quality = {
+            "degradation_level": "minimal",
+            "mode": "minimal",
+            "components_used": ["qdrant"],
+            "components_skipped": ["opensearch", "reranker"],
+        }
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+            retrieval_quality=retrieval_quality,
+        ):
+            events.append(event)
+
+        done_event = events[-1]
+        assert done_event.data["context_quality"] == "minimal"
+        assert done_event.data["retrieval_mode"] == "minimal"
+
+    @pytest.mark.asyncio
+    async def test_done_event_normal_degradation(self, mock_gateway):
+        """Test that normal degradation level maps to full context quality."""
+        manager = StreamManager(gateway=mock_gateway)
+        retrieval_quality = {
+            "degradation_level": "normal",
+            "mode": "hybrid_full",
+            "components_used": ["qdrant", "opensearch", "reranker"],
+            "components_skipped": [],
+        }
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+            retrieval_quality=retrieval_quality,
+        ):
+            events.append(event)
+
+        done_event = events[-1]
+        assert done_event.data["context_quality"] == "full"
+        assert done_event.data["retrieval_mode"] == "hybrid_full"
+
+    @pytest.mark.asyncio
+    async def test_degradation_and_quality_both_set(self, mock_gateway):
+        """Test that both degradation and retrieval_quality can be set."""
+        manager = StreamManager(gateway=mock_gateway)
+        degradation = {
+            "level": "degraded",
+            "mode": "keyword_only",
+            "message": "Semantic search unavailable",
+        }
+        retrieval_quality = {
+            "degradation_level": "degraded",
+            "mode": "keyword_only",
+            "components_used": ["opensearch"],
+            "components_skipped": ["qdrant"],
+        }
+
+        events = []
+        async for event in manager.stream_response(
+            request_id="req-123",
+            model="llama",
+            messages=[{"role": "user", "content": "Hi"}],
+            degradation=degradation,
+            retrieval_quality=retrieval_quality,
+        ):
+            events.append(event)
+
+        start_event = events[0]
+        assert start_event.data["degradation"]["level"] == "degraded"
+        assert start_event.data["degradation"]["mode"] == "keyword_only"
+
+        done_event = events[-1]
+        assert done_event.data["context_quality"] == "partial"
+        assert done_event.data["retrieval_mode"] == "keyword_only"
