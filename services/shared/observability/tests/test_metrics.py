@@ -311,6 +311,24 @@ class TestSLI:
         assert "tenant_id" in sli.query_total
         assert sli.category == "availability"
 
+    def test_retrieval_latency_target_sli_exists(self):
+        """Test that retrieval_latency_p95_target SLI exists with 250ms threshold."""
+        from shared.observability.metrics.definitions import SLI_CATALOG
+
+        assert "retrieval_latency_p95_target" in SLI_CATALOG
+        sli = SLI_CATALOG["retrieval_latency_p95_target"]
+        assert 'le="0.25"' in sli.query_good  # 250ms
+        assert sli.category == "latency"
+
+    def test_rag_e2e_latency_target_sli_exists(self):
+        """Test that rag_e2e_latency_p95_target SLI exists with 2s threshold."""
+        from shared.observability.metrics.definitions import SLI_CATALOG
+
+        assert "rag_e2e_latency_p95_target" in SLI_CATALOG
+        sli = SLI_CATALOG["rag_e2e_latency_p95_target"]
+        assert 'le="2.0"' in sli.query_good  # 2000ms
+        assert sli.category == "latency"
+
 
 class TestSLO:
     """Tests for SLO definitions."""

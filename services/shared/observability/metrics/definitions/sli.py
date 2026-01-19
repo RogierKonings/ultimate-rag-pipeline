@@ -165,6 +165,26 @@ _register_sli(
     ),
 )
 
+_register_sli(
+    SLI(
+        name="retrieval_latency_p95_target",
+        description="Percentage of retrieval requests completing under 250ms",
+        query_good='sum(rate(retrieval_service_search_duration_seconds_bucket{le="0.25"}[{{window}}]))',
+        query_total="sum(rate(retrieval_service_search_duration_seconds_count[{{window}}]))",
+        category="latency",
+    ),
+)
+
+_register_sli(
+    SLI(
+        name="rag_e2e_latency_p95_target",
+        description="Percentage of RAG queries completing under 2000ms",
+        query_good='sum(rate(rag_e2e_latency_seconds_bucket{le="2.0"}[{{window}}]))',
+        query_total="sum(rate(rag_e2e_latency_seconds_count[{{window}}]))",
+        category="latency",
+    ),
+)
+
 # -----------------------------------------------------------------------------
 # Quality SLIs
 # -----------------------------------------------------------------------------
