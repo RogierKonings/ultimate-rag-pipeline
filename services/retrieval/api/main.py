@@ -5,7 +5,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from acl.context import UserContextExtractor
-from shared.config import validate_on_startup
 from acl.filter import ACLFilter
 from acl.models import ACLFilterConfig
 from acl.safety_net import ACLSafetyNet
@@ -22,7 +21,6 @@ from resilience import (
     RetrievalDegradationManager,
     reset_degradation_manager,
 )
-from shared.observability.correlation import CorrelationMiddleware
 from retrieval.video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
@@ -37,6 +35,9 @@ from video.clip_cache import ClipCacheConfig, ClipCacheService
 
 from api.routes import clips, health, retrieve, video_retrieve
 from config import RetrievalConfig
+from shared.config import validate_on_startup
+from shared.observability.correlation import CorrelationMiddleware
+from shared.security.audit import AuditMiddleware
 
 
 @asynccontextmanager
@@ -210,6 +211,13 @@ def create_app(config: RetrievalConfig | None = None) -> FastAPI:
     app.add_middleware(
         CorrelationMiddleware,
         service_name="retrieval-service",
+    )
+
+    # Audit middleware for compliance logging (US-10.7.5)
+    app.add_middleware(
+        AuditMiddleware,
+        service_name="retrieval-service",
+        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
     )
 
     # Request timing middleware
