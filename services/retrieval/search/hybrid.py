@@ -4,6 +4,8 @@ import asyncio
 import time
 from uuid import UUID
 
+from opentelemetry import trace
+
 from search.base import BaseSearcher
 from search.fusion import (
     DistributionBasedScoreFusion,
@@ -16,6 +18,9 @@ from search.fusion import (
 )
 from search.keyword import KeywordSearcher
 from search.semantic import SemanticSearcher
+from shared.observability.otel.span_names import SpanNames
+
+tracer = trace.get_tracer(__name__)
 
 
 class HybridSearcher(BaseSearcher):
@@ -105,59 +110,81 @@ class HybridSearcher(BaseSearcher):
         Returns:
             HybridSearchResponse with fused results
         """
-        start_time = time.time()
+        with tracer.start_as_current_span(
+            SpanNames.RETRIEVAL_SEARCH,
+            attributes={
+                "retrieval.query_length": len(query),
+                "retrieval.embedding_dim": len(query_embedding),
+            },
+        ) as root_span:
+            start_time = time.time()
 
-        # Use provided config or default
-        cfg = config or self.config
-        final_top_k = top_k or cfg.top_k
+            # Use provided config or default
+            cfg = config or self.config
+            final_top_k = top_k or cfg.top_k
 
-        # Create fusion for this config
-        fusion = self._create_fusion(cfg) if config else self._fusion
+            # Create fusion for this config
+            fusion = self._create_fusion(cfg) if config else self._fusion
 
-        # Run both searches in parallel
-        semantic_task = self.semantic.search(
-            query_embedding=query_embedding,
-            top_k=cfg.semantic_top_k,
-            filters=filters,
-            score_threshold=0.0,
-        )
+            # Run both searches in parallel with tracing
+            async def traced_semantic_search():
+                with tracer.start_as_current_span(SpanNames.RETRIEVAL_SEMANTIC):
+                    return await self.semantic.search(
+                        query_embedding=query_embedding,
+                        top_k=cfg.semantic_top_k,
+                        filters=filters,
+                        score_threshold=0.0,
+                    )
 
-        keyword_task = self.keyword.search(
-            query=query,
-            top_k=cfg.keyword_top_k,
-            filters=filters,
-            min_score=0.0,
-        )
+            async def traced_keyword_search():
+                with tracer.start_as_current_span(SpanNames.RETRIEVAL_KEYWORD):
+                    return await self.keyword.search(
+                        query=query,
+                        top_k=cfg.keyword_top_k,
+                        filters=filters,
+                        min_score=0.0,
+                    )
 
-        semantic_response, keyword_response = await asyncio.gather(
-            semantic_task,
-            keyword_task,
-        )
+            semantic_response, keyword_response = await asyncio.gather(
+                traced_semantic_search(),
+                traced_keyword_search(),
+            )
 
-        # Fuse results
-        fused_results = fusion.fuse(
-            semantic_results=semantic_response.results,
-            keyword_results=keyword_response.results,
-            top_k=final_top_k,
-        )
+            # Fuse results with tracing
+            with tracer.start_as_current_span(
+                SpanNames.RETRIEVAL_FUSION,
+                attributes={
+                    "retrieval.fusion.semantic_count": len(semantic_response.results),
+                    "retrieval.fusion.keyword_count": len(keyword_response.results),
+                },
+            ):
+                fused_results = fusion.fuse(
+                    semantic_results=semantic_response.results,
+                    keyword_results=keyword_response.results,
+                    top_k=final_top_k,
+                )
 
-        # Apply score threshold
-        if cfg.min_score > 0:
-            fused_results = [r for r in fused_results if r.fused_score >= cfg.min_score]
+            # Apply score threshold
+            if cfg.min_score > 0:
+                fused_results = [r for r in fused_results if r.fused_score >= cfg.min_score]
 
-        # Deduplicate if needed (by document_id, keeping highest scored chunk)
-        if cfg.deduplicate:
-            fused_results = self._deduplicate(fused_results)
+            # Deduplicate if needed (by document_id, keeping highest scored chunk)
+            if cfg.deduplicate:
+                fused_results = self._deduplicate(fused_results)
 
-        search_time = (time.time() - start_time) * 1000
+            search_time = (time.time() - start_time) * 1000
 
-        return HybridSearchResponse(
-            results=fused_results,
-            total_semantic=semantic_response.total_found,
-            total_keyword=keyword_response.total_found,
-            search_time_ms=search_time,
-            fusion_method=cfg.fusion_method,
-        )
+            # Set final attributes on root span
+            root_span.set_attribute("retrieval.result_count", len(fused_results))
+            root_span.set_attribute("retrieval.search_time_ms", search_time)
+
+            return HybridSearchResponse(
+                results=fused_results,
+                total_semantic=semantic_response.total_found,
+                total_keyword=keyword_response.total_found,
+                search_time_ms=search_time,
+                fusion_method=cfg.fusion_method,
+            )
 
     def _deduplicate(self, results: list[FusedResult]) -> list[FusedResult]:
         """
