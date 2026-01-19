@@ -15,6 +15,7 @@ from database.models.user import (
     UserGroup,
     UserRole,
 )
+from database.models.verification_log import VerificationLog
 from database.models.video import (
     ProcessingStage,
     SourceVideo,
@@ -42,6 +43,8 @@ __all__ = [
     "AuditLog",
     # Feedback (US-10.3.3)
     "QueryFeedback",
+    # Verification (US-10.4.2)
+    "VerificationLog",
     # User management
     "Tenant",
     "User",

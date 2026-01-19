@@ -11,6 +11,7 @@ import structlog
 
 from config import get_config
 from gateway.client import ModelGateway
+from observability.verification_metrics import record_verification_metrics
 from workflow.verification.claim_extractor import ClaimExtractor
 from workflow.verification.claim_verifier import ClaimVerifier
 from workflow.verification.models import VerificationResult, VerificationStatus
@@ -69,9 +70,14 @@ async def verification_node(state: "RAGState") -> "RAGState":
         "enable_verification", config.verification_enabled
     )
 
+    # Extract request_id and tenant_id for logging/metrics
+    request_id = state.get("request_id", "unknown")
+    tenant_id = state.get("tenant_id")
+
     if not enable_verification:
         result = _create_skipped_result("verification_disabled")
         timing["verification"] = (time.perf_counter() - start) * 1000
+        record_verification_metrics(result, tenant_id)
         return {
             **state,
             "verification_result": result.model_dump(),
@@ -83,6 +89,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
     if not response:
         result = _create_skipped_result("no_response")
         timing["verification"] = (time.perf_counter() - start) * 1000
+        record_verification_metrics(result, tenant_id)
         return {
             **state,
             "verification_result": result.model_dump(),
@@ -94,6 +101,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
     if not documents:
         result = _create_skipped_result("no_context")
         timing["verification"] = (time.perf_counter() - start) * 1000
+        record_verification_metrics(result, tenant_id)
         return {
             **state,
             "verification_result": result.model_dump(),
@@ -123,6 +131,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
                 extraction_result.extraction_time_ms,
             )
             timing["verification"] = (time.perf_counter() - start) * 1000
+            record_verification_metrics(result, tenant_id)
             await gateway.close()
             return {
                 **state,
@@ -187,6 +196,8 @@ async def verification_node(state: "RAGState") -> "RAGState":
 
         logger.info(
             "verification_complete",
+            request_id=request_id,
+            tenant_id=tenant_id,
             score=score,
             label=label,
             claims_total=total,
@@ -195,6 +206,9 @@ async def verification_node(state: "RAGState") -> "RAGState":
             claims_unsupported=unsupported,
             verification_time_ms=verification_time_ms,
         )
+
+        # Record Prometheus metrics
+        record_verification_metrics(result, tenant_id)
 
         timing["verification"] = verification_time_ms
         await gateway.close()
@@ -207,10 +221,11 @@ async def verification_node(state: "RAGState") -> "RAGState":
         }
 
     except Exception as e:
-        logger.exception("verification_failed", error=str(e))
+        logger.exception("verification_failed", request_id=request_id, error=str(e))
         # On error, skip verification and return original response
         result = _create_skipped_result(f"error: {str(e)}")
         timing["verification"] = (time.perf_counter() - start) * 1000
+        record_verification_metrics(result, tenant_id)
         await gateway.close()
         return {
             **state,

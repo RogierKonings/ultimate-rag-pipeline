@@ -422,3 +422,25 @@ class TestSLO:
             description="Test global SLO",
         )
         assert slo_default.tenant_scoped is False
+
+    def test_new_slos_registered(self):
+        """Test that US-10.3.4 SLOs are registered."""
+        from shared.observability.metrics.definitions import SLO_CATALOG
+
+        # Retrieval latency SLO
+        assert "retrieval_latency_p95" in SLO_CATALOG
+        retrieval_slo = SLO_CATALOG["retrieval_latency_p95"]
+        assert retrieval_slo.target == 0.95
+        assert retrieval_slo.sli_name == "retrieval_latency_p95_target"
+
+        # E2E latency SLO
+        assert "rag_e2e_latency_p95" in SLO_CATALOG
+        e2e_slo = SLO_CATALOG["rag_e2e_latency_p95"]
+        assert e2e_slo.target == 0.95
+        assert e2e_slo.sli_name == "rag_e2e_latency_p95_target"
+
+        # Tenant error rate SLO
+        assert "tenant_error_rate" in SLO_CATALOG
+        tenant_slo = SLO_CATALOG["tenant_error_rate"]
+        assert tenant_slo.target == 0.99
+        assert tenant_slo.tenant_scoped is True

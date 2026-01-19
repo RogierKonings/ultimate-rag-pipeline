@@ -217,6 +217,47 @@ _register_slo(
     ),
 )
 
+# -----------------------------------------------------------------------------
+# US-10.3.4 SLOs
+# -----------------------------------------------------------------------------
+
+_register_slo(
+    SLO(
+        name="retrieval_latency_p95",
+        sli_name="retrieval_latency_p95_target",
+        target=0.95,  # 95% of requests < 250ms
+        window="30d",
+        description="95% of retrieval requests complete in under 250ms",
+        owner="platform-team",
+        consequences="Slow queries, degraded user experience",
+    ),
+)
+
+_register_slo(
+    SLO(
+        name="rag_e2e_latency_p95",
+        sli_name="rag_e2e_latency_p95_target",
+        target=0.95,  # 95% of requests < 2s
+        window="30d",
+        description="95% of RAG queries complete in under 2 seconds",
+        owner="platform-team",
+        consequences="Poor user experience, timeouts",
+    ),
+)
+
+_register_slo(
+    SLO(
+        name="tenant_error_rate",
+        sli_name="tenant_error_rate",
+        target=0.99,  # <1% error rate per tenant
+        window="30d",
+        description="Per-tenant error rate below 1%",
+        owner="platform-team",
+        consequences="User-facing errors, tenant SLA violations",
+        tenant_scoped=True,
+    ),
+)
+
 
 # =============================================================================
 # Rule Generation
