@@ -397,3 +397,28 @@ class TestSLO:
 
         assert "groups" in rules
         assert len(rules["groups"]) >= 2  # recording + alerting
+
+    def test_slo_tenant_scoped_flag(self):
+        """Test that SLO supports tenant_scoped flag."""
+        from shared.observability.metrics.definitions.slo import SLO
+
+        slo = SLO(
+            name="test_tenant_slo",
+            sli_name="tenant_error_rate",
+            target=0.99,
+            window="30d",
+            description="Test tenant-scoped SLO",
+            tenant_scoped=True,
+        )
+
+        assert slo.tenant_scoped is True
+
+        # Default should be False
+        slo_default = SLO(
+            name="test_global_slo",
+            sli_name="query_availability",
+            target=0.999,
+            window="30d",
+            description="Test global SLO",
+        )
+        assert slo_default.tenant_scoped is False

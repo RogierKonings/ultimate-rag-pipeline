@@ -50,6 +50,7 @@ class SLO:
         burn_rates: Burn rate alert configurations
         owner: Team or individual responsible
         consequences: What happens when SLO is violated
+        tenant_scoped: If True, SLO is tracked per-tenant with separate error budgets
     """
 
     name: str
@@ -60,6 +61,7 @@ class SLO:
     burn_rates: list[BurnRate] = field(default_factory=list)
     owner: str = ""
     consequences: str = ""
+    tenant_scoped: bool = False
 
     def __post_init__(self):
         """Set default burn rates if not provided."""
