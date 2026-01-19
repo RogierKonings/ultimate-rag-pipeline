@@ -614,6 +614,26 @@ make down
 make clean
 ```
 
+### Developer CLI Tools
+
+CLI tools are available for common development operations:
+
+```bash
+# Check service health
+python scripts/dev-health.py
+
+# Test a RAG query with debug output
+python scripts/dev-query.py "What is RAG?" --debug
+
+# Ingest a document
+python scripts/dev-ingest.py file document.pdf --wait
+
+# Trigger index reconciliation (dry run)
+python scripts/dev-reconcile.py --tenant dev-tenant --dry-run
+```
+
+See [scripts/README.md](scripts/README.md) for full documentation.
+
 ### Kubernetes
 
 ```bash
@@ -748,6 +768,7 @@ docker-compose exec retrieval-service pytest --cov=. --cov-report=html
 | [Kubernetes Setup](docs/infrastructure/kubernetes-setup.md) | K8s deployment guide |
 | [Health Checks](docs/health-check-specification.md) | Health endpoint specification |
 | [Integration Tests](docs/integration-test-patterns.md) | Testing patterns and guidelines |
+| [Developer CLI Tools](docs/developer-cli-tools.md) | CLI tools for debugging and testing |
 
 ---
 
