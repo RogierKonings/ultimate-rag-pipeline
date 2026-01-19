@@ -3,11 +3,16 @@
 import uvicorn
 
 from config import RetrievalConfig
+from shared.observability.otel.tracer import setup_tracing, setup_auto_instrumentation
 
 
 def main():
     """Start the Retrieval Service."""
     config = RetrievalConfig()
+
+    # Initialize OpenTelemetry tracing and auto-instrumentation
+    setup_tracing(service_name="retrieval")
+    setup_auto_instrumentation()
 
     uvicorn.run(
         "api.main:app",

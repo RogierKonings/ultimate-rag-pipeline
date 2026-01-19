@@ -9,6 +9,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from config import get_config
+from shared.observability.otel.tracer import setup_auto_instrumentation
 
 
 def setup_telemetry(config) -> None:
@@ -36,8 +37,9 @@ def main() -> None:
     """Run the Orchestrator Service."""
     config = get_config()
 
-    # Setup telemetry
+    # Setup telemetry and auto-instrumentation
     setup_telemetry(config)
+    setup_auto_instrumentation()
 
     # Import app here to avoid circular imports
     from api.app import create_app
