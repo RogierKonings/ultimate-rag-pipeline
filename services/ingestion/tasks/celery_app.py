@@ -26,6 +26,7 @@ from celery import Celery
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 from pydantic import BaseModel
+from shared.observability.correlation import setup_celery_correlation_signals
 
 
 class CeleryConfig(BaseModel):
@@ -141,6 +142,9 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
 
 # Singleton app instance
 celery_app = create_celery_app()
+
+# Setup correlation ID propagation for distributed tracing (US-10.3.1)
+setup_celery_correlation_signals(celery_app)
 
 
 # Priority queue mapping

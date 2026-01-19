@@ -10,6 +10,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
+from shared.observability.correlation import CorrelationMiddleware
 from api.routes import (
     admin_router,
     documents_router,
@@ -105,6 +106,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     # Custom middleware (order matters: first added = outermost)
+    # CorrelationMiddleware goes first to set up context for logging
+    app.add_middleware(
+        CorrelationMiddleware,
+        service_name="ingestion-service",
+    )
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(TenantMiddleware)
 
