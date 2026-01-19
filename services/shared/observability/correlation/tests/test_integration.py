@@ -116,13 +116,12 @@ class TestCeleryCorrelationPropagation:
 class TestLogJoinability:
     """Tests to verify logs are joinable by request_id."""
 
-    @patch("correlation.middleware.structlog")
-    def test_logs_include_request_id(self, mock_structlog):
-        """All logs should include request_id for joinability."""
-        mock_contextvars = MagicMock()
-        mock_structlog.contextvars = mock_contextvars
-        mock_structlog.get_logger.return_value = MagicMock()
+    def test_logs_include_correlation_context(self, capfd):
+        """Logs should include correlation context for joinability.
 
+        This test verifies that the middleware properly binds correlation
+        context to structlog, making logs joinable by request_id.
+        """
         app = FastAPI()
         app.add_middleware(CorrelationMiddleware, service_name="test-service")
 
@@ -138,12 +137,14 @@ class TestLogJoinability:
 
         assert response.status_code == 200
 
-        # Verify structlog was bound with request_id
-        bind_calls = mock_contextvars.bind_contextvars.call_args_list
-        assert len(bind_calls) > 0
+        # Capture the log output
+        captured = capfd.readouterr()
 
-        bound_kwargs = bind_calls[0][1]
-        assert bound_kwargs.get("request_id") == "joinable-req-123"
+        # Verify logs include the request_id (proving structlog context binding)
+        assert "request_id=joinable-req-123" in captured.out
+        assert "trace_id=joinable-req-123" in captured.out
+        assert "request_started" in captured.out
+        assert "request_completed" in captured.out
 
 
 class TestEndToEndCorrelation:
