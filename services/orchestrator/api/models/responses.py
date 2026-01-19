@@ -77,6 +77,10 @@ class QueryResponse(BaseModel):
         latency_ms: Response latency in milliseconds.
         strategy_used: The retrieval strategy used (simple, rerank, etc.).
         verification: Answer verification result (if enabled).
+        retrieval_mode: The retrieval mode used (US-10.2.2).
+        context_quality: Quality of retrieved context (US-10.2.2).
+        components_available: Which retrieval components were available (US-10.2.2).
+        fallbacks_used: List of fallback strategies applied (US-10.2.2).
     """
 
     request_id: str = Field(..., description="Unique request identifier")
@@ -102,6 +106,23 @@ class QueryResponse(BaseModel):
     verification: VerificationInfo | None = Field(
         default=None,
         description="Answer verification result (CRAG-style)",
+    )
+    # Quality metadata (US-10.2.2)
+    retrieval_mode: str | None = Field(
+        default=None,
+        description="Retrieval mode used (hybrid_full, semantic_only, etc)",
+    )
+    context_quality: str | None = Field(
+        default=None,
+        description="Quality of retrieved context (full, partial, minimal)",
+    )
+    components_available: dict[str, bool] | None = Field(
+        default=None,
+        description="Which retrieval components were available",
+    )
+    fallbacks_used: list[str] = Field(
+        default_factory=list,
+        description="List of fallback strategies applied",
     )
 
 

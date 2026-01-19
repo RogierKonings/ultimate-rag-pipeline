@@ -37,11 +37,13 @@ class StartEventData(BaseModel):
         request_id: Unique identifier for this request.
         model: The model being used for generation.
         session_id: Optional session identifier for conversation tracking.
+        degradation: Optional degradation info if service is degraded (US-10.2.2).
     """
 
     request_id: str
     model: str
     session_id: str | None = None
+    degradation: dict[str, Any] | None = None  # {level, mode, message}
 
 
 class DeltaEventData(BaseModel):
@@ -73,11 +75,15 @@ class DoneEventData(BaseModel):
         usage: Token usage statistics with prompt_tokens,
             completion_tokens, and total_tokens.
         latency_ms: Total response latency in milliseconds.
+        context_quality: Quality of retrieved context (US-10.2.2).
+        retrieval_mode: The retrieval mode used (US-10.2.2).
     """
 
     request_id: str
     usage: dict[str, int]
     latency_ms: float
+    context_quality: str = "full"  # "full", "partial", "minimal"
+    retrieval_mode: str = "hybrid_full"  # The retrieval mode used
 
 
 class ErrorEventData(BaseModel):
@@ -155,6 +161,7 @@ class StreamEvent(BaseModel):
         request_id: str,
         model: str,
         session_id: str | None = None,
+        degradation: dict[str, Any] | None = None,
     ) -> "StreamEvent":
         """Create a start event.
 
@@ -162,6 +169,7 @@ class StreamEvent(BaseModel):
             request_id: Unique request identifier.
             model: The model being used.
             session_id: Optional session identifier.
+            degradation: Optional degradation info (US-10.2.2).
 
         Returns:
             A new StreamEvent with START type.
@@ -170,6 +178,7 @@ class StreamEvent(BaseModel):
             request_id=request_id,
             model=model,
             session_id=session_id,
+            degradation=degradation,
         )
         return cls(
             event=StreamEventType.START,
@@ -223,6 +232,8 @@ class StreamEvent(BaseModel):
         request_id: str,
         usage: dict[str, int],
         latency_ms: float,
+        context_quality: str = "full",
+        retrieval_mode: str = "hybrid_full",
     ) -> "StreamEvent":
         """Create a done event.
 
@@ -230,6 +241,8 @@ class StreamEvent(BaseModel):
             request_id: Unique request identifier.
             usage: Token usage statistics.
             latency_ms: Total latency in milliseconds.
+            context_quality: Quality of retrieved context (US-10.2.2).
+            retrieval_mode: The retrieval mode used (US-10.2.2).
 
         Returns:
             A new StreamEvent with DONE type.
@@ -238,6 +251,8 @@ class StreamEvent(BaseModel):
             request_id=request_id,
             usage=usage,
             latency_ms=latency_ms,
+            context_quality=context_quality,
+            retrieval_mode=retrieval_mode,
         )
         return cls(
             event=StreamEventType.DONE,
