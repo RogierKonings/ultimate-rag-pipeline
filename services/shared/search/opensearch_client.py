@@ -23,6 +23,8 @@ class OpenSearchClient:
         use_ssl: bool | None = None,
         verify_certs: bool | None = None,
         ca_cert_path: str | None = None,
+        client_cert_path: str | None = None,
+        client_key_path: str | None = None,
     ):
         """Initialize OpenSearch client.
 
@@ -34,6 +36,8 @@ class OpenSearchClient:
             use_ssl: Enable SSL/TLS. Defaults to OPENSEARCH_USE_SSL env var.
             verify_certs: Verify SSL certificates. Defaults to OPENSEARCH_VERIFY_CERTS env var.
             ca_cert_path: Path to CA certificate. Defaults to OPENSEARCH_CA_CERT env var.
+            client_cert_path: Path to client certificate for mTLS. Defaults to OPENSEARCH_CLIENT_CERT env var.
+            client_key_path: Path to client key for mTLS. Defaults to OPENSEARCH_CLIENT_KEY env var.
         """
         self.url = url or os.getenv("OPENSEARCH_URL", "http://localhost:9200")
         self.index_name = index_name or os.getenv("OPENSEARCH_INDEX", "documents")
@@ -55,10 +59,19 @@ class OpenSearchClient:
         )
         self._ca_cert_path = ca_cert_path or os.getenv("OPENSEARCH_CA_CERT")
 
+        # Client certificate authentication (mTLS)
+        self._client_cert_path = client_cert_path or os.getenv("OPENSEARCH_CLIENT_CERT")
+        self._client_key_path = client_key_path or os.getenv("OPENSEARCH_CLIENT_KEY")
+
         self._client: OpenSearch | None = None
 
     def _create_ssl_context(self) -> ssl.SSLContext | None:
         """Create SSL context for secure connections.
+
+        Supports:
+        - CA certificate verification
+        - Client certificate authentication (mTLS)
+        - Environment-based verification mode
 
         Returns:
             SSL context configured for OpenSearch, or None if SSL disabled.
@@ -67,13 +80,34 @@ class OpenSearchClient:
             return None
 
         ssl_context = ssl.create_default_context()
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
 
+        # Load CA certificate for server verification
         if self._ca_cert_path and Path(self._ca_cert_path).exists():
             ssl_context.load_verify_locations(self._ca_cert_path)
 
+        # Load client certificate for mutual TLS authentication
+        if (
+            self._client_cert_path
+            and self._client_key_path
+            and Path(self._client_cert_path).exists()
+            and Path(self._client_key_path).exists()
+        ):
+            ssl_context.load_cert_chain(
+                certfile=self._client_cert_path,
+                keyfile=self._client_key_path,
+            )
+
+        # Configure verification based on settings
         if not self._verify_certs:
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
+        else:
+            # In production with verification enabled, enforce strict checking
+            environment = os.getenv("ENVIRONMENT", "development")
+            if environment == "production":
+                ssl_context.check_hostname = True
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
 
         return ssl_context
 
@@ -217,17 +251,34 @@ class OpenSearchClient:
 
         return response.get("deleted", 0)
 
-    def health_check(self) -> bool:
-        """Check OpenSearch connectivity.
+    def health_check(self) -> dict:
+        """Check OpenSearch connectivity and return health status.
 
         Returns:
-            True if cluster is healthy (green or yellow), False otherwise.
+            Dict with 'healthy' boolean, cluster status, 'ssl_enabled', and latency.
         """
+        import time
+
+        start = time.monotonic()
         try:
             health = self.client.cluster.health()
-            return health["status"] in ["green", "yellow"]
-        except Exception:
-            return False
+            latency_ms = (time.monotonic() - start) * 1000
+
+            return {
+                "healthy": health["status"] in ["green", "yellow"],
+                "cluster_status": health["status"],
+                "ssl_enabled": self._use_ssl,
+                "latency_ms": round(latency_ms, 2),
+            }
+        except Exception as e:
+            latency_ms = (time.monotonic() - start) * 1000
+            return {
+                "healthy": False,
+                "cluster_status": "unavailable",
+                "ssl_enabled": self._use_ssl,
+                "latency_ms": round(latency_ms, 2),
+                "error": str(e),
+            }
 
     async def get_document_count(self) -> int:
         """Get the total number of documents in the index.

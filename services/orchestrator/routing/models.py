@@ -22,6 +22,11 @@ class RoutingStrategy(str, Enum):
     COMPLEX = "complex"  # Multi-step retrieval
     NO_RETRIEVAL = "no_retrieval"  # Direct LLM response
 
+    # Multi-hop strategies (US-10.4.3)
+    MULTI_HOP = "multi_hop"  # Decompose into sequential sub-questions
+    AGGREGATION = "aggregation"  # Collect and summarize multiple sources
+    COMPARISON = "comparison"  # Compare multiple entities  # Direct LLM response
+
 
 class RoutingResult(BaseModel):
     """Result of query routing decision."""

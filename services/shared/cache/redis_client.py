@@ -14,22 +14,44 @@ from redis.asyncio.sentinel import Sentinel
 def get_ssl_context() -> ssl.SSLContext | None:
     """Create SSL context for Redis TLS connections.
 
+    Environment variables:
+        REDIS_TLS_ENABLED: Enable TLS (default: false)
+        REDIS_TLS_CA_CERT: Path to CA certificate
+        REDIS_TLS_CERT: Path to client certificate (for mTLS)
+        REDIS_TLS_KEY: Path to client key (for mTLS)
+        ENVIRONMENT: When set to "production", enables strict certificate verification
+
     Returns:
-        SSL context if TLS is enabled and certs exist, None otherwise.
+        SSL context if TLS is enabled, None otherwise.
     """
     tls_enabled = os.getenv("REDIS_TLS_ENABLED", "false").lower() == "true"
     if not tls_enabled:
         return None
 
-    ca_cert = os.getenv("REDIS_TLS_CA_CERT", "/tls/ca.crt")
-    client_cert = os.getenv("REDIS_TLS_CERT", "/tls/tls.crt")
-    client_key = os.getenv("REDIS_TLS_KEY", "/tls/tls.key")
-
-    ssl_context = ssl.create_default_context(cafile=ca_cert)
+    ssl_context = ssl.create_default_context()
     ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
 
+    # Load CA certificate if provided
+    ca_cert = os.getenv("REDIS_TLS_CA_CERT", "/tls/ca.crt")
+    if ca_cert and Path(ca_cert).exists():
+        ssl_context.load_verify_locations(ca_cert)
+
+    # Load client certificate for mTLS if provided
+    client_cert = os.getenv("REDIS_TLS_CERT", "/tls/tls.crt")
+    client_key = os.getenv("REDIS_TLS_KEY", "/tls/tls.key")
     if Path(client_cert).exists() and Path(client_key).exists():
         ssl_context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+
+    # Configure verification based on environment
+    environment = os.getenv("ENVIRONMENT", "development")
+    if environment == "production":
+        # Strict verification in production
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+    else:
+        # Relaxed verification in development (allows self-signed certs)
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
 
     return ssl_context
 
@@ -264,17 +286,32 @@ class RedisCache:
         content = ":".join(str(arg) for arg in args)
         return hashlib.md5(content.encode()).hexdigest()[:16]  # noqa: S324
 
-    async def health_check(self) -> bool:
-        """Check Redis connectivity.
+    async def health_check(self) -> dict:
+        """Check Redis connectivity and return health status.
 
         Returns:
-            True if Redis is reachable, False otherwise.
+            Dict with 'healthy' boolean, 'tls_enabled', and latency.
         """
+        import time
+
+        start = time.monotonic()
         try:
             await self.redis.ping()
-            return True
-        except Exception:
-            return False
+            latency_ms = (time.monotonic() - start) * 1000
+
+            return {
+                "healthy": True,
+                "tls_enabled": self._ssl_context is not None,
+                "latency_ms": round(latency_ms, 2),
+            }
+        except Exception as e:
+            latency_ms = (time.monotonic() - start) * 1000
+            return {
+                "healthy": False,
+                "tls_enabled": self._ssl_context is not None,
+                "latency_ms": round(latency_ms, 2),
+                "error": str(e),
+            }
 
     async def close(self) -> None:
         """Close Redis connection."""

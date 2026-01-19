@@ -117,8 +117,8 @@ class TestRoutingNode:
         assert result["strategy"] == "no_retrieval"
 
     @pytest.mark.asyncio
-    async def test_routes_complex_query(self):
-        """Test complex query routes to 'complex' strategy."""
+    async def test_routes_comparison_query(self):
+        """Test comparison query routes to 'comparison' strategy (US-10.4.3)."""
         state = create_initial_state(
             request_id=str(uuid4()),
             query="Compare and contrast Python and Java programming languages",
@@ -126,7 +126,9 @@ class TestRoutingNode:
 
         result = await routing_node(state)
 
-        assert result["strategy"] == "complex"
+        # Now routes to 'comparison' instead of 'complex' per US-10.4.3
+        assert result["strategy"] == "comparison"
+        assert result.get("multi_hop_type") == "comparison"
 
     @pytest.mark.asyncio
     async def test_routing_records_timing(self):

@@ -85,3 +85,63 @@ rag_citations_per_response = Histogram(
     ["tenant_id"],
     buckets=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 )
+
+# =============================================================================
+# Multi-Hop Query Metrics (US-10.4.3)
+# =============================================================================
+
+rag_multi_hop_queries_total = Counter(
+    "rag_multi_hop_queries_total",
+    "Total multi-hop queries by type",
+    ["multi_hop_type", "tenant_id"],  # comparison, aggregation, sequential
+)
+
+rag_sub_questions_count = Histogram(
+    "rag_sub_questions_count",
+    "Number of sub-questions generated per multi-hop query",
+    ["multi_hop_type"],
+    buckets=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+)
+
+rag_decomposition_latency = Histogram(
+    "rag_decomposition_latency_seconds",
+    "Latency for query decomposition",
+    ["multi_hop_type"],
+    buckets=[0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0],
+)
+
+
+def record_multi_hop_query(
+    multi_hop_type: str,
+    tenant_id: str | None = None,
+) -> None:
+    """Record a multi-hop query.
+
+    Args:
+        multi_hop_type: Type of multi-hop query (comparison, aggregation, sequential)
+        tenant_id: Optional tenant identifier
+    """
+    rag_multi_hop_queries_total.labels(
+        multi_hop_type=multi_hop_type,
+        tenant_id=tenant_id or "unknown",
+    ).inc()
+
+
+def record_decomposition(
+    multi_hop_type: str,
+    sub_question_count: int,
+    latency_seconds: float,
+) -> None:
+    """Record decomposition metrics.
+
+    Args:
+        multi_hop_type: Type of multi-hop query
+        sub_question_count: Number of sub-questions generated
+        latency_seconds: Time taken for decomposition
+    """
+    rag_sub_questions_count.labels(multi_hop_type=multi_hop_type).observe(
+        sub_question_count,
+    )
+    rag_decomposition_latency.labels(multi_hop_type=multi_hop_type).observe(
+        latency_seconds,
+    )

@@ -37,7 +37,8 @@ class RAGState(TypedDict, total=False):
     # =========================================================================
     # Routing Fields
     # =========================================================================
-    strategy: str  # "simple", "complex", "no_retrieval"
+    strategy: str  # "simple", "complex", "no_retrieval", "multi_hop", "comparison", "aggregation"
+    multi_hop_type: str | None  # Type of multi-hop query: "comparison", "aggregation", "sequential"
 
     # =========================================================================
     # Retrieval Fields
@@ -46,9 +47,10 @@ class RAGState(TypedDict, total=False):
     context: str  # Formatted context string for prompt
 
     # =========================================================================
-    # Multi-Retrieval Fields (US-10.4.4)
+    # Multi-Retrieval Fields (US-10.4.4) and Decomposition Fields (US-10.4.3)
     # =========================================================================
     sub_questions: list[str]  # Decomposed sub-questions from query
+    original_query: str | None  # Original query before decomposition (US-10.4.3)
     sub_question_mapping: dict  # Maps chunk_id -> list of sub-questions that retrieved it
     retrieval_stats: dict  # {sub_questions, total_retrieved, after_dedup, latency_ms}
 
@@ -120,11 +122,13 @@ def create_initial_state(
         options=options or {},
         # Routing
         strategy="simple",  # Default strategy
+        multi_hop_type=None,  # US-10.4.3
         # Retrieval
         documents=[],
         context="",
-        # Multi-retrieval (US-10.4.4)
+        # Multi-retrieval (US-10.4.4) and Decomposition (US-10.4.3)
         sub_questions=[],
+        original_query=None,  # US-10.4.3
         sub_question_mapping={},
         retrieval_stats={},
         # Generation

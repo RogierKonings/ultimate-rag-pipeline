@@ -27,6 +27,8 @@ class SensitiveDataFilter(logging.Filter):
         "jwt": re.compile(r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"),
         # Bearer tokens
         "bearer": re.compile(r"Bearer\s+[A-Za-z0-9_-]+", re.IGNORECASE),
+        # Basic auth header
+        "basic_auth": re.compile(r"Basic\s+[A-Za-z0-9+/=]+", re.IGNORECASE),
         # API keys (various formats)
         "api_key": re.compile(
             r"(?:api[_-]?key|apikey)[=:]\s*['\"]?([A-Za-z0-9_-]{20,})['\"]?",
@@ -45,6 +47,30 @@ class SensitiveDataFilter(logging.Filter):
             r"(?:secret|password|passwd|pwd)[=:]\s*['\"]?([^\s'\"]+)['\"]?",
             re.IGNORECASE,
         ),
+        # Database connection URLs with credentials (postgresql://user:pass@host)
+        "db_url_creds": re.compile(r"://[^:]+:[^@]+@", re.IGNORECASE),
+        # Redis URLs with password
+        "redis_url_creds": re.compile(r"redis://[^:]*:[^@]+@", re.IGNORECASE),
+        # Generic password=value patterns
+        "password_param": re.compile(r"password=[\w\-]+", re.IGNORECASE),
+        # Generic pwd=value patterns
+        "pwd_param": re.compile(r"pwd=[\w\-]+", re.IGNORECASE),
+        # Generic secret=value patterns
+        "secret_param": re.compile(r"secret=[\w\-]+", re.IGNORECASE),
+        # Generic token=value patterns
+        "token_param": re.compile(r"token=[\w\-\.]+", re.IGNORECASE),
+    }
+
+    # Replacement patterns for specific matchers that need partial preservation
+    REPLACEMENT_PATTERNS = {
+        "db_url_creds": "://***:***@",
+        "redis_url_creds": "redis://***:***@",
+        "password_param": "password=***",
+        "pwd_param": "pwd=***",
+        "secret_param": "secret=***",
+        "token_param": "token=***",
+        "bearer": "Bearer ***",
+        "basic_auth": "Basic ***",
     }
 
     def __init__(
@@ -165,7 +191,12 @@ class SensitiveDataFilter(logging.Filter):
         return value
 
     def _mask_string(self, text: str) -> str:
-        """Mask sensitive patterns in a string."""
+        """Mask sensitive patterns in a string.
+
+        Uses specific replacement patterns for certain matchers to preserve
+        context while hiding sensitive values (e.g., 'password=***' instead
+        of just '***').
+        """
         if not text:
             return text
 
@@ -175,7 +206,10 @@ class SensitiveDataFilter(logging.Filter):
         for pattern_name, pattern in self.PATTERNS.items():
             if pattern_name == "email" and not self.mask_email:
                 continue
-            result = pattern.sub(self.mask_pattern, result)
+
+            # Use specific replacement if available, otherwise use default mask
+            replacement = self.REPLACEMENT_PATTERNS.get(pattern_name, self.mask_pattern)
+            result = pattern.sub(replacement, result)
 
         return result
 

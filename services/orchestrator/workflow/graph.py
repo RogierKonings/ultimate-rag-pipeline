@@ -10,6 +10,7 @@ from langgraph.graph import END, StateGraph
 from workflow.nodes import (
     cache_check_node,
     cache_store_node,
+    decomposition_node,
     generation_node,
     input_validation_node,
     multi_retrieval_node,
@@ -21,10 +22,13 @@ from workflow.nodes import (
 )
 from workflow.state import RAGState
 
+# Multi-hop strategies that require decomposition (US-10.4.3)
+MULTI_HOP_STRATEGIES = {"multi_hop", "comparison", "aggregation"}
+
 
 def _route_after_routing(
     state: RAGState,
-) -> Literal["retrieval", "multi_retrieval", "prompt_building"]:
+) -> Literal["retrieval", "decomposition", "prompt_building"]:
     """
     Route based on query strategy after routing node.
 
@@ -32,18 +36,21 @@ def _route_after_routing(
         state: Current RAGState with strategy set
 
     Returns:
-        Next node to execute: "retrieval", "multi_retrieval", or "prompt_building"
+        Next node to execute: "retrieval", "decomposition", or "prompt_building"
     """
     strategy = state.get("strategy", "simple")
-    sub_questions = state.get("sub_questions", [])
 
     if strategy == "no_retrieval":
         # Skip retrieval for no_retrieval strategy
         return "prompt_building"
 
-    # Use multi_retrieval for complex queries with sub-questions (US-10.4.4)
-    if strategy == "complex" or len(sub_questions) > 1:
-        return "multi_retrieval"
+    # Route multi-hop strategies to decomposition first (US-10.4.3)
+    if strategy in MULTI_HOP_STRATEGIES:
+        return "decomposition"
+
+    # Complex queries also go to decomposition for potential sub-question generation
+    if strategy == "complex":
+        return "decomposition"
 
     # Default: simple retrieval
     return "retrieval"
@@ -117,20 +124,21 @@ def build_rag_workflow() -> StateGraph:
     The workflow consists of the following stages:
     1. input_validation - Check input for safety issues
     2. cache_check - Check answer cache for instant response (US-10.5.3)
-    3. routing - Determine handling strategy (simple/complex/no_retrieval)
-    4. retrieval - Fetch relevant context (conditional on strategy)
+    3. routing - Determine handling strategy (simple/complex/no_retrieval/multi_hop/etc.)
+    4. decomposition - Break complex queries into sub-questions (US-10.4.3)
+    5. retrieval - Fetch relevant context (conditional on strategy)
        OR multi_retrieval - Parallel retrieval for sub-questions (US-10.4.4)
-    5. prompt_building - Construct the LLM prompt
-    6. generation - Generate response with LLM
-    7. cache_store - Store response in cache for future hits (US-10.5.3)
-    8. verification - Verify answer is grounded in context (CRAG-style)
-    9. output_validation - Check output for safety
+    6. prompt_building - Construct the LLM prompt
+    7. generation - Generate response with LLM
+    8. cache_store - Store response in cache for future hits (US-10.5.3)
+    9. verification - Verify answer is grounded in context (CRAG-style)
+    10. output_validation - Check output for safety
 
     Conditional edges:
     - After input_validation: Skip to output if error detected
     - After cache_check: Skip to output if cache hit (US-10.5.3)
     - After routing: Skip retrieval for no_retrieval strategy,
-                     use multi_retrieval for complex strategy (US-10.4.4)
+                     go to decomposition for multi-hop/complex (US-10.4.3)
 
     Returns:
         Compiled StateGraph ready for execution
@@ -142,6 +150,7 @@ def build_rag_workflow() -> StateGraph:
     graph.add_node("input_validation", input_validation_node)
     graph.add_node("cache_check", cache_check_node)
     graph.add_node("routing", routing_node)
+    graph.add_node("decomposition", decomposition_node)  # US-10.4.3
     graph.add_node("retrieval", retrieval_node)
     graph.add_node("multi_retrieval", multi_retrieval_node)  # US-10.4.4
     graph.add_node("prompt_building", prompt_building_node)
@@ -179,10 +188,13 @@ def build_rag_workflow() -> StateGraph:
         _route_after_routing,
         {
             "retrieval": "retrieval",
-            "multi_retrieval": "multi_retrieval",  # US-10.4.4
+            "decomposition": "decomposition",  # US-10.4.3: multi-hop/complex
             "prompt_building": "prompt_building",
         },
     )
+
+    # Decomposition -> Multi-Retrieval (US-10.4.3)
+    graph.add_edge("decomposition", "multi_retrieval")
 
     # Retrieval -> Prompt Building
     graph.add_edge("retrieval", "prompt_building")
