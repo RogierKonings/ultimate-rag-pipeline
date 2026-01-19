@@ -22,6 +22,7 @@ from resilience import (
     RetrievalDegradationManager,
     reset_degradation_manager,
 )
+from shared.observability.correlation import CorrelationMiddleware
 from retrieval.video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
@@ -203,6 +204,12 @@ def create_app(config: RetrievalConfig | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Correlation ID middleware for distributed tracing (US-10.3.1)
+    app.add_middleware(
+        CorrelationMiddleware,
+        service_name="retrieval-service",
     )
 
     # Request timing middleware
