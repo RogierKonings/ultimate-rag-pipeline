@@ -9,6 +9,10 @@ import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
 from search.models import SearchResultItem
+from shared.config.defaults import get_retrieval_config
+
+# Load shared defaults once at module load
+_retrieval_defaults = get_retrieval_config()
 
 
 class FusionMethod(str, Enum):
@@ -37,22 +41,34 @@ class FusedResult(BaseModel):
 
 
 class HybridSearchConfig(BaseModel):
-    """Configuration for hybrid search."""
+    """Configuration for hybrid search.
 
-    # Weights
-    semantic_weight: float = Field(default=0.7, ge=0.0, le=1.0)
-    keyword_weight: float = Field(default=0.3, ge=0.0, le=1.0)
+    Default values are loaded from shared.config.defaults.RetrievalConfig
+    to ensure consistency across services.
+    """
+
+    # Weights (from shared config)
+    semantic_weight: float = Field(
+        default=_retrieval_defaults.semantic_weight, ge=0.0, le=1.0
+    )
+    keyword_weight: float = Field(
+        default=_retrieval_defaults.keyword_weight, ge=0.0, le=1.0
+    )
 
     # Fusion method
     fusion_method: FusionMethod = FusionMethod.RRF
 
-    # RRF parameters
-    rrf_k: int = 60  # Constant to prevent high-ranked items from dominating
+    # RRF parameters (from shared config)
+    rrf_k: int = _retrieval_defaults.rrf_k
 
-    # Result limits
-    top_k: int = Field(default=10, ge=1, le=100)
-    semantic_top_k: int = Field(default=50, ge=1, le=200)  # Fetch more for fusion
-    keyword_top_k: int = Field(default=50, ge=1, le=200)
+    # Result limits (from shared config)
+    top_k: int = Field(default=_retrieval_defaults.rerank_top_k, ge=1, le=100)
+    semantic_top_k: int = Field(
+        default=_retrieval_defaults.semantic_top_k, ge=1, le=200
+    )
+    keyword_top_k: int = Field(
+        default=_retrieval_defaults.keyword_top_k, ge=1, le=200
+    )
 
     # Score thresholds
     min_score: float = 0.0

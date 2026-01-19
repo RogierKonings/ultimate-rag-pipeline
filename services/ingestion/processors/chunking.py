@@ -78,22 +78,8 @@ class ChunkingResult(BaseModel):
 # Configuration
 # =============================================================================
 
-
-class ChunkingConfig(BaseModel):
-    """Configuration for chunking strategies."""
-
-    target_tokens: int = 300  # Target chunk size (architecture default)
-    max_tokens: int = 512  # Maximum chunk size (hard limit)
-    chunk_overlap: int = 50  # tokens (architecture default)
-    min_chunk_size: int = 50  # Minimum tokens per chunk
-    tokenizer: str = "cl100k_base"  # OpenAI tokenizer (compatible with BGE)
-    preserve_sentences: bool = True
-    preserve_paragraphs: bool = False
-
-    @property
-    def chunk_size(self) -> int:
-        """Alias for target_tokens for backward compatibility."""
-        return self.target_tokens
+# Import shared configuration as the base
+from shared.config.defaults import ChunkingConfig
 
 
 class SemanticChunkerConfig(ChunkingConfig):

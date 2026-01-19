@@ -31,12 +31,34 @@ NO_CONTEXT_PROMPT_TEMPLATE = """User Question: {query}
 
 Please provide a helpful response."""
 
+# Degradation disclaimers (US-10.2.2)
+DEGRADATION_DISCLAIMERS = {
+    "semantic_only": (
+        "\n\nNote: The search results below were obtained using semantic similarity only. "
+        "Keyword matching was unavailable, so some exact term matches may be missing."
+    ),
+    "keyword_only": (
+        "\n\nNote: The search results below were obtained using keyword matching only. "
+        "Semantic search was unavailable, so conceptually similar content may be missing."
+    ),
+    "hybrid_no_rerank": (
+        "\n\nNote: Search results were not reranked for relevance. "
+        "Results may not be in optimal order."
+    ),
+    "minimal": (
+        "\n\nIMPORTANT: Search capabilities are significantly degraded. "
+        "The context provided may be incomplete or less relevant than usual. "
+        "Please indicate if the available information is insufficient to answer."
+    ),
+}
+
 
 def _build_messages(
     query: str,
     context: str,
     strategy: str,
     history: list[dict] | None = None,
+    retrieval_quality: dict | None = None,
 ) -> list[dict]:
     """
     Build the message list for LLM generation.
@@ -46,11 +68,22 @@ def _build_messages(
         context: Retrieved context (may be empty)
         strategy: Routing strategy
         history: Optional conversation history
+        retrieval_quality: Optional retrieval quality info for degradation disclaimers
 
     Returns:
         List of message dictionaries for LLM
     """
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    # Build system prompt with optional degradation disclaimer
+    system_content = SYSTEM_PROMPT
+
+    if retrieval_quality:
+        degradation_level = retrieval_quality.get("degradation_level", "normal")
+        mode = retrieval_quality.get("mode", "hybrid_full")
+
+        if degradation_level != "normal" and mode in DEGRADATION_DISCLAIMERS:
+            system_content += DEGRADATION_DISCLAIMERS[mode]
+
+    messages = [{"role": "system", "content": system_content}]
 
     # Add conversation history if available
     if history:
@@ -90,12 +123,13 @@ async def prompt_building_node(state: "RAGState") -> "RAGState":
     context = state.get("context", "")
     strategy = state.get("strategy", "simple")
     timing = dict(state.get("timing", {}))
+    retrieval_quality = state.get("retrieval_quality")
 
     # Note: History handling would come from session/memory in production
     history: list[dict] = []
 
-    # Build messages for LLM
-    messages = _build_messages(query, context, strategy, history)
+    # Build messages for LLM (with degradation-aware prompt adjustments)
+    messages = _build_messages(query, context, strategy, history, retrieval_quality)
 
     timing["prompt_building"] = (time.time() - start) * 1000
 

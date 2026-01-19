@@ -48,6 +48,18 @@ from shared.config.validation import (
     validate_on_startup,
     validate_timeout_cascade,
 )
+from shared.config.defaults import (
+    # Configuration classes
+    ChunkingConfig,
+    EmbeddingConfig,
+    RetrievalConfig,
+    # Factory functions
+    get_chunking_config,
+    get_embedding_config,
+    get_retrieval_config,
+    # Validation
+    validate_all_configs,
+)
 
 __all__ = [
     # Core class
@@ -81,4 +93,12 @@ __all__ = [
     "ConfigurationError",
     "validate_timeout_cascade",
     "validate_on_startup",
+    # Shared defaults (US-10.6.2)
+    "ChunkingConfig",
+    "EmbeddingConfig",
+    "RetrievalConfig",
+    "get_chunking_config",
+    "get_embedding_config",
+    "get_retrieval_config",
+    "validate_all_configs",
 ]
