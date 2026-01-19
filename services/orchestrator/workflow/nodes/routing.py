@@ -10,8 +10,14 @@ import re
 import time
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
+from shared.observability.otel.span_names import SpanNames
+
 if TYPE_CHECKING:
     from workflow.state import RAGState
+
+tracer = trace.get_tracer(__name__)
 
 
 # Simple heuristics for routing decisions (stub implementation)
@@ -78,18 +84,28 @@ async def routing_node(state: "RAGState") -> "RAGState":
     Returns:
         Updated RAGState with strategy set
     """
-    start = time.time()
+    with tracer.start_as_current_span(SpanNames.ORCHESTRATOR_ROUTING) as span:
+        start = time.time()
 
-    query = state.get("query", "")
-    timing = dict(state.get("timing", {}))
+        query = state.get("query", "")
+        tenant_id = state.get("tenant_id")
+        timing = dict(state.get("timing", {}))
 
-    # Classify the query
-    strategy = _classify_query(query)
+        # Set span attributes for query context
+        span.set_attribute("orchestrator.query_length", len(query) if query else 0)
+        if tenant_id:
+            span.set_attribute("orchestrator.tenant_id", tenant_id)
 
-    timing["routing"] = (time.time() - start) * 1000
+        # Classify the query
+        strategy = _classify_query(query)
 
-    return {
-        **state,
-        "strategy": strategy,
-        "timing": timing,
-    }
+        # Set strategy attribute on span
+        span.set_attribute("orchestrator.strategy", strategy)
+
+        timing["routing"] = (time.time() - start) * 1000
+
+        return {
+            **state,
+            "strategy": strategy,
+            "timing": timing,
+        }
