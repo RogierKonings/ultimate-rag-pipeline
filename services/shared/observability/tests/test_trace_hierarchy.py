@@ -9,37 +9,26 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 
-# Global provider/exporter for tests - avoids TracerProvider override issues
-_test_provider = None
-_test_exporter = None
-
-
-def _get_test_tracer_setup():
-    """Get or create test tracer setup (singleton to avoid provider override)."""
-    global _test_provider, _test_exporter
-    if _test_provider is None:
-        _test_provider = TracerProvider()
-        _test_exporter = InMemorySpanExporter()
-        _test_provider.add_span_processor(SimpleSpanProcessor(_test_exporter))
-        trace.set_tracer_provider(_test_provider)
-    return _test_provider, _test_exporter
-
-
 class TestTraceHierarchy:
     """Tests for proper span parent-child relationships."""
 
     @pytest.fixture
-    def tracer_provider(self):
-        """Create test tracer provider with in-memory exporter."""
-        provider, exporter = _get_test_tracer_setup()
-        exporter.clear()  # Clear any previous spans
-        yield provider, exporter
+    def tracer_with_exporter(self):
+        """Create a fresh tracer provider with in-memory exporter for this test.
+
+        Uses a fresh TracerProvider with its own exporter, getting a tracer
+        directly from it rather than relying on the global provider.
+        """
+        provider = TracerProvider()
+        exporter = InMemorySpanExporter()
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("test")
+        yield provider, tracer, exporter
         exporter.clear()
 
-    def test_nested_spans_have_correct_parent_child(self, tracer_provider):
+    def test_nested_spans_have_correct_parent_child(self, tracer_with_exporter):
         """Test that nested spans form correct hierarchy."""
-        provider, exporter = tracer_provider
-        tracer = trace.get_tracer("test")
+        provider, tracer, exporter = tracer_with_exporter
 
         with tracer.start_as_current_span("parent") as parent_span:
             with tracer.start_as_current_span("child") as child_span:
@@ -65,35 +54,46 @@ class TestTraceHierarchy:
         assert "opensearch" in SpanNames.OPENSEARCH_QUERY
 
     @pytest.mark.asyncio
-    async def test_traced_client_creates_child_span(self, tracer_provider):
+    async def test_traced_client_creates_child_span(self, tracer_with_exporter):
         """Test TracedQdrantClient creates span as child of current."""
-        provider, exporter = tracer_provider
+        provider, tracer, exporter = tracer_with_exporter
 
-        with patch("qdrant_client.AsyncQdrantClient"):
-            from shared.observability.clients.traced_qdrant import TracedQdrantClient
+        # Set this provider as global for the duration of the test
+        # so that TracedQdrantClient uses it
+        original_provider = trace.get_tracer_provider()
+        trace.set_tracer_provider(provider)
 
-            mock_client = MagicMock()
+        try:
+            with patch("qdrant_client.AsyncQdrantClient"):
+                from shared.observability.clients.traced_qdrant import TracedQdrantClient
 
-            # Create async mock that returns immediately
-            async def mock_query(*args, **kwargs):
-                return MagicMock(points=[])
+                mock_client = MagicMock()
 
-            mock_client.query_points = mock_query
+                # Create async mock that returns immediately
+                async def mock_query(*args, **kwargs):
+                    return MagicMock(points=[])
 
-            traced = TracedQdrantClient(mock_client, "test_collection")
+                mock_client.query_points = mock_query
 
-            # Create parent span and call traced client
-            tracer = trace.get_tracer("test")
-            with tracer.start_as_current_span("parent_operation"):
-                await traced.query_points(query=[0.1, 0.2], limit=10)
+                traced = TracedQdrantClient(mock_client, "test_collection")
 
-        spans = exporter.get_finished_spans()
-        span_names = [s.name for s in spans]
+                # Create parent span and call traced client
+                with tracer.start_as_current_span("parent_operation"):
+                    await traced.query_points(query=[0.1, 0.2], limit=10)
 
-        assert "parent_operation" in span_names
-        assert "qdrant.query.search" in span_names
+            spans = exporter.get_finished_spans()
+            span_names = [s.name for s in spans]
 
-        # Verify parent-child relationship
-        qdrant_span = next(s for s in spans if s.name == "qdrant.query.search")
-        parent_span = next(s for s in spans if s.name == "parent_operation")
-        assert qdrant_span.parent.span_id == parent_span.context.span_id
+            assert "parent_operation" in span_names
+            assert "qdrant.query.search" in span_names
+
+            # Verify parent-child relationship
+            qdrant_span = next(s for s in spans if s.name == "qdrant.query.search")
+            parent_span = next(s for s in spans if s.name == "parent_operation")
+            assert qdrant_span.parent.span_id == parent_span.context.span_id
+        finally:
+            # Restore original provider (if possible - may fail if already set)
+            try:
+                trace.set_tracer_provider(original_provider)
+            except Exception:
+                pass  # Ignore if we can't reset
