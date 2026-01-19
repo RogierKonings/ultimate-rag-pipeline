@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from config import OrchestratorConfig
+from shared.observability.correlation import get_correlation_context
 
 from .exceptions import (
     AuthenticationError,
@@ -169,6 +170,12 @@ class ModelGateway:
         headers = {"Content-Type": "application/json"}
         if model_config.api_key:
             headers["Authorization"] = f"Bearer {model_config.api_key}"
+
+        # Add correlation headers for distributed tracing (US-10.3.1)
+        ctx = get_correlation_context()
+        if ctx:
+            headers.update(ctx.to_headers())
+
         return headers
 
     def _map_http_error(self, error: httpx.HTTPStatusError) -> ModelGatewayError:

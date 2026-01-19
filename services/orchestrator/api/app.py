@@ -16,6 +16,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from shared.config import validate_on_startup
+from shared.observability.correlation import CorrelationMiddleware
 
 from config import OrchestratorConfig, get_config
 
@@ -165,61 +166,12 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Add request logging middleware
-    @app.middleware("http")
-    async def log_requests(request: Request, call_next):
-        """Log all incoming requests with timing information."""
-        start_time = time.perf_counter()
-        request_id = request.headers.get("X-Request-ID", "")
-
-        # Log request
-        logger.info(
-            f"Request started: {request.method} {request.url.path}",
-            extra={
-                "request_id": request_id,
-                "method": request.method,
-                "path": request.url.path,
-            },
-        )
-
-        try:
-            response = await call_next(request)
-            duration_ms = (time.perf_counter() - start_time) * 1000
-
-            # Log response
-            logger.info(
-                f"Request completed: {request.method} {request.url.path} "
-                f"status={response.status_code} duration={duration_ms:.2f}ms",
-                extra={
-                    "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "status_code": response.status_code,
-                    "duration_ms": duration_ms,
-                },
-            )
-
-            # Add request ID to response headers
-            if request_id:
-                response.headers["X-Request-ID"] = request_id
-
-            return response
-
-        except Exception as e:
-            duration_ms = (time.perf_counter() - start_time) * 1000
-            logger.error(
-                f"Request failed: {request.method} {request.url.path} "
-                f"error={str(e)} duration={duration_ms:.2f}ms",
-                extra={
-                    "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "error": str(e),
-                    "duration_ms": duration_ms,
-                },
-                exc_info=True,
-            )
-            raise
+    # Correlation ID middleware for distributed tracing (US-10.3.1)
+    # Replaces inline log_requests with more comprehensive correlation handling
+    app.add_middleware(
+        CorrelationMiddleware,
+        service_name="orchestrator-service",
+    )
 
     # Global exception handler
     @app.exception_handler(Exception)
