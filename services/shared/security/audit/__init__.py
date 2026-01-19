@@ -9,6 +9,7 @@ Features:
 - Structured JSON logging for log aggregation
 - Hash chaining for tamper evidence
 - Database persistence with efficient querying
+- OpenSearch backend for analytics and full-text search
 - FastAPI middleware for automatic request logging
 - Convenience methods for common audit events
 
@@ -81,6 +82,10 @@ from .models import (
 from .repository import (
     AuditRepository,
 )
+from .backends import (
+    AuditBackend,
+    OpenSearchAuditBackend,
+)
 
 __all__ = [
     # Models
@@ -102,4 +107,7 @@ __all__ = [
     "create_audit_middleware",
     # Repository
     "AuditRepository",
+    # Backends
+    "AuditBackend",
+    "OpenSearchAuditBackend",
 ]
