@@ -124,6 +124,11 @@ class QueryResponse(BaseModel):
         default_factory=list,
         description="List of fallback strategies applied",
     )
+    # Cache metadata (US-10.5.3)
+    cache_hit: bool = Field(
+        default=False,
+        description="Whether response was served from answer cache",
+    )
 
 
 class SessionInfo(BaseModel):

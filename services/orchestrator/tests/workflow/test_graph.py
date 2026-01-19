@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from workflow.graph import (
+    _route_after_cache_check,
     _route_after_input_validation,
     _route_after_routing,
     build_rag_workflow,
@@ -48,16 +49,44 @@ class TestRouteAfterRouting:
         assert result == "retrieval"
 
 
+class TestRouteAfterCacheCheck:
+    """Tests for _route_after_cache_check conditional edge function (US-10.5.3)."""
+
+    def test_route_cache_hit_to_output_validation(self):
+        """Test cache hit skips to output_validation."""
+        state: RAGState = {"query": "test", "cache_hit": True}
+
+        result = _route_after_cache_check(state)
+
+        assert result == "output_validation"
+
+    def test_route_cache_miss_to_routing(self):
+        """Test cache miss continues to routing."""
+        state: RAGState = {"query": "test", "cache_hit": False}
+
+        result = _route_after_cache_check(state)
+
+        assert result == "routing"
+
+    def test_route_missing_cache_hit_key_to_routing(self):
+        """Test missing cache_hit key defaults to routing."""
+        state: RAGState = {"query": "test"}
+
+        result = _route_after_cache_check(state)
+
+        assert result == "routing"
+
+
 class TestRouteAfterInputValidation:
     """Tests for _route_after_input_validation conditional edge function."""
 
-    def test_route_no_error_to_routing(self):
-        """Test no error routes to routing node."""
+    def test_route_no_error_to_cache_check(self):
+        """Test no error routes to cache_check node (US-10.5.3)."""
         state: RAGState = {"query": "test", "error": None}
 
         result = _route_after_input_validation(state)
 
-        assert result == "routing"
+        assert result == "cache_check"
 
     def test_route_with_error_to_output_validation(self):
         """Test error routes to output_validation."""
@@ -67,13 +96,13 @@ class TestRouteAfterInputValidation:
 
         assert result == "output_validation"
 
-    def test_route_missing_error_key_to_routing(self):
-        """Test missing error key routes to routing."""
+    def test_route_missing_error_key_to_cache_check(self):
+        """Test missing error key routes to cache_check."""
         state: RAGState = {"query": "test"}
 
         result = _route_after_input_validation(state)
 
-        assert result == "routing"
+        assert result == "cache_check"
 
 
 class TestBuildRagWorkflow:

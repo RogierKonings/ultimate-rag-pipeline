@@ -70,6 +70,11 @@ class RAGState(TypedDict, total=False):
     verification_result: dict | None  # VerificationResult as dict
 
     # =========================================================================
+    # Answer Cache Fields (US-10.5.3)
+    # =========================================================================
+    cache_hit: bool  # Whether response was served from cache
+
+    # =========================================================================
     # Error Handling Fields
     # =========================================================================
     error: str | None  # Error message if workflow failed
@@ -120,6 +125,8 @@ def create_initial_state(
         timing={},
         # Verification
         verification_result=None,
+        # Answer cache
+        cache_hit=False,
         # Error handling
         error=None,
         fallbacks_used=[],

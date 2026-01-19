@@ -56,6 +56,8 @@ class SpanNames:
     ORCHESTRATOR_VALIDATION = "orchestrator.workflow.validation"
     ORCHESTRATOR_INPUT_VALIDATION = "orchestrator.workflow.input_validation"
     ORCHESTRATOR_OUTPUT_VALIDATION = "orchestrator.workflow.output_validation"
+    ORCHESTRATOR_CACHE_CHECK = "orchestrator.cache.check"
+    ORCHESTRATOR_CACHE_STORE = "orchestrator.cache.store"
 
     # Ingestion service spans
     INGESTION_DOCUMENT = "ingestion.document.process"

@@ -37,6 +37,11 @@ class OrchestratorConfig(BaseSettings):
     session_ttl: int = 3600  # 1 hour
     max_history_length: int = 20
 
+    # Answer Cache (US-10.5.3)
+    answer_cache_enabled: bool = True
+    answer_cache_ttl: int = 3600  # 1 hour default
+    answer_cache_prompt_version: str = "v1"  # Bump when prompts change
+
     # Postgres
     database_url: str = "postgresql+asyncpg://raguser:ragpassword@localhost:5432/ragpipeline"
 

@@ -8,6 +8,8 @@ from typing import Literal
 
 from langgraph.graph import END, StateGraph
 from workflow.nodes import (
+    cache_check_node,
+    cache_store_node,
     generation_node,
     input_validation_node,
     output_validation_node,
@@ -40,7 +42,7 @@ def _route_after_routing(state: RAGState) -> Literal["retrieval", "prompt_buildi
 
 def _route_after_input_validation(
     state: RAGState,
-) -> Literal["routing", "output_validation"]:
+) -> Literal["cache_check", "output_validation"]:
     """
     Route after input validation node.
 
@@ -56,6 +58,29 @@ def _route_after_input_validation(
 
     if error:
         # Skip to output validation if there's an error
+        return "output_validation"
+    return "cache_check"
+
+
+def _route_after_cache_check(
+    state: RAGState,
+) -> Literal["routing", "output_validation"]:
+    """
+    Route after cache check node.
+
+    If cache hit, skip to output validation (response is ready).
+    Otherwise continue to routing for normal processing.
+
+    Args:
+        state: Current RAGState
+
+    Returns:
+        Next node to execute
+    """
+    cache_hit = state.get("cache_hit", False)
+
+    if cache_hit:
+        # Skip to output validation if cache hit (response already populated)
         return "output_validation"
     return "routing"
 
@@ -82,16 +107,19 @@ def build_rag_workflow() -> StateGraph:
 
     The workflow consists of the following stages:
     1. input_validation - Check input for safety issues
-    2. routing - Determine handling strategy (simple/complex/no_retrieval)
-    3. retrieval - Fetch relevant context (conditional on strategy)
-    4. prompt_building - Construct the LLM prompt
-    5. generation - Generate response with LLM
-    6. verification - Verify answer is grounded in context (CRAG-style)
-    7. output_validation - Check output for safety
+    2. cache_check - Check answer cache for instant response (US-10.5.3)
+    3. routing - Determine handling strategy (simple/complex/no_retrieval)
+    4. retrieval - Fetch relevant context (conditional on strategy)
+    5. prompt_building - Construct the LLM prompt
+    6. generation - Generate response with LLM
+    7. cache_store - Store response in cache for future hits (US-10.5.3)
+    8. verification - Verify answer is grounded in context (CRAG-style)
+    9. output_validation - Check output for safety
 
     Conditional edges:
-    - After routing: Skip retrieval for no_retrieval strategy
     - After input_validation: Skip to output if error detected
+    - After cache_check: Skip to output if cache hit (US-10.5.3)
+    - After routing: Skip retrieval for no_retrieval strategy
 
     Returns:
         Compiled StateGraph ready for execution
@@ -101,10 +129,12 @@ def build_rag_workflow() -> StateGraph:
 
     # Add nodes
     graph.add_node("input_validation", input_validation_node)
+    graph.add_node("cache_check", cache_check_node)
     graph.add_node("routing", routing_node)
     graph.add_node("retrieval", retrieval_node)
     graph.add_node("prompt_building", prompt_building_node)
     graph.add_node("generation", generation_node)
+    graph.add_node("cache_store", cache_store_node)
     graph.add_node("verification", verification_node)
     graph.add_node("output_validation", output_validation_node)
 
@@ -115,6 +145,16 @@ def build_rag_workflow() -> StateGraph:
     graph.add_conditional_edges(
         "input_validation",
         _route_after_input_validation,
+        {
+            "cache_check": "cache_check",
+            "output_validation": "output_validation",
+        },
+    )
+
+    # Add conditional edge after cache_check (US-10.5.3)
+    graph.add_conditional_edges(
+        "cache_check",
+        _route_after_cache_check,
         {
             "routing": "routing",
             "output_validation": "output_validation",
@@ -137,8 +177,11 @@ def build_rag_workflow() -> StateGraph:
     # Prompt Building -> Generation
     graph.add_edge("prompt_building", "generation")
 
-    # Generation -> Verification
-    graph.add_edge("generation", "verification")
+    # Generation -> Cache Store (store response for future cache hits)
+    graph.add_edge("generation", "cache_store")
+
+    # Cache Store -> Verification
+    graph.add_edge("cache_store", "verification")
 
     # Verification -> Output Validation
     graph.add_edge("verification", "output_validation")
