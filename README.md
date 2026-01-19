@@ -71,7 +71,9 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 
 ### RAG Orchestration
 - LangGraph-based stateful workflows
-- Intelligent query routing (simple, complex, no-retrieval strategies)
+- Intelligent query routing (simple, complex, multi-hop, comparison, aggregation, no-retrieval strategies)
+- Multi-hop query decomposition with parallel sub-question retrieval
+- CRAG-style answer verification with claim extraction and validation
 - Jinja2 prompt templates with context management
 - Input/output guardrails (PII detection, injection prevention)
 - Streaming responses with Server-Sent Events
@@ -91,6 +93,13 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 - Tamper-evident audit logging with hash chaining
 - PII detection and redaction via Microsoft Presidio
 - SOC 2, GDPR, and HIPAA compliance support
+
+### Cost-Aware Retrieval & Model Tiering
+- Dynamic retrieval parameters based on query type and tenant tier
+- LLM model tiering (small/medium/large) for cost optimization
+- Answer-level caching for instant repeated query responses
+- Per-tenant token usage accounting with quota enforcement
+- Configurable tenant tiers: basic, standard, premium
 
 ### Observability
 - Distributed tracing with OpenTelemetry and Jaeger
@@ -416,7 +425,9 @@ Central coordination layer managing the complete query lifecycle.
 
 **Features:**
 - LangGraph-based stateful workflows
-- Intelligent query routing (simple, complex, no-retrieval)
+- Intelligent query routing with multi-hop detection
+- Multi-hop query decomposition with parallel sub-question retrieval
+- CRAG-style answer verification (claim extraction and validation)
 - Jinja2 prompt templates
 - Input/output guardrails
 - Conversation memory (Redis + PostgreSQL)
@@ -429,6 +440,9 @@ Central coordination layer managing the complete query lifecycle.
 |----------|-------------|----------|
 | `simple` | Single retrieval pass | Factual questions |
 | `complex` | Multi-step retrieval | Analytical queries |
+| `multi_hop` | Query decomposition | Sequential reasoning |
+| `comparison` | Compare multiple entities | "X vs Y" questions |
+| `aggregation` | Collect and summarize | "List all...", "Summarize..." |
 | `no_retrieval` | Direct LLM response | Greetings, chitchat |
 
 **Key Endpoints:**
@@ -757,6 +771,13 @@ docker-compose exec retrieval-service pytest tests/test_hybrid_search.py
 
 # Run with coverage
 docker-compose exec retrieval-service pytest --cov=. --cov-report=html
+
+# Run E2E smoke tests (requires running services)
+pytest tests/e2e/ -v --e2e
+
+# Run E2E tests in Docker
+docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
+  --profile e2e run --rm e2e-tests
 ```
 
 ### Test Coverage
@@ -780,13 +801,19 @@ docker-compose exec retrieval-service pytest --cov=. --cov-report=html
 | [Ingestion Rate Limiting](docs/ingestion-service/rate-limiting.md) | Per-tenant rate limiting and priority queues |
 | [Retrieval Service](docs/retrieval-service/README.md) | Hybrid search and reranking |
 | [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
-| [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration |
+| [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration, answer verification, multi-hop RAG, cost optimization |
 | [LLM Serving](docs/llm-serving/README.md) | Model serving infrastructure |
 | [Security](docs/security/README.md) | Security and compliance |
 | [Observability](docs/observability/README.md) | Tracing, metrics, logging |
+| [Correlation ID Propagation](docs/observability/correlation-id-propagation.md) | Request correlation across services |
+| [Trace Hierarchy](docs/observability/trace-hierarchy.md) | Span naming and distributed tracing |
+| [Business Metrics](docs/observability/business-quality-metrics.md) | RAG quality and feedback metrics |
+| [SLO Definitions](docs/observability/slo-definitions-alerts.md) | Service level objectives and alerts |
 | [Kubernetes Setup](docs/infrastructure/kubernetes-setup.md) | K8s deployment guide |
 | [Health Checks](docs/health-check-specification.md) | Health endpoint specification |
 | [Integration Tests](docs/integration-test-patterns.md) | Testing patterns and guidelines |
+| [E2E Smoke Tests](docs/testing/README.md) | End-to-end testing and CI integration |
+| [Shared Configuration](docs/shared-configuration.md) | Unified configuration for all services |
 | [Developer CLI Tools](docs/developer-cli-tools.md) | CLI tools for debugging and testing |
 
 ---

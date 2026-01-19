@@ -1,68 +1,226 @@
 # HashiCorp Vault Integration Configuration
 # ==========================================
 # This file provides Vault Agent Injector integration for secrets management.
+# Implements US-10.7.3: Secret Management with dynamic credential injection.
 
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: rag-pipeline-sa
   namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline
+    app.kubernetes.io/component: secrets
 ---
-# Vault Agent Injector Configuration
-# ===================================
-# To use Vault for secrets management, add these annotations to your pod specs:
+# Vault Agent Injector ConfigMap
+# ==============================
+# Contains templates for secret injection and configuration.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-agent-config
+  namespace: rag-pipeline
+  labels:
+    app.kubernetes.io/name: rag-pipeline
+    app.kubernetes.io/component: secrets
+data:
+  # Main Vault Agent configuration
+  config.hcl: |
+    vault {
+      address = "https://vault.vault.svc.cluster.local:8200"
+    }
+
+    auto_auth {
+      method "kubernetes" {
+        mount_path = "auth/kubernetes"
+        config = {
+          role = "rag-pipeline"
+        }
+      }
+
+      sink "file" {
+        config = {
+          path = "/vault/secrets/.token"
+          mode = 0640
+        }
+      }
+    }
+
+    template_config {
+      static_secret_render_interval = "5m"
+      exit_on_retry_failure = true
+    }
+
+    # Database credentials template
+    template {
+      source      = "/vault/configs/database.ctmpl"
+      destination = "/vault/secrets/database.env"
+      perms       = 0640
+    }
+
+    # API keys template
+    template {
+      source      = "/vault/configs/api-keys.ctmpl"
+      destination = "/vault/secrets/api-keys.env"
+      perms       = 0640
+    }
+
+    # Redis credentials template
+    template {
+      source      = "/vault/configs/redis.ctmpl"
+      destination = "/vault/secrets/redis.env"
+      perms       = 0640
+    }
+
+  # Database credentials template
+  database.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/database" }}
+    # Database connection configuration
+    POSTGRES_USER={{ .Data.data.postgres_user }}
+    POSTGRES_PASSWORD={{ .Data.data.postgres_password }}
+    POSTGRES_HOST={{ .Data.data.host | default "postgres.rag-pipeline.svc" }}
+    POSTGRES_PORT={{ .Data.data.port | default "5432" }}
+    POSTGRES_DB={{ .Data.data.database | default "ragpipeline" }}
+    DATABASE_URL=postgresql+asyncpg://{{ .Data.data.postgres_user }}:{{ .Data.data.postgres_password }}@{{ .Data.data.host | default "postgres.rag-pipeline.svc" }}:{{ .Data.data.port | default "5432" }}/{{ .Data.data.database | default "ragpipeline" }}
+    {{- end }}
+
+  # API keys template
+  api-keys.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/llm" }}
+    # LLM API Keys
+    {{ if .Data.data.openai_api_key }}OPENAI_API_KEY={{ .Data.data.openai_api_key }}{{ end }}
+    {{ if .Data.data.anthropic_api_key }}ANTHROPIC_API_KEY={{ .Data.data.anthropic_api_key }}{{ end }}
+    {{ if .Data.data.azure_openai_key }}AZURE_OPENAI_API_KEY={{ .Data.data.azure_openai_key }}{{ end }}
+    {{- end }}
+
+  # Redis credentials template
+  redis.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/redis" }}
+    # Redis configuration
+    REDIS_PASSWORD={{ .Data.data.password }}
+    REDIS_HOST={{ .Data.data.host | default "redis.rag-pipeline.svc" }}
+    REDIS_PORT={{ .Data.data.port | default "6379" }}
+    REDIS_URL=redis://:{{ .Data.data.password }}@{{ .Data.data.host | default "redis.rag-pipeline.svc" }}:{{ .Data.data.port | default "6379" }}
+    {{- end }}
+
+  # OpenSearch credentials template
+  opensearch.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/opensearch" }}
+    # OpenSearch configuration
+    OPENSEARCH_USER={{ .Data.data.username | default "admin" }}
+    OPENSEARCH_PASSWORD={{ .Data.data.password }}
+    OPENSEARCH_HOST={{ .Data.data.host | default "opensearch.rag-pipeline.svc" }}
+    OPENSEARCH_PORT={{ .Data.data.port | default "9200" }}
+    OPENSEARCH_URL=https://{{ .Data.data.username | default "admin" }}:{{ .Data.data.password }}@{{ .Data.data.host | default "opensearch.rag-pipeline.svc" }}:{{ .Data.data.port | default "9200" }}
+    {{- end }}
+
+  # MinIO/S3 credentials template
+  minio.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/minio" }}
+    # MinIO/S3 configuration
+    MINIO_ACCESS_KEY={{ .Data.data.access_key }}
+    MINIO_SECRET_KEY={{ .Data.data.secret_key }}
+    AWS_ACCESS_KEY_ID={{ .Data.data.access_key }}
+    AWS_SECRET_ACCESS_KEY={{ .Data.data.secret_key }}
+    MINIO_ENDPOINT={{ .Data.data.endpoint | default "minio.rag-pipeline.svc:9000" }}
+    {{- end }}
+
+  # JWT/Authentication secrets template
+  auth.ctmpl: |
+    {{- with secret "secret/data/rag-pipeline/auth" }}
+    # JWT configuration
+    JWT_SECRET_KEY={{ .Data.data.jwt_secret }}
+    {{ if .Data.data.jwt_private_key }}JWT_PRIVATE_KEY={{ .Data.data.jwt_private_key | base64Encode }}{{ end }}
+    {{ if .Data.data.jwt_public_key }}JWT_PUBLIC_KEY={{ .Data.data.jwt_public_key | base64Encode }}{{ end }}
+    {{- end }}
+
+---
+# Vault Agent Sidecar Annotations Template
+# =========================================
+# Use these annotations on deployments requiring Vault secrets.
 #
+# Example deployment with Vault Agent injection:
+#
+# apiVersion: apps/v1
+# kind: Deployment
 # metadata:
-#   annotations:
-#     vault.hashicorp.com/agent-inject: "true"
-#     vault.hashicorp.com/role: "rag-pipeline"
-#     vault.hashicorp.com/agent-inject-secret-database: "secret/data/rag-pipeline/database"
-#     vault.hashicorp.com/agent-inject-template-database: |
-#       {{- with secret "secret/data/rag-pipeline/database" -}}
-#       export DATABASE_URL="{{ .Data.data.url }}"
-#       {{- end }}
+#   name: my-service
+# spec:
+#   template:
+#     metadata:
+#       annotations:
+#         vault.hashicorp.com/agent-inject: "true"
+#         vault.hashicorp.com/agent-inject-status: "update"
+#         vault.hashicorp.com/role: "rag-pipeline"
+#         vault.hashicorp.com/agent-inject-secret-database.env: "secret/data/rag-pipeline/database"
+#         vault.hashicorp.com/agent-inject-template-database.env: |
+#           {{- with secret "secret/data/rag-pipeline/database" -}}
+#           POSTGRES_USER={{ .Data.data.postgres_user }}
+#           POSTGRES_PASSWORD={{ .Data.data.postgres_password }}
+#           DATABASE_URL=postgresql+asyncpg://{{ .Data.data.postgres_user }}:{{ .Data.data.postgres_password }}@postgres:5432/ragpipeline
+#           {{- end -}}
+#     spec:
+#       serviceAccountName: rag-pipeline-sa
+#       containers:
+#       - name: my-service
+#         command:
+#         - /bin/sh
+#         - -c
+#         - |
+#           source /vault/secrets/database.env
+#           exec python -m uvicorn main:app --host 0.0.0.0
+
+---
+# Vault Policy (Reference)
+# ========================
+# Apply this policy to Vault using the CLI:
 #
-# Vault Policy Example (apply via Vault CLI):
-# ------------------------------------------
 # vault policy write rag-pipeline - <<EOF
+# # Read secrets for RAG pipeline services
 # path "secret/data/rag-pipeline/*" {
+#   capabilities = ["read", "list"]
+# }
+#
+# # Dynamic database credentials
+# path "database/creds/rag-pipeline-*" {
 #   capabilities = ["read"]
 # }
-# EOF
 #
-# Vault Kubernetes Auth Setup:
-# ----------------------------
+# # Transit encryption
+# path "transit/encrypt/rag-encryption" {
+#   capabilities = ["update"]
+# }
+#
+# path "transit/decrypt/rag-encryption" {
+#   capabilities = ["update"]
+# }
+#
+# # Token self-renewal
+# path "auth/token/renew-self" {
+#   capabilities = ["update"]
+# }
+# EOF
+
+---
+# Vault Kubernetes Auth Configuration (Reference)
+# ================================================
+# Run these commands to configure Vault's Kubernetes auth:
+#
+# # Enable Kubernetes auth method
 # vault auth enable kubernetes
+#
+# # Configure Kubernetes auth
 # vault write auth/kubernetes/config \
 #   token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
 #   kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443" \
-#   kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+#   kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+#   issuer="https://kubernetes.default.svc.cluster.local"
 #
+# # Create role for RAG pipeline services
 # vault write auth/kubernetes/role/rag-pipeline \
 #   bound_service_account_names=rag-pipeline-sa \
 #   bound_service_account_namespaces=rag-pipeline \
 #   policies=rag-pipeline \
-#   ttl=24h
-
----
-# External Secrets Operator Alternative
-# =====================================
-# If using External Secrets Operator instead of Vault Agent:
-#
-# apiVersion: external-secrets.io/v1beta1
-# kind: SecretStore
-# metadata:
-#   name: vault-backend
-#   namespace: rag-pipeline
-# spec:
-#   provider:
-#     vault:
-#       server: "https://vault.example.com"
-#       path: "secret"
-#       version: "v2"
-#       auth:
-#         kubernetes:
-#           mountPath: "kubernetes"
-#           role: "rag-pipeline"
-#           serviceAccountRef:
-#             name: "rag-pipeline-sa"
+#   ttl=1h \
+#   max_ttl=24h

@@ -464,6 +464,8 @@ POST /api/v1/feedback
 }
 ```
 
+**Full Documentation:** [Business & Quality Metrics](./business-quality-metrics.md)
+
 ---
 
 ## SLO Definitions & Alerts
@@ -531,6 +533,8 @@ SLO alerts link to runbooks with investigation and mitigation steps:
 - [Retrieval Latency SLO](../runbooks/slo/retrieval-latency.md)
 - [RAG E2E Latency SLO](../runbooks/slo/rag-e2e-latency.md)
 - [Service Availability](../runbooks/slo/service-availability.md)
+
+**Full Documentation:** [SLO Definitions & Alerts](./slo-definitions-alerts.md)
 
 ---
 

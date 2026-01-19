@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rag-pipeline
+
+resources:
+  # Vault Agent configuration and service account
+  - vault-agent.yaml
+  # External Secrets Operator resources
+  - external-secrets.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: rag-pipeline
+      app.kubernetes.io/component: secrets
+      app.kubernetes.io/managed-by: kustomize

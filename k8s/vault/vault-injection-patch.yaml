@@ -1,0 +1,169 @@
+# Vault Agent Injection Patch Examples
+# =====================================
+# These patches demonstrate how to add Vault Agent sidecar injection
+# to service deployments. Apply these to enable dynamic secret injection.
+#
+# Usage with kustomize:
+# patches:
+#   - path: ../vault/vault-injection-patch.yaml
+#     target:
+#       kind: Deployment
+#       name: orchestrator
+#
+# Implements US-10.7.3: AC-2 Dynamic Secret Injection
+
+---
+# Orchestrator Service Vault Injection
+# ====================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: rag-pipeline
+spec:
+  template:
+    metadata:
+      annotations:
+        # Enable Vault Agent injection
+        vault.hashicorp.com/agent-inject: "true"
+        # Auto-update secrets without pod restart
+        vault.hashicorp.com/agent-inject-status: "update"
+        # Vault authentication role
+        vault.hashicorp.com/role: "rag-pipeline"
+        # Pre-populate secrets before container starts
+        vault.hashicorp.com/agent-pre-populate-only: "false"
+
+        # Database credentials injection
+        vault.hashicorp.com/agent-inject-secret-database.env: "secret/data/rag-pipeline/database"
+        vault.hashicorp.com/agent-inject-template-database.env: |
+          {{- with secret "secret/data/rag-pipeline/database" -}}
+          POSTGRES_USER={{ .Data.data.postgres_user }}
+          POSTGRES_PASSWORD={{ .Data.data.postgres_password }}
+          DATABASE_URL=postgresql+asyncpg://{{ .Data.data.postgres_user }}:{{ .Data.data.postgres_password }}@postgres.rag-pipeline.svc:5432/ragpipeline
+          {{- end -}}
+
+        # Redis credentials injection
+        vault.hashicorp.com/agent-inject-secret-redis.env: "secret/data/rag-pipeline/redis"
+        vault.hashicorp.com/agent-inject-template-redis.env: |
+          {{- with secret "secret/data/rag-pipeline/redis" -}}
+          REDIS_PASSWORD={{ .Data.data.password }}
+          REDIS_URL=redis://:{{ .Data.data.password }}@redis.rag-pipeline.svc:6379
+          {{- end -}}
+
+        # LLM API keys injection
+        vault.hashicorp.com/agent-inject-secret-api-keys.env: "secret/data/rag-pipeline/llm"
+        vault.hashicorp.com/agent-inject-template-api-keys.env: |
+          {{- with secret "secret/data/rag-pipeline/llm" -}}
+          {{ if .Data.data.openai_api_key }}OPENAI_API_KEY={{ .Data.data.openai_api_key }}{{ end }}
+          {{ if .Data.data.anthropic_api_key }}ANTHROPIC_API_KEY={{ .Data.data.anthropic_api_key }}{{ end }}
+          {{- end -}}
+
+    spec:
+      serviceAccountName: rag-pipeline-sa
+      containers:
+        - name: orchestrator
+          # Use init command to source secrets
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Source all injected secrets
+              for f in /vault/secrets/*.env; do
+                if [ -f "$f" ]; then
+                  export $(cat "$f" | grep -v '^#' | xargs)
+                fi
+              done
+              # Start the application
+              exec python -m uvicorn main:app --host 0.0.0.0 --port 8003
+
+---
+# Ingestion Service Vault Injection
+# =================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-service
+  namespace: rag-pipeline
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "rag-pipeline"
+
+        # Database credentials
+        vault.hashicorp.com/agent-inject-secret-database.env: "secret/data/rag-pipeline/database"
+        vault.hashicorp.com/agent-inject-template-database.env: |
+          {{- with secret "secret/data/rag-pipeline/database" -}}
+          DATABASE_URL=postgresql+asyncpg://{{ .Data.data.postgres_user }}:{{ .Data.data.postgres_password }}@postgres.rag-pipeline.svc:5432/ragpipeline
+          {{- end -}}
+
+        # Redis credentials
+        vault.hashicorp.com/agent-inject-secret-redis.env: "secret/data/rag-pipeline/redis"
+        vault.hashicorp.com/agent-inject-template-redis.env: |
+          {{- with secret "secret/data/rag-pipeline/redis" -}}
+          REDIS_URL=redis://:{{ .Data.data.password }}@redis.rag-pipeline.svc:6379
+          {{- end -}}
+
+        # OpenSearch credentials
+        vault.hashicorp.com/agent-inject-secret-opensearch.env: "secret/data/rag-pipeline/opensearch"
+        vault.hashicorp.com/agent-inject-template-opensearch.env: |
+          {{- with secret "secret/data/rag-pipeline/opensearch" -}}
+          OPENSEARCH_USER={{ .Data.data.username | default "admin" }}
+          OPENSEARCH_PASSWORD={{ .Data.data.password }}
+          OPENSEARCH_URL=https://{{ .Data.data.username | default "admin" }}:{{ .Data.data.password }}@opensearch.rag-pipeline.svc:9200
+          {{- end -}}
+
+        # MinIO credentials
+        vault.hashicorp.com/agent-inject-secret-minio.env: "secret/data/rag-pipeline/minio"
+        vault.hashicorp.com/agent-inject-template-minio.env: |
+          {{- with secret "secret/data/rag-pipeline/minio" -}}
+          MINIO_ACCESS_KEY={{ .Data.data.access_key }}
+          MINIO_SECRET_KEY={{ .Data.data.secret_key }}
+          AWS_ACCESS_KEY_ID={{ .Data.data.access_key }}
+          AWS_SECRET_ACCESS_KEY={{ .Data.data.secret_key }}
+          {{- end -}}
+
+    spec:
+      serviceAccountName: rag-pipeline-sa
+
+---
+# Retrieval Service Vault Injection
+# =================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retrieval-service
+  namespace: rag-pipeline
+spec:
+  template:
+    metadata:
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-status: "update"
+        vault.hashicorp.com/role: "rag-pipeline"
+
+        # Database credentials
+        vault.hashicorp.com/agent-inject-secret-database.env: "secret/data/rag-pipeline/database"
+        vault.hashicorp.com/agent-inject-template-database.env: |
+          {{- with secret "secret/data/rag-pipeline/database" -}}
+          DATABASE_URL=postgresql+asyncpg://{{ .Data.data.postgres_user }}:{{ .Data.data.postgres_password }}@postgres.rag-pipeline.svc:5432/ragpipeline
+          {{- end -}}
+
+        # Redis credentials
+        vault.hashicorp.com/agent-inject-secret-redis.env: "secret/data/rag-pipeline/redis"
+        vault.hashicorp.com/agent-inject-template-redis.env: |
+          {{- with secret "secret/data/rag-pipeline/redis" -}}
+          REDIS_URL=redis://:{{ .Data.data.password }}@redis.rag-pipeline.svc:6379
+          {{- end -}}
+
+        # OpenSearch credentials
+        vault.hashicorp.com/agent-inject-secret-opensearch.env: "secret/data/rag-pipeline/opensearch"
+        vault.hashicorp.com/agent-inject-template-opensearch.env: |
+          {{- with secret "secret/data/rag-pipeline/opensearch" -}}
+          OPENSEARCH_URL=https://{{ .Data.data.username | default "admin" }}:{{ .Data.data.password }}@opensearch.rag-pipeline.svc:9200
+          {{- end -}}
+
+    spec:
+      serviceAccountName: rag-pipeline-sa

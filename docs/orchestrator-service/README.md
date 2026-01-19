@@ -7,12 +7,15 @@ The Orchestrator Service is the central coordination layer of the RAG pipeline, 
 - [Architecture Overview](#architecture-overview)
 - [LangGraph Workflow](#langgraph-workflow)
 - [Query Router](#query-router)
+- [Answer Verification](#answer-verification)
+- [Multi-Hop RAG](#multi-hop-rag)
 - [Prompt Builder](#prompt-builder)
 - [Model Gateway](#model-gateway)
 - [Guardrails](#guardrails)
 - [Conversation Memory](#conversation-memory)
 - [Streaming Support](#streaming-support)
 - [Graceful Degradation](#graceful-degradation)
+- [Cost-Aware Retrieval & Model Tiering](#cost-aware-retrieval--model-tiering)
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
 
@@ -272,6 +275,229 @@ scorer = ComplexityScorer()
 score = scorer.score("What are the benefits of Python, and how does it compare to Java?")
 # 0.75 (high complexity due to multi-part structure)
 ```
+
+---
+
+## Answer Verification
+
+CRAG-style (Corrective RAG) self-verification validates generated answers against retrieved context to improve answer quality and detect hallucinations.
+
+### Verification Pipeline
+
+```mermaid
+graph LR
+    GEN[Generation] --> EXTRACT[Claim Extraction]
+    EXTRACT --> VERIFY[Claim Verification]
+    VERIFY --> SCORE[Score Calculation]
+    SCORE --> DISC{Score < Threshold?}
+    DISC -->|Yes| DISCLAIM[Add Disclaimer]
+    DISC -->|No| OUTPUT[Output]
+    DISCLAIM --> OUTPUT
+```
+
+### Claim Extraction
+
+The verification node extracts key factual claims from generated answers:
+
+```python
+from workflow.verification.claim_extractor import ClaimExtractor, Claim
+
+extractor = ClaimExtractor(llm_client, max_claims=5)
+result = await extractor.extract("Python was released in 1991 and uses indentation for code blocks.")
+
+# ClaimExtractionResult(
+#   claims=[
+#     Claim(text="Python was released in 1991", claim_type="temporal"),
+#     Claim(text="Python uses indentation for code blocks", claim_type="factual")
+#   ],
+#   extraction_time_ms=45.2
+# )
+```
+
+### Claim Verification
+
+Each claim is verified against the retrieved context:
+
+```python
+from workflow.verification.claim_verifier import ClaimVerifier, VerificationStatus
+
+verifier = ClaimVerifier(llm_client)
+result = await verifier.verify(claim, context)
+
+# ClaimVerificationResult(
+#   claim_text="Python was released in 1991",
+#   status=VerificationStatus.SUPPORTED,
+#   supporting_evidence="Python was first released in 1991 by Guido van Rossum",
+#   confidence=0.95
+# )
+```
+
+### Verification Status
+
+| Status | Description |
+|--------|-------------|
+| `SUPPORTED` | Claim fully supported by context |
+| `PARTIALLY_SUPPORTED` | Claim partially supported |
+| `UNSUPPORTED` | No supporting evidence found |
+| `UNVERIFIABLE` | Cannot determine from context |
+
+### Verification Result
+
+The verification node produces an overall result:
+
+```python
+@dataclass
+class VerificationResult:
+    score: float           # 0-1, proportion of supported claims
+    label: str             # "supported", "partial", "unsupported"
+    claims_total: int
+    claims_supported: int
+    claims_partial: int
+    claims_unsupported: int
+    verification_time_ms: float
+    skipped: bool = False
+    skip_reason: str | None = None
+```
+
+### Low Confidence Handling
+
+When verification score falls below threshold (default: 0.7), a disclaimer is added:
+
+```
+*Note: Some information in this response could not be fully verified
+against the available sources. Please verify important details independently.*
+```
+
+### Configuration
+
+```python
+class VerificationConfig(BaseModel):
+    enabled: bool = False              # Opt-in by default
+    max_claims: int = 5                # Max claims to extract
+    confidence_threshold: float = 0.7  # Disclaimer threshold
+    latency_budget_ms: int = 500       # Max additional latency
+    add_disclaimer_on_low_confidence: bool = True
+```
+
+### Verification Metrics
+
+Prometheus metrics for verification tracking:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `rag_verification_score` | Histogram | Distribution of verification scores |
+| `rag_verification_label_total` | Counter | Count by verification label |
+| `rag_verification_latency_seconds` | Histogram | Verification node latency |
+| `rag_verification_claims_total` | Counter | Claims by verification status |
+
+---
+
+## Multi-Hop RAG
+
+Extended routing with query decomposition for complex multi-hop queries requiring information from multiple sources.
+
+### Extended Routing Strategies
+
+| Strategy | Description | Use Case |
+|----------|-------------|----------|
+| `simple` | Single retrieval pass | Factual questions |
+| `complex` | Multi-step retrieval | Analytical queries |
+| `multi_hop` | Query decomposition | Sequential reasoning |
+| `comparison` | Compare entities | "X vs Y" questions |
+| `aggregation` | Collect and summarize | "List all...", "Summarize..." |
+| `no_retrieval` | Direct LLM response | Greetings, chitchat |
+
+### Multi-Hop Detection
+
+The router detects multi-hop patterns using configurable regex patterns:
+
+```python
+from routing.strategies import MultiHopIndicators
+
+# Comparison patterns
+"compare X and Y", "difference between", "X vs Y", "better than"
+
+# Aggregation patterns
+"list all", "what are all", "summarize", "overview of"
+
+# Sequential patterns
+"first...then", "step by step", "after that"
+```
+
+### Query Decomposition
+
+Complex queries are decomposed into independent sub-questions:
+
+```python
+from workflow.nodes.decomposition import QueryDecomposer
+
+decomposer = QueryDecomposer(llm_client, max_sub_questions=5)
+sub_questions = await decomposer.decompose(
+    "Compare Python and JavaScript for web development"
+)
+
+# [
+#   "What are the key features of Python for web development?",
+#   "What are the key features of JavaScript for web development?",
+#   "What are the advantages of Python over JavaScript for backends?",
+#   "What are the advantages of JavaScript over Python for frontends?"
+# ]
+```
+
+### Parallel Multi-Retrieval
+
+Sub-questions are retrieved in parallel with result aggregation:
+
+```python
+from workflow.nodes.multi_retrieval import multi_retrieval_node
+
+# Parallel retrieval for all sub-questions
+results = await asyncio.gather(*[
+    retrieve(sq, user_context) for sq in sub_questions
+])
+
+# Results are:
+# - Deduplicated by chunk_id
+# - Score-boosted for documents relevant to multiple sub-questions
+# - Sorted by combined relevance
+```
+
+### Context Aggregation
+
+Retrieved context is organized by sub-question for comprehensive answers:
+
+```
+### Context for: What are the key features of Python for web development?
+[abc123] Python offers Django and Flask frameworks for web development...
+
+### Context for: What are the key features of JavaScript for web development?
+[def456] JavaScript powers both frontend (React, Vue) and backend (Node.js)...
+```
+
+### Multi-Hop Workflow
+
+```mermaid
+graph TD
+    INPUT[Input] --> ROUTING[Query Router]
+    ROUTING -->|simple/complex| RETRIEVAL[Single Retrieval]
+    ROUTING -->|multi_hop/comparison/aggregation| DECOMP[Decomposition]
+    DECOMP --> MULTI_RET[Parallel Multi-Retrieval]
+    MULTI_RET --> DEDUP[Deduplication & Scoring]
+    RETRIEVAL --> PROMPT[Prompt Building]
+    DEDUP --> PROMPT
+    PROMPT --> GEN[Generation]
+    GEN --> VERIFY[Verification]
+    VERIFY --> OUTPUT[Output]
+```
+
+### Multi-Hop Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `rag_multi_hop_queries_total` | Multi-hop query count |
+| `rag_sub_question_count` | Sub-questions per query |
+| `rag_multi_retrieval_latency_seconds` | Parallel retrieval latency |
+| `rag_dedup_removed_total` | Duplicate documents removed |
 
 ---
 
@@ -704,6 +930,266 @@ status = manager.get_status()
 #   }
 # }
 ```
+
+---
+
+## Cost-Aware Retrieval & Model Tiering
+
+The Orchestrator Service implements intelligent cost optimization through dynamic retrieval parameters, model tiering, answer-level caching, and token usage accounting.
+
+### Dynamic Retrieval Parameters
+
+Retrieval parameters are automatically adjusted based on query type and tenant tier to optimize cost without sacrificing quality.
+
+#### Tenant Tier Configuration
+
+| Tier | Semantic Top-K | Keyword Top-K | Reranker | Rerank Top-K | Max Context Tokens |
+|------|---------------|---------------|----------|--------------|-------------------|
+| `basic` | 20 | 20 | ❌ | 0 | 2,000 |
+| `standard` | 35 | 35 | ✅ | 15 | 4,000 |
+| `premium` | 50 | 50 | ✅ | 30 | 8,000 |
+
+#### Query Type Modifiers
+
+Query complexity influences retrieval parameters via multipliers:
+
+| Query Type | Top-K Multiplier | Reranker Override |
+|------------|-----------------|-------------------|
+| `SIMPLE` | 0.5x | Disabled |
+| `QUESTION` | 1.0x | Use tier default |
+| `SEMANTIC` | 1.2x | Enabled |
+| `HYBRID` | 1.0x | Enabled |
+
+#### Effective Parameters Calculation
+
+```python
+from services.retrieval.config import get_effective_params
+
+# Premium tenant with semantic query
+params = get_effective_params(tenant_tier="premium", query_type="SEMANTIC")
+# {
+#     "semantic_top_k": 60,  # 50 * 1.2
+#     "keyword_top_k": 60,   # 50 * 1.2
+#     "use_reranker": True,
+#     "rerank_top_k": 30
+# }
+
+# Basic tenant with simple query
+params = get_effective_params(tenant_tier="basic", query_type="SIMPLE")
+# {
+#     "semantic_top_k": 10,  # 20 * 0.5
+#     "keyword_top_k": 10,   # 20 * 0.5
+#     "use_reranker": False,
+#     "rerank_top_k": 0
+# }
+```
+
+Effective parameters are logged in the response `debug` object for observability.
+
+### LLM Model Tiering
+
+The Model Router selects appropriate LLM models based on query complexity and tenant tier to reduce inference costs.
+
+#### Model Tiers
+
+| Tier | Model | Max Tokens | Cost (per 1K tokens) | Use Case |
+|------|-------|------------|---------------------|----------|
+| `small` | Qwen2.5-7B | 2,048 | $0.001 | Simple queries, basic tenants |
+| `medium` | Llama-3.1-13B | 4,096 | $0.003 | Standard complexity |
+| `large` | Llama-3.1-70B | 8,192 | $0.01 | Complex analytical, premium |
+
+#### Selection Matrix
+
+| Tenant Tier | Simple Query | Complex Query |
+|-------------|--------------|---------------|
+| `basic` | Small | Small |
+| `standard` | Small | Medium |
+| `premium` | Medium | Large |
+
+**Intent Override:** Analytical queries from non-basic tenants are upgraded to at least Medium tier.
+
+#### Model Router Usage
+
+```python
+from services.orchestrator.model_router import ModelRouter
+
+router = ModelRouter()
+config = router.select_model(
+    tenant_tier="premium",
+    complexity="complex",
+    intent="ANALYTICAL"
+)
+# {
+#     "model": "llama-3.1-70b",
+#     "max_tokens": 8192,
+#     "tier": "large"
+# }
+```
+
+#### Fallback Logic
+
+If the primary model fails, the router automatically falls back to the small model tier to ensure request completion.
+
+### Answer-Level Caching
+
+Complete RAG responses are cached to serve instant answers for repeated questions, significantly reducing LLM costs.
+
+#### Cache Key Components
+
+Cache keys are constructed from:
+- `tenant_id`: Tenant isolation
+- `normalized_query`: Lowercased, trimmed query (SHA-256 hash)
+- `config_hash`: Hash of retrieval configuration
+- `prompt_version`: Template version for cache invalidation
+
+#### Cache Behavior
+
+```python
+from services.orchestrator.cache.answer_cache import AnswerCache, CachedAnswer
+
+cache = AnswerCache(redis=redis_client, default_ttl=3600)
+
+# Check cache before retrieval/generation
+cached = await cache.get(
+    tenant_id="tenant-123",
+    query="How do I reset my password?",
+    config_hash="abc123"
+)
+
+if cached:
+    # Return cached response (skip retrieval + LLM)
+    return {
+        "response": cached.response,
+        "citations": cached.citations,
+        "cache_hit": True
+    }
+
+# Store new response after generation
+await cache.set(
+    tenant_id="tenant-123",
+    query="How do I reset my password?",
+    config_hash="abc123",
+    answer=CachedAnswer(
+        response="To reset your password...",
+        citations=[...],
+        model_used="llama-3.1-8b",
+        cached_at="2025-01-15T10:00:00Z",
+        retrieval_mode="hybrid"
+    ),
+    ttl=3600  # 1 hour, configurable per tenant
+)
+```
+
+#### Cache Invalidation
+
+Cache entries are automatically invalidated when source documents change:
+
+```python
+# Invalidate all cache entries for a tenant when documents are updated
+count = await cache.invalidate_for_document(
+    tenant_id="tenant-123",
+    document_id="doc-456"
+)
+# Returns number of invalidated entries
+```
+
+#### Cache Configuration
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `default_ttl` | 3600s (1 hour) | Cache entry lifetime |
+| `enable_answer_cache` | `true` | Enable/disable per request |
+| `key_prefix` | `rag:answer_cache` | Redis key prefix |
+
+### Token Usage Accounting
+
+Per-tenant token usage is tracked for LLM and embedding operations to enable quotas and billing.
+
+#### Usage Tracking
+
+```python
+from services.orchestrator.usage.tracker import UsageTracker
+
+tracker = UsageTracker(redis=redis_client, session_factory=db_session)
+
+# Record LLM usage after each request
+await tracker.record_llm_usage(
+    tenant_id="tenant-123",
+    model="llama-3.1-8b",
+    prompt_tokens=500,
+    completion_tokens=150
+)
+
+# Check quota before processing
+allowed, remaining = await tracker.check_quota(tenant_id="tenant-123")
+if not allowed:
+    raise HTTPException(status_code=429, detail="Monthly token quota exceeded")
+```
+
+#### Storage Architecture
+
+- **Redis**: Fast real-time counters with automatic TTL
+- **PostgreSQL**: Daily/monthly aggregations for reporting and billing
+
+```sql
+-- Token usage table (PostgreSQL)
+SELECT tenant_id, date, model,
+       SUM(prompt_tokens) as prompt_tokens,
+       SUM(completion_tokens) as completion_tokens
+FROM token_usage
+WHERE tenant_id = 'tenant-123'
+  AND date >= '2025-01-01'
+GROUP BY tenant_id, date, model;
+```
+
+#### Usage API Endpoint
+
+```
+GET /api/v1/usage/{tenant_id}?period=month
+```
+
+Response:
+```json
+{
+  "tenant_id": "tenant-123",
+  "period": "month",
+  "start_date": "2024-12-20",
+  "end_date": "2025-01-19",
+  "usage_by_model": [
+    {
+      "model": "llama-3.1-8b",
+      "prompt_tokens": 1250000,
+      "completion_tokens": 450000
+    },
+    {
+      "model": "llama-3.1-70b",
+      "prompt_tokens": 150000,
+      "completion_tokens": 75000
+    }
+  ]
+}
+```
+
+### Cost Optimization Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `rag_retrieval_top_k_used` | Histogram | Distribution of effective top_k values |
+| `rag_reranker_invocations_total` | Counter | Reranker calls by tenant tier |
+| `rag_llm_requests_by_model` | Counter | Requests per model tier |
+| `rag_answer_cache_hit_total` | Counter | Cache hits |
+| `rag_answer_cache_miss_total` | Counter | Cache misses |
+| `rag_llm_tokens_total{type}` | Counter | Token usage (prompt/completion) |
+| `rag_embeddings_generated_total` | Counter | Embedding operations |
+
+### Cost Savings Summary
+
+| Strategy | Typical Savings | Implementation |
+|----------|-----------------|----------------|
+| Answer caching | 20-40% | Cache repeated queries |
+| Model tiering | 60-70% | Use smaller models for simple queries |
+| Dynamic retrieval | 30-50% | Reduce candidates for basic tenants |
+| Query-based parameters | 20-30% | Skip reranker for simple queries |
 
 ---
 

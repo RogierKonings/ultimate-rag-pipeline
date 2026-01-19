@@ -11,6 +11,8 @@ Features:
 - FastAPI dependency injection
 - Dynamic database credentials (via Vault)
 - Transit encryption (via Vault)
+- Dynamic credential rotation without restart (US-10.7.3)
+- Secret provider interface with expiration metadata
 
 Example:
     ```python
@@ -58,6 +60,20 @@ Example:
         api_key: str = Depends(require_secret("EXTERNAL_API_KEY")),
     ):
         pass
+
+    # Dynamic credential rotation (US-10.7.3)
+    from services.shared.security.secrets import (
+        DynamicCredentialManager,
+        CredentialManagerConfig,
+    )
+
+    config = CredentialManagerConfig(
+        database="database",
+        role="rag-pipeline-db",
+    )
+    cred_manager = DynamicCredentialManager(vault_client, config)
+    cred_manager.on_credential_change(update_connection_pool)
+    await cred_manager.start()
     ```
 """
 
@@ -96,6 +112,22 @@ from .vault import (
     VaultError,
     VaultSecretError,
 )
+from .credential_manager import (
+    CredentialManagerConfig,
+    CredentialManagerError,
+    DatabaseCredentials,
+    DynamicCredentialManager,
+)
+from .provider import (
+    CompositeSecretProvider,
+    EnvironmentSecretProvider,
+    FileSecretProvider,
+    SecretProvider,
+    SecretProviderError,
+    SecretValue,
+    VaultSecretProvider,
+    create_secret_provider,
+)
 
 __all__ = [
     # Config
@@ -128,4 +160,18 @@ __all__ = [
     "get_encryption_key",
     "require_secret",
     "optional_secret",
+    # Credential Manager (US-10.7.3)
+    "DynamicCredentialManager",
+    "CredentialManagerConfig",
+    "CredentialManagerError",
+    "DatabaseCredentials",
+    # Secret Provider Interface (US-10.7.3)
+    "SecretProvider",
+    "SecretValue",
+    "SecretProviderError",
+    "VaultSecretProvider",
+    "EnvironmentSecretProvider",
+    "FileSecretProvider",
+    "CompositeSecretProvider",
+    "create_secret_provider",
 ]

@@ -552,8 +552,10 @@ Deletion counts are returned in the response for audit purposes.
 
 **Responsibilities:**
 
-- Intent classification and routing (simple/complex/no_retrieval strategies)
+- Intent classification and routing (simple/complex/multi-hop/comparison/aggregation/no_retrieval strategies)
 - RAG vs direct LLM decision via query router
+- Multi-hop query decomposition and parallel retrieval
+- Answer verification with CRAG-style claim extraction and validation
 - Prompt construction with Jinja2 templates
 - LLM call management via Model Gateway
 - Response validation and guardrails (PII detection, injection prevention)
@@ -578,17 +580,24 @@ orchestrator-service/
 ├── workflow/
 │   ├── graph.py               # LangGraph StateGraph definition
 │   ├── state.py               # RAGState TypedDict
-│   └── nodes/
-│       ├── input_validation.py
-│       ├── routing.py
-│       ├── retrieval.py
-│       ├── prompt_building.py
-│       ├── generation.py
-│       └── output_validation.py
+│   ├── nodes/
+│   │   ├── input_validation.py
+│   │   ├── routing.py
+│   │   ├── decomposition.py   # Multi-hop query decomposition
+│   │   ├── retrieval.py
+│   │   ├── multi_retrieval.py # Parallel sub-question retrieval
+│   │   ├── prompt_building.py
+│   │   ├── generation.py
+│   │   ├── verification.py    # Answer verification node
+│   │   └── output_validation.py
+│   └── verification/          # CRAG-style verification
+│       ├── claim_extractor.py # Extract claims from answers
+│       └── claim_verifier.py  # Verify claims against context
 ├── routing/
-│   ├── router.py              # QueryRouter class
+│   ├── router.py              # ExtendedQueryRouter class
+│   ├── strategies.py          # Multi-hop detection patterns
 │   ├── classifiers.py         # Intent/complexity classifiers
-│   └── models.py              # RoutingResult, QueryIntent enums
+│   └── models.py              # RoutingResult, QueryIntent, RoutingStrategy enums
 ├── prompts/
 │   ├── builder.py             # PromptBuilder class
 │   ├── templates.py           # Jinja2 prompt templates
@@ -606,7 +615,7 @@ orchestrator-service/
 │   ├── session.py             # SessionManager
 │   ├── store.py               # RedisSessionStore
 │   ├── persistence.py         # PostgresConversationStore
-│   ├── summarizer.py          # HistorySummarizer
+├── summarizer.py          # HistorySummarizer
 │   └── models.py              # Message, ConversationSession
 ├── streaming/
 │   ├── manager.py             # StreamManager
@@ -619,10 +628,34 @@ orchestrator-service/
 │   ├── fallbacks.py           # FallbackHandlers
 │   ├── degradation.py         # DegradationManager
 │   └── config.py              # Resilience configuration
+├── observability/
+│   └── verification_metrics.py # Verification Prometheus metrics
 ├── config.py                  # OrchestratorConfig settings
 ├── run.py                     # Application entry point
 └── tests/                     # 883 unit tests, 96% coverage
 ```
+
+**Extended Routing Strategies:**
+
+| Strategy | Description | Detection Pattern |
+|----------|-------------|-------------------|
+| `simple` | Single retrieval pass | Low complexity score |
+| `complex` | Multi-step retrieval | High complexity score |
+| `multi_hop` | Query decomposition | Sequential reasoning ("first...then") |
+| `comparison` | Compare entities | "X vs Y", "compare", "difference between" |
+| `aggregation` | Collect and summarize | "list all", "summarize", "overview" |
+| `no_retrieval` | Direct LLM response | Greetings, chitchat |
+
+**Answer Verification (CRAG-style):**
+
+The orchestrator includes an optional verification node that validates generated answers against retrieved context:
+
+1. **Claim Extraction**: Extracts factual claims from the generated answer
+2. **Claim Verification**: Checks each claim against context (supported/partial/unsupported)
+3. **Score Calculation**: Computes overall verification score (0-1)
+4. **Disclaimer Addition**: Adds disclaimer for low-confidence responses (< 0.7 threshold)
+
+Verification is opt-in per tenant and adds ~500ms latency when enabled.
 
 > **Full Documentation:** See [docs/orchestrator-service/README.md](orchestrator-service/README.md) for detailed API reference, configuration, and usage examples.
 
@@ -1854,15 +1887,105 @@ flowchart TB
 
 ## Cost & Performance Optimization
 
+The pipeline implements comprehensive cost optimization through dynamic retrieval parameters, LLM model tiering, answer-level caching, and token usage accounting.
+
 ### Cost Optimization Strategies
 
 | Strategy | Implementation | Savings |
 |----------|----------------|---------|
-| **Query caching** | Redis cache for repeated queries | 20-40% |
+| **Answer caching** | Cache complete RAG responses by query hash | 20-40% |
 | **Embedding cache** | Cache by content hash | 30-50% |
-| **Model tiering** | Llama-8B default, 70B for complex | 60-70% |
+| **Model tiering** | Small/Medium/Large models by complexity | 60-70% |
+| **Dynamic retrieval** | Adjust top_k by tenant tier | 30-50% |
+| **Query-based params** | Skip reranker for simple queries | 20-30% |
 | **Batching** | Batch embedding requests | 40% latency |
-| **Context truncation** | Limit to 2000 tokens | 30% tokens |
+| **Context truncation** | Limit tokens by tenant tier | 30% tokens |
+
+### Dynamic Retrieval Parameters
+
+Retrieval parameters are adjusted based on tenant tier and query complexity:
+
+| Tenant Tier | Semantic Top-K | Keyword Top-K | Reranker | Max Context |
+|-------------|----------------|---------------|----------|-------------|
+| `basic` | 20 | 20 | ❌ | 2,000 tokens |
+| `standard` | 35 | 35 | ✅ | 4,000 tokens |
+| `premium` | 50 | 50 | ✅ | 8,000 tokens |
+
+Query type modifiers further adjust parameters:
+- **SIMPLE**: 0.5x top_k, reranker disabled
+- **QUESTION**: 1.0x top_k, tier default reranker
+- **SEMANTIC/HYBRID**: 1.0-1.2x top_k, reranker enabled
+
+### LLM Model Tiering
+
+The Model Router selects models based on query complexity and tenant tier:
+
+| Model Tier | Model | Max Tokens | Use Case |
+|------------|-------|------------|----------|
+| `small` | Qwen2.5-7B | 2,048 | Simple queries, basic tenants |
+| `medium` | Llama-3.1-13B | 4,096 | Standard complexity |
+| `large` | Llama-3.1-70B | 8,192 | Complex analytical, premium |
+
+**Selection Matrix:**
+
+| Tenant | Simple Query | Complex Query |
+|--------|--------------|---------------|
+| Basic | Small | Small |
+| Standard | Small | Medium |
+| Premium | Medium | Large |
+
+### Answer-Level Caching
+
+Complete RAG responses are cached to serve instant answers for repeated questions:
+
+```python
+from services.orchestrator.cache.answer_cache import AnswerCache
+
+cache = AnswerCache(redis=redis_client, default_ttl=3600)
+
+# Cache key components:
+# - tenant_id (isolation)
+# - normalized_query (SHA-256 hash)
+# - config_hash (retrieval config)
+# - prompt_version (invalidation)
+
+# On cache hit: skip retrieval + LLM entirely
+cached = await cache.get(tenant_id, query, config_hash)
+if cached:
+    return cached.response, cached.citations  # Instant response
+
+# Cache invalidation on document changes
+await cache.invalidate_for_document(tenant_id, document_id)
+```
+
+### Token Usage Accounting
+
+Per-tenant token tracking enables quotas and billing:
+
+```python
+from services.orchestrator.usage.tracker import UsageTracker
+
+tracker = UsageTracker(redis=redis, session_factory=db_session)
+
+# Record usage after each request
+await tracker.record_llm_usage(
+    tenant_id="tenant-123",
+    model="llama-3.1-8b",
+    prompt_tokens=500,
+    completion_tokens=150
+)
+
+# Check quota before processing
+allowed, remaining = await tracker.check_quota(tenant_id)
+if not allowed:
+    raise HTTPException(429, "Monthly token quota exceeded")
+```
+
+**Storage Architecture:**
+- **Redis**: Real-time counters with TTL
+- **PostgreSQL**: Daily/monthly aggregations for reporting
+
+**Usage API:** `GET /api/v1/usage/{tenant_id}?period=month`
 
 ### Performance Budgets
 
@@ -1875,33 +1998,19 @@ flowchart TB
 | LLM generation | 1500ms | 3000ms |
 | **Total E2E** | **2000ms** | **4000ms** |
 
-### Caching Strategy
+### Cost Optimization Metrics
 
-```python
-import hashlib
-from redis import Redis
+| Metric | Type | Description |
+|--------|------|-------------|
+| `rag_retrieval_top_k_used` | Histogram | Effective top_k distribution |
+| `rag_reranker_invocations_total` | Counter | Reranker calls by tier |
+| `rag_llm_requests_by_model` | Counter | Requests per model tier |
+| `rag_answer_cache_hit_total` | Counter | Cache hits |
+| `rag_answer_cache_miss_total` | Counter | Cache misses |
+| `rag_llm_tokens_total{type}` | Counter | Token usage (prompt/completion) |
+| `rag_embeddings_generated_total` | Counter | Embedding operations |
 
-class RAGCache:
-    def __init__(self, redis: Redis, ttl: int = 3600):
-        self.redis = redis
-        self.ttl = ttl
-    
-    def cache_key(self, query: str, filters: dict) -> str:
-        """Generate cache key from query and filters."""
-        content = f"{query}:{json.dumps(filters, sort_keys=True)}"
-        return f"rag:query:{hashlib.sha256(content.encode()).hexdigest()[:16]}"
-    
-    async def get_cached_response(self, query: str, filters: dict) -> dict | None:
-        """Get cached RAG response."""
-        key = self.cache_key(query, filters)
-        cached = await self.redis.get(key)
-        return json.loads(cached) if cached else None
-    
-    async def cache_response(self, query: str, filters: dict, response: dict):
-        """Cache RAG response."""
-        key = self.cache_key(query, filters)
-        await self.redis.setex(key, self.ttl, json.dumps(response))
-```
+> **Full Documentation:** See [docs/orchestrator-service/README.md](orchestrator-service/README.md#cost-aware-retrieval--model-tiering) for detailed configuration and usage examples.
 
 ---
 
