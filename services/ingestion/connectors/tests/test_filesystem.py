@@ -225,7 +225,7 @@ class TestFilesystemConnectorS3:
     @pytest.mark.asyncio
     async def test_list_documents_s3(self, s3_config):
         """Test listing S3 objects."""
-        from services.ingestion.connectors.base import DocumentMetadata
+        from connectors.base import DocumentMetadata
 
         connector = FilesystemConnector(s3_config)
         connector._connected = True

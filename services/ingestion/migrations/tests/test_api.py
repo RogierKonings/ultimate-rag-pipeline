@@ -202,7 +202,7 @@ class TestMigrationRequestValidation:
 
     def test_valid_migration_request(self):
         """Test valid migration request."""
-        from services.ingestion.api.schemas.migrations import MigrationRequestSchema
+        from api.schemas.migrations import MigrationRequestSchema
 
         request = MigrationRequestSchema(
             target_model="BAAI/bge-m3",
@@ -215,7 +215,7 @@ class TestMigrationRequestValidation:
 
     def test_migration_request_with_validation_config(self):
         """Test migration request with validation config."""
-        from services.ingestion.api.schemas.migrations import (
+        from api.schemas.migrations import (
             MigrationRequestSchema,
             ValidationConfigSchema,
         )
@@ -236,7 +236,7 @@ class TestMigrationRequestValidation:
 
     def test_validation_config_schema_defaults(self):
         """Test ValidationConfigSchema default values match architecture spec."""
-        from services.ingestion.api.schemas.migrations import ValidationConfigSchema
+        from api.schemas.migrations import ValidationConfigSchema
 
         config = ValidationConfigSchema()
         assert config.sample_size == 100
@@ -247,7 +247,7 @@ class TestMigrationRequestValidation:
         """Test ValidationConfigSchema validation constraints."""
         from pydantic import ValidationError
 
-        from services.ingestion.api.schemas.migrations import ValidationConfigSchema
+        from api.schemas.migrations import ValidationConfigSchema
 
         # Valid config
         config = ValidationConfigSchema(
@@ -277,7 +277,7 @@ class TestMigrationRequestValidation:
         """Test batch size validation (too small)."""
         from pydantic import ValidationError
 
-        from services.ingestion.api.schemas.migrations import MigrationRequestSchema
+        from api.schemas.migrations import MigrationRequestSchema
 
         with pytest.raises(ValidationError):
             MigrationRequestSchema(
@@ -289,7 +289,7 @@ class TestMigrationRequestValidation:
         """Test batch size validation (too large)."""
         from pydantic import ValidationError
 
-        from services.ingestion.api.schemas.migrations import MigrationRequestSchema
+        from api.schemas.migrations import MigrationRequestSchema
 
         with pytest.raises(ValidationError):
             MigrationRequestSchema(
@@ -299,7 +299,7 @@ class TestMigrationRequestValidation:
 
     def test_validation_request_defaults(self):
         """Test validation request defaults are None (to use stored config)."""
-        from services.ingestion.api.schemas.migrations import ValidationRequestSchema
+        from api.schemas.migrations import ValidationRequestSchema
 
         request = ValidationRequestSchema()
         # Defaults are None, meaning stored config will be used
@@ -308,7 +308,7 @@ class TestMigrationRequestValidation:
 
     def test_validation_request_with_values(self):
         """Test validation request with explicit values."""
-        from services.ingestion.api.schemas.migrations import ValidationRequestSchema
+        from api.schemas.migrations import ValidationRequestSchema
 
         request = ValidationRequestSchema(sample_size=200, overlap_threshold=0.85)
         assert request.sample_size == 200
@@ -316,7 +316,7 @@ class TestMigrationRequestValidation:
 
     def test_switch_request_defaults(self):
         """Test switch request defaults."""
-        from services.ingestion.api.schemas.migrations import SwitchRequestSchema
+        from api.schemas.migrations import SwitchRequestSchema
 
         request = SwitchRequestSchema()
         assert request.force is False
@@ -327,7 +327,7 @@ class TestResponseSchemas:
 
     def test_migration_response_schema(self, sample_migration):
         """Test migration response schema."""
-        from services.ingestion.api.schemas.migrations import MigrationResponseSchema
+        from api.schemas.migrations import MigrationResponseSchema
 
         response = MigrationResponseSchema(
             migration_id=sample_migration.migration_id,
@@ -351,7 +351,7 @@ class TestResponseSchemas:
 
     def test_migration_response_with_validation_config(self, sample_migration):
         """Test migration response schema includes validation config."""
-        from services.ingestion.api.schemas.migrations import MigrationResponseSchema
+        from api.schemas.migrations import MigrationResponseSchema
 
         validation_config = {
             "sample_size": 200,
@@ -382,7 +382,7 @@ class TestResponseSchemas:
 
     def test_validation_response_schema(self):
         """Test validation response schema."""
-        from services.ingestion.api.schemas.migrations import ValidationResponseSchema
+        from api.schemas.migrations import ValidationResponseSchema
 
         response = ValidationResponseSchema(
             total_queries=100,
@@ -399,7 +399,7 @@ class TestResponseSchemas:
 
     def test_status_response_schema(self):
         """Test status response schema."""
-        from services.ingestion.api.schemas.migrations import StatusResponseSchema
+        from api.schemas.migrations import StatusResponseSchema
 
         response = StatusResponseSchema(
             status="completed",

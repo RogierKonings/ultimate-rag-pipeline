@@ -144,7 +144,7 @@ class TestBatchIngest:
     def test_batch_ingest_creates_subtasks(self, celery_app):
         """Test that batch_ingest creates subtasks for each document."""
         # This test verifies the batch task structure
-        from services.ingestion.tasks.ingest import process_document
+        from tasks.ingest import process_document
 
         # Verify the task is properly registered
-        assert "services.ingestion.tasks.ingest.process_document" in process_document.name
+        assert "tasks.ingest.process_document" in process_document.name

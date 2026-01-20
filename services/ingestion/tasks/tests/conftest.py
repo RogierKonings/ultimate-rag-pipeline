@@ -26,7 +26,7 @@ def celery_config():
 @pytest.fixture
 def celery_app(celery_config):
     """Celery app configured for testing."""
-    from services.ingestion.tasks.celery_app import CeleryConfig, create_celery_app
+    from tasks.celery_app import CeleryConfig, create_celery_app
 
     config = CeleryConfig(
         broker_url=celery_config["broker_url"],
@@ -51,7 +51,7 @@ def mock_connector():
 @pytest.fixture
 def mock_raw_document():
     """Mock raw document from connector."""
-    from services.ingestion.connectors.base import DocumentMetadata, RawDocument
+    from connectors.base import DocumentMetadata, RawDocument
 
     return RawDocument(
         content=b"This is test content for the document.",
@@ -90,7 +90,7 @@ def mock_enriched_metadata():
 @pytest.fixture
 def mock_chunks():
     """Mock document chunks."""
-    from services.ingestion.processors.chunking import Chunk
+    from processors.chunking import Chunk
 
     return [
         Chunk(
