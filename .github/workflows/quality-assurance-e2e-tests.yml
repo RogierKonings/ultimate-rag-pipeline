@@ -43,13 +43,13 @@ jobs:
           EOF
 
       - name: Start infrastructure services
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for infrastructure
         run: |
           echo "Waiting for infrastructure services..."
           for i in {1..30}; do
-            if docker-compose exec -T postgres pg_isready -U raguser 2>/dev/null; then
+            if docker compose exec -T postgres pg_isready -U raguser 2>/dev/null; then
               echo "PostgreSQL is ready"
               break
             fi
@@ -58,7 +58,7 @@ jobs:
           done
 
       - name: Start application services
-        run: docker-compose --profile app up -d
+        run: docker compose --profile app up -d
 
       - name: Wait for application services
         run: |
@@ -92,17 +92,17 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          docker-compose --profile e2e run --rm e2e-tests
+          docker compose --profile e2e run --rm e2e-tests
 
       - name: Collect logs on failure
         if: failure()
         run: |
-          echo "=== Ingestion Service Logs ===" 
-          docker-compose logs ingestion-service --tail=100
+          echo "=== Ingestion Service Logs ==="
+          docker compose logs ingestion-service --tail=100
           echo "=== Orchestrator Service Logs ==="
-          docker-compose logs orchestrator-service --tail=100
+          docker compose logs orchestrator-service --tail=100
           echo "=== Retrieval Service Logs ==="
-          docker-compose logs retrieval-service --tail=100
+          docker compose logs retrieval-service --tail=100
 
       - name: Generate test summary
         if: always()
@@ -115,4 +115,4 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: docker-compose --profile app --profile e2e down -v
+        run: docker compose --profile app --profile e2e down -v
