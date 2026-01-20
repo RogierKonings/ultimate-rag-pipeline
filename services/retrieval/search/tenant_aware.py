@@ -19,7 +19,7 @@ from .semantic import SemanticSearcher
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-    from tenant.config_service import TenantConfigService, TenantIndexConfig
+    from shared.tenant.config_service import TenantConfigService, TenantIndexConfig
 
 logger = structlog.get_logger(__name__)
 
@@ -81,7 +81,7 @@ class TenantAwareHybridSearcher:
     def _get_config_service(self) -> TenantConfigService:
         """Get or create config service."""
         if self._config_service is None:
-            from tenant.config_service import get_tenant_config_service
+            from shared.tenant.config_service import get_tenant_config_service
             self._config_service = get_tenant_config_service()
         return self._config_service
 

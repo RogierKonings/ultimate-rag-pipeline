@@ -166,7 +166,7 @@ async def query(
                 },
             )
 
-            response_text = result.get("response", "")
+            response_text = result.get("response") or ""
             documents = result.get("documents", [])
             model_used = result.get("model_used", "unknown")
             usage = result.get("usage", {})

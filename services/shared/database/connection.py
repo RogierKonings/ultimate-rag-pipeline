@@ -173,14 +173,17 @@ def create_async_engine(
         if ssl_context:
             connect_args["ssl"] = ssl_context
 
-    return sa_create_async_engine(
-        url,
-        echo=echo,
-        pool_size=pool_size,
-        max_overflow=max_overflow,
-        pool_pre_ping=pool_pre_ping,
-        connect_args=connect_args if connect_args else None,
-    )
+    # Build kwargs, only including connect_args if non-empty
+    kwargs = {
+        "echo": echo,
+        "pool_size": pool_size,
+        "max_overflow": max_overflow,
+        "pool_pre_ping": pool_pre_ping,
+    }
+    if connect_args:
+        kwargs["connect_args"] = connect_args
+
+    return sa_create_async_engine(url, **kwargs)
 
 
 def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:

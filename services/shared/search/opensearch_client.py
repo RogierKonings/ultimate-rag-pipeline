@@ -8,6 +8,8 @@ from typing import Any
 
 from opensearchpy import OpenSearch, helpers
 
+from shared.config.urls import get_opensearch_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ class OpenSearchClient:
             client_cert_path: Path to client certificate for mTLS. Defaults to OPENSEARCH_CLIENT_CERT env var.
             client_key_path: Path to client key for mTLS. Defaults to OPENSEARCH_CLIENT_KEY env var.
         """
-        self.url = url or os.getenv("OPENSEARCH_URL", "http://localhost:9200")
+        self.url = url or get_opensearch_url()
         self.index_name = index_name or os.getenv("OPENSEARCH_INDEX", "documents")
 
         # Authentication configuration

@@ -204,9 +204,10 @@ class TenantPIIConfigService:
 
     def _build_settings(self, raw_config: dict[str, Any]) -> PIISettings:
         """Build PIISettings from raw config dict."""
-        # Convert entity configs
+        # Convert entity configs (handle None values from tenant overrides)
         entity_configs = {}
-        for entity_type, config in raw_config.get("entity_configs", {}).items():
+        entity_configs_raw = raw_config.get("entity_configs") or {}
+        for entity_type, config in entity_configs_raw.items():
             handling_mode = None
             if config.get("handling_mode"):
                 handling_mode = PIIHandlingMode(config["handling_mode"])
@@ -222,16 +223,17 @@ class TenantPIIConfigService:
             raw_config.get("default_handling_mode", "flag")
         )
 
-        # Build settings
+        # Build settings (handle None values from tenant overrides)
+        ingestion_config = raw_config.get("ingestion") or {}
         settings = PIISettings(
             enabled=raw_config.get("enabled", True),
             default_handling_mode=default_mode,
             confidence_threshold=raw_config.get("confidence_threshold", 0.7),
             entity_configs=entity_configs,
-            reject_on_high_sensitivity=raw_config.get("ingestion", {}).get(
+            reject_on_high_sensitivity=ingestion_config.get(
                 "reject_on_high_sensitivity", False
             ),
-            store_pii_metadata=raw_config.get("ingestion", {}).get(
+            store_pii_metadata=ingestion_config.get(
                 "store_pii_metadata", True
             ),
             log_detections=True,
@@ -256,9 +258,9 @@ class TenantPIIConfigService:
         settings = await self.get_pii_settings(tenant_id, session)
         detector = PIIDetector(settings)
 
-        # Load custom patterns if any
+        # Load custom patterns if any (handle None values from tenant overrides)
         raw_config = await self.get_raw_config(tenant_id, session)
-        custom_patterns = raw_config.get("custom_patterns", [])
+        custom_patterns = raw_config.get("custom_patterns") or []
 
         for pattern in custom_patterns:
             detector.add_custom_pattern(
@@ -389,7 +391,7 @@ class TenantPIIConfigService:
             Updated configuration
         """
         raw_config = await self.get_raw_config(tenant_id, session)
-        patterns = raw_config.get("custom_patterns", [])
+        patterns = raw_config.get("custom_patterns") or []
 
         # Check for duplicate name
         if any(p["name"] == name for p in patterns):
@@ -427,7 +429,7 @@ class TenantPIIConfigService:
             Updated configuration
         """
         raw_config = await self.get_raw_config(tenant_id, session)
-        patterns = raw_config.get("custom_patterns", [])
+        patterns = raw_config.get("custom_patterns") or []
 
         # Find and remove pattern
         new_patterns = [p for p in patterns if p["name"] != pattern_name]

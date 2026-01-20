@@ -18,10 +18,21 @@ Timeout configuration (US-10.2.4):
 - Document total timeout: 300 seconds (5 minutes)
 """
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-from shared.config import get_timeout_seconds
+from shared.config import (
+    get_timeout_seconds,
+    get_postgres_url,
+    get_redis_url,
+    get_qdrant_url,
+    get_opensearch_url,
+    get_minio_url,
+    get_celery_broker_url,
+    get_celery_result_backend,
+    get_llm_gateway_url,
+    get_otel_endpoint,
+)
 
 # Architecture-defined constants (US-2.12)
 ARCHITECTURE_EMBEDDING_DIMENSIONS = 1024
@@ -49,24 +60,24 @@ class Settings(BaseSettings):
     jwt_secret: str = "your-secret-key-change-in-production"  # noqa: S105
     jwt_algorithm: str = "HS256"
 
-    # Database URLs
-    database_url: str = "postgresql://localhost:5432/rag_pipeline"
-    redis_url: str = "redis://localhost:6379"
-    qdrant_url: str = "http://localhost:6333"
-    opensearch_url: str = "http://localhost:9200"
-    minio_url: str = "http://localhost:9000"
+    # Database URLs (from centralized config)
+    database_url: str = Field(default_factory=lambda: get_postgres_url(async_driver=False))
+    redis_url: str = Field(default_factory=get_redis_url)
+    qdrant_url: str = Field(default_factory=get_qdrant_url)
+    opensearch_url: str = Field(default_factory=get_opensearch_url)
+    minio_url: str = Field(default_factory=get_minio_url)
 
     # MinIO/S3 credentials
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"  # noqa: S105
     minio_bucket: str = "rag-documents"
 
-    # Celery
-    celery_broker_url: str = "redis://localhost:6379/0"
-    celery_result_backend: str = "redis://localhost:6379/1"
+    # Celery (from centralized config)
+    celery_broker_url: str = Field(default_factory=get_celery_broker_url)
+    celery_result_backend: str = Field(default_factory=get_celery_result_backend)
 
-    # LLM Gateway
-    llm_gateway_url: str = "http://localhost:8004"
+    # LLM Gateway (from centralized config)
+    llm_gateway_url: str = Field(default_factory=get_llm_gateway_url)
 
     # Embedding configuration (architecture defaults, US-2.12)
     embedding_model: str = "BAAI/bge-large-en-v1.5"
@@ -77,10 +88,10 @@ class Settings(BaseSettings):
     chunking_max_tokens: int = ARCHITECTURE_CHUNKING_MAX_TOKENS
     chunking_overlap_tokens: int = ARCHITECTURE_CHUNKING_OVERLAP_TOKENS
 
-    # OpenTelemetry configuration (US-2.12)
+    # OpenTelemetry configuration (US-2.12, from centralized config)
     otel_enabled: bool = True
     otel_service_name: str = "ingestion-service"
-    otel_exporter_otlp_endpoint: str = "http://localhost:4317"
+    otel_exporter_otlp_endpoint: str = Field(default_factory=get_otel_endpoint)
 
     # Prometheus metrics (US-2.12)
     metrics_enabled: bool = True

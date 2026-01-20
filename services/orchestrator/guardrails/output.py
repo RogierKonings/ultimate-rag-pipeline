@@ -22,11 +22,11 @@ class OutputGuardrail:
         """
         self.config = config or GuardrailConfig()
 
-    async def check(self, text: str) -> GuardrailResult:
+    async def check(self, text: str | None) -> GuardrailResult:
         """Check output text against all enabled guardrails.
 
         Args:
-            text: The output text to validate.
+            text: The output text to validate. Can be None if LLM returned no response.
 
         Returns:
             GuardrailResult with pass/fail status and any violations found.
@@ -34,6 +34,10 @@ class OutputGuardrail:
         start_time = time.perf_counter()
         violations: list[Violation] = []
         sanitized_content: str | None = None
+
+        # Handle None text - treat as empty response
+        if text is None:
+            text = ""
 
         # Check length
         if len(text) > self.config.max_output_length:

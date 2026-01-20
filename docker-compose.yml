@@ -128,6 +128,8 @@ services:
       - rag-network
 
   # ============ APPLICATION SERVICES ============
+  # NOTE: Run 'make env-docker' before 'docker-compose --profile app up' to generate .env
+
   ingestion-service:
     build:
       context: ./services/ingestion
@@ -135,22 +137,11 @@ services:
     container_name: rag-ingestion
     ports:
       - "8001:8001"
+    env_file:
+      - .env.base
+      - .env.docker
     environment:
-      # Prefixed vars for ingestion config.py (uses INGESTION_ prefix)
-      - INGESTION_DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
-      - INGESTION_QDRANT_URL=http://qdrant:6333
-      - INGESTION_OPENSEARCH_URL=http://opensearch:9200
-      - INGESTION_REDIS_URL=redis://:ragredis@redis:6379
-      - INGESTION_MINIO_URL=http://minio:9000
-      - INGESTION_MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - INGESTION_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
-      - INGESTION_MINIO_BUCKET=rag-documents
-      - INGESTION_DEBUG=true
-      # Celery vars (not prefixed - used directly by celery_app.py)
-      - CELERY_BROKER_URL=redis://:ragredis@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:ragredis@redis:6379/1
-      # Embedding service
-      - EMBEDDING_SERVICE_URL=http://embedding-service:8080
+      # Service-specific overrides
       - LOG_LEVEL=DEBUG
     volumes:
       - ./services/ingestion:/app
@@ -175,20 +166,9 @@ services:
       dockerfile: Dockerfile
     container_name: rag-ingestion-worker
     command: celery -A tasks worker -l info -c 2
-    environment:
-      # Prefixed vars for ingestion config.py (uses INGESTION_ prefix)
-      - INGESTION_DATABASE_URL=postgresql://raguser:ragpass@postgres:5432/ragpipeline
-      - INGESTION_QDRANT_URL=http://qdrant:6333
-      - INGESTION_OPENSEARCH_URL=http://opensearch:9200
-      - INGESTION_REDIS_URL=redis://:ragredis@redis:6379
-      - INGESTION_MINIO_URL=http://minio:9000
-      - INGESTION_MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - INGESTION_MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
-      - INGESTION_MINIO_BUCKET=rag-documents
-      - INGESTION_LLM_GATEWAY_URL=http://host.docker.internal:11434
-      # Celery vars (not prefixed - used directly by celery_app.py)
-      - CELERY_BROKER_URL=redis://:ragredis@redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://:ragredis@redis:6379/1
+    env_file:
+      - .env.base
+      - .env.docker
     volumes:
       - ./services/ingestion:/app
       - ./services/shared:/app/shared
@@ -207,11 +187,11 @@ services:
     container_name: rag-retrieval
     ports:
       - "8002:8002"
+    env_file:
+      - .env.base
+      - .env.docker
     environment:
-      - RETRIEVAL_QDRANT_URL=http://qdrant:6333
-      - RETRIEVAL_OPENSEARCH_URL=http://opensearch:9200
-      - RETRIEVAL_REDIS_URL=redis://:ragredis@redis:6379
-      - RETRIEVAL_LLM_GATEWAY_URL=http://host.docker.internal:11434
+      # Service-specific overrides
       - RETRIEVAL_RERANK_ENABLED=false
       - RETRIEVAL_LOG_LEVEL=DEBUG
     volumes:
@@ -233,13 +213,16 @@ services:
     container_name: rag-orchestrator
     ports:
       - "8003:8003"
+    env_file:
+      - .env.base
+      - .env.docker
     environment:
-      - ORCHESTRATOR_RETRIEVAL_URL=http://retrieval-service:8002
-      - ORCHESTRATOR_LLM_GATEWAY_URL=http://host.docker.internal:11434
-      - ORCHESTRATOR_REDIS_URL=redis://:ragredis@redis:6379
+      # Service-specific overrides (model config)
       - ORCHESTRATOR_DEFAULT_MODEL=${LLM_MODEL:-llama3.1:8b}
-      - ORCHESTRATOR_STREAM_TIMEOUT=120.0
-      - ORCHESTRATOR_MAX_TOKENS=512
+      - ORCHESTRATOR_FALLBACK_MODEL=llama3.2:3b
+      - ORCHESTRATOR_SMALL_MODEL=llama3.2:3b
+      - ORCHESTRATOR_MEDIUM_MODEL=llama3.1:8b
+      - ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
       - LOG_LEVEL=DEBUG
     volumes:
       - ./services/orchestrator:/app
@@ -302,17 +285,9 @@ services:
     container_name: rag-frontend
     ports:
       - "3000:3000"
-    environment:
-      - PUBLIC_ORCHESTRATOR_URL=http://orchestrator-service:8003
-      - PUBLIC_INGESTION_URL=http://ingestion-service:8001
-      - PUBLIC_DEMO_TENANT_ID=00000000-0000-0000-0000-000000000001
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
-      - MINIO_BUCKET=rag-documents
-      - INGESTION_URL=http://ingestion-service:8001
-      - ORCHESTRATOR_URL=http://orchestrator-service:8003
-      - DEMO_TENANT_ID=00000000-0000-0000-0000-000000000001
+    env_file:
+      - .env.base
+      - .env.docker
     depends_on:
       - minio
     networks:

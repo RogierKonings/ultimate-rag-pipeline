@@ -151,8 +151,9 @@ async def retrieve(
     results = search_response.results
     reranker_used = False
 
-    # Use dynamic reranker decision if not explicitly overridden by request
-    should_rerank = body.rerank or (dynamic_params.use_reranker and not body.rerank)
+    # Use reranker only if explicitly requested in the body
+    # (body.rerank=False by default, so only rerank when explicitly True)
+    should_rerank = body.rerank
 
     if should_rerank and results:
         rerank_start = time.time()

@@ -60,6 +60,43 @@ from shared.config.defaults import (
     # Validation
     validate_all_configs,
 )
+from shared.config.urls import (
+    # Environment
+    DeployEnv,
+    get_deploy_env,
+    PORTS,
+    HOSTS,
+    # Database
+    get_postgres_url,
+    get_redis_url,
+    get_celery_broker_url,
+    get_celery_result_backend,
+    # Vector Store & Search
+    get_qdrant_url,
+    get_qdrant_grpc_url,
+    get_opensearch_url,
+    # Object Storage
+    get_minio_url,
+    get_minio_endpoint,
+    # ML Services
+    get_embedding_service_url,
+    get_reranker_service_url,
+    get_llm_gateway_url,
+    get_ollama_url,
+    # Application Services
+    get_ingestion_service_url,
+    get_retrieval_service_url,
+    get_orchestrator_service_url,
+    # Observability
+    get_otel_endpoint,
+    get_jaeger_url,
+    get_prometheus_url,
+    get_grafana_url,
+    get_loki_url,
+    get_phoenix_url,
+    # Security
+    get_vault_url,
+)
 
 __all__ = [
     # Core class
@@ -101,4 +138,32 @@ __all__ = [
     "get_embedding_config",
     "get_retrieval_config",
     "validate_all_configs",
+    # URL configuration
+    "DeployEnv",
+    "get_deploy_env",
+    "PORTS",
+    "HOSTS",
+    "get_postgres_url",
+    "get_redis_url",
+    "get_celery_broker_url",
+    "get_celery_result_backend",
+    "get_qdrant_url",
+    "get_qdrant_grpc_url",
+    "get_opensearch_url",
+    "get_minio_url",
+    "get_minio_endpoint",
+    "get_embedding_service_url",
+    "get_reranker_service_url",
+    "get_llm_gateway_url",
+    "get_ollama_url",
+    "get_ingestion_service_url",
+    "get_retrieval_service_url",
+    "get_orchestrator_service_url",
+    "get_otel_endpoint",
+    "get_jaeger_url",
+    "get_prometheus_url",
+    "get_grafana_url",
+    "get_loki_url",
+    "get_phoenix_url",
+    "get_vault_url",
 ]

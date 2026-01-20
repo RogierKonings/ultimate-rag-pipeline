@@ -113,13 +113,16 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
                     "include_highlights": True,
                 }
 
-                # Add tenant filter if available
+                # Add tenant filter and header if available
+                headers = {}
                 if tenant_id:
                     payload["filters"] = {"tenant_id": tenant_id}
+                    headers["X-Tenant-Id"] = tenant_id
 
                 response = await client.post(
                     f"{config.retrieval_url}/api/v1/retrieve",
                     json=payload,
+                    headers=headers,
                 )
                 response.raise_for_status()
 

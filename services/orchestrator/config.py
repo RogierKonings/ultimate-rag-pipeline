@@ -1,8 +1,16 @@
 """Orchestrator Service Configuration."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from shared.config import get_timeout_seconds
+from shared.config import (
+    get_timeout_seconds,
+    get_retrieval_service_url,
+    get_llm_gateway_url,
+    get_redis_url,
+    get_postgres_url,
+    get_otel_endpoint,
+)
 
 
 class OrchestratorConfig(BaseSettings):
@@ -13,13 +21,13 @@ class OrchestratorConfig(BaseSettings):
     service_port: int = 8003
     debug: bool = False
 
-    # Retrieval Service
-    retrieval_url: str = "http://localhost:8002"
+    # Retrieval Service (from centralized config)
+    retrieval_url: str = Field(default_factory=get_retrieval_service_url)
     retrieval_timeout: float = get_timeout_seconds("ORCHESTRATOR_RETRIEVAL")
     retrieval_top_k: int = 100  # Number of documents to retrieve (set high to search all)
 
-    # LLM Gateway
-    llm_gateway_url: str = "http://localhost:8004"
+    # LLM Gateway (from centralized config)
+    llm_gateway_url: str = Field(default_factory=get_llm_gateway_url)
     default_model: str = "meta-llama/Llama-3.1-70B-Instruct"
     fallback_model: str = "meta-llama/Llama-3.1-8B-Instruct"
     max_tokens: int = 1024
@@ -32,8 +40,8 @@ class OrchestratorConfig(BaseSettings):
     enable_model_tiering: bool = True  # Feature flag for gradual rollout
 
 
-    # Redis
-    redis_url: str = "redis://localhost:6379"
+    # Redis (from centralized config)
+    redis_url: str = Field(default_factory=get_redis_url)
     session_ttl: int = 3600  # 1 hour
     max_history_length: int = 20
 
@@ -42,8 +50,8 @@ class OrchestratorConfig(BaseSettings):
     answer_cache_ttl: int = 3600  # 1 hour default
     answer_cache_prompt_version: str = "v1"  # Bump when prompts change
 
-    # Postgres
-    database_url: str = "postgresql+asyncpg://raguser:ragpassword@localhost:5432/ragpipeline"
+    # Postgres (from centralized config)
+    database_url: str = Field(default_factory=get_postgres_url)
 
     # Guardrails
     enable_input_guardrails: bool = True
@@ -67,8 +75,8 @@ class OrchestratorConfig(BaseSettings):
     circuit_breaker_failure_threshold: int = 5
     circuit_breaker_recovery_timeout: float = 30.0
 
-    # Observability
-    otel_exporter_endpoint: str = "http://localhost:4317"
+    # Observability (from centralized config)
+    otel_exporter_endpoint: str = Field(default_factory=get_otel_endpoint)
     enable_tracing: bool = True
 
     class Config:

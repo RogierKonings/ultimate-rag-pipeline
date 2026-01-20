@@ -8,6 +8,8 @@ from uuid import UUID
 import numpy as np
 from pydantic import BaseModel, Field
 
+from shared.config.urls import get_qdrant_url, get_opensearch_url
+
 
 class SearchResultItem(BaseModel):
     """Individual search result."""
@@ -80,7 +82,7 @@ class KeywordSearchResponse(BaseModel):
 class QdrantConfig(BaseModel):
     """Qdrant connection configuration."""
 
-    url: str = "http://localhost:6333"
+    url: str = Field(default_factory=get_qdrant_url)
     api_key: str | None = None
     collection_name: str = "documents"
     timeout: float = 30.0
@@ -97,7 +99,7 @@ class QdrantConfig(BaseModel):
 class OpenSearchConfig(BaseModel):
     """OpenSearch connection configuration."""
 
-    url: str = "http://localhost:9200"
+    url: str = Field(default_factory=get_opensearch_url)
     username: str | None = None
     password: str | None = None
     index_name: str = "documents"

@@ -5,8 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
-from retrieval.video.clip_cache import ClipCacheService
-from retrieval.video.clip_generator import ClipGenerator
+from video.clip_cache import ClipCacheService
+from video.clip_generator import ClipGenerator
 
 from api.dependencies import UserContextDep
 

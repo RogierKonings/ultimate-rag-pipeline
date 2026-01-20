@@ -1,8 +1,14 @@
-.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama e2e e2e-full
+.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama e2e e2e-full env-local env-docker env-frontend
 
 help:
 	@echo "RAG Pipeline Development Commands"
 	@echo ""
+	@echo "Environment Setup:"
+	@echo "  make env-local    - Generate .env for local development (localhost URLs)"
+	@echo "  make env-docker   - Generate .env for Docker Compose (service name URLs)"
+	@echo "  make env-frontend - Generate frontend/.env from root config"
+	@echo ""
+	@echo "Development:"
 	@echo "  make dev          - Set up development environment (infra only)"
 	@echo "  make up           - Start infrastructure services"
 	@echo "  make up-all       - Start all services including app services"
@@ -22,6 +28,43 @@ help:
 	@echo "  make list-models  - List installed models"
 	@echo "  make remove-model MODEL=<name> - Remove a model"
 	@echo "  make test-llm     - Test LLM inference"
+
+# =============================================================================
+# Environment Configuration
+# =============================================================================
+
+env-local:
+	@echo "Generating .env for local development..."
+	@cat .env.base > .env
+	@echo "" >> .env
+	@cat .env.local >> .env
+	@echo "Generated .env with DEPLOY_ENV=local (localhost URLs)"
+
+env-docker:
+	@echo "Generating .env for Docker Compose..."
+	@cat .env.base > .env
+	@echo "" >> .env
+	@cat .env.docker >> .env
+	@echo "Generated .env with DEPLOY_ENV=docker (service name URLs)"
+
+env-frontend:
+	@echo "Generating frontend/.env from root configuration..."
+	@echo "# Generated from root .env - run 'make env-frontend' to update" > frontend/.env
+	@echo "# Generated at: $$(date)" >> frontend/.env
+	@echo "" >> frontend/.env
+	@echo "# Public environment variables (exposed to client)" >> frontend/.env
+	@grep -E '^PUBLIC_' .env >> frontend/.env 2>/dev/null || true
+	@echo "" >> frontend/.env
+	@echo "# Private environment variables (server-side only)" >> frontend/.env
+	@grep -E '^MINIO_' .env >> frontend/.env 2>/dev/null || true
+	@grep -E '^INGESTION_SERVICE_URL' .env >> frontend/.env 2>/dev/null || true
+	@grep -E '^ORCHESTRATOR_SERVICE_URL' .env >> frontend/.env 2>/dev/null || true
+	@grep -E '^DEMO_TENANT_ID' .env >> frontend/.env 2>/dev/null || true
+	@echo "Generated frontend/.env"
+
+# =============================================================================
+# Development Setup
+# =============================================================================
 
 dev:
 	./scripts/dev-setup.sh

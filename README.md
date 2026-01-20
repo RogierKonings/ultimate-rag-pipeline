@@ -96,7 +96,10 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 
 ### Cost-Aware Retrieval & Model Tiering
 - Dynamic retrieval parameters based on query type and tenant tier
-- LLM model tiering (small/medium/large) for cost optimization
+- LLM model tiering (small/medium/large) for cost optimization:
+  - Small: llama3.2:3b (3B params) - simple queries, basic tenants
+  - Medium: llama3.1:8b (8B params) - standard complexity
+  - Large: qwen2.5:14b (14B params) - complex analytical, premium tenants
 - Answer-level caching for instant repeated query responses
 - Per-tenant token usage accounting with quota enforcement
 - Configurable tenant tiers: basic, standard, premium
@@ -198,8 +201,11 @@ cd ultimate-rag-pipeline
 2. **Set up environment variables**
 
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
+# For local development (services run on host, localhost URLs)
+make env-local
+
+# For Docker Compose (services run in containers, service name URLs)
+make env-docker
 ```
 
 3. **Start the development environment**
@@ -274,45 +280,105 @@ alembic revision --autogenerate -m "Description of changes"
 
 ### Environment Configuration
 
-Copy `.env.example` to `.env` and configure:
+The project uses a profile-based environment configuration system that automatically resolves service URLs based on deployment context.
+
+#### Quick Setup
+
+```bash
+# For local development (localhost URLs)
+make env-local
+
+# For Docker Compose (service name URLs)
+make env-docker
+
+# For frontend development
+make env-frontend
+```
+
+#### How It Works
+
+Environment configuration is split into three files:
+
+| File | Purpose |
+|------|---------|
+| `.env.base` | Shared defaults (ports, models, timeouts, credentials) |
+| `.env.local` | Localhost URLs for local development |
+| `.env.docker` | Docker service name URLs for containerized deployment |
+
+The `make env-*` commands combine these files to generate `.env`:
+
+```
+.env = .env.base + .env.local   (for local development)
+.env = .env.base + .env.docker  (for Docker Compose)
+```
+
+#### DEPLOY_ENV Variable
+
+The `DEPLOY_ENV` variable controls automatic URL resolution in Python services:
+
+| Value | Description | Example URL |
+|-------|-------------|-------------|
+| `local` | Services run on host machine | `http://localhost:6333` |
+| `docker` | Services run in Docker containers | `http://qdrant:6333` |
+| `kubernetes` | Services run in Kubernetes | `http://qdrant.rag-pipeline.svc.cluster.local:6333` |
+
+Python services use centralized URL resolution (`services/shared/config/urls.py`) that:
+1. First checks for explicit environment variables (e.g., `QDRANT_URL`)
+2. Falls back to auto-generated URLs based on `DEPLOY_ENV`
+
+#### Overriding Individual Variables
+
+You can override any variable by setting it directly in your environment or by editing the generated `.env` file:
+
+```bash
+# Generate base config
+make env-local
+
+# Override specific variables
+export QDRANT_URL=http://custom-qdrant:6333
+```
+
+#### Key Configuration Variables
 
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://raguser:ragpass@localhost:5432/ragpipeline
+POSTGRES_USER=raguser
+POSTGRES_PASSWORD=ragpass
+POSTGRES_DB=ragpipeline
 
 # Vector Store
-QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=documents
 
 # Search
-OPENSEARCH_URL=http://localhost:9200
 OPENSEARCH_INDEX=documents
 
 # Cache
-REDIS_HOST=localhost
-REDIS_PORT=6379
 REDIS_PASSWORD=ragredis
 
 # Object Storage
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin123
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
 
 # Embedding
-EMBEDDING_SERVICE_URL=http://localhost:8080
 EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
 
 # LLM
-LLM_SERVICE_URL=http://localhost:8004
 LLM_MODEL=llama3.1:8b
 
+# Model Tiering (Orchestrator)
+ORCHESTRATOR_SMALL_MODEL=llama3.2:3b
+ORCHESTRATOR_MEDIUM_MODEL=llama3.1:8b
+ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
+ORCHESTRATOR_FALLBACK_MODEL=llama3.2:3b
+
 # Observability
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 LOG_LEVEL=INFO
 
 # Security
 JWT_SECRET=your-jwt-secret-change-in-production
 ```
+
+See `.env.example` for the complete list of available variables with documentation.
 
 ---
 

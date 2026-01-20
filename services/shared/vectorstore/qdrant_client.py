@@ -1,9 +1,10 @@
 """Qdrant Vector Store client wrapper for document embeddings."""
 
-import os
 from typing import Any
 
 from qdrant_client import QdrantClient
+
+from shared.config.urls import get_qdrant_url
 from qdrant_client.models import (
     FieldCondition,
     Filter,
@@ -30,7 +31,7 @@ class QdrantVectorStore:
             timeout: Request timeout in seconds.
         """
         self.client = QdrantClient(
-            url=url or os.getenv("QDRANT_URL", "http://localhost:6333"),
+            url=url or get_qdrant_url(),
             timeout=timeout,
         )
         self.collection_name = collection_name or os.getenv(

@@ -21,8 +21,8 @@ from qdrant_client.models import (
     MatchAny,
     MatchValue,
 )
-from retrieval.video.exceptions import VideoSearchError
-from retrieval.video.models import (
+from video.exceptions import VideoSearchError
+from video.models import (
     VideoMatch,
     VideoResult,
     VideoSearchMetrics,

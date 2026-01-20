@@ -4,8 +4,8 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request, status
 from query.preprocessor import QueryPreprocessor
-from retrieval.video.models import VideoSearchMode
-from retrieval.video.retriever import VideoRetriever
+from video.models import VideoSearchMode
+from video.retriever import VideoRetriever
 
 from api.dependencies import UserContextDep
 from api.schemas.video_retrieve import (

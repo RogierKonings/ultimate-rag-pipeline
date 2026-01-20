@@ -3,8 +3,10 @@
 import time
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from qdrant_client import AsyncQdrantClient
+
+from shared.config.urls import get_qdrant_url
 from qdrant_client.models import (
     Distance,
     FieldCondition,
@@ -24,7 +26,7 @@ from .models import IndexedChunk, WriteResult
 class QdrantWriterConfig(BaseModel):
     """Configuration for QdrantWriter."""
 
-    url: str = "http://localhost:6333"
+    url: str = Field(default_factory=get_qdrant_url)
     api_key: str | None = None
     collection_name: str = "documents"
     vector_size: int = 1024  # BGE-large dimensions

@@ -992,11 +992,17 @@ The Model Router selects appropriate LLM models based on query complexity and te
 
 #### Model Tiers
 
-| Tier | Model | Max Tokens | Cost (per 1K tokens) | Use Case |
-|------|-------|------------|---------------------|----------|
-| `small` | Qwen2.5-7B | 2,048 | $0.001 | Simple queries, basic tenants |
-| `medium` | Llama-3.1-13B | 4,096 | $0.003 | Standard complexity |
-| `large` | Llama-3.1-70B | 8,192 | $0.01 | Complex analytical, premium |
+| Tier | Default Model | Max Tokens | Cost (per 1K tokens) | Use Case |
+|------|---------------|------------|---------------------|----------|
+| `small` | llama3.2:3b | 2,048 | $0.001 | Simple queries, basic tenants |
+| `medium` | llama3.1:8b | 4,096 | $0.003 | Standard complexity |
+| `large` | qwen2.5:14b | 8,192 | $0.01 | Complex analytical, premium |
+
+Models are configurable via environment variables:
+- `ORCHESTRATOR_SMALL_MODEL` - Model for small tier (default: llama3.2:3b)
+- `ORCHESTRATOR_MEDIUM_MODEL` - Model for medium tier (default: llama3.1:8b)
+- `ORCHESTRATOR_LARGE_MODEL` - Model for large tier (default: qwen2.5:14b)
+- `ORCHESTRATOR_FALLBACK_MODEL` - Fallback model when primary fails (default: llama3.2:3b)
 
 #### Selection Matrix
 

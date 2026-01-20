@@ -7,12 +7,19 @@ Reference: US-10.5.2 - LLM Model Tiering
 """
 
 import logging
+import os
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+
+def _get_model_name(tier: str, default: str) -> str:
+    """Get model name from environment or use default."""
+    env_key = f"ORCHESTRATOR_{tier.upper()}_MODEL"
+    return os.getenv(env_key, default)
 
 
 class ModelTier(str, Enum):
@@ -32,24 +39,29 @@ class ModelConfig(BaseModel):
 
 
 # Default model configurations per tier
-# These can be overridden via environment variables
-MODEL_CONFIGS: dict[ModelTier, ModelConfig] = {
-    ModelTier.SMALL: ModelConfig(
-        model_name="qwen2.5-7b",
-        max_tokens=2048,
-        cost_per_1k_tokens=0.001,
-    ),
-    ModelTier.MEDIUM: ModelConfig(
-        model_name="llama-3.1-13b",
-        max_tokens=4096,
-        cost_per_1k_tokens=0.003,
-    ),
-    ModelTier.LARGE: ModelConfig(
-        model_name="llama-3.1-70b",
-        max_tokens=8192,
-        cost_per_1k_tokens=0.01,
-    ),
-}
+# These are overridden via environment variables: ORCHESTRATOR_SMALL_MODEL, etc.
+def _get_model_configs() -> dict[ModelTier, ModelConfig]:
+    """Build model configs from environment variables."""
+    return {
+        ModelTier.SMALL: ModelConfig(
+            model_name=_get_model_name("small", "qwen2.5-7b"),
+            max_tokens=2048,
+            cost_per_1k_tokens=0.001,
+        ),
+        ModelTier.MEDIUM: ModelConfig(
+            model_name=_get_model_name("medium", "llama-3.1-13b"),
+            max_tokens=4096,
+            cost_per_1k_tokens=0.003,
+        ),
+        ModelTier.LARGE: ModelConfig(
+            model_name=_get_model_name("large", "llama-3.1-70b"),
+            max_tokens=8192,
+            cost_per_1k_tokens=0.01,
+        ),
+    }
+
+
+MODEL_CONFIGS: dict[ModelTier, ModelConfig] = _get_model_configs()
 
 # Selection matrix: (tenant_tier, complexity) -> model_tier
 # Basic tier always gets small models regardless of complexity

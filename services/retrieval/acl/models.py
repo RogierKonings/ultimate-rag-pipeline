@@ -121,6 +121,27 @@ class UserContext(BaseModel):
             permissions=["read:public"],
         )
 
+    @classmethod
+    def for_tenant(cls, tenant_id: UUID) -> "UserContext":
+        """Create a user context for a specific tenant with read-all access.
+
+        Used for internal service-to-service calls where tenant is known
+        but no user authentication is available.
+
+        Args:
+            tenant_id: The tenant ID to use.
+
+        Returns:
+            UserContext with read access to all tenant documents.
+        """
+        return cls(
+            user_id=UUID(int=0),
+            tenant_id=tenant_id,
+            groups=[],
+            roles=["service"],
+            permissions=["read:all"],  # Allow access to all visibility levels
+        )
+
 
 class DocumentACL(BaseModel):
     """ACL metadata stored with each document.

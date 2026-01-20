@@ -3,7 +3,13 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from shared.config import get_timeout_seconds
+from shared.config import (
+    get_timeout_seconds,
+    get_qdrant_url,
+    get_opensearch_url,
+    get_llm_gateway_url,
+    get_redis_url,
+)
 
 
 class RetrievalConfig(BaseSettings):
@@ -14,16 +20,16 @@ class RetrievalConfig(BaseSettings):
     service_port: int = 8002
     debug: bool = False
 
-    # Qdrant (Semantic Search)
-    qdrant_url: str = "http://localhost:6333"
+    # Qdrant (Semantic Search, from centralized config)
+    qdrant_url: str = Field(default_factory=get_qdrant_url)
     qdrant_collection: str = "documents"
 
-    # OpenSearch (Keyword Search)
-    opensearch_url: str = "http://localhost:9200"
+    # OpenSearch (Keyword Search, from centralized config)
+    opensearch_url: str = Field(default_factory=get_opensearch_url)
     opensearch_index: str = "documents"
 
-    # LLM Gateway
-    llm_gateway_url: str = "http://localhost:8004"
+    # LLM Gateway (from centralized config)
+    llm_gateway_url: str = Field(default_factory=get_llm_gateway_url)
 
     # Embedding settings
     embedding_model: str = "nomic-embed-text"
@@ -42,8 +48,8 @@ class RetrievalConfig(BaseSettings):
     jwt_secret: str = "dev-secret-key"  # noqa: S105
     jwt_algorithm: str = "HS256"
 
-    # Cache
-    redis_url: str = "redis://localhost:6379"
+    # Cache (from centralized config)
+    redis_url: str = Field(default_factory=get_redis_url)
     cache_enabled: bool = True
     cache_ttl_seconds: int = 3600
 

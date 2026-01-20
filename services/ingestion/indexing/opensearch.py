@@ -5,7 +5,9 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from opensearchpy import AsyncOpenSearch
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from shared.config.urls import get_opensearch_url
 
 from .base import BaseIndexWriter
 from .models import IndexedChunk, WriteResult
@@ -14,7 +16,7 @@ from .models import IndexedChunk, WriteResult
 class OpenSearchWriterConfig(BaseModel):
     """Configuration for OpenSearchWriter."""
 
-    hosts: list[str] = ["http://localhost:9200"]
+    hosts: list[str] = Field(default_factory=lambda: [get_opensearch_url()])
     username: str | None = None
     password: str | None = None
     index_name: str = "documents"
