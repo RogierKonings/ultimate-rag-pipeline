@@ -1,6 +1,6 @@
 # E2E Tests Workflow
 # Runs end-to-end smoke tests against the full RAG pipeline
-name: E2E Tests
+name: Quality Assurance - E2E Tests
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
     branches: [main]
   schedule:
     # Weekly regression run on Sundays at 00:00 UTC
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
   workflow_dispatch:
 
 permissions:

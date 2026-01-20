@@ -1,6 +1,6 @@
 # Unit Tests Workflow
 # Runs pytest for all services on push and pull requests
-name: Quality Assurance - Linting & Tests
+name: Quality Assurance - Linting & Unit Tests
 
 on:
   push:
