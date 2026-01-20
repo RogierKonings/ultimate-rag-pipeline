@@ -214,7 +214,7 @@ class IndexCoordinator:
             opensearch_success: Whether OpenSearch indexing succeeded.
             errors: Combined error message if any store failed.
         """
-        from database.models.document import IndexStatus
+        from shared.database.models.document import IndexStatus
 
         # Determine status for each store
         qdrant_status = IndexStatus.OK if qdrant_success else IndexStatus.ERROR
@@ -271,7 +271,7 @@ class IndexCoordinator:
         Args:
             document_id: UUID of the document being indexed.
         """
-        from database.models.document import IndexStatus
+        from shared.database.models.document import IndexStatus
 
         if not self.postgres._pool:
             return

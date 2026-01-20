@@ -10,7 +10,7 @@ from sqlalchemy import Float, Integer, String
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base, TimestampMixin
+from .base import Base, TimestampMixin
 
 
 class VerificationLog(Base, TimestampMixin):

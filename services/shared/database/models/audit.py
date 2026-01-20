@@ -9,7 +9,7 @@ from sqlalchemy import Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
+from .base import Base
 
 
 class AuditLog(Base):

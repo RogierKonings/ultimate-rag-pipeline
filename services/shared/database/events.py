@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import get_history
 
 if TYPE_CHECKING:
-    from database.models.document import Document
+    from .models.document import Document
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def register_document_events() -> None:
     This function should be called once during application startup
     to set up event listeners for soft-delete propagation.
     """
-    from database.models.document import Document
+    from .models.document import Document
 
     @event.listens_for(Document, "after_update")
     def on_document_update(mapper, connection, target: Document) -> None:

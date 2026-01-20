@@ -27,7 +27,7 @@ class TestIndexStatusEnum:
 
     def test_index_status_values(self):
         """IndexStatus should have correct enum values."""
-        from database.models.document import IndexStatus
+        from shared.database.models.document import IndexStatus
 
         assert IndexStatus.PENDING.value == "pending"
         assert IndexStatus.OK.value == "ok"
@@ -36,7 +36,7 @@ class TestIndexStatusEnum:
 
     def test_index_status_is_string_enum(self):
         """IndexStatus should be a string enum for JSON serialization."""
-        from database.models.document import IndexStatus
+        from shared.database.models.document import IndexStatus
 
         # IndexStatus inherits from str, so its value is a string
         assert IndexStatus.OK.value == "ok"
@@ -49,7 +49,7 @@ class TestDocumentModelFields:
 
     def test_document_has_indexing_status_fields(self):
         """Document model should have all required indexing status fields."""
-        from database.models.document import Document
+        from shared.database.models.document import Document
 
         # Check that the model has the expected attributes
         assert hasattr(Document, "qdrant_status")
@@ -60,7 +60,7 @@ class TestDocumentModelFields:
 
     def test_index_status_exported_from_models(self):
         """IndexStatus should be exported from models package."""
-        from database.models import IndexStatus
+        from shared.database.models import IndexStatus
 
         assert IndexStatus.PENDING.value == "pending"
 

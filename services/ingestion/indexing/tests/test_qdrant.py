@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from .. import qdrant as qdrant_module
 from ..models import IndexedChunk
 from ..qdrant import QdrantWriter, QdrantWriterConfig
 
@@ -64,7 +65,7 @@ class TestQdrantWriter:
     @pytest.mark.asyncio
     async def test_connect_creates_client(self, writer):
         """Test that connect() creates a client."""
-        with patch("qdrant_client.AsyncQdrantClient") as mock_class:
+        with patch.object(qdrant_module, "AsyncQdrantClient") as mock_class:
             mock_instance = AsyncMock()
             mock_class.return_value = mock_instance
 
@@ -92,8 +93,9 @@ class TestQdrantWriter:
         await writer.ensure_index()
 
         mock_client.create_collection.assert_called_once()
-        # Should create 6 payload indices
-        assert mock_client.create_payload_index.call_count == 6
+        # Should create 7 payload indices (document_id, tenant_id, visibility,
+        # allowed_groups, allowed_users, source_type, status)
+        assert mock_client.create_payload_index.call_count == 7
 
     @pytest.mark.asyncio
     async def test_ensure_index_skips_existing_collection(self, writer, mock_client):
@@ -191,7 +193,7 @@ class TestQdrantWriter:
     @pytest.mark.asyncio
     async def test_context_manager(self, writer):
         """Test async context manager protocol."""
-        with patch("qdrant_client.AsyncQdrantClient") as mock_class:
+        with patch.object(qdrant_module, "AsyncQdrantClient") as mock_class:
             mock_instance = AsyncMock()
             mock_instance.close = AsyncMock()
             mock_class.return_value = mock_instance

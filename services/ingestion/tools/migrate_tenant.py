@@ -374,7 +374,7 @@ class TenantMigrationTool:
         opensearch_index: str,
     ) -> None:
         """Update tenant configuration in database."""
-        from database.models import Tenant
+        from shared.database.models import Tenant
 
         async with self.session_factory() as session:
             await session.execute(
@@ -413,7 +413,7 @@ class TenantMigrationTool:
         Returns:
             True if successful, False on error.
         """
-        from database.models import Tenant
+        from shared.database.models import Tenant
 
         try:
             async with self.session_factory() as session:

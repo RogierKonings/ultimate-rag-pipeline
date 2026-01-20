@@ -13,7 +13,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Te
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database.models.base import Base
+from .base import Base
 
 
 class VideoStatus(str, enum.Enum):

@@ -10,7 +10,7 @@ from datetime import date
 from sqlalchemy import BigInteger, Boolean, Date, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base, TimestampMixin
+from .base import Base, TimestampMixin
 
 
 class TokenUsage(Base, TimestampMixin):

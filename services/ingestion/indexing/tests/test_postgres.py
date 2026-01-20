@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from .. import postgres as postgres_module
 from ..postgres import PostgresWriter, PostgresWriterConfig
 
 
@@ -63,10 +64,11 @@ class TestPostgresWriter:
     @pytest.mark.asyncio
     async def test_connect_creates_pool(self, writer):
         """Test that connect() creates a connection pool."""
-        with patch("asyncpg.create_pool") as mock_create_pool:
-            mock_pool = AsyncMock()
-            mock_create_pool.return_value = mock_pool
-
+        mock_pool = AsyncMock()
+        # create_pool is async, so we need to mock it as AsyncMock
+        with patch.object(
+            postgres_module.asyncpg, "create_pool", new=AsyncMock(return_value=mock_pool)
+        ) as mock_create_pool:
             await writer.connect()
 
             mock_create_pool.assert_called_once()
@@ -240,11 +242,12 @@ class TestPostgresWriter:
     @pytest.mark.asyncio
     async def test_context_manager(self, writer):
         """Test async context manager protocol."""
-        with patch("asyncpg.create_pool") as mock_create_pool:
-            mock_pool = AsyncMock()
-            mock_pool.close = AsyncMock()
-            mock_create_pool.return_value = mock_pool
-
+        mock_pool = AsyncMock()
+        mock_pool.close = AsyncMock()
+        # create_pool is async, so we need to mock it as AsyncMock
+        with patch.object(
+            postgres_module.asyncpg, "create_pool", new=AsyncMock(return_value=mock_pool)
+        ):
             async with writer:
                 assert writer._pool is not None
 

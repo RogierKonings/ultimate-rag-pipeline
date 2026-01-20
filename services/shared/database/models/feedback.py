@@ -10,7 +10,7 @@ from sqlalchemy import Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base, TimestampMixin
+from .base import Base, TimestampMixin
 
 
 class QueryFeedback(Base, TimestampMixin):

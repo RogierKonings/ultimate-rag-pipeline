@@ -113,6 +113,9 @@ class TestIndexCoordinator:
             ),
         )
         writer.update_status = AsyncMock()
+        # The coordinator accesses _pool directly to set pending status
+        # Set to None so _set_pending_status returns early
+        writer._pool = None
         return writer
 
     @pytest.fixture
@@ -146,8 +149,11 @@ class TestIndexCoordinator:
         assert results["opensearch"].success
         assert results["postgres"].success
 
-        mock_qdrant.write.assert_called_once_with([sample_chunk])
-        mock_opensearch.write.assert_called_once_with([sample_chunk])
+        # Coordinator passes collection_name/index_name kwargs
+        mock_qdrant.write.assert_called_once()
+        assert mock_qdrant.write.call_args[0][0] == [sample_chunk]
+        mock_opensearch.write.assert_called_once()
+        assert mock_opensearch.write.call_args[0][0] == [sample_chunk]
         mock_postgres.write.assert_called_once_with([sample_document])
         mock_postgres.update_status.assert_called_once_with(
             sample_document.document_id,
@@ -222,8 +228,11 @@ class TestIndexCoordinator:
         assert results["opensearch"].success
         assert results["postgres"].success
 
-        mock_qdrant.delete_by_document.assert_called_once_with(document_id)
-        mock_opensearch.delete_by_document.assert_called_once_with(document_id)
+        # Coordinator passes collection_name/index_name kwargs
+        mock_qdrant.delete_by_document.assert_called_once()
+        assert mock_qdrant.delete_by_document.call_args[0][0] == document_id
+        mock_opensearch.delete_by_document.assert_called_once()
+        assert mock_opensearch.delete_by_document.call_args[0][0] == document_id
         mock_postgres.delete.assert_called_once_with([document_id])
 
     @pytest.mark.asyncio
@@ -262,12 +271,16 @@ class TestIndexCoordinator:
         """Test document reindexing."""
         results = await coordinator.reindex_document(sample_document, [sample_chunk])
 
-        # Should delete first, then index
-        mock_qdrant.delete_by_document.assert_called_once_with(sample_document.document_id)
-        mock_opensearch.delete_by_document.assert_called_once_with(sample_document.document_id)
+        # Should delete first, then index (coordinator passes collection_name/index_name kwargs)
+        mock_qdrant.delete_by_document.assert_called_once()
+        assert mock_qdrant.delete_by_document.call_args[0][0] == sample_document.document_id
+        mock_opensearch.delete_by_document.assert_called_once()
+        assert mock_opensearch.delete_by_document.call_args[0][0] == sample_document.document_id
 
-        mock_qdrant.write.assert_called_once_with([sample_chunk])
-        mock_opensearch.write.assert_called_once_with([sample_chunk])
+        mock_qdrant.write.assert_called_once()
+        assert mock_qdrant.write.call_args[0][0] == [sample_chunk]
+        mock_opensearch.write.assert_called_once()
+        assert mock_opensearch.write.call_args[0][0] == [sample_chunk]
         mock_postgres.write.assert_called_once_with([sample_document])
 
         assert results["qdrant"].success
@@ -316,7 +329,7 @@ class TestIndexCoordinator:
         document_id = uuid4()
         document = DocumentRecord(
             document_id=document_id,
-            source_id="test-source",
+            source_uri="s3://bucket/test-source",
             source_type="filesystem",
             tenant_id="tenant-1",
             chunk_count=5,

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from .. import opensearch as opensearch_module
 from ..models import IndexedChunk
 from ..opensearch import OpenSearchWriter, OpenSearchWriterConfig
 
@@ -63,7 +64,7 @@ class TestOpenSearchWriter:
     @pytest.mark.asyncio
     async def test_connect_creates_client(self, writer):
         """Test that connect() creates a client."""
-        with patch("opensearchpy.AsyncOpenSearch") as mock_class:
+        with patch.object(opensearch_module, "AsyncOpenSearch") as mock_class:
             mock_instance = AsyncMock()
             mock_class.return_value = mock_instance
 
@@ -81,7 +82,7 @@ class TestOpenSearchWriter:
         )
         writer = OpenSearchWriter(config)
 
-        with patch("opensearchpy.AsyncOpenSearch") as mock_class:
+        with patch.object(opensearch_module, "AsyncOpenSearch") as mock_class:
             mock_instance = AsyncMock()
             mock_class.return_value = mock_instance
 
@@ -216,7 +217,7 @@ class TestOpenSearchWriter:
     @pytest.mark.asyncio
     async def test_context_manager(self, writer):
         """Test async context manager protocol."""
-        with patch("opensearchpy.AsyncOpenSearch") as mock_class:
+        with patch.object(opensearch_module, "AsyncOpenSearch") as mock_class:
             mock_instance = AsyncMock()
             mock_instance.close = AsyncMock()
             mock_class.return_value = mock_instance

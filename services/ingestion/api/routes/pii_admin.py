@@ -41,8 +41,9 @@ router = APIRouter()
 
 async def get_tenant_or_404(tenant_id: str, session: AsyncSession):
     """Load tenant from database or raise 404."""
-    from database.models import Tenant
     from sqlalchemy import select
+
+    from shared.database.models import Tenant
 
     try:
         tenant_uuid = UUID(tenant_id)

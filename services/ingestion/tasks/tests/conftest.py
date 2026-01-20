@@ -129,7 +129,7 @@ def mock_embedding_results():
 def acl_context():
     """Standard ACL context for testing."""
     return {
-        "tenant_id": "test-tenant",
+        "tenant_id": str(uuid4()),  # Must be a valid UUID
         "visibility": "private",
         "allowed_groups": [],
         "allowed_users": [],

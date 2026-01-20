@@ -13,10 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from tasks.tombstone import (
-    DeletionResult,
-    _propagate_deletion_async,
-)
+from tasks import tombstone as tombstone_module
+from tasks.tombstone import DeletionResult
 
 
 @pytest.fixture
@@ -98,11 +96,11 @@ class TestPropagateDeletionAsync:
         tenant_id = str(uuid4())
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
-            result = await _propagate_deletion_async(
+            result = await tombstone_module._propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
             )
@@ -134,12 +132,12 @@ class TestPropagateDeletionAsync:
         )
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
             with pytest.raises(Exception) as exc:
-                await _propagate_deletion_async(
+                await tombstone_module._propagate_deletion_async(
                     document_id=document_id,
                     tenant_id=tenant_id,
                 )
@@ -163,12 +161,12 @@ class TestPropagateDeletionAsync:
         )
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
             with pytest.raises(Exception) as exc:
-                await _propagate_deletion_async(
+                await tombstone_module._propagate_deletion_async(
                     document_id=document_id,
                     tenant_id=tenant_id,
                 )
@@ -185,12 +183,12 @@ class TestPropagateDeletionAsync:
         mock_opensearch.delete_by_document_id = AsyncMock(side_effect=Exception("OpenSearch error"))
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
             with pytest.raises(Exception) as exc:
-                await _propagate_deletion_async(
+                await tombstone_module._propagate_deletion_async(
                     document_id=document_id,
                     tenant_id=tenant_id,
                 )
@@ -209,11 +207,11 @@ class TestPropagateDeletionAsync:
         mock_opensearch.delete_by_document_id = AsyncMock(return_value=0)
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
-            result = await _propagate_deletion_async(
+            result = await tombstone_module._propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
             )
@@ -228,53 +226,51 @@ class TestDeletionMetrics:
 
     @pytest.mark.asyncio
     async def test_metrics_updated_on_success(self, mock_qdrant, mock_opensearch, mock_settings):
-        """Should update Prometheus metrics on successful deletion."""
+        """Should update Prometheus metrics on successful deletion.
+
+        Note: The _update_deletion_metrics function is called from within the async function.
+        We verify that calling this function doesn't raise exceptions by completing the task.
+        The actual metrics (DELETION_PROPAGATION_RUNS, etc.) are imported inside the function,
+        so we simply verify the task completes successfully.
+        """
         document_id = str(uuid4())
         tenant_id = str(uuid4())
 
-        mock_runs = MagicMock()
-        mock_duration = MagicMock()
-        mock_removed = MagicMock()
-
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
-            patch.dict(
-                "tasks.tombstone.__dict__",
-                {
-                    "DELETION_PROPAGATION_RUNS": mock_runs,
-                    "DELETION_PROPAGATION_DURATION": mock_duration,
-                    "DELETION_VECTORS_REMOVED": mock_removed,
-                },
-            ),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
         ):
-            await _propagate_deletion_async(
+            result = await tombstone_module._propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
             )
 
-        # Metrics should be updated (actual calls depend on implementation)
-        # This test ensures the metrics code doesn't raise exceptions
+        # Task should complete successfully even when metrics code runs
+        assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_metrics_failure_does_not_break_task(
         self, mock_qdrant, mock_opensearch, mock_settings
     ):
-        """Metrics failure should not cause task failure."""
+        """Metrics failure should not cause task failure.
+
+        Note: The _update_deletion_metrics function already has internal try/catch
+        that handles import errors and general exceptions (logs warning but doesn't raise).
+        This test verifies that the task completes successfully regardless of metrics.
+        """
         document_id = str(uuid4())
         tenant_id = str(uuid4())
 
         with (
-            patch("tasks.tombstone.get_settings", return_value=mock_settings),
-            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
-            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
-            patch(
-                "tasks.tombstone._update_deletion_metrics", side_effect=Exception("Metrics error")
-            ),
+            patch("config.get_settings", return_value=mock_settings),
+            patch("shared.vectorstore.qdrant_client.QdrantVectorStore", return_value=mock_qdrant),
+            patch("shared.search.opensearch_client.OpenSearchClient", return_value=mock_opensearch),
+            # Mock the telemetry import to raise - testing internal error handling
+            patch.dict("sys.modules", {"telemetry": None}),
         ):
-            # Should complete successfully despite metrics error
-            result = await _propagate_deletion_async(
+            # Should complete successfully even with metrics not available
+            result = await tombstone_module._propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
             )

@@ -4,11 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from .. import status as status_module
 from ..models import JobStatus
-from ..status import JobStatusTracker
-
-# Module path for patching
-STATUS_MODULE = "tasks.status"
 
 
 class TestJobStatusTracker:
@@ -17,9 +14,9 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_connect_and_disconnect(self, mock_async_redis):
         """Test connection management."""
-        tracker = JobStatusTracker(redis_url="redis://localhost:6379/0")
+        tracker = status_module.JobStatusTracker(redis_url="redis://localhost:6379/0")
 
-        with patch(f"{STATUS_MODULE}.redis.from_url", return_value=mock_async_redis):
+        with patch.object(status_module.redis, "from_url", return_value=mock_async_redis):
             await tracker.connect()
             assert tracker._redis is not None
 
@@ -29,8 +26,8 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_context_manager(self, mock_async_redis):
         """Test async context manager."""
-        with patch(f"{STATUS_MODULE}.redis.from_url", return_value=mock_async_redis):
-            async with JobStatusTracker() as tracker:
+        with patch.object(status_module.redis, "from_url", return_value=mock_async_redis):
+            async with status_module.JobStatusTracker() as tracker:
                 assert tracker._redis is not None
 
             mock_async_redis.close.assert_called_once()
@@ -38,12 +35,12 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_get_job_status_pending(self):
         """Test getting status of pending job."""
-        tracker = JobStatusTracker()
+        mock_async_result = MagicMock()
+        mock_async_result.status = "PENDING"
+        mock_async_result.info = None
 
-        with patch(f"{STATUS_MODULE}.AsyncResult") as mock_result:
-            mock_result.return_value.status = "PENDING"
-            mock_result.return_value.info = None
-
+        with patch.object(status_module, "AsyncResult", return_value=mock_async_result):
+            tracker = status_module.JobStatusTracker()
             status = await tracker.get_job_status("test-job-id")
 
             assert status.job_id == "test-job-id"
@@ -52,17 +49,17 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_get_job_status_progress(self):
         """Test getting status of in-progress job."""
-        tracker = JobStatusTracker()
+        mock_async_result = MagicMock()
+        mock_async_result.status = "PROGRESS"
+        mock_async_result.info = {
+            "stage": "embedding",
+            "processed": 50,
+            "total": 100,
+            "message": "Processing chunks...",
+        }
 
-        with patch(f"{STATUS_MODULE}.AsyncResult") as mock_result:
-            mock_result.return_value.status = "PROGRESS"
-            mock_result.return_value.info = {
-                "stage": "embedding",
-                "processed": 50,
-                "total": 100,
-                "message": "Processing chunks...",
-            }
-
+        with patch.object(status_module, "AsyncResult", return_value=mock_async_result):
+            tracker = status_module.JobStatusTracker()
             status = await tracker.get_job_status("test-job-id")
 
             assert status.job_id == "test-job-id"
@@ -75,16 +72,16 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_get_job_status_success(self):
         """Test getting status of successful job."""
-        tracker = JobStatusTracker()
+        mock_async_result = MagicMock()
+        mock_async_result.status = "SUCCESS"
+        mock_async_result.info = {
+            "documents_processed": 10,
+            "chunks_created": 100,
+            "duration_seconds": 45.5,
+        }
 
-        with patch(f"{STATUS_MODULE}.AsyncResult") as mock_result:
-            mock_result.return_value.status = "SUCCESS"
-            mock_result.return_value.info = {
-                "documents_processed": 10,
-                "chunks_created": 100,
-                "duration_seconds": 45.5,
-            }
-
+        with patch.object(status_module, "AsyncResult", return_value=mock_async_result):
+            tracker = status_module.JobStatusTracker()
             status = await tracker.get_job_status("test-job-id")
 
             assert status.status == JobStatus.SUCCESS
@@ -94,15 +91,15 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_get_job_status_failure(self):
         """Test getting status of failed job."""
-        tracker = JobStatusTracker()
+        mock_async_result = MagicMock()
+        mock_async_result.status = "FAILURE"
+        mock_async_result.info = {
+            "error": "Connection failed",
+            "traceback": "Traceback...",
+        }
 
-        with patch(f"{STATUS_MODULE}.AsyncResult") as mock_result:
-            mock_result.return_value.status = "FAILURE"
-            mock_result.return_value.info = {
-                "error": "Connection failed",
-                "traceback": "Traceback...",
-            }
-
+        with patch.object(status_module, "AsyncResult", return_value=mock_async_result):
+            tracker = status_module.JobStatusTracker()
             status = await tracker.get_job_status("test-job-id")
 
             assert status.status == JobStatus.FAILURE
@@ -111,13 +108,11 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_cancel_job(self):
         """Test cancelling a job."""
-        tracker = JobStatusTracker()
+        mock_async_result = MagicMock()
+        mock_async_result.revoke = MagicMock()
 
-        with patch(f"{STATUS_MODULE}.AsyncResult") as mock_result:
-            mock_async_result = MagicMock()
-            mock_async_result.revoke = MagicMock()
-            mock_result.return_value = mock_async_result
-
+        with patch.object(status_module, "AsyncResult", return_value=mock_async_result):
+            tracker = status_module.JobStatusTracker()
             result = await tracker.cancel_job("test-job-id")
 
             assert result is True
@@ -126,16 +121,15 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_list_active_jobs(self):
         """Test listing active jobs."""
-        tracker = JobStatusTracker()
+        mock_inspect = MagicMock()
+        mock_inspect.active.return_value = {
+            "worker1": [{"id": "job-1"}, {"id": "job-2"}],
+            "worker2": [{"id": "job-3"}],
+        }
 
-        with patch(f"{STATUS_MODULE}.celery_app") as mock_app:
-            mock_inspect = MagicMock()
-            mock_inspect.active.return_value = {
-                "worker1": [{"id": "job-1"}, {"id": "job-2"}],
-                "worker2": [{"id": "job-3"}],
-            }
+        with patch.object(status_module, "celery_app") as mock_app:
             mock_app.control.inspect.return_value = mock_inspect
-
+            tracker = status_module.JobStatusTracker()
             jobs = await tracker.list_active_jobs()
 
             assert len(jobs) == 3
@@ -156,8 +150,8 @@ class TestJobStatusTracker:
             },
         )
 
-        with patch(f"{STATUS_MODULE}.redis.from_url", return_value=mock_async_redis):
-            async with JobStatusTracker() as tracker:
+        with patch.object(status_module.redis, "from_url", return_value=mock_async_redis):
+            async with status_module.JobStatusTracker() as tracker:
                 entries = await tracker.list_dlq_entries()
 
         assert len(entries) == 1
@@ -168,8 +162,8 @@ class TestJobStatusTracker:
         """Test deleting a DLQ entry."""
         mock_async_redis.delete.return_value = 1
 
-        with patch(f"{STATUS_MODULE}.redis.from_url", return_value=mock_async_redis):
-            async with JobStatusTracker() as tracker:
+        with patch.object(status_module.redis, "from_url", return_value=mock_async_redis):
+            async with status_module.JobStatusTracker() as tracker:
                 result = await tracker.delete_dlq_entry("dlq:task1:2024-01-01")
 
         assert result is True
@@ -178,15 +172,14 @@ class TestJobStatusTracker:
     @pytest.mark.asyncio
     async def test_get_queue_stats(self):
         """Test getting queue statistics."""
-        tracker = JobStatusTracker()
+        mock_inspect = MagicMock()
+        mock_inspect.reserved.return_value = {"worker1": [1, 2]}
+        mock_inspect.active.return_value = {"worker1": [1]}
+        mock_inspect.scheduled.return_value = {"worker1": []}
 
-        with patch(f"{STATUS_MODULE}.celery_app") as mock_app:
-            mock_inspect = MagicMock()
-            mock_inspect.reserved.return_value = {"worker1": [1, 2]}
-            mock_inspect.active.return_value = {"worker1": [1]}
-            mock_inspect.scheduled.return_value = {"worker1": []}
+        with patch.object(status_module, "celery_app") as mock_app:
             mock_app.control.inspect.return_value = mock_inspect
-
+            tracker = status_module.JobStatusTracker()
             stats = await tracker.get_queue_stats()
 
             assert stats["reserved"] == 2

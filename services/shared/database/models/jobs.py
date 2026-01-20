@@ -9,7 +9,7 @@ from sqlalchemy import Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database.models.base import Base
+from .base import Base
 
 
 class EmbeddingJob(Base):

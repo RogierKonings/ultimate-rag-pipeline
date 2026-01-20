@@ -112,7 +112,7 @@ class TenantConfigService:
         Returns default config for unknown tenants to handle edge cases
         gracefully (e.g., race conditions during tenant creation).
         """
-        from database.models import Tenant
+        from shared.database.models import Tenant
 
         result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
         tenant = result.scalar_one_or_none()
