@@ -7,7 +7,6 @@
 	import { search } from '$lib/stores/search';
 	import { videoSearch, videoPlayer, videoExampleQueries } from '$lib/stores/videoSearch';
 	import { upload } from '$lib/stores/upload';
-
 	// Document components
 	import DocumentSidebar from '$lib/components/DocumentSidebar.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
@@ -44,8 +43,8 @@
 	});
 
 	function handleVideoMatchSelect(
-		video: import('$lib/api/types').VideoSearchResult,
-		match: import('$lib/api/types').VideoMatch
+		video: (typeof $videoSearch.response)['videos'][number],
+		match: (typeof $videoSearch.response)['videos'][number]['matches'][number]
 	) {
 		videoPlayer.selectMatch(video, match);
 	}
@@ -58,8 +57,8 @@
 	{:else}
 		<VideoSidebar
 			selectedVideoId={$videoPlayer.selectedVideo?.video_id}
-			onSelectVideo={(id) => {
-				const video = $videoSearch.response?.videos.find((v) => v.video_id === id);
+			onSelectVideo={(id: string) => {
+				const video = $videoSearch.response?.videos.find((v: { video_id: string }) => v.video_id === id);
 				if (video) {
 					videoPlayer.selectVideo(video);
 				}

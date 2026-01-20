@@ -9,11 +9,23 @@ import type {
 } from './types';
 import { PUBLIC_DEMO_TENANT_ID } from '$env/static/public';
 
-// Ingestion service proxy for video management
-const ingestionClient = new ApiClient('/api/proxy/ingestion');
+// Lazy client initialization to avoid SSR fetch issues
+let _ingestionClient: ApiClient | null = null;
+let _retrievalClient: ApiClient | null = null;
 
-// Retrieval service proxy for video search
-const retrievalClient = new ApiClient('/api/proxy/retrieval');
+function getIngestionClient(): ApiClient {
+	if (!_ingestionClient) {
+		_ingestionClient = new ApiClient('/api/proxy/ingestion');
+	}
+	return _ingestionClient;
+}
+
+function getRetrievalClient(): ApiClient {
+	if (!_retrievalClient) {
+		_retrievalClient = new ApiClient('/api/proxy/retrieval');
+	}
+	return _retrievalClient;
+}
 
 const TENANT_ID = PUBLIC_DEMO_TENANT_ID || '00000000-0000-0000-0000-000000000001';
 
@@ -28,7 +40,7 @@ export async function listVideos(
 		search?: string;
 	}
 ): Promise<VideoListResponse> {
-	return ingestionClient.get<VideoListResponse>('/videos', {
+	return getIngestionClient().get<VideoListResponse>('/videos', {
 		tenant_id: TENANT_ID,
 		page,
 		page_size: pageSize,
@@ -40,7 +52,7 @@ export async function listVideos(
  * Get a single video by ID
  */
 export async function getVideo(videoId: string): Promise<Video> {
-	return ingestionClient.get<Video>(`/videos/${videoId}`, {
+	return getIngestionClient().get<Video>(`/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -49,7 +61,7 @@ export async function getVideo(videoId: string): Promise<Video> {
  * Get video processing status
  */
 export async function getVideoStatus(videoId: string): Promise<VideoStatusResponse> {
-	return ingestionClient.get<VideoStatusResponse>(`/videos/${videoId}/status`, {
+	return getIngestionClient().get<VideoStatusResponse>(`/videos/${videoId}/status`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -58,7 +70,7 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatusRespon
  * Delete a video and all its data
  */
 export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; message: string }> {
-	return ingestionClient.delete(`/videos/${videoId}`, {
+	return getIngestionClient().delete(`/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -67,7 +79,7 @@ export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; 
  * Search videos with hybrid search
  */
 export async function searchVideos(request: VideoSearchRequest): Promise<VideoSearchResponse> {
-	return retrievalClient.post<VideoSearchResponse>(`/retrieve/video?tenant_id=${TENANT_ID}`, {
+	return getRetrievalClient().post<VideoSearchResponse>(`/retrieve/video?tenant_id=${TENANT_ID}`, {
 		query: request.query,
 		mode: request.mode || 'hybrid',
 		top_k: request.top_k || 10,
