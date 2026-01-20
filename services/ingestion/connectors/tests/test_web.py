@@ -4,7 +4,6 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from connectors.web import (
     WebConnector,
     WebConnectorConfig,

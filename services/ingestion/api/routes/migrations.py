@@ -11,9 +11,6 @@ Provides REST endpoints for managing the full migration lifecycle:
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from qdrant_client import AsyncQdrantClient
-
 from api.schemas import (
     MigrationListResponseSchema,
     MigrationRequestSchema,
@@ -23,6 +20,7 @@ from api.schemas import (
     ValidationRequestSchema,
     ValidationResponseSchema,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query
 from migrations.embedding_migrator import EmbeddingMigrator
 from migrations.models import (
     MigrationRequest,
@@ -32,6 +30,7 @@ from migrations.progress_tracker import (
     MigrationProgressStore,
     MigrationProgressStoreConfig,
 )
+from qdrant_client import AsyncQdrantClient
 
 router = APIRouter(tags=["Migrations"])
 

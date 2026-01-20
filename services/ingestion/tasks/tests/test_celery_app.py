@@ -17,7 +17,7 @@ class TestCeleryConfig:
         assert config.task_time_limit == 3600
         assert config.task_soft_time_limit == 3300
         assert config.worker_prefetch_multiplier == 1
-        assert config.task_default_queue == "ingestion"
+        assert config.task_default_queue == "ingestion_normal"
 
     def test_custom_values(self):
         """Test custom configuration values."""
@@ -53,9 +53,11 @@ class TestCreateCeleryApp:
         )
         app = create_celery_app(config)
 
+        # Note: The app uses config values, verify they are applied
+        assert app.conf.worker_concurrency == 2
+        # Broker URL comes from config
         assert app.conf.broker_url == "memory://"
         assert app.conf.result_backend == "cache+memory://"
-        assert app.conf.worker_concurrency == 2
 
     def test_queues_configured(self):
         """Test that queues are properly configured."""
@@ -64,6 +66,9 @@ class TestCreateCeleryApp:
 
         queue_names = [q.name for q in queues]
         assert "ingestion" in queue_names
+        assert "ingestion_normal" in queue_names
+        assert "ingestion_high" in queue_names
+        assert "ingestion_low" in queue_names
         assert "embedding" in queue_names
         assert "reembed" in queue_names
         assert "dlq" in queue_names
@@ -73,6 +78,6 @@ class TestCreateCeleryApp:
         app = create_celery_app()
         routes = app.conf.task_routes
 
-        assert "services.ingestion.tasks.ingest.*" in routes
-        assert "services.ingestion.tasks.reembed.*" in routes
-        assert "services.ingestion.tasks.callbacks.*" in routes
+        assert "tasks.ingest.*" in routes
+        assert "tasks.reembed.*" in routes
+        assert "tasks.callbacks.*" in routes

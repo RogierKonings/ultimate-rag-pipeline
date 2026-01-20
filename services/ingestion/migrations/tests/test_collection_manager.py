@@ -27,8 +27,11 @@ class TestCollectionManager:
     async def test_create_migration_collection_already_exists(self, mock_qdrant_client):
         """Test collection creation when already exists."""
         # Setup mock to return existing collection
+        # Note: MagicMock(name=...) sets internal _mock_name, not .name attribute
+        existing_collection = MagicMock()
+        existing_collection.name = "test_collection"
         collections_response = MagicMock()
-        collections_response.collections = [MagicMock(name="test_collection")]
+        collections_response.collections = [existing_collection]
         mock_qdrant_client.get_collections.return_value = collections_response
 
         manager = CollectionManager(client=mock_qdrant_client)

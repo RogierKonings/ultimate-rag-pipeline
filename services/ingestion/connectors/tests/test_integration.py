@@ -14,9 +14,6 @@ pytest.importorskip("testcontainers")
 
 import contextlib
 
-from testcontainers.minio import MinioContainer
-from testcontainers.postgres import PostgresContainer
-
 from connectors.database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
@@ -25,6 +22,8 @@ from connectors.filesystem import (
     FilesystemConnector,
     FilesystemConnectorConfig,
 )
+from testcontainers.minio import MinioContainer
+from testcontainers.postgres import PostgresContainer
 
 # Mark all tests in this module as integration tests
 pytestmark = [

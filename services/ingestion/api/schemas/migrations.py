@@ -3,9 +3,8 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
-
 from migrations.models import MigrationStatus
+from pydantic import BaseModel, Field
 
 
 class ValidationConfigSchema(BaseModel):
