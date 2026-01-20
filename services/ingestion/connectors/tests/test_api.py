@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.ingestion.connectors.api import (
+from connectors.api import (
     APIConnector,
     APIConnectorConfig,
 )

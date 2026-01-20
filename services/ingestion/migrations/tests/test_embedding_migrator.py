@@ -6,8 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from services.ingestion.migrations.embedding_migrator import EmbeddingMigrator
-from services.ingestion.migrations.models import (
+from migrations.embedding_migrator import EmbeddingMigrator
+from migrations.models import (
     EmbeddingMigration,
     MigrationRequest,
     MigrationStatus,

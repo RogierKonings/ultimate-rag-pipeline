@@ -15,6 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class LogEntry:
+    """A single log entry from Loki."""
+
+    timestamp: datetime
+    service: str
+    level: str
+    message: str
+    trace_id: str | None = None
+    span_id: str | None = None
+
+
+@dataclass
 class LokiIngestionStatus:
     """Status of log ingestion for a service."""
 

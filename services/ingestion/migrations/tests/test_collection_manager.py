@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from qdrant_client.models import Distance
 
-from services.ingestion.migrations.collection_manager import CollectionManager
+from migrations.collection_manager import CollectionManager
 
 
 @pytest.mark.asyncio

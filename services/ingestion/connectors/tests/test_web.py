@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.ingestion.connectors.web import (
+from connectors.web import (
     WebConnector,
     WebConnectorConfig,
 )

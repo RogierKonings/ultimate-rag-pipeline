@@ -9,14 +9,14 @@ import pytest
 import pytest_asyncio
 from qdrant_client import AsyncQdrantClient
 
-from services.ingestion.migrations.collection_manager import CollectionManager
-from services.ingestion.migrations.embedding_migrator import EmbeddingMigrator
-from services.ingestion.migrations.models import (
+from migrations.collection_manager import CollectionManager
+from migrations.embedding_migrator import EmbeddingMigrator
+from migrations.models import (
     EmbeddingMigration,
     MigrationRequest,
     MigrationStatus,
 )
-from services.ingestion.migrations.progress_tracker import (
+from migrations.progress_tracker import (
     MigrationProgressStore,
     MigrationProgressStoreConfig,
 )

@@ -8,7 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.ingestion.migrations.models import (
+from migrations.models import (
     EmbeddingMigration,
     MigrationStatus,
     ValidationResult,
@@ -18,7 +18,7 @@ from services.ingestion.migrations.models import (
 @pytest.fixture
 def app():
     """Create FastAPI test app."""
-    from services.ingestion.api.routes.migrations import router
+    from api.routes.migrations import router
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/migrations")

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.ingestion.connectors.filesystem import (
+from connectors.filesystem import (
     FilesystemConnector,
     FilesystemConnectorConfig,
 )

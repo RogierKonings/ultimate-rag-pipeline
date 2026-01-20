@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from services.ingestion.migrations.models import (
+from migrations.models import (
     EmbeddingMigration,
     MigrationProgress,
     MigrationRequest,

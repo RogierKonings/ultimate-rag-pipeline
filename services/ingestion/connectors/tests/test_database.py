@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.ingestion.connectors.database import (
+from connectors.database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
 )

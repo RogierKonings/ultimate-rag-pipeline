@@ -6,8 +6,8 @@ from uuid import uuid4
 
 import pytest
 
-from services.shared.security.audit.backends.opensearch import OpenSearchAuditBackend
-from services.shared.security.audit.models import (
+from security.audit.backends.opensearch import OpenSearchAuditBackend
+from security.audit.models import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,

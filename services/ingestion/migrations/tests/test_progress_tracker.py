@@ -4,12 +4,12 @@ from uuid import uuid4
 
 import pytest
 
-from services.ingestion.migrations.models import (
+from migrations.models import (
     EmbeddingMigration,
     MigrationProgress,
     MigrationStatus,
 )
-from services.ingestion.migrations.progress_tracker import (
+from migrations.progress_tracker import (
     MigrationProgressStore,
     MigrationProgressStoreConfig,
 )

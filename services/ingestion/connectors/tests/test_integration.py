@@ -17,11 +17,11 @@ import contextlib
 from testcontainers.minio import MinioContainer
 from testcontainers.postgres import PostgresContainer
 
-from services.ingestion.connectors.database import (
+from connectors.database import (
     DatabaseConnector,
     DatabaseConnectorConfig,
 )
-from services.ingestion.connectors.filesystem import (
+from connectors.filesystem import (
     FilesystemConnector,
     FilesystemConnectorConfig,
 )
