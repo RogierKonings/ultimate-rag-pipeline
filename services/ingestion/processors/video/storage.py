@@ -112,15 +112,11 @@ class VideoStorage:
         """Generate path for extracted audio file."""
         return f"{tenant_id}/audio/{video_id}.wav"
 
-    def _keyframe_path(
-        self, tenant_id: UUID | str, video_id: UUID | str, frame_index: int
-    ) -> str:
+    def _keyframe_path(self, tenant_id: UUID | str, video_id: UUID | str, frame_index: int) -> str:
         """Generate path for keyframe image."""
         return f"{tenant_id}/keyframes/{video_id}/{frame_index:05d}.jpg"
 
-    def _thumbnail_path(
-        self, tenant_id: UUID | str, video_id: UUID | str, frame_index: int
-    ) -> str:
+    def _thumbnail_path(self, tenant_id: UUID | str, video_id: UUID | str, frame_index: int) -> str:
         """Generate path for keyframe thumbnail."""
         return f"{tenant_id}/thumbnails/{video_id}/{frame_index:05d}_thumb.jpg"
 

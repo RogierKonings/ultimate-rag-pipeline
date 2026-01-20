@@ -48,12 +48,8 @@ class HybridSearchConfig(BaseModel):
     """
 
     # Weights (from shared config)
-    semantic_weight: float = Field(
-        default=_retrieval_defaults.semantic_weight, ge=0.0, le=1.0
-    )
-    keyword_weight: float = Field(
-        default=_retrieval_defaults.keyword_weight, ge=0.0, le=1.0
-    )
+    semantic_weight: float = Field(default=_retrieval_defaults.semantic_weight, ge=0.0, le=1.0)
+    keyword_weight: float = Field(default=_retrieval_defaults.keyword_weight, ge=0.0, le=1.0)
 
     # Fusion method
     fusion_method: FusionMethod = FusionMethod.RRF
@@ -63,12 +59,8 @@ class HybridSearchConfig(BaseModel):
 
     # Result limits (from shared config)
     top_k: int = Field(default=_retrieval_defaults.rerank_top_k, ge=1, le=100)
-    semantic_top_k: int = Field(
-        default=_retrieval_defaults.semantic_top_k, ge=1, le=200
-    )
-    keyword_top_k: int = Field(
-        default=_retrieval_defaults.keyword_top_k, ge=1, le=200
-    )
+    semantic_top_k: int = Field(default=_retrieval_defaults.semantic_top_k, ge=1, le=200)
+    keyword_top_k: int = Field(default=_retrieval_defaults.keyword_top_k, ge=1, le=200)
 
     # Score thresholds
     min_score: float = 0.0

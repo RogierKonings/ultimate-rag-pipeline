@@ -33,9 +33,7 @@ class TestTracedQdrantClient:
         )
 
     @pytest.mark.asyncio
-    async def test_query_points_calls_underlying_client(
-        self, traced_client, mock_qdrant_client
-    ):
+    async def test_query_points_calls_underlying_client(self, traced_client, mock_qdrant_client):
         """Test query_points delegates to underlying client."""
         query_vector = [0.1, 0.2, 0.3]
 
@@ -48,9 +46,7 @@ class TestTracedQdrantClient:
         assert call_kwargs["limit"] == 10
 
     @pytest.mark.asyncio
-    async def test_query_points_uses_custom_collection(
-        self, traced_client, mock_qdrant_client
-    ):
+    async def test_query_points_uses_custom_collection(self, traced_client, mock_qdrant_client):
         """Test query_points can override collection name."""
         await traced_client.query_points(
             query=[0.1, 0.2],
@@ -62,9 +58,7 @@ class TestTracedQdrantClient:
         assert call_kwargs["collection_name"] == "other_collection"
 
     @pytest.mark.asyncio
-    async def test_upsert_calls_underlying_client(
-        self, traced_client, mock_qdrant_client
-    ):
+    async def test_upsert_calls_underlying_client(self, traced_client, mock_qdrant_client):
         """Test upsert delegates to underlying client."""
         points = [{"id": 1, "vector": [0.1, 0.2]}]
 
@@ -78,9 +72,7 @@ class TestTracedQdrantClient:
     @pytest.mark.asyncio
     async def test_query_points_creates_span(self, traced_client):
         """Test query_points creates an OTEL span."""
-        with patch(
-            "observability.clients.traced_qdrant.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_qdrant.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -93,9 +85,7 @@ class TestTracedQdrantClient:
             assert call_args[0][0] == "qdrant.query.search"
 
     @pytest.mark.asyncio
-    async def test_query_points_records_exception(
-        self, traced_client, mock_qdrant_client
-    ):
+    async def test_query_points_records_exception(self, traced_client, mock_qdrant_client):
         """Test query_points records exceptions in span."""
         mock_qdrant_client.query_points.side_effect = Exception("Connection failed")
 

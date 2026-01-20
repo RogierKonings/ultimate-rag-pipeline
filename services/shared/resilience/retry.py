@@ -70,8 +70,7 @@ class RetryExhausted(Exception):
         self.attempts = attempts
         self.last_error = last_error
         super().__init__(
-            f"Operation '{operation}' failed after {attempts} attempts. "
-            f"Last error: {last_error}"
+            f"Operation '{operation}' failed after {attempts} attempts. Last error: {last_error}"
         )
 
 
@@ -87,9 +86,7 @@ class TimeoutExceeded(Exception):
     def __init__(self, operation: str, timeout_ms: int) -> None:
         self.operation = operation
         self.timeout_ms = timeout_ms
-        super().__init__(
-            f"Operation '{operation}' timed out after {timeout_ms}ms"
-        )
+        super().__init__(f"Operation '{operation}' timed out after {timeout_ms}ms")
 
 
 def _calculate_backoff(
@@ -112,7 +109,7 @@ def _calculate_backoff(
         Delay in seconds (with jitter applied)
     """
     # Exponential backoff: base * 2^attempt
-    delay_ms = min(base_ms * (2 ** attempt), max_ms)
+    delay_ms = min(base_ms * (2**attempt), max_ms)
 
     # Add +/- 25% jitter (non-crypto random is fine for backoff timing)
     jitter_factor = 1.0 + random.uniform(-0.25, 0.25)  # noqa: S311

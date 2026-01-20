@@ -106,9 +106,7 @@ class Settings(BaseSettings):
     parsing_timeout_seconds: float = get_timeout_seconds("INGESTION_PARSING")
     embedding_timeout_seconds: float = get_timeout_seconds("INGESTION_EMBEDDING")
     qdrant_upsert_timeout_seconds: float = get_timeout_seconds("INGESTION_QDRANT_UPSERT")
-    opensearch_index_timeout_seconds: float = get_timeout_seconds(
-        "INGESTION_OPENSEARCH_INDEX"
-    )
+    opensearch_index_timeout_seconds: float = get_timeout_seconds("INGESTION_OPENSEARCH_INDEX")
     document_timeout_seconds: float = get_timeout_seconds("INGESTION_DOCUMENT")
 
     @field_validator("embedding_dimensions")

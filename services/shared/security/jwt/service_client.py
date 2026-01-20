@@ -178,9 +178,7 @@ class AuthenticatedServiceClient:
     def _ensure_client(self) -> httpx.AsyncClient:
         """Ensure HTTP client is initialized."""
         if not self._client:
-            raise RuntimeError(
-                "Client not initialized. Use 'async with' statement."
-            )
+            raise RuntimeError("Client not initialized. Use 'async with' statement.")
         return self._client
 
     async def get(

@@ -283,9 +283,7 @@ class TestTelemetryMetrics:
         # Initially None before setup_telemetry is called
         # After setup_telemetry, it should be a Gauge
         # We just verify the variable exists
-        assert DOCUMENTS_BY_INDEX_STATUS is None or hasattr(
-            DOCUMENTS_BY_INDEX_STATUS, "labels"
-        )
+        assert DOCUMENTS_BY_INDEX_STATUS is None or hasattr(DOCUMENTS_BY_INDEX_STATUS, "labels")
 
     @pytest.mark.asyncio
     async def test_update_index_status_metrics_function_exists(self):

@@ -174,7 +174,7 @@ async def get_presigned_upload_url(
     if request.file_size_bytes > max_size:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large: {request.file_size_bytes / (1024*1024):.1f}MB (max: 5000MB)",
+            detail=f"File too large: {request.file_size_bytes / (1024 * 1024):.1f}MB (max: 5000MB)",
         )
 
     # Validate extension

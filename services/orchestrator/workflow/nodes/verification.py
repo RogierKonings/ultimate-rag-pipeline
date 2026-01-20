@@ -66,9 +66,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
     options = state.get("options", {})
 
     # Check if verification is enabled (request-level option overrides config)
-    enable_verification = options.get(
-        "enable_verification", config.verification_enabled
-    )
+    enable_verification = options.get("enable_verification", config.verification_enabled)
 
     # Extract request_id and tenant_id for logging/metrics
     request_id = state.get("request_id", "unknown")
@@ -143,18 +141,12 @@ async def verification_node(state: "RAGState") -> "RAGState":
         verification_results = await verifier.verify_all(claims, context)
 
         # Calculate scores
-        supported = sum(
-            1 for r in verification_results if r.status == VerificationStatus.SUPPORTED
-        )
+        supported = sum(1 for r in verification_results if r.status == VerificationStatus.SUPPORTED)
         partial = sum(
-            1
-            for r in verification_results
-            if r.status == VerificationStatus.PARTIALLY_SUPPORTED
+            1 for r in verification_results if r.status == VerificationStatus.PARTIALLY_SUPPORTED
         )
         unsupported = sum(
-            1
-            for r in verification_results
-            if r.status == VerificationStatus.UNSUPPORTED
+            1 for r in verification_results if r.status == VerificationStatus.UNSUPPORTED
         )
         total = len(verification_results)
 
@@ -183,10 +175,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
 
         # Add disclaimer if low confidence
         updated_response = response
-        if (
-            score < config.verification_confidence_threshold
-            and config.verification_add_disclaimer
-        ):
+        if score < config.verification_confidence_threshold and config.verification_add_disclaimer:
             updated_response = response + LOW_CONFIDENCE_DISCLAIMER
             logger.info(
                 "low_confidence_disclaimer_added",

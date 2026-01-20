@@ -350,9 +350,7 @@ class ClipCacheService:
                 checked_count += 1
 
                 # Check if expired
-                expires_at = obj.last_modified + timedelta(
-                    hours=self.config.cache_ttl_hours
-                )
+                expires_at = obj.last_modified + timedelta(hours=self.config.cache_ttl_hours)
 
                 if datetime.now(UTC) > expires_at:
                     try:

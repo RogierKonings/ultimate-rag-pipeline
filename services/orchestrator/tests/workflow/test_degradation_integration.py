@@ -41,14 +41,21 @@ class TestDegradationFlowIntegration:
         3. Prompt building adds appropriate disclaimer
         """
         # Mock response from retrieval service
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Python is a programming language.", "score": 0.9, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "semantic_only",
-            "components_used": ["qdrant"],
-            "components_skipped": ["opensearch"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Python is a programming language.",
+                        "score": 0.9,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "semantic_only",
+                "components_used": ["qdrant"],
+                "components_skipped": ["opensearch"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         # Initial state
@@ -93,14 +100,21 @@ class TestDegradationFlowIntegration:
         2. Retrieval node parses degradation and sets retrieval_quality
         3. Prompt building adds appropriate disclaimer
         """
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Python tutorial content.", "score": 0.85, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "keyword_only",
-            "components_used": ["opensearch"],
-            "components_skipped": ["qdrant"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Python tutorial content.",
+                        "score": 0.85,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "keyword_only",
+                "components_used": ["opensearch"],
+                "components_skipped": ["qdrant"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -134,14 +148,21 @@ class TestDegradationFlowIntegration:
 
         Simulates severe degradation with strong warning.
         """
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Limited content.", "score": 0.5, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "minimal",
-            "components_used": ["qdrant"],
-            "components_skipped": ["opensearch", "reranker"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Limited content.",
+                        "score": 0.5,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "minimal",
+                "components_used": ["qdrant"],
+                "components_skipped": ["opensearch", "reranker"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -168,7 +189,10 @@ class TestDegradationFlowIntegration:
 
         system_content = prompt_result["messages"][0]["content"]
         # Check for strong warning language
-        assert "significantly degraded" in system_content.lower() or "incomplete" in system_content.lower()
+        assert (
+            "significantly degraded" in system_content.lower()
+            or "incomplete" in system_content.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_normal_operation_no_disclaimer(self):
@@ -177,14 +201,21 @@ class TestDegradationFlowIntegration:
         When all components are available, no degradation disclaimer
         should be added to the prompt.
         """
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Full content from hybrid search.", "score": 0.95, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "hybrid_full",
-            "components_used": ["qdrant", "opensearch", "reranker"],
-            "components_skipped": [],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Full content from hybrid search.",
+                        "score": 0.95,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "hybrid_full",
+                "components_used": ["qdrant", "opensearch", "reranker"],
+                "components_skipped": [],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -217,14 +248,21 @@ class TestDegradationFlowIntegration:
     @pytest.mark.asyncio
     async def test_hybrid_no_rerank_degradation_flow(self):
         """Test hybrid_no_rerank degradation flows correctly."""
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Content without reranking.", "score": 0.8, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "hybrid_no_rerank",
-            "components_used": ["qdrant", "opensearch"],
-            "components_skipped": ["reranker"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Content without reranking.",
+                        "score": 0.8,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "hybrid_no_rerank",
+                "components_used": ["qdrant", "opensearch"],
+                "components_skipped": ["reranker"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -306,12 +344,14 @@ class TestDegradationStatePreservation:
     @pytest.mark.asyncio
     async def test_fallbacks_used_accumulated(self):
         """Test that fallbacks_used list is accumulated correctly."""
-        mock_response = create_mock_httpx_response({
-            "results": [],
-            "degradation_mode": "semantic_only",
-            "components_used": ["qdrant"],
-            "components_skipped": ["opensearch"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [],
+                "degradation_mode": "semantic_only",
+                "components_used": ["qdrant"],
+                "components_skipped": ["opensearch"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -338,12 +378,14 @@ class TestDegradationEdgeCases:
     @pytest.mark.asyncio
     async def test_missing_degradation_mode_defaults(self):
         """Test handling when retrieval doesn't return degradation_mode."""
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Content", "score": 0.9, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            # No degradation_mode field - old format
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {"content": "Content", "score": 0.9, "chunk_id": "1", "document_id": "doc1"}
+                ],
+                # No degradation_mode field - old format
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -365,12 +407,14 @@ class TestDegradationEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_components_lists(self):
         """Test handling of empty component lists."""
-        mock_response = create_mock_httpx_response({
-            "results": [],
-            "degradation_mode": "minimal",
-            "components_used": [],
-            "components_skipped": ["qdrant", "opensearch", "reranker"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [],
+                "degradation_mode": "minimal",
+                "components_used": [],
+                "components_skipped": ["qdrant", "opensearch", "reranker"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -396,14 +440,21 @@ class TestEndToEndDegradationMetadata:
     @pytest.mark.asyncio
     async def test_degradation_metadata_available_for_response(self):
         """Test that all degradation metadata is available for building final response."""
-        mock_response = create_mock_httpx_response({
-            "results": [
-                {"content": "Test content", "score": 0.85, "chunk_id": "1", "document_id": "doc1"}
-            ],
-            "degradation_mode": "semantic_only",
-            "components_used": ["qdrant", "reranker"],
-            "components_skipped": ["opensearch"],
-        })
+        mock_response = create_mock_httpx_response(
+            {
+                "results": [
+                    {
+                        "content": "Test content",
+                        "score": 0.85,
+                        "chunk_id": "1",
+                        "document_id": "doc1",
+                    }
+                ],
+                "degradation_mode": "semantic_only",
+                "components_used": ["qdrant", "reranker"],
+                "components_skipped": ["opensearch"],
+            }
+        )
         mock_client = create_mock_httpx_client(mock_response)
 
         state = {
@@ -448,12 +499,16 @@ class TestEndToEndDegradationMetadata:
         ]
 
         for mode, expected_level, expected_quality in modes:
-            mock_response = create_mock_httpx_response({
-                "results": [{"content": "Test", "score": 0.8, "chunk_id": "1", "document_id": "doc1"}],
-                "degradation_mode": mode,
-                "components_used": ["qdrant"],
-                "components_skipped": [],
-            })
+            mock_response = create_mock_httpx_response(
+                {
+                    "results": [
+                        {"content": "Test", "score": 0.8, "chunk_id": "1", "document_id": "doc1"}
+                    ],
+                    "degradation_mode": mode,
+                    "components_used": ["qdrant"],
+                    "components_skipped": [],
+                }
+            )
             mock_client = create_mock_httpx_client(mock_response)
 
             state = {
@@ -469,5 +524,7 @@ class TestEndToEndDegradationMetadata:
                 result = await retrieval_node(state)
 
             assert result["retrieval_quality"]["mode"] == mode, f"Mode mismatch for {mode}"
-            assert result["retrieval_quality"]["degradation_level"] == expected_level, f"Level mismatch for {mode}"
+            assert result["retrieval_quality"]["degradation_level"] == expected_level, (
+                f"Level mismatch for {mode}"
+            )
             assert result["context_quality"] == expected_quality, f"Quality mismatch for {mode}"

@@ -85,9 +85,12 @@ class TestAuditMiddlewareExclusions:
     @pytest.fixture
     def app(self, mock_audit_logger):
         """Create test FastAPI application with mocked audit logger."""
-        with patch("api.app.validate_on_startup"), patch(
-            "shared.security.audit.middleware.get_audit_logger",
-            return_value=mock_audit_logger,
+        with (
+            patch("api.app.validate_on_startup"),
+            patch(
+                "shared.security.audit.middleware.get_audit_logger",
+                return_value=mock_audit_logger,
+            ),
         ):
             app = create_app()
             # Set required app state for health endpoints

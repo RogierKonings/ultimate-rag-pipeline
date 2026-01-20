@@ -52,10 +52,12 @@ class TranscriptionConfig:
     beam_size: int = 5
     word_timestamps: bool = True
     vad_filter: bool = True
-    vad_parameters: dict = field(default_factory=lambda: {
-        "min_silence_duration_ms": 500,
-        "speech_pad_ms": 400,
-    })
+    vad_parameters: dict = field(
+        default_factory=lambda: {
+            "min_silence_duration_ms": 500,
+            "speech_pad_ms": 400,
+        }
+    )
 
 
 @dataclass
@@ -168,7 +170,8 @@ class TranscriptionResult:
             List of overlapping segments.
         """
         return [
-            s for s in self.segments
+            s
+            for s in self.segments
             if s.end_seconds > start_seconds and s.start_seconds < end_seconds
         ]
 
@@ -328,18 +331,20 @@ class WhisperTranscriber:
         # Format for database storage
         segments = []
         for segment in result.segments:
-            segments.append({
-                "video_id": str(video_id),
-                "tenant_id": str(tenant_id),
-                "segment_index": segment.id,
-                "start_ms": segment.start_ms,
-                "end_ms": segment.end_ms,
-                "text": segment.text,
-                "confidence": segment.confidence,
-                "words": segment.words,
-                "speaker": segment.speaker,
-                "language": result.language,
-            })
+            segments.append(
+                {
+                    "video_id": str(video_id),
+                    "tenant_id": str(tenant_id),
+                    "segment_index": segment.id,
+                    "start_ms": segment.start_ms,
+                    "end_ms": segment.end_ms,
+                    "text": segment.text,
+                    "confidence": segment.confidence,
+                    "words": segment.words,
+                    "speaker": segment.speaker,
+                    "language": result.language,
+                }
+            )
 
         return segments
 
@@ -354,6 +359,7 @@ class WhisperTranscriber:
 
         try:
             import torch
+
             if torch.cuda.is_available():
                 return "cuda"
         except ImportError:

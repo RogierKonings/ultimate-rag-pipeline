@@ -97,10 +97,11 @@ class TestPropagateDeletionAsync:
         document_id = str(uuid4())
         tenant_id = str(uuid4())
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+        ):
             result = await _propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
@@ -132,10 +133,11 @@ class TestPropagateDeletionAsync:
             side_effect=Exception("Qdrant connection failed")
         )
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+        ):
             with pytest.raises(Exception) as exc:
                 await _propagate_deletion_async(
                     document_id=document_id,
@@ -160,10 +162,11 @@ class TestPropagateDeletionAsync:
             side_effect=Exception("OpenSearch connection failed")
         )
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+        ):
             with pytest.raises(Exception) as exc:
                 await _propagate_deletion_async(
                     document_id=document_id,
@@ -173,24 +176,19 @@ class TestPropagateDeletionAsync:
             assert "OpenSearch deletion failed" in str(exc.value)
 
     @pytest.mark.asyncio
-    async def test_both_stores_fail(
-        self, mock_qdrant, mock_opensearch, mock_settings
-    ):
+    async def test_both_stores_fail(self, mock_qdrant, mock_opensearch, mock_settings):
         """Should report both errors when both stores fail."""
         document_id = str(uuid4())
         tenant_id = str(uuid4())
 
-        mock_qdrant.delete_by_document_id = AsyncMock(
-            side_effect=Exception("Qdrant error")
-        )
-        mock_opensearch.delete_by_document_id = AsyncMock(
-            side_effect=Exception("OpenSearch error")
-        )
+        mock_qdrant.delete_by_document_id = AsyncMock(side_effect=Exception("Qdrant error"))
+        mock_opensearch.delete_by_document_id = AsyncMock(side_effect=Exception("OpenSearch error"))
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+        ):
             with pytest.raises(Exception) as exc:
                 await _propagate_deletion_async(
                     document_id=document_id,
@@ -202,9 +200,7 @@ class TestPropagateDeletionAsync:
             assert "OpenSearch deletion failed" in error_msg
 
     @pytest.mark.asyncio
-    async def test_idempotent_zero_deletions(
-        self, mock_qdrant, mock_opensearch, mock_settings
-    ):
+    async def test_idempotent_zero_deletions(self, mock_qdrant, mock_opensearch, mock_settings):
         """Should succeed even if document doesn't exist (idempotent)."""
         document_id = str(uuid4())
         tenant_id = str(uuid4())
@@ -212,10 +208,11 @@ class TestPropagateDeletionAsync:
         mock_qdrant.delete_by_document_id = AsyncMock(return_value=0)
         mock_opensearch.delete_by_document_id = AsyncMock(return_value=0)
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+        ):
             result = await _propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
@@ -230,9 +227,7 @@ class TestDeletionMetrics:
     """Tests for metrics updates."""
 
     @pytest.mark.asyncio
-    async def test_metrics_updated_on_success(
-        self, mock_qdrant, mock_opensearch, mock_settings
-    ):
+    async def test_metrics_updated_on_success(self, mock_qdrant, mock_opensearch, mock_settings):
         """Should update Prometheus metrics on successful deletion."""
         document_id = str(uuid4())
         tenant_id = str(uuid4())
@@ -241,15 +236,19 @@ class TestDeletionMetrics:
         mock_duration = MagicMock()
         mock_removed = MagicMock()
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch), \
-             patch.dict("tasks.tombstone.__dict__", {
-                 "DELETION_PROPAGATION_RUNS": mock_runs,
-                 "DELETION_PROPAGATION_DURATION": mock_duration,
-                 "DELETION_VECTORS_REMOVED": mock_removed,
-             }):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch.dict(
+                "tasks.tombstone.__dict__",
+                {
+                    "DELETION_PROPAGATION_RUNS": mock_runs,
+                    "DELETION_PROPAGATION_DURATION": mock_duration,
+                    "DELETION_VECTORS_REMOVED": mock_removed,
+                },
+            ),
+        ):
             await _propagate_deletion_async(
                 document_id=document_id,
                 tenant_id=tenant_id,
@@ -266,11 +265,14 @@ class TestDeletionMetrics:
         document_id = str(uuid4())
         tenant_id = str(uuid4())
 
-        with patch("tasks.tombstone.get_settings", return_value=mock_settings), \
-             patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant), \
-             patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch), \
-             patch("tasks.tombstone._update_deletion_metrics", side_effect=Exception("Metrics error")):
-
+        with (
+            patch("tasks.tombstone.get_settings", return_value=mock_settings),
+            patch("tasks.tombstone.QdrantVectorStore", return_value=mock_qdrant),
+            patch("tasks.tombstone.OpenSearchClient", return_value=mock_opensearch),
+            patch(
+                "tasks.tombstone._update_deletion_metrics", side_effect=Exception("Metrics error")
+            ),
+        ):
             # Should complete successfully despite metrics error
             result = await _propagate_deletion_async(
                 document_id=document_id,

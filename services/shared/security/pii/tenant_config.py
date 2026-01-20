@@ -168,9 +168,7 @@ class TenantPIIConfigService:
         """Load raw PII config from database and merge with defaults."""
         from database.models import Tenant
 
-        result = await session.execute(
-            select(Tenant).where(Tenant.id == tenant_id)
-        )
+        result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
         tenant = result.scalar_one_or_none()
 
         if tenant is None:
@@ -219,9 +217,7 @@ class TenantPIIConfigService:
             )
 
         # Get handling mode
-        default_mode = PIIHandlingMode(
-            raw_config.get("default_handling_mode", "flag")
-        )
+        default_mode = PIIHandlingMode(raw_config.get("default_handling_mode", "flag"))
 
         # Build settings (handle None values from tenant overrides)
         ingestion_config = raw_config.get("ingestion") or {}
@@ -230,12 +226,8 @@ class TenantPIIConfigService:
             default_handling_mode=default_mode,
             confidence_threshold=raw_config.get("confidence_threshold", 0.7),
             entity_configs=entity_configs,
-            reject_on_high_sensitivity=ingestion_config.get(
-                "reject_on_high_sensitivity", False
-            ),
-            store_pii_metadata=ingestion_config.get(
-                "store_pii_metadata", True
-            ),
+            reject_on_high_sensitivity=ingestion_config.get("reject_on_high_sensitivity", False),
+            store_pii_metadata=ingestion_config.get("store_pii_metadata", True),
             log_detections=True,
         )
 
@@ -327,9 +319,7 @@ class TenantPIIConfigService:
         """
         from database.models import Tenant
 
-        result = await session.execute(
-            select(Tenant).where(Tenant.id == tenant_id)
-        )
+        result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
         tenant = result.scalar_one_or_none()
 
         if tenant is None:
@@ -392,12 +382,14 @@ class TenantPIIConfigService:
             raise ValueError(f"Pattern with name '{name}' already exists")
 
         # Add new pattern
-        patterns.append({
-            "name": name,
-            "pattern": pattern,
-            "entity_type": entity_type,
-            "score": score,
-        })
+        patterns.append(
+            {
+                "name": name,
+                "pattern": pattern,
+                "entity_type": entity_type,
+                "score": score,
+            }
+        )
 
         return await self.update_tenant_config(
             tenant_id,

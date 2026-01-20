@@ -1,7 +1,6 @@
 """Tests for audit middleware integration in ingestion service."""
 
 
-
 class TestAuditMiddlewareIntegration:
     """Tests for audit middleware in ingestion service."""
 

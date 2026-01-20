@@ -86,12 +86,7 @@ def create_ssl_context() -> ssl.SSLContext | None:
     # Load client certificate for mutual TLS if provided
     client_cert = os.getenv("POSTGRES_SSL_CERT")
     client_key = os.getenv("POSTGRES_SSL_KEY")
-    if (
-        client_cert
-        and client_key
-        and Path(client_cert).exists()
-        and Path(client_key).exists()
-    ):
+    if client_cert and client_key and Path(client_cert).exists() and Path(client_key).exists():
         ctx.load_cert_chain(client_cert, client_key)
 
     return ctx
@@ -276,9 +271,7 @@ async def check_database_health() -> dict:
     try:
         async with get_session() as session:
             # Get version and SSL status in one query
-            result = await session.execute(
-                text("SELECT version(), ssl_is_used()")
-            )
+            result = await session.execute(text("SELECT version(), ssl_is_used()"))
             row = result.fetchone()
             version = row[0] if row else None
             ssl_enabled = row[1] if row else False

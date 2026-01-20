@@ -114,9 +114,7 @@ class TenantConfigService:
         """
         from database.models import Tenant
 
-        result = await session.execute(
-            select(Tenant).where(Tenant.id == tenant_id)
-        )
+        result = await session.execute(select(Tenant).where(Tenant.id == tenant_id))
         tenant = result.scalar_one_or_none()
 
         if tenant is None:

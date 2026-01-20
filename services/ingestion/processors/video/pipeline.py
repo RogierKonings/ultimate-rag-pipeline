@@ -212,9 +212,7 @@ class VideoProcessingPipeline:
 
             try:
                 # Stage 1: Validation
-                video_metadata = await self._run_validation_stage(
-                    video_path, update_progress
-                )
+                video_metadata = await self._run_validation_stage(video_path, update_progress)
 
                 # Stage 2: Audio extraction
                 audio_path = None
@@ -239,9 +237,7 @@ class VideoProcessingPipeline:
 
                 # Stage 6: Vision analysis
                 if keyframes and PipelineStage.ANALYZING_VISION not in skip_stages:
-                    await self._run_vision_analysis_stage(
-                        keyframes, video_id, update_progress
-                    )
+                    await self._run_vision_analysis_stage(keyframes, video_id, update_progress)
 
                 # Stage 7: OCR extraction
                 if (

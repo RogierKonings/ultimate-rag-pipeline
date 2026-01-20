@@ -79,8 +79,8 @@ class VideoValidator:
         file_size = file_path.stat().st_size
         if file_size > self.config.max_file_size_bytes:
             raise VideoValidationError(
-                f"Video file too large: {file_size / (1024*1024):.1f}MB "
-                f"(max: {self.config.max_file_size_bytes / (1024*1024):.1f}MB)",
+                f"Video file too large: {file_size / (1024 * 1024):.1f}MB "
+                f"(max: {self.config.max_file_size_bytes / (1024 * 1024):.1f}MB)",
                 details={
                     "file_size_bytes": file_size,
                     "max_size_bytes": self.config.max_file_size_bytes,
@@ -150,8 +150,7 @@ class VideoValidator:
             ) from None
         except FileNotFoundError:
             raise VideoValidationError(
-                f"FFprobe not found at: {self.ffprobe_path}. "
-                "Please ensure FFmpeg is installed.",
+                f"FFprobe not found at: {self.ffprobe_path}. Please ensure FFmpeg is installed.",
             ) from None
 
         # Extract video stream info
@@ -189,9 +188,7 @@ class VideoValidator:
         tags = format_info.get("tags", {})
         if "creation_time" in tags:
             try:
-                creation_time = datetime.fromisoformat(
-                    tags["creation_time"].replace("Z", "+00:00")
-                )
+                creation_time = datetime.fromisoformat(tags["creation_time"].replace("Z", "+00:00"))
             except ValueError:
                 pass
 

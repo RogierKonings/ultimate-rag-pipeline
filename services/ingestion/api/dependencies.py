@@ -58,6 +58,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
 
+
 # Singleton rate limiter for API
 _api_redis_client: aioredis.Redis | None = None
 _api_rate_limiter: IngestionRateLimiter | None = None

@@ -119,12 +119,8 @@ def _create_timeout_config(
     return TimeoutConfig(
         timeout_ms=_get_env_int(f"{env_prefix}_TIMEOUT_MS", default_timeout_ms),
         retries=_get_env_int(f"{env_prefix}_RETRIES", default_retries),
-        backoff_base_ms=_get_env_int(
-            f"{env_prefix}_BACKOFF_BASE_MS", default_backoff_base_ms
-        ),
-        backoff_max_ms=_get_env_int(
-            f"{env_prefix}_BACKOFF_MAX_MS", default_backoff_max_ms
-        ),
+        backoff_base_ms=_get_env_int(f"{env_prefix}_BACKOFF_BASE_MS", default_backoff_base_ms),
+        backoff_max_ms=_get_env_int(f"{env_prefix}_BACKOFF_MAX_MS", default_backoff_max_ms),
         idempotent=_get_env_bool(f"{env_prefix}_IDEMPOTENT", default_idempotent),
     )
 
@@ -312,8 +308,7 @@ def get_timeout(name: str) -> TimeoutConfig:
     """
     if name not in ALL_TIMEOUTS:
         raise KeyError(
-            f"Unknown timeout: {name}. "
-            f"Available timeouts: {', '.join(sorted(ALL_TIMEOUTS.keys()))}"
+            f"Unknown timeout: {name}. Available timeouts: {', '.join(sorted(ALL_TIMEOUTS.keys()))}"
         )
     return ALL_TIMEOUTS[name]
 

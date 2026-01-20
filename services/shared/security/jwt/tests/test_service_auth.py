@@ -333,9 +333,7 @@ class TestAuthorizationMatrix:
         """Should return allowed endpoints for service pair."""
         endpoints = get_allowed_endpoints("orchestrator", "retrieval")
 
-        assert "/internal/*" in endpoints or any(
-            "/internal" in e for e in endpoints
-        )
+        assert "/internal/*" in endpoints or any("/internal" in e for e in endpoints)
 
     def test_get_allowed_endpoints_unknown_service(self):
         """Should return empty list for unknown service."""
@@ -346,14 +344,10 @@ class TestAuthorizationMatrix:
     def test_is_service_authorized(self):
         """Should check service authorization correctly."""
         # Orchestrator should be able to call retrieval internal endpoints
-        assert is_service_authorized(
-            "orchestrator", "retrieval", "/internal/search"
-        ) is True
+        assert is_service_authorized("orchestrator", "retrieval", "/internal/search") is True
 
         # Unknown service should not be authorized
-        assert is_service_authorized(
-            "unknown", "retrieval", "/internal/search"
-        ) is False
+        assert is_service_authorized("unknown", "retrieval", "/internal/search") is False
 
     def test_custom_authorization_matrix(self):
         """Should use custom authorization matrix."""
@@ -363,13 +357,15 @@ class TestAuthorizationMatrix:
             },
         }
 
-        assert is_service_authorized(
-            "service-a", "service-b", "/custom/endpoint", custom_matrix
-        ) is True
+        assert (
+            is_service_authorized("service-a", "service-b", "/custom/endpoint", custom_matrix)
+            is True
+        )
 
-        assert is_service_authorized(
-            "service-a", "service-b", "/other/endpoint", custom_matrix
-        ) is False
+        assert (
+            is_service_authorized("service-a", "service-b", "/other/endpoint", custom_matrix)
+            is False
+        )
 
 
 # ServiceAuthMiddleware Tests
@@ -418,9 +414,7 @@ class TestServiceAuthMiddleware:
 
         assert response.status_code == 401
 
-    def test_internal_endpoint_with_valid_auth(
-        self, app_with_middleware, jwt_handler
-    ):
+    def test_internal_endpoint_with_valid_auth(self, app_with_middleware, jwt_handler):
         """Internal endpoints should accept valid service auth."""
         client = TestClient(app_with_middleware)
 
@@ -438,9 +432,7 @@ class TestServiceAuthMiddleware:
         assert response.status_code == 200
         assert response.json()["caller"] == "orchestrator"
 
-    def test_internal_endpoint_with_expired_token(
-        self, app_with_middleware, jwt_handler
-    ):
+    def test_internal_endpoint_with_expired_token(self, app_with_middleware, jwt_handler):
         """Should reject expired service tokens."""
         client = TestClient(app_with_middleware)
 
@@ -457,9 +449,7 @@ class TestServiceAuthMiddleware:
 
         assert response.status_code == 401
 
-    def test_internal_endpoint_untrusted_service(
-        self, app_with_middleware, jwt_handler
-    ):
+    def test_internal_endpoint_untrusted_service(self, app_with_middleware, jwt_handler):
         """Should reject tokens from untrusted services."""
         client = TestClient(app_with_middleware)
 

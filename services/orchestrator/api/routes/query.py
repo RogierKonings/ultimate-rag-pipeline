@@ -266,9 +266,7 @@ async def query(
         components_skipped = retrieval_quality.get("components_skipped", [])
         all_components = set(components_used) | set(components_skipped)
         if all_components:
-            components_available = {
-                comp: comp in components_used for comp in all_components
-            }
+            components_available = {comp: comp in components_used for comp in all_components}
 
     # Record business metrics (US-10.3.3)
     is_degraded = context_quality != "full"

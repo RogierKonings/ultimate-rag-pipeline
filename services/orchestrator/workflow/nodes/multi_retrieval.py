@@ -269,7 +269,9 @@ async def multi_retrieval_node(state: "RAGState") -> "RAGState":
         # Set span attributes for results
         span.set_attribute("orchestrator.documents_retrieved", len(aggregated.documents))
         span.set_attribute("orchestrator.total_before_dedup", aggregated.total_retrieved)
-        span.set_attribute("orchestrator.dedup_removed", aggregated.total_retrieved - aggregated.deduplicated_count)
+        span.set_attribute(
+            "orchestrator.dedup_removed", aggregated.total_retrieved - aggregated.deduplicated_count
+        )
 
         logger.info(
             "multi_retrieval_complete",
@@ -330,8 +332,7 @@ def _format_multi_hop_context(
     for i, sq in enumerate(sub_questions, 1):
         # Find documents relevant to this sub-question
         sq_docs = [
-            doc for doc in documents
-            if sq in sub_question_mapping.get(doc.get("chunk_id", ""), [])
+            doc for doc in documents if sq in sub_question_mapping.get(doc.get("chunk_id", ""), [])
         ]
 
         if sq_docs:

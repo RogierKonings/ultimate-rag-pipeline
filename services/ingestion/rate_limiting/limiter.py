@@ -238,11 +238,16 @@ class IngestionRateLimiter:
             task_data=task_data,
             queued_at=datetime.now(UTC).isoformat(),
         )
-        await self.redis.rpush(key, json.dumps({
-            "job_id": queued_job.job_id,
-            "task_data": queued_job.task_data,
-            "queued_at": queued_job.queued_at,
-        }))
+        await self.redis.rpush(
+            key,
+            json.dumps(
+                {
+                    "job_id": queued_job.job_id,
+                    "task_data": queued_job.task_data,
+                    "queued_at": queued_job.queued_at,
+                }
+            ),
+        )
         logger.info(
             "job_queued",
             tenant_id=tenant_id,

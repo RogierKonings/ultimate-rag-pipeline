@@ -58,6 +58,7 @@ class TranscriptStorage:
 
             if not self.config.database_url:
                 from config import get_settings
+
                 settings = get_settings()
                 self.config.database_url = settings.database_url
 
@@ -108,7 +109,7 @@ class TranscriptStorage:
             # Insert segments in batches
             total_stored = 0
             for i in range(0, len(segments), self.config.batch_size):
-                batch = segments[i:i + self.config.batch_size]
+                batch = segments[i : i + self.config.batch_size]
                 stored = await self._insert_batch(
                     video_id=video_id,
                     segments=batch,
@@ -150,16 +151,18 @@ class TranscriptStorage:
         # Prepare batch data
         records = []
         for segment in segments:
-            records.append((
-                video_id,
-                segment.id,
-                segment.start_ms,
-                segment.end_ms,
-                segment.text,
-                json.dumps(segment.words) if segment.words else None,
-                language or "unknown",
-                segment.confidence,
-            ))
+            records.append(
+                (
+                    video_id,
+                    segment.id,
+                    segment.start_ms,
+                    segment.end_ms,
+                    segment.text,
+                    json.dumps(segment.words) if segment.words else None,
+                    language or "unknown",
+                    segment.confidence,
+                )
+            )
 
         async with pool.acquire() as conn:
             await conn.executemany(
@@ -215,18 +218,21 @@ class TranscriptStorage:
             rows = await conn.fetch(query, *params)
 
         import json
+
         segments = []
         for row in rows:
-            segments.append({
-                "id": str(row["id"]),
-                "segment_index": row["segment_index"],
-                "start_ms": row["start_ms"],
-                "end_ms": row["end_ms"],
-                "text": row["text"],
-                "words": json.loads(row["words_json"]) if row["words_json"] else [],
-                "language": row["language"],
-                "confidence": row["confidence"],
-            })
+            segments.append(
+                {
+                    "id": str(row["id"]),
+                    "segment_index": row["segment_index"],
+                    "start_ms": row["start_ms"],
+                    "end_ms": row["end_ms"],
+                    "text": row["text"],
+                    "words": json.loads(row["words_json"]) if row["words_json"] else [],
+                    "language": row["language"],
+                    "confidence": row["confidence"],
+                }
+            )
 
         return segments
 

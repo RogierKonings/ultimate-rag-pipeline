@@ -667,8 +667,14 @@ class TestACLSafetyNetIntegration:
         assert data["total_results"] == 3
 
     def test_safety_net_filters_wrong_tenant(
-        self, config, mock_preprocessor, mock_reranker, mock_acl_filter,
-        safety_net, mock_user_extractor, jwt_secret
+        self,
+        config,
+        mock_preprocessor,
+        mock_reranker,
+        mock_acl_filter,
+        safety_net,
+        mock_user_extractor,
+        jwt_secret,
     ):
         """Safety net should filter results from wrong tenant."""
         # Create a searcher that returns a result from a different tenant
@@ -741,8 +747,14 @@ class TestACLSafetyNetIntegration:
         assert data["total_results"] == 0
 
     def test_safety_net_filters_deleted_documents(
-        self, config, mock_preprocessor, mock_reranker, mock_acl_filter,
-        safety_net, mock_user_extractor, jwt_secret
+        self,
+        config,
+        mock_preprocessor,
+        mock_reranker,
+        mock_acl_filter,
+        safety_net,
+        mock_user_extractor,
+        jwt_secret,
     ):
         """Safety net should filter soft-deleted documents."""
         tenant_id = uuid4()

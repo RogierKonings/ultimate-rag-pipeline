@@ -304,7 +304,7 @@ async def update_video(
 
     query = f"""
         UPDATE source_videos
-        SET {', '.join(updates)}
+        SET {", ".join(updates)}
         WHERE id = ${param_count - 1} AND tenant_id = ${param_count}
         RETURNING
             id as video_id, tenant_id, title, description,

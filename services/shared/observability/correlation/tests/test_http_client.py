@@ -105,10 +105,7 @@ class TestCreateServiceClient:
 
     def test_creates_client_with_correct_base_url(self):
         """Should create client with correct base URL."""
-        client = create_service_client(
-            service_name="retrieval",
-            base_url="http://retrieval:8002"
-        )
+        client = create_service_client(service_name="retrieval", base_url="http://retrieval:8002")
 
         assert client.base_url == "http://retrieval:8002"
         assert client.timeout == 30.0
@@ -116,9 +113,7 @@ class TestCreateServiceClient:
     def test_creates_client_with_custom_timeout(self):
         """Should allow custom timeout."""
         client = create_service_client(
-            service_name="retrieval",
-            base_url="http://retrieval:8002",
-            timeout=60.0
+            service_name="retrieval", base_url="http://retrieval:8002", timeout=60.0
         )
 
         assert client.timeout == 60.0

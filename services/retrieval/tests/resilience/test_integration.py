@@ -32,15 +32,9 @@ class TestResilientHybridSearcherIntegration:
     def degradation_manager(self) -> RetrievalDegradationManager:
         """Create degradation manager with fast circuit breakers."""
         config = ResilienceConfig(
-            qdrant_circuit=CircuitBreakerConfig(
-                failure_threshold=2, recovery_timeout=0.1
-            ),
-            opensearch_circuit=CircuitBreakerConfig(
-                failure_threshold=2, recovery_timeout=0.1
-            ),
-            reranker_circuit=CircuitBreakerConfig(
-                failure_threshold=2, recovery_timeout=0.1
-            ),
+            qdrant_circuit=CircuitBreakerConfig(failure_threshold=2, recovery_timeout=0.1),
+            opensearch_circuit=CircuitBreakerConfig(failure_threshold=2, recovery_timeout=0.1),
+            reranker_circuit=CircuitBreakerConfig(failure_threshold=2, recovery_timeout=0.1),
         )
         return RetrievalDegradationManager(config)
 

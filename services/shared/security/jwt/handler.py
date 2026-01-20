@@ -655,9 +655,7 @@ class JWTHandler:
 
             # Verify this is a service token
             if payload.get("token_type") != TokenType.SERVICE.value:
-                raise TokenInvalidError(
-                    f"Expected service token, got {payload.get('token_type')}"
-                )
+                raise TokenInvalidError(f"Expected service token, got {payload.get('token_type')}")
 
             claims = ServiceTokenClaims.from_dict(payload)
 

@@ -87,9 +87,7 @@ def cleanup_correlation_for_task() -> None:
     This function should be called after task execution to clear the
     correlation context and prevent context leakage between tasks.
     """
-    structlog.contextvars.unbind_contextvars(
-        "request_id", "trace_id", "tenant_id", "task_id"
-    )
+    structlog.contextvars.unbind_contextvars("request_id", "trace_id", "tenant_id", "task_id")
     clear_correlation_context()
 
 
@@ -107,9 +105,7 @@ def setup_celery_correlation_signals(celery_app: Any) -> None:
     from celery.signals import before_task_publish, task_postrun, task_prerun
 
     @before_task_publish.connect
-    def propagate_correlation_to_task(
-        headers: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None:
+    def propagate_correlation_to_task(headers: dict[str, Any] | None = None, **kwargs: Any) -> None:
         """Signal handler to inject correlation context before task publish."""
         if headers is not None:
             inject_correlation_to_task(headers)

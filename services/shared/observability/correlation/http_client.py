@@ -97,9 +97,7 @@ class CorrelatedHttpClient:
         """Perform DELETE request with correlation headers."""
         if not self._client:
             raise RuntimeError("Client not initialized. Use async with statement.")
-        return await self._client.delete(
-            path, headers=self._get_headers(headers), **kwargs
-        )
+        return await self._client.delete(path, headers=self._get_headers(headers), **kwargs)
 
 
 def create_service_client(

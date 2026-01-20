@@ -110,8 +110,7 @@ def sanitize_dict(data: dict, mask: str = "***") -> dict:
             result[key] = sanitize_dict(value, mask)
         elif isinstance(value, list):
             result[key] = [
-                sanitize_dict(v, mask) if isinstance(v, dict) else sanitize_value(v)
-                for v in value
+                sanitize_dict(v, mask) if isinstance(v, dict) else sanitize_value(v) for v in value
             ]
         else:
             result[key] = sanitize_value(value)

@@ -227,10 +227,7 @@ class OCRBatchProcessor:
         for result in results:
             if result.filtered_text:
                 words = result.filtered_text.split()
-                filtered_words = [
-                    w for w in words
-                    if w.strip().lower() not in watermarks
-                ]
+                filtered_words = [w for w in words if w.strip().lower() not in watermarks]
                 result.filtered_text = " ".join(filtered_words)
 
         return results
@@ -259,7 +256,7 @@ class OCRBatchProcessor:
 
         # Character trigrams
         def get_trigrams(text: str) -> set[str]:
-            return {text[i:i+3] for i in range(len(text) - 2)}
+            return {text[i : i + 3] for i in range(len(text) - 2)}
 
         trigrams1 = get_trigrams(text1)
         trigrams2 = get_trigrams(text2)

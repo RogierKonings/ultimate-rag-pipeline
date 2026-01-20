@@ -12,6 +12,4 @@ class QuotaExceededError(Exception):
         self.limit = limit
         self.used = used
         self.remaining = max(0, limit - used)
-        super().__init__(
-            f"Quota exceeded for tenant {tenant_id}: {used:,}/{limit:,} tokens used"
-        )
+        super().__init__(f"Quota exceeded for tenant {tenant_id}: {used:,}/{limit:,} tokens used")

@@ -126,8 +126,7 @@ class TesseractOCR(OCREngine):
             from PIL import Image
         except ImportError as e:
             raise ImportError(
-                "pytesseract or Pillow not installed. "
-                "Install with: pip install pytesseract Pillow"
+                "pytesseract or Pillow not installed. Install with: pip install pytesseract Pillow"
             ) from e
 
         # Load image

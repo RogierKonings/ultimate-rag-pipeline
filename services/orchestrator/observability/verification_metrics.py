@@ -78,18 +78,14 @@ def record_verification_metrics(
     ).inc()
 
     # Record verification latency
-    rag_verification_latency.labels(tenant_id=tid).observe(
-        result.verification_time_ms / 1000.0
-    )
+    rag_verification_latency.labels(tenant_id=tid).observe(result.verification_time_ms / 1000.0)
 
     # Record claim counts (only for non-skipped verifications)
     if not result.skipped:
         rag_verification_claims.labels(status="supported", tenant_id=tid).inc(
             result.claims_supported
         )
-        rag_verification_claims.labels(status="partial", tenant_id=tid).inc(
-            result.claims_partial
-        )
+        rag_verification_claims.labels(status="partial", tenant_id=tid).inc(result.claims_partial)
         rag_verification_claims.labels(status="unsupported", tenant_id=tid).inc(
             result.claims_unsupported
         )

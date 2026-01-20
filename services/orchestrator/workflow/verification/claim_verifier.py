@@ -86,9 +86,7 @@ class ClaimVerifier:
             supporting_evidence=evidence,
         )
 
-    def _parse_verification(
-        self, content: str
-    ) -> tuple[VerificationStatus, str | None]:
+    def _parse_verification(self, content: str) -> tuple[VerificationStatus, str | None]:
         """Parse verification result from LLM response.
 
         Args:
@@ -120,9 +118,7 @@ class ClaimVerifier:
             return status, evidence
 
         except json.JSONDecodeError as e:
-            logger.warning(
-                "verification_parse_error", error=str(e), content=content[:100]
-            )
+            logger.warning("verification_parse_error", error=str(e), content=content[:100])
             return VerificationStatus.UNVERIFIABLE, None
 
     async def verify_all(

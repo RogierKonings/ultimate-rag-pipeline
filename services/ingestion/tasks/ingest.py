@@ -717,6 +717,7 @@ def batch_ingest(
             }
         except Exception as e:
             import traceback
+
             logger.error(f"Failed to process document {doc_id}: {e}\n{traceback.format_exc()}")
             return {
                 "job_id": job_id,

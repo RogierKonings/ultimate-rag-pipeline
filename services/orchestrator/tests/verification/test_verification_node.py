@@ -88,9 +88,7 @@ class TestVerificationNode:
 
     @pytest.mark.asyncio
     @patch("workflow.nodes.verification.ModelGateway")
-    async def test_skips_when_no_claims_extracted(
-        self, MockGateway, base_state, mock_gateway
-    ):
+    async def test_skips_when_no_claims_extracted(self, MockGateway, base_state, mock_gateway):
         """Test verification skips when no claims are extracted."""
         MockGateway.return_value = mock_gateway
 
@@ -106,9 +104,7 @@ class TestVerificationNode:
 
     @pytest.mark.asyncio
     @patch("workflow.nodes.verification.ModelGateway")
-    async def test_verifies_claims_successfully(
-        self, MockGateway, base_state, mock_gateway
-    ):
+    async def test_verifies_claims_successfully(self, MockGateway, base_state, mock_gateway):
         """Test successful claim verification."""
         MockGateway.return_value = mock_gateway
 
@@ -126,9 +122,7 @@ class TestVerificationNode:
         verification_response = MagicMock()
         verification_response.choices = [
             MagicMock(
-                message=MagicMock(
-                    content='{"status": "supported", "evidence": "created in 1991"}'
-                )
+                message=MagicMock(content='{"status": "supported", "evidence": "created in 1991"}')
             )
         ]
 
@@ -170,9 +164,7 @@ class TestVerificationNode:
             MagicMock(
                 choices=[
                     MagicMock(
-                        message=MagicMock(
-                            content='{"status": "supported", "evidence": "test"}'
-                        )
+                        message=MagicMock(content='{"status": "supported", "evidence": "test"}')
                     )
                 ]
             ),
@@ -230,11 +222,7 @@ class TestVerificationNode:
         # Mock unsupported verification
         verification_response = MagicMock()
         verification_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"status": "unsupported", "evidence": null}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"status": "unsupported", "evidence": null}'))
         ]
 
         mock_gateway.chat_completion.side_effect = [
@@ -280,11 +268,7 @@ class TestVerificationNode:
         # Mock unsupported verification
         verification_response = MagicMock()
         verification_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"status": "unsupported", "evidence": null}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"status": "unsupported", "evidence": null}'))
         ]
 
         mock_gateway.chat_completion.side_effect = [
@@ -299,9 +283,7 @@ class TestVerificationNode:
 
     @pytest.mark.asyncio
     @patch("workflow.nodes.verification.ModelGateway")
-    async def test_handles_exception_gracefully(
-        self, MockGateway, base_state, mock_gateway
-    ):
+    async def test_handles_exception_gracefully(self, MockGateway, base_state, mock_gateway):
         """Test graceful handling of exceptions.
 
         When claim extraction fails, it returns empty claims rather than

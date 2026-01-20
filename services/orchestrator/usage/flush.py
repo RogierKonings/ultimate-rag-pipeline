@@ -130,21 +130,27 @@ class UsageFlusher:
                             continue
 
                         # Upsert to PostgreSQL
-                        stmt = pg_insert(TokenUsage).values(
-                            id=str(uuid4()),
-                            tenant_id=tenant_id,
-                            date=usage_date,
-                            model=model,
-                            prompt_tokens=prompt_tokens,
-                            completion_tokens=completion_tokens,
-                            embedding_tokens=embedding_tokens,
-                        ).on_conflict_do_update(
-                            constraint="uq_usage_tenant_date_model",
-                            set_={
-                                "prompt_tokens": TokenUsage.prompt_tokens + prompt_tokens,
-                                "completion_tokens": TokenUsage.completion_tokens + completion_tokens,
-                                "embedding_tokens": TokenUsage.embedding_tokens + embedding_tokens,
-                            },
+                        stmt = (
+                            pg_insert(TokenUsage)
+                            .values(
+                                id=str(uuid4()),
+                                tenant_id=tenant_id,
+                                date=usage_date,
+                                model=model,
+                                prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens,
+                                embedding_tokens=embedding_tokens,
+                            )
+                            .on_conflict_do_update(
+                                constraint="uq_usage_tenant_date_model",
+                                set_={
+                                    "prompt_tokens": TokenUsage.prompt_tokens + prompt_tokens,
+                                    "completion_tokens": TokenUsage.completion_tokens
+                                    + completion_tokens,
+                                    "embedding_tokens": TokenUsage.embedding_tokens
+                                    + embedding_tokens,
+                                },
+                            )
                         )
                         await session.execute(stmt)
                         keys_to_delete.append(key)

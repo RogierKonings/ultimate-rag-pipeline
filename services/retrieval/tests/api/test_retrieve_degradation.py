@@ -254,9 +254,7 @@ class TestRetrieveDegradationInfo:
         assert "opensearch" in data["components_used"]
         assert data["components_skipped"] == []
 
-    def test_retrieve_includes_degradation_mode_semantic_only(
-        self, test_client, auth_header
-    ):
+    def test_retrieve_includes_degradation_mode_semantic_only(self, test_client, auth_header):
         """Retrieve should show semantic_only when opensearch is down."""
         degraded_manager = MagicMock(spec=RetrievalDegradationManager)
         degraded_manager.get_status.return_value = DegradationStatus(
@@ -284,9 +282,7 @@ class TestRetrieveDegradationInfo:
         assert "qdrant" in data["components_used"]
         assert "opensearch" in data["components_skipped"]
 
-    def test_retrieve_includes_degradation_mode_minimal(
-        self, test_client, auth_header
-    ):
+    def test_retrieve_includes_degradation_mode_minimal(self, test_client, auth_header):
         """Retrieve should show minimal when multiple components down."""
         minimal_manager = MagicMock(spec=RetrievalDegradationManager)
         minimal_manager.get_status.return_value = DegradationStatus(
@@ -315,9 +311,7 @@ class TestRetrieveDegradationInfo:
         assert "opensearch" in data["components_skipped"]
         assert "reranker" in data["components_skipped"]
 
-    def test_retrieve_includes_degradation_mode_keyword_only(
-        self, test_client, auth_header
-    ):
+    def test_retrieve_includes_degradation_mode_keyword_only(self, test_client, auth_header):
         """Retrieve should show keyword_only when qdrant is down."""
         keyword_manager = MagicMock(spec=RetrievalDegradationManager)
         keyword_manager.get_status.return_value = DegradationStatus(
@@ -345,9 +339,7 @@ class TestRetrieveDegradationInfo:
         assert "opensearch" in data["components_used"]
         assert "qdrant" in data["components_skipped"]
 
-    def test_retrieve_includes_degradation_mode_no_rerank(
-        self, test_client, auth_header
-    ):
+    def test_retrieve_includes_degradation_mode_no_rerank(self, test_client, auth_header):
         """Retrieve should show hybrid_no_rerank when reranker is down."""
         no_rerank_manager = MagicMock(spec=RetrievalDegradationManager)
         no_rerank_manager.get_status.return_value = DegradationStatus(

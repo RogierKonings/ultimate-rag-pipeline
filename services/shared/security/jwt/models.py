@@ -375,6 +375,4 @@ class ServiceTokenClaims(BaseModel):
         """
         import fnmatch
 
-        return any(
-            fnmatch.fnmatch(endpoint, pattern) for pattern in self.allowed_endpoints
-        )
+        return any(fnmatch.fnmatch(endpoint, pattern) for pattern in self.allowed_endpoints)

@@ -481,9 +481,7 @@ class TestWithTimeout:
         async def func_with_args(a: int, b: int) -> int:
             return a + b
 
-        result = await with_timeout(
-            func_with_args, 100, "test_op", 1, 2
-        )
+        result = await with_timeout(func_with_args, 100, "test_op", 1, 2)
 
         assert result == 3
 
@@ -571,10 +569,7 @@ class TestEdgeCases:
             return f"result_{task_id}"
 
         # Run multiple concurrent calls
-        tasks = [
-            with_retry(task, config, f"op_{i}", f"task_{i}")
-            for i in range(3)
-        ]
+        tasks = [with_retry(task, config, f"op_{i}", f"task_{i}") for i in range(3)]
         results = await asyncio.gather(*tasks)
 
         assert results == ["result_task_0", "result_task_1", "result_task_2"]

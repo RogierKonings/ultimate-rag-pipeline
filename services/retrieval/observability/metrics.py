@@ -317,9 +317,7 @@ class RetrievalMetrics:
         # Set circuit states
         state_map = {"closed": 0, "open": 1, "half_open": 2}
         for component, state in circuit_states.items():
-            self.circuit_breaker_state.labels(component=component).set(
-                state_map.get(state, 0)
-            )
+            self.circuit_breaker_state.labels(component=component).set(state_map.get(state, 0))
 
     def record_degraded_search(self, mode: str) -> None:
         """Record a search executed in degraded mode.

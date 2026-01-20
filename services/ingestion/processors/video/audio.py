@@ -259,11 +259,15 @@ class AudioExtractor:
         """
         cmd = [
             self.config.ffmpeg_path,
-            "-i", str(video_path),
+            "-i",
+            str(video_path),
             "-vn",  # No video
-            "-acodec", self.config.codec,
-            "-ar", str(self.config.sample_rate),
-            "-ac", str(self.config.channels),
+            "-acodec",
+            self.config.codec,
+            "-ar",
+            str(self.config.sample_rate),
+            "-ac",
+            str(self.config.channels),
         ]
 
         # Add bitrate for lossy formats
@@ -286,10 +290,14 @@ class AudioExtractor:
         """
         cmd = [
             "ffprobe",
-            "-v", "error",
-            "-select_streams", "a:0",
-            "-show_entries", "stream=index",
-            "-of", "csv=p=0",
+            "-v",
+            "error",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=index",
+            "-of",
+            "csv=p=0",
             str(video_path),
         ]
 
@@ -316,10 +324,12 @@ class AudioExtractor:
         """
         cmd = [
             "ffprobe",
-            "-v", "error",
+            "-v",
+            "error",
             "-show_entries",
             "stream=sample_rate,channels,duration",
-            "-of", "json",
+            "-of",
+            "json",
             str(audio_path),
         ]
 
@@ -333,6 +343,7 @@ class AudioExtractor:
 
             if process.returncode == 0:
                 import json
+
                 data = json.loads(stdout.decode("utf-8"))
                 streams = data.get("streams", [])
                 if streams:

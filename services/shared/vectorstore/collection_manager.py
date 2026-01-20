@@ -217,11 +217,7 @@ class CollectionManager:
             List of collection names matching the documents_* pattern.
         """
         collections = await self.client.get_collections()
-        return [
-            c.name
-            for c in collections.collections
-            if c.name.startswith("documents_")
-        ]
+        return [c.name for c in collections.collections if c.name.startswith("documents_")]
 
     async def collection_exists(self, collection_name: str) -> bool:
         """Check if a collection exists.

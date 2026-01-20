@@ -107,6 +107,7 @@ class TenantMigrationTool:
         """Lazy-load CollectionManager."""
         if self._collection_manager is None:
             from vectorstore.collection_manager import CollectionManager
+
             self._collection_manager = CollectionManager(self.qdrant)
         return self._collection_manager
 
@@ -114,6 +115,7 @@ class TenantMigrationTool:
         """Lazy-load OpenSearchIndexManager."""
         if self._index_manager is None:
             from search.index_manager import OpenSearchIndexManager
+
             self._index_manager = OpenSearchIndexManager(self.opensearch)
         return self._index_manager
 
@@ -330,9 +332,7 @@ class TenantMigrationTool:
                 # Bulk index to target
                 actions = []
                 for hit in hits:
-                    actions.append(
-                        {"index": {"_index": target_index, "_id": hit["_id"]}}
-                    )
+                    actions.append({"index": {"_index": target_index, "_id": hit["_id"]}})
                     actions.append(hit["_source"])
 
                 await self.opensearch.bulk(body=actions, refresh=True)
@@ -390,6 +390,7 @@ class TenantMigrationTool:
 
         # Invalidate cache
         from tenant.config_service import get_tenant_config_service
+
         get_tenant_config_service().invalidate_cache(tenant_id)
 
         logger.info(
@@ -417,14 +418,13 @@ class TenantMigrationTool:
         try:
             async with self.session_factory() as session:
                 await session.execute(
-                    update(Tenant)
-                    .where(Tenant.id == tenant_id)
-                    .values(isolation_mode="shared")
+                    update(Tenant).where(Tenant.id == tenant_id).values(isolation_mode="shared")
                 )
                 await session.commit()
 
             # Invalidate cache
             from tenant.config_service import get_tenant_config_service
+
             get_tenant_config_service().invalidate_cache(tenant_id)
 
             logger.info("tenant_rollback_complete", tenant_id=str(tenant_id))

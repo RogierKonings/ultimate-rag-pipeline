@@ -491,9 +491,7 @@ async def _handle_missing_qdrant(
         chunk_id=str(chunk.id),
         issue_type="missing_qdrant",
         action_taken=(
-            ReconciliationAction.SKIP_NO_ACTION
-            if dry_run
-            else ReconciliationAction.REINDEX_QDRANT
+            ReconciliationAction.SKIP_NO_ACTION if dry_run else ReconciliationAction.REINDEX_QDRANT
         ),
         success=True,
     )

@@ -224,9 +224,7 @@ def _update_deletion_metrics(result: DeletionResult) -> None:
 
         if DELETION_VECTORS_REMOVED:
             DELETION_VECTORS_REMOVED.labels(store="qdrant").inc(result.qdrant_deleted)
-            DELETION_VECTORS_REMOVED.labels(store="opensearch").inc(
-                result.opensearch_deleted
-            )
+            DELETION_VECTORS_REMOVED.labels(store="opensearch").inc(result.opensearch_deleted)
 
     except ImportError:
         # Metrics not configured

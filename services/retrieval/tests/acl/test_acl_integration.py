@@ -150,9 +150,7 @@ class TestAllVisibilityLevels:
     class TestPublicVisibility:
         """Test PUBLIC visibility: accessible to all users in tenant."""
 
-        def test_public_doc_accessible_to_regular_user(
-            self, acl_filter, safety_net, regular_user
-        ):
+        def test_public_doc_accessible_to_regular_user(self, acl_filter, safety_net, regular_user):
             """Public document should be accessible to any authenticated user in tenant."""
             # Verify query-level filter allows public visibility
             filter_dict = acl_filter.build_filter(regular_user)
@@ -216,9 +214,7 @@ class TestAllVisibilityLevels:
     class TestPrivateVisibility:
         """Test PRIVATE visibility: accessible only to owner or allowed_users."""
 
-        def test_private_doc_accessible_to_owner(
-            self, acl_filter, safety_net, regular_user
-        ):
+        def test_private_doc_accessible_to_owner(self, acl_filter, safety_net, regular_user):
             """Private document should be accessible to its owner."""
             # Verify query-level filter includes owner clause
             filter_dict = acl_filter.build_filter(regular_user)
@@ -240,9 +236,7 @@ class TestAllVisibilityLevels:
             assert len(filtered) == 1
             assert filtered[0].chunk_id == result.chunk_id
 
-        def test_private_doc_accessible_to_allowed_user(
-            self, acl_filter, safety_net, regular_user
-        ):
+        def test_private_doc_accessible_to_allowed_user(self, acl_filter, safety_net, regular_user):
             """Private document should be accessible to explicitly allowed users."""
             other_owner = str(uuid4())
 
@@ -266,9 +260,7 @@ class TestAllVisibilityLevels:
             filtered = safety_net.filter([result], regular_user)
             assert len(filtered) == 1
 
-        def test_private_doc_blocked_from_non_owner_non_allowed(
-            self, safety_net, regular_user
-        ):
+        def test_private_doc_blocked_from_non_owner_non_allowed(self, safety_net, regular_user):
             """Private document should be blocked from non-owners who aren't allowed."""
             other_owner = str(uuid4())
             other_user = str(uuid4())
@@ -300,9 +292,7 @@ class TestAllVisibilityLevels:
     class TestGroupVisibility:
         """Test GROUP visibility: accessible only to group members."""
 
-        def test_group_doc_accessible_to_group_member(
-            self, acl_filter, safety_net, regular_user
-        ):
+        def test_group_doc_accessible_to_group_member(self, acl_filter, safety_net, regular_user):
             """Group document should be accessible to users in allowed groups."""
             # Verify query-level filter includes group clause
             filter_dict = acl_filter.build_filter(regular_user)
@@ -324,9 +314,7 @@ class TestAllVisibilityLevels:
             assert len(filtered) == 1
             assert filtered[0].chunk_id == result.chunk_id
 
-        def test_group_doc_accessible_with_any_matching_group(
-            self, safety_net, regular_user
-        ):
+        def test_group_doc_accessible_with_any_matching_group(self, safety_net, regular_user):
             """Access granted if user is in ANY of the allowed groups."""
             result = make_fused_result(
                 tenant_id=str(regular_user.tenant_id),
@@ -346,9 +334,7 @@ class TestAllVisibilityLevels:
             filtered = safety_net.filter([result], regular_user)
             assert len(filtered) == 0
 
-        def test_group_doc_with_empty_allowed_groups_blocked(
-            self, safety_net, regular_user
-        ):
+        def test_group_doc_with_empty_allowed_groups_blocked(self, safety_net, regular_user):
             """Group document with no allowed_groups should block everyone."""
             result = make_fused_result(
                 tenant_id=str(regular_user.tenant_id),
@@ -365,9 +351,7 @@ class TestAllVisibilityLevels:
     class TestTenantVisibility:
         """Test TENANT visibility: accessible to all users in the same tenant."""
 
-        def test_tenant_doc_accessible_to_tenant_user(
-            self, acl_filter, safety_net, regular_user
-        ):
+        def test_tenant_doc_accessible_to_tenant_user(self, acl_filter, safety_net, regular_user):
             """Tenant-visible document should be accessible to all tenant members."""
             # Verify query-level filter includes tenant visibility
             filter_dict = acl_filter.build_filter(regular_user)
@@ -391,9 +375,7 @@ class TestAllVisibilityLevels:
             assert len(filtered) == 1
             assert filtered[0].chunk_id == result.chunk_id
 
-        def test_tenant_doc_accessible_to_user_with_no_groups(
-            self, safety_net, user_no_groups
-        ):
+        def test_tenant_doc_accessible_to_user_with_no_groups(self, safety_net, user_no_groups):
             """Tenant document should be accessible even to users without groups."""
             result = make_fused_result(
                 tenant_id=str(user_no_groups.tenant_id),
@@ -436,9 +418,7 @@ class TestEdgeCases:
             )
             assert group_clause is None, "Should not have group clause for groupless user"
 
-        def test_no_denied_groups_check_when_user_has_no_groups(
-            self, acl_filter, user_no_groups
-        ):
+        def test_no_denied_groups_check_when_user_has_no_groups(self, acl_filter, user_no_groups):
             """ACL filter should not check denied_groups for groupless users."""
             filter_dict = acl_filter.build_filter(user_no_groups)
             must_not_clauses = filter_dict.get("must_not", [])
@@ -477,9 +457,7 @@ class TestEdgeCases:
             filtered = safety_net.filter([result], user_no_groups)
             assert len(filtered) == 0
 
-        def test_groupless_user_can_access_own_private_docs(
-            self, safety_net, user_no_groups
-        ):
+        def test_groupless_user_can_access_own_private_docs(self, safety_net, user_no_groups):
             """User without groups can still access their own private documents."""
             result = make_fused_result(
                 tenant_id=str(user_no_groups.tenant_id),
@@ -492,9 +470,7 @@ class TestEdgeCases:
     class TestEmptyGroupsList:
         """Test documents with empty groups list."""
 
-        def test_group_doc_empty_allowed_groups_blocks_all_users(
-            self, safety_net, regular_user
-        ):
+        def test_group_doc_empty_allowed_groups_blocks_all_users(self, safety_net, regular_user):
             """Group document with empty allowed_groups blocks everyone."""
             result = make_fused_result(
                 tenant_id=str(regular_user.tenant_id),
@@ -504,9 +480,7 @@ class TestEdgeCases:
             filtered = safety_net.filter([result], regular_user)
             assert len(filtered) == 0
 
-        def test_user_with_groups_blocked_when_doc_has_no_groups(
-            self, safety_net, regular_user
-        ):
+        def test_user_with_groups_blocked_when_doc_has_no_groups(self, safety_net, regular_user):
             """Even users with groups cannot access group docs with empty allowed_groups."""
             assert len(regular_user.groups) > 0  # User has groups
 
@@ -589,9 +563,7 @@ class TestEdgeCases:
             filtered = safety_net.filter([result], regular_user)
             assert len(filtered) == 0
 
-        def test_deleted_private_doc_blocked_even_for_owner(
-            self, safety_net, regular_user
-        ):
+        def test_deleted_private_doc_blocked_even_for_owner(self, safety_net, regular_user):
             """Soft-deleted private document blocked even for owner."""
             result = make_fused_result(
                 tenant_id=str(regular_user.tenant_id),
@@ -886,16 +858,13 @@ class TestAnonymousAccess:
 class TestFilterSafetyNetConsistency:
     """Test that ACL filter and safety net agree on access decisions."""
 
-    def test_both_allow_public_same_tenant(
-        self, acl_filter, safety_net, regular_user
-    ):
+    def test_both_allow_public_same_tenant(self, acl_filter, safety_net, regular_user):
         """Both filter and safety net should allow public docs in same tenant."""
         # Filter allows public visibility
         filter_dict = acl_filter.build_filter(regular_user)
         should_clauses = filter_dict.get("should", [])
         public_allowed = any(
-            c["key"] == "visibility" and c["match"]["value"] == "public"
-            for c in should_clauses
+            c["key"] == "visibility" and c["match"]["value"] == "public" for c in should_clauses
         )
         assert public_allowed
 
@@ -907,9 +876,7 @@ class TestFilterSafetyNetConsistency:
         filtered = safety_net.filter([result], regular_user)
         assert len(filtered) == 1
 
-    def test_both_block_cross_tenant(
-        self, acl_filter, safety_net, regular_user, other_tenant_id
-    ):
+    def test_both_block_cross_tenant(self, acl_filter, safety_net, regular_user, other_tenant_id):
         """Both filter and safety net should block cross-tenant access."""
         # Filter restricts to user's tenant
         filter_dict = acl_filter.build_filter(regular_user)
@@ -929,9 +896,7 @@ class TestFilterSafetyNetConsistency:
         filtered = safety_net.filter([result], regular_user)
         assert len(filtered) == 0
 
-    def test_both_handle_owner_access(
-        self, acl_filter, safety_net, regular_user
-    ):
+    def test_both_handle_owner_access(self, acl_filter, safety_net, regular_user):
         """Both filter and safety net should allow owner access to private docs."""
         # Filter includes owner clause
         filter_dict = acl_filter.build_filter(regular_user)
@@ -952,9 +917,7 @@ class TestFilterSafetyNetConsistency:
         filtered = safety_net.filter([result], regular_user)
         assert len(filtered) == 1
 
-    def test_both_handle_group_access(
-        self, acl_filter, safety_net, regular_user
-    ):
+    def test_both_handle_group_access(self, acl_filter, safety_net, regular_user):
         """Both filter and safety net should allow group member access."""
         # Filter includes group clause
         filter_dict = acl_filter.build_filter(regular_user)

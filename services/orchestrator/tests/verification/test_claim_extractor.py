@@ -104,9 +104,7 @@ class TestClaimExtractor:
     async def test_handles_invalid_json(self, mock_gateway):
         """Test handling of invalid JSON response."""
         mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="This is not JSON"))
-        ]
+        mock_response.choices = [MagicMock(message=MagicMock(content="This is not JSON"))]
         mock_gateway.chat_completion.return_value = mock_response
 
         extractor = ClaimExtractor(mock_gateway, max_claims=5)
@@ -154,9 +152,7 @@ class TestClaimExtractor:
         mock_response = MagicMock()
         mock_response.choices = [
             MagicMock(
-                message=MagicMock(
-                    content='[{"text": "A claim", "claim_type": "invalid_type"}]'
-                )
+                message=MagicMock(content='[{"text": "A claim", "claim_type": "invalid_type"}]')
             )
         ]
         mock_gateway.chat_completion.return_value = mock_response

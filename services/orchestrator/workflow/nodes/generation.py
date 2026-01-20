@@ -244,4 +244,3 @@ async def generation_node(state: "RAGState") -> "RAGState":
             "error": error,
             "fallbacks_used": fallbacks_used,
         }
-

@@ -149,9 +149,7 @@ class TestGetQuotaStatus:
         mock_usage_result = MagicMock()
         mock_usage_result.scalar.return_value = 50000
 
-        mock_db_session.execute = AsyncMock(
-            side_effect=[mock_quota_result, mock_usage_result]
-        )
+        mock_db_session.execute = AsyncMock(side_effect=[mock_quota_result, mock_usage_result])
 
         response = await get_quota_status(
             tenant_id="tenant-123",
@@ -183,9 +181,7 @@ class TestGetQuotaStatus:
         mock_usage_result = MagicMock()
         mock_usage_result.scalar.return_value = 500000
 
-        mock_db_session.execute = AsyncMock(
-            side_effect=[mock_quota_result, mock_usage_result]
-        )
+        mock_db_session.execute = AsyncMock(side_effect=[mock_quota_result, mock_usage_result])
 
         response = await get_quota_status(
             tenant_id="tenant-123",
@@ -217,9 +213,7 @@ class TestGetQuotaStatus:
         mock_usage_result = MagicMock()
         mock_usage_result.scalar.return_value = 1200000
 
-        mock_db_session.execute = AsyncMock(
-            side_effect=[mock_quota_result, mock_usage_result]
-        )
+        mock_db_session.execute = AsyncMock(side_effect=[mock_quota_result, mock_usage_result])
 
         response = await get_quota_status(
             tenant_id="tenant-123",

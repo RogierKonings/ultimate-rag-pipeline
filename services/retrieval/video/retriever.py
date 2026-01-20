@@ -213,7 +213,9 @@ class VideoRetriever:
         final_top_k = top_k or self.config.final_top_k
         sem_weight = semantic_weight or self.config.semantic_weight
         kw_weight = keyword_weight or self.config.keyword_weight
-        do_rerank = enable_reranking if enable_reranking is not None else self.config.enable_reranking
+        do_rerank = (
+            enable_reranking if enable_reranking is not None else self.config.enable_reranking
+        )
 
         try:
             # Execute search based on mode
@@ -256,7 +258,7 @@ class VideoRetriever:
                 rerank_start = time.time()
                 results = await self._rerank_results(
                     query=query,
-                    results=results[:self.config.rerank_top_k],
+                    results=results[: self.config.rerank_top_k],
                 )
                 metrics.rerank_ms = (time.time() - rerank_start) * 1000
 
@@ -434,15 +436,17 @@ class VideoRetriever:
 
         # ACL filter
         if allowed_groups:
-            filter_clauses.append({
-                "bool": {
-                    "should": [
-                        {"term": {"visibility": "public"}},
-                        {"terms": {"allowed_groups": allowed_groups}},
-                    ],
-                    "minimum_should_match": 1,
-                },
-            })
+            filter_clauses.append(
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"visibility": "public"}},
+                            {"terms": {"allowed_groups": allowed_groups}},
+                        ],
+                        "minimum_should_match": 1,
+                    },
+                }
+            )
 
         body = {
             "size": top_k,

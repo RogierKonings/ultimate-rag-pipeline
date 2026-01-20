@@ -164,9 +164,7 @@ class TestGetPIISettings:
 
     def test_get_settings_success(self, client_with_mocks, mock_tenant):
         """Test successful retrieval of PII settings."""
-        response = client_with_mocks.get(
-            f"/admin/tenants/{mock_tenant.id}/pii-settings"
-        )
+        response = client_with_mocks.get(f"/admin/tenants/{mock_tenant.id}/pii-settings")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
@@ -347,9 +345,7 @@ class TestPIIDetectionTest:
         assert data["redacted_text"] == "Contact [EMAIL_ADDRESS] for help."
         assert data["processing_time_ms"] > 0
 
-    def test_test_pii_detection_invalid_handling_mode(
-        self, client_with_mocks, mock_tenant
-    ):
+    def test_test_pii_detection_invalid_handling_mode(self, client_with_mocks, mock_tenant):
         """Test that invalid handling mode is rejected."""
         response = client_with_mocks.post(
             f"/admin/tenants/{mock_tenant.id}/pii-settings/test",

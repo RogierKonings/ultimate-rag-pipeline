@@ -97,8 +97,7 @@ def config_to_response(tenant_id: str, config: dict) -> TenantPIISettingsRespons
         query=QueryPIIConfig(**config.get("query", {})),
         response=ResponsePIIConfig(**config.get("response", {})),
         entity_configs={
-            k: PIIEntityConfigSchema(**v)
-            for k, v in config.get("entity_configs", {}).items()
+            k: PIIEntityConfigSchema(**v) for k, v in config.get("entity_configs", {}).items()
         },
         custom_patterns=config.get("custom_patterns", []),
     )

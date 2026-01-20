@@ -37,9 +37,7 @@ class TestCircuitBreaker:
         assert breaker.state == CircuitState.CLOSED
 
     @pytest.mark.asyncio
-    async def test_opens_after_threshold_failures(
-        self, breaker: CircuitBreaker
-    ) -> None:
+    async def test_opens_after_threshold_failures(self, breaker: CircuitBreaker) -> None:
         """Circuit should open after failure threshold is reached."""
 
         async def failing() -> None:
@@ -83,9 +81,7 @@ class TestCircuitBreaker:
         assert result == "fallback"
 
     @pytest.mark.asyncio
-    async def test_transitions_to_half_open_after_timeout(
-        self, breaker: CircuitBreaker
-    ) -> None:
+    async def test_transitions_to_half_open_after_timeout(self, breaker: CircuitBreaker) -> None:
         """Circuit should transition to HALF_OPEN after recovery timeout."""
         breaker._state = CircuitState.OPEN
         breaker._last_failure_time = time.monotonic() - 1.0  # 1s ago
@@ -94,9 +90,7 @@ class TestCircuitBreaker:
         assert breaker.state == CircuitState.HALF_OPEN
 
     @pytest.mark.asyncio
-    async def test_closes_after_success_in_half_open(
-        self, breaker: CircuitBreaker
-    ) -> None:
+    async def test_closes_after_success_in_half_open(self, breaker: CircuitBreaker) -> None:
         """Successful call in HALF_OPEN should close circuit."""
         breaker._state = CircuitState.HALF_OPEN
 
@@ -107,9 +101,7 @@ class TestCircuitBreaker:
         assert breaker.state == CircuitState.CLOSED
 
     @pytest.mark.asyncio
-    async def test_reopens_on_failure_in_half_open(
-        self, breaker: CircuitBreaker
-    ) -> None:
+    async def test_reopens_on_failure_in_half_open(self, breaker: CircuitBreaker) -> None:
         """Failed call in HALF_OPEN should reopen circuit."""
         breaker._state = CircuitState.HALF_OPEN
 
@@ -172,9 +164,7 @@ class TestCircuitBreaker:
         assert result == "sync_fallback"
 
     @pytest.mark.asyncio
-    async def test_failure_count_resets_on_success(
-        self, breaker: CircuitBreaker
-    ) -> None:
+    async def test_failure_count_resets_on_success(self, breaker: CircuitBreaker) -> None:
         """Failure count should reset after successful call."""
 
         async def failing() -> None:

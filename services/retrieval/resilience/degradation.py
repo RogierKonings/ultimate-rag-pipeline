@@ -53,9 +53,7 @@ class RetrievalDegradationManager:
 
         # Create circuit breakers for each backend
         self.qdrant_breaker = CircuitBreaker("qdrant", self.config.qdrant_circuit)
-        self.opensearch_breaker = CircuitBreaker(
-            "opensearch", self.config.opensearch_circuit
-        )
+        self.opensearch_breaker = CircuitBreaker("opensearch", self.config.opensearch_circuit)
         self.reranker_breaker = CircuitBreaker("reranker", self.config.reranker_circuit)
 
     def get_current_mode(self) -> DegradationMode:

@@ -217,7 +217,15 @@ def create_app(config: RetrievalConfig | None = None) -> FastAPI:
     app.add_middleware(
         AuditMiddleware,
         service_name="retrieval-service",
-        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
+        exclude_paths=[
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
     )
 
     # Request timing middleware

@@ -20,6 +20,5 @@ class RateLimitExceeded(Exception):
         self.current_jobs = current_jobs
         self.max_jobs = max_jobs
         super().__init__(
-            f"Rate limit exceeded for tenant {tenant_id}: "
-            f"{current_jobs}/{max_jobs} concurrent jobs"
+            f"Rate limit exceeded for tenant {tenant_id}: {current_jobs}/{max_jobs} concurrent jobs"
         )

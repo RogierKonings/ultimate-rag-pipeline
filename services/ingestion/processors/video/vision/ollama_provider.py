@@ -65,6 +65,7 @@ class OllamaVisionProvider(VisionLLMProvider):
         """Get or create HTTP session."""
         if self._session is None:
             import aiohttp
+
             self._session = aiohttp.ClientSession()
         return self._session
 

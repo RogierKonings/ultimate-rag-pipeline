@@ -353,9 +353,7 @@ class TestAnswerCacheSet:
         assert call_args[0][1] == 1800
 
     @pytest.mark.asyncio
-    async def test_set_indexes_document_ids(
-        self, answer_cache, mock_redis, sample_cached_answer
-    ):
+    async def test_set_indexes_document_ids(self, answer_cache, mock_redis, sample_cached_answer):
         """Test cache set indexes by document IDs."""
         await answer_cache.set(
             tenant_id="tenant-123",
@@ -432,9 +430,7 @@ class TestAnswerCacheInvalidation:
     @pytest.mark.asyncio
     async def test_invalidate_for_tenant(self, answer_cache, mock_redis):
         """Test invalidation by tenant ID."""
-        mock_redis.scan_iter = MagicMock(
-            return_value=AsyncIteratorMock(["key1", "key2", "key3"])
-        )
+        mock_redis.scan_iter = MagicMock(return_value=AsyncIteratorMock(["key1", "key2", "key3"]))
 
         deleted = await answer_cache.invalidate_for_tenant(tenant_id="tenant-123")
 

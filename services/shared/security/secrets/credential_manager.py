@@ -259,11 +259,7 @@ class DynamicCredentialManager:
             return
 
         loop = asyncio.get_event_loop()
-        delay = (
-            self._credentials.expires_at
-            - loop.time()
-            - self.config.renewal_buffer_seconds
-        )
+        delay = self._credentials.expires_at - loop.time() - self.config.renewal_buffer_seconds
 
         if delay > 0:
             self._renewal_task = asyncio.create_task(
@@ -305,9 +301,7 @@ class DynamicCredentialManager:
             if self._credentials:
                 loop = asyncio.get_event_loop()
                 next_delay = (
-                    self._credentials.expires_at
-                    - loop.time()
-                    - self.config.renewal_buffer_seconds
+                    self._credentials.expires_at - loop.time() - self.config.renewal_buffer_seconds
                 )
                 if next_delay > 0:
                     await asyncio.sleep(next_delay)

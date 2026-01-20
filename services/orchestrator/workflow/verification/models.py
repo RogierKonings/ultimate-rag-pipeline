@@ -44,9 +44,7 @@ class ClaimExtractionResult(BaseModel):
 class VerificationResult(BaseModel):
     """Overall verification result for the generated answer."""
 
-    score: float = Field(
-        ..., ge=0.0, le=1.0, description="Verification score (0-1)"
-    )
+    score: float = Field(..., ge=0.0, le=1.0, description="Verification score (0-1)")
     label: str = Field(
         ..., description="Verification label: supported, partial, unsupported, skipped"
     )
@@ -56,6 +54,4 @@ class VerificationResult(BaseModel):
     claims_unsupported: int = Field(default=0, description="Unsupported claims")
     verification_time_ms: float = Field(..., description="Total verification time")
     skipped: bool = Field(default=False, description="Whether verification was skipped")
-    skip_reason: str | None = Field(
-        default=None, description="Reason for skipping verification"
-    )
+    skip_reason: str | None = Field(default=None, description="Reason for skipping verification")

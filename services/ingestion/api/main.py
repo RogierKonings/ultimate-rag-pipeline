@@ -118,7 +118,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         AuditMiddleware,
         service_name="ingestion-service",
-        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
+        exclude_paths=[
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
     )
 
     app.add_middleware(RequestLoggingMiddleware)

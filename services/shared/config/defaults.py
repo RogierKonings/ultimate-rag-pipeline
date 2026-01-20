@@ -27,12 +27,8 @@ class ChunkingConfig(BaseModel):
         default="cl100k_base",
         description="Tokenizer to use (cl100k_base compatible with BGE)",
     )
-    preserve_sentences: bool = Field(
-        default=True, description="Avoid splitting mid-sentence"
-    )
-    preserve_paragraphs: bool = Field(
-        default=False, description="Avoid splitting paragraphs"
-    )
+    preserve_sentences: bool = Field(default=True, description="Avoid splitting mid-sentence")
+    preserve_paragraphs: bool = Field(default=False, description="Avoid splitting paragraphs")
 
     @property
     def chunk_size(self) -> int:
@@ -81,9 +77,7 @@ class RetrievalConfig(BaseModel):
     keyword_weight: float = Field(
         default=0.3, ge=0.0, le=1.0, description="Weight for keyword results"
     )
-    rerank_top_k: int = Field(
-        default=10, ge=1, le=100, description="Final results after reranking"
-    )
+    rerank_top_k: int = Field(default=10, ge=1, le=100, description="Final results after reranking")
     reranker_model: str = Field(
         default="BAAI/bge-reranker-v2-m3", description="Cross-encoder reranker model"
     )

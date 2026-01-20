@@ -121,14 +121,16 @@ async def cache_check_node(state: "RAGState") -> "RAGState":
             # Convert citations to documents format
             documents = []
             for citation in cached.citations:
-                documents.append({
-                    "content": citation.get("content", ""),
-                    "score": citation.get("score", 0.0),
-                    "chunk_id": citation.get("chunk_id"),
-                    "document_id": citation.get("document_id"),
-                    "metadata": citation.get("metadata", {}),
-                    "source": citation.get("source", ""),
-                })
+                documents.append(
+                    {
+                        "content": citation.get("content", ""),
+                        "score": citation.get("score", 0.0),
+                        "chunk_id": citation.get("chunk_id"),
+                        "document_id": citation.get("document_id"),
+                        "metadata": citation.get("metadata", {}),
+                        "source": citation.get("source", ""),
+                    }
+                )
 
             timing["cache_check"] = (time.time() - start) * 1000
 
@@ -215,14 +217,16 @@ async def cache_store_node(state: "RAGState") -> "RAGState":
         document_ids = []
 
         for doc in documents:
-            citations.append({
-                "content": doc.get("content", ""),
-                "score": doc.get("score", 0.0),
-                "chunk_id": doc.get("chunk_id"),
-                "document_id": doc.get("document_id"),
-                "metadata": doc.get("metadata", {}),
-                "source": doc.get("source", ""),
-            })
+            citations.append(
+                {
+                    "content": doc.get("content", ""),
+                    "score": doc.get("score", 0.0),
+                    "chunk_id": doc.get("chunk_id"),
+                    "document_id": doc.get("document_id"),
+                    "metadata": doc.get("metadata", {}),
+                    "source": doc.get("source", ""),
+                }
+            )
             if doc.get("document_id"):
                 document_ids.append(doc["document_id"])
 

@@ -506,7 +506,9 @@ async def update_index_status_metrics(db_session) -> None:
 
         # Update gauges for each combination
         for row in rows:
-            tenant_id = row.tenant_id[:8] if row.tenant_id else "unknown"  # Truncate for cardinality
+            tenant_id = (
+                row.tenant_id[:8] if row.tenant_id else "unknown"
+            )  # Truncate for cardinality
 
             # Update Qdrant status gauge
             DOCUMENTS_BY_INDEX_STATUS.labels(

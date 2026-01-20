@@ -250,7 +250,15 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
     app.add_middleware(
         AuditMiddleware,
         service_name="orchestrator-service",
-        exclude_paths=["/health", "/healthz", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"],
+        exclude_paths=[
+            "/health",
+            "/healthz",
+            "/ready",
+            "/metrics",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+        ],
     )
 
     # Global exception handler

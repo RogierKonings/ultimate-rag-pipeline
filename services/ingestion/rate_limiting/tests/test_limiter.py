@@ -246,17 +246,19 @@ class TestProcessQueuedJobs:
     async def test_process_queued_jobs_dispatches(self, rate_limiter, mock_redis):
         """Test that queued jobs are dispatched when slots available."""
         # Setup: one queued job, slot available
-        queued_job = json.dumps({
-            "job_id": "job-queued",
-            "task_data": {
-                "document_source_id": "doc-1",
-                "source_type": "filesystem",
-                "source_config": {},
-                "processing_config": {},
-                "acl_context": {"tenant_id": "tenant-1"},
-            },
-            "queued_at": datetime.now(UTC).isoformat(),
-        })
+        queued_job = json.dumps(
+            {
+                "job_id": "job-queued",
+                "task_data": {
+                    "document_source_id": "doc-1",
+                    "source_type": "filesystem",
+                    "source_config": {},
+                    "processing_config": {},
+                    "acl_context": {"tenant_id": "tenant-1"},
+                },
+                "queued_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
         # First call returns queued job, second call returns None (queue empty)
         mock_redis.lindex.side_effect = [queued_job, None]
@@ -277,11 +279,13 @@ class TestProcessQueuedJobs:
     @pytest.mark.asyncio
     async def test_process_queued_jobs_stops_when_full(self, rate_limiter, mock_redis):
         """Test that processing stops when no more slots available."""
-        queued_job = json.dumps({
-            "job_id": "job-queued",
-            "task_data": {},
-            "queued_at": datetime.now(UTC).isoformat(),
-        })
+        queued_job = json.dumps(
+            {
+                "job_id": "job-queued",
+                "task_data": {},
+                "queued_at": datetime.now(UTC).isoformat(),
+            }
+        )
 
         mock_redis.lindex.return_value = queued_job
 

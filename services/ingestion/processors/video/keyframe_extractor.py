@@ -115,6 +115,7 @@ class KeyframeExtractionResult:
         """Clean up temporary files."""
         if self.temp_dir and self.temp_dir.exists():
             import shutil
+
             shutil.rmtree(self.temp_dir)
             self.temp_dir = None
 
@@ -248,6 +249,7 @@ class KeyframeExtractor:
         except Exception as e:
             # Clean up on failure
             import shutil
+
             if temp_dir.exists():
                 shutil.rmtree(temp_dir)
             raise KeyframeExtractionError(f"Keyframe extraction failed: {e}") from e
@@ -279,17 +281,24 @@ class KeyframeExtractor:
         async with semaphore:
             # Output paths
             image_path = output_dir / f"{frame_index:05d}.jpg"
-            thumbnail_path = output_dir / f"{frame_index:05d}_thumb.jpg" if generate_thumbnail else None
+            thumbnail_path = (
+                output_dir / f"{frame_index:05d}_thumb.jpg" if generate_thumbnail else None
+            )
 
             # Build FFmpeg command for main image
             scale_filter = f"scale='min({self.config.output_width},iw)':min'({self.config.output_height},ih)':force_original_aspect_ratio=decrease"
             cmd = [
                 self.config.ffmpeg_path,
-                "-ss", str(timestamp),
-                "-i", str(video_path),
-                "-vframes", "1",
-                "-vf", scale_filter,
-                "-q:v", str(int((100 - self.config.quality) / 100 * 31)),  # FFmpeg quality scale
+                "-ss",
+                str(timestamp),
+                "-i",
+                str(video_path),
+                "-vframes",
+                "1",
+                "-vf",
+                scale_filter,
+                "-q:v",
+                str(int((100 - self.config.quality) / 100 * 31)),  # FFmpeg quality scale
                 "-y",
                 str(image_path),
             ]
@@ -324,7 +333,9 @@ class KeyframeExtractor:
                     frame_index=frame_index,
                     timestamp_seconds=timestamp,
                     image_path=image_path,
-                    thumbnail_path=thumbnail_path if thumbnail_path and thumbnail_path.exists() else None,
+                    thumbnail_path=thumbnail_path
+                    if thumbnail_path and thumbnail_path.exists()
+                    else None,
                     width=width,
                     height=height,
                     file_size_bytes=image_path.stat().st_size,
@@ -355,9 +366,12 @@ class KeyframeExtractor:
         scale_filter = f"scale={self.config.thumbnail_width}:{self.config.thumbnail_height}:force_original_aspect_ratio=decrease"
         cmd = [
             self.config.ffmpeg_path,
-            "-i", str(image_path),
-            "-vf", scale_filter,
-            "-q:v", "5",
+            "-i",
+            str(image_path),
+            "-vf",
+            scale_filter,
+            "-q:v",
+            "5",
             "-y",
             str(thumbnail_path),
         ]
@@ -391,10 +405,14 @@ class KeyframeExtractor:
         """
         cmd = [
             "ffprobe",
-            "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "csv=p=0",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0",
             str(image_path),
         ]
 

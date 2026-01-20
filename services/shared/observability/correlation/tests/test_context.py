@@ -1,6 +1,5 @@
 """Tests for CorrelationContext."""
 
-
 from ..context import (
     CorrelationContext,
     clear_correlation_context,
@@ -24,10 +23,7 @@ class TestCorrelationContext:
 
     def test_generate_with_user_id_hashes_it(self):
         """Should hash user ID for privacy."""
-        ctx = CorrelationContext.generate(
-            tenant_id="tenant-123",
-            user_id="user-456"
-        )
+        ctx = CorrelationContext.generate(tenant_id="tenant-123", user_id="user-456")
 
         assert ctx.user_id_hash is not None
         assert ctx.user_id_hash != "user-456"

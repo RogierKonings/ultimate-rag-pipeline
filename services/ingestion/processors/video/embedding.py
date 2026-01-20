@@ -211,10 +211,7 @@ class VideoChunkEmbedder:
             progress_callback=progress_callback,
         )
 
-        embedding_map = {
-            emb.chunk_id: emb.embedding
-            for emb in result.embeddings
-        }
+        embedding_map = {emb.chunk_id: emb.embedding for emb in result.embeddings}
 
         logger.info(
             "Generated embeddings for %d chunks of video_id=%s",

@@ -39,7 +39,6 @@ class OrchestratorConfig(BaseSettings):
     large_model: str = "llama-3.1-70b"
     enable_model_tiering: bool = True  # Feature flag for gradual rollout
 
-
     # Redis (from centralized config)
     redis_url: str = Field(default_factory=get_redis_url)
     session_ttl: int = 3600  # 1 hour

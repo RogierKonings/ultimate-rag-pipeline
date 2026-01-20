@@ -169,10 +169,11 @@ class TestSetupCeleryCorrelationSignals:
 
         mock_app = MagicMock()
 
-        with patch("celery.signals.before_task_publish") as mock_before_publish, \
-             patch("celery.signals.task_prerun") as mock_prerun, \
-             patch("celery.signals.task_postrun") as mock_postrun:
-
+        with (
+            patch("celery.signals.before_task_publish") as mock_before_publish,
+            patch("celery.signals.task_prerun") as mock_prerun,
+            patch("celery.signals.task_postrun") as mock_postrun,
+        ):
             setup_celery_correlation_signals(mock_app)
 
             # Verify signals were connected

@@ -1,6 +1,5 @@
 """Tests for CorrelationMiddleware."""
 
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -49,10 +48,7 @@ class TestCorrelationMiddleware:
 
     def test_preserves_existing_request_id(self, client):
         """Should preserve request_id from incoming headers."""
-        response = client.get(
-            "/test",
-            headers={"X-Request-ID": "existing-req-123"}
-        )
+        response = client.get("/test", headers={"X-Request-ID": "existing-req-123"})
 
         assert response.status_code == 200
         assert response.headers["X-Request-ID"] == "existing-req-123"
@@ -62,11 +58,7 @@ class TestCorrelationMiddleware:
     def test_extracts_tenant_id_from_headers(self, client):
         """Should extract tenant_id from headers."""
         response = client.get(
-            "/test",
-            headers={
-                "X-Request-ID": "req-123",
-                "X-Tenant-ID": "tenant-456"
-            }
+            "/test", headers={"X-Request-ID": "req-123", "X-Tenant-ID": "tenant-456"}
         )
 
         assert response.status_code == 200
@@ -75,10 +67,7 @@ class TestCorrelationMiddleware:
 
     def test_adds_trace_id_to_response(self, client):
         """Should add X-Trace-ID to response headers."""
-        response = client.get(
-            "/test",
-            headers={"X-Request-ID": "req-123"}
-        )
+        response = client.get("/test", headers={"X-Request-ID": "req-123"})
 
         assert "X-Trace-ID" in response.headers
 
@@ -107,7 +96,7 @@ class TestCorrelationMiddleware:
         app.add_middleware(
             CorrelationMiddleware,
             service_name="test-service",
-            excluded_paths=["/custom-health", "/metrics"]
+            excluded_paths=["/custom-health", "/metrics"],
         )
 
         @app.get("/custom-health")
@@ -134,11 +123,7 @@ class TestCorrelationMiddleware:
     def test_propagates_trace_id_from_headers(self, client):
         """Should propagate trace_id from incoming headers."""
         response = client.get(
-            "/test",
-            headers={
-                "X-Request-ID": "req-123",
-                "X-Trace-ID": "trace-789"
-            }
+            "/test", headers={"X-Request-ID": "req-123", "X-Trace-ID": "trace-789"}
         )
 
         assert response.status_code == 200
@@ -146,10 +131,7 @@ class TestCorrelationMiddleware:
 
     def test_uses_request_id_as_trace_id_if_not_provided(self, client):
         """Should use request_id as trace_id when not provided."""
-        response = client.get(
-            "/test",
-            headers={"X-Request-ID": "req-123"}
-        )
+        response = client.get("/test", headers={"X-Request-ID": "req-123"})
 
         assert response.status_code == 200
         # trace_id should default to request_id

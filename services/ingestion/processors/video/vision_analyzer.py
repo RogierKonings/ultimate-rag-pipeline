@@ -143,7 +143,9 @@ class VisionAnalyzer:
                     if cached:
                         completed += 1
                         if progress_callback:
-                            progress_callback(completed, total, f"Analyzing frame {completed}/{total} (cached)")
+                            progress_callback(
+                                completed, total, f"Analyzing frame {completed}/{total} (cached)"
+                            )
                         return KeyframeAnalysis(
                             keyframe=keyframe,
                             result=cached,
@@ -219,7 +221,7 @@ class VisionAnalyzer:
             )
 
             if attempt < self.config.retry_count - 1:
-                delay = self.config.retry_delay_seconds * (2 ** attempt)
+                delay = self.config.retry_delay_seconds * (2**attempt)
                 await asyncio.sleep(delay)
 
         return VisionAnalysisResult(
@@ -253,6 +255,7 @@ class VisionAnalyzer:
 
         try:
             import json
+
             image_hash = self._compute_image_hash(image_path)
             cache_key = f"vision:analysis:{image_hash}"
 
@@ -287,6 +290,7 @@ class VisionAnalyzer:
 
         try:
             import json
+
             image_hash = self._compute_image_hash(image_path)
             cache_key = f"vision:analysis:{image_hash}"
 

@@ -126,9 +126,7 @@ def _build_messages(
         user_content = NO_CONTEXT_PROMPT_TEMPLATE.format(query=query)
     elif is_multi_hop:
         # Multi-hop prompt with sub-question listing
-        sub_questions_text = "\n".join(
-            f"{i}. {sq}" for i, sq in enumerate(sub_questions, 1)
-        )
+        sub_questions_text = "\n".join(f"{i}. {sq}" for i, sq in enumerate(sub_questions, 1))
         user_content = MULTI_HOP_PROMPT_TEMPLATE.format(
             query=query,
             sub_questions=sub_questions_text,
@@ -172,9 +170,7 @@ async def prompt_building_node(state: "RAGState") -> "RAGState":
     history: list[dict] = []
 
     # Build messages for LLM (with degradation-aware and multi-hop prompt adjustments)
-    messages = _build_messages(
-        query, context, strategy, history, retrieval_quality, sub_questions
-    )
+    messages = _build_messages(query, context, strategy, history, retrieval_quality, sub_questions)
 
     timing["prompt_building"] = (time.time() - start) * 1000
 

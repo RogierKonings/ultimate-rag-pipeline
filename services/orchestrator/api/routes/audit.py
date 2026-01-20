@@ -234,7 +234,9 @@ async def export_audit_logs(
     start_time: Annotated[datetime, Query(description="Start of time range")],
     end_time: Annotated[datetime, Query(description="End of time range")],
     db: DbSessionDep,
-    output_format: Annotated[str, Query(description="Export format: json or csv", alias="format")] = "json",
+    output_format: Annotated[
+        str, Query(description="Export format: json or csv", alias="format")
+    ] = "json",
     include_details: Annotated[bool, Query(description="Include full details field")] = False,
 ):
     """Export audit logs.
@@ -301,7 +303,9 @@ async def export_audit_logs(
     )
 
 
-def _generate_csv_response(entries: list[AuditLogEntry], include_details: bool) -> StreamingResponse:
+def _generate_csv_response(
+    entries: list[AuditLogEntry], include_details: bool
+) -> StreamingResponse:
     """Generate a CSV streaming response for audit entries.
 
     Args:
@@ -367,6 +371,7 @@ def _generate_csv_response(entries: list[AuditLogEntry], include_details: bool) 
 
             if include_details:
                 import json
+
                 row["details"] = json.dumps(entry.details) if entry.details else ""
 
             writer.writerow(row)

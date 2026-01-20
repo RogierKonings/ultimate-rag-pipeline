@@ -78,6 +78,7 @@ class OpenAIVisionProvider(VisionLLMProvider):
             api_key = self.config.api_key
             if not api_key:
                 import os
+
                 api_key = os.getenv("OPENAI_API_KEY", "")
 
             if not api_key:

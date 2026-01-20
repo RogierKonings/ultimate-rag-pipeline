@@ -54,6 +54,7 @@ class IndexCoordinator:
         """Lazy-load the tenant config service."""
         if self._config_service is None:
             from tenant.config_service import get_tenant_config_service
+
             self._config_service = get_tenant_config_service()
         return self._config_service
 
@@ -75,12 +76,11 @@ class IndexCoordinator:
 
         try:
             from uuid import UUID as UUIDType
+
             tenant_uuid = UUIDType(tenant_id) if isinstance(tenant_id, str) else tenant_id
 
             async with self._session_factory() as session:
-                config = await self._get_config_service().get_index_config(
-                    tenant_uuid, session
-                )
+                config = await self._get_config_service().get_index_config(tenant_uuid, session)
                 return config.qdrant_collection, config.opensearch_index
         except Exception as e:
             logger.warning(
@@ -123,9 +123,7 @@ class IndexCoordinator:
         await self._set_pending_status(document.document_id)
 
         # Get tenant-specific routing
-        qdrant_collection, opensearch_index = await self._get_tenant_routing(
-            document.tenant_id
-        )
+        qdrant_collection, opensearch_index = await self._get_tenant_routing(document.tenant_id)
 
         # Write to all stores in parallel with tenant-aware routing
         results = await asyncio.gather(
@@ -317,9 +315,7 @@ class IndexCoordinator:
         """
         # Get tenant-specific routing if tenant_id provided
         if tenant_id:
-            qdrant_collection, opensearch_index = await self._get_tenant_routing(
-                tenant_id
-            )
+            qdrant_collection, opensearch_index = await self._get_tenant_routing(tenant_id)
         else:
             qdrant_collection, opensearch_index = "documents", "documents"
 
@@ -387,18 +383,12 @@ class IndexCoordinator:
             Dictionary mapping store names to their WriteResult.
         """
         # Get tenant-specific routing
-        qdrant_collection, opensearch_index = await self._get_tenant_routing(
-            document.tenant_id
-        )
+        qdrant_collection, opensearch_index = await self._get_tenant_routing(document.tenant_id)
 
         # First delete existing chunks from vector and keyword stores
         delete_results = await asyncio.gather(
-            self.qdrant.delete_by_document(
-                document.document_id, collection_name=qdrant_collection
-            ),
-            self.opensearch.delete_by_document(
-                document.document_id, index_name=opensearch_index
-            ),
+            self.qdrant.delete_by_document(document.document_id, collection_name=qdrant_collection),
+            self.opensearch.delete_by_document(document.document_id, index_name=opensearch_index),
             return_exceptions=True,
         )
 

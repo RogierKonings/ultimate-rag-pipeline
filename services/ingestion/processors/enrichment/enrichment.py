@@ -88,15 +88,11 @@ class EnrichmentPipeline:
         """
         if self._tenant_pii_config_service:
             # Get tenant-specific settings
-            settings = await self._tenant_pii_config_service.get_pii_settings(
-                tenant_id, session
-            )
+            settings = await self._tenant_pii_config_service.get_pii_settings(tenant_id, session)
             if not settings.enabled:
                 return None
             # Get detector with tenant's settings
-            return await self._tenant_pii_config_service.get_detector(
-                tenant_id, session
-            )
+            return await self._tenant_pii_config_service.get_detector(tenant_id, session)
         # Fall back to default detector
         return self._pii_detector
 

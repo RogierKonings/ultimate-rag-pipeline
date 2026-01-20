@@ -197,12 +197,14 @@ class TestQuery:
         )
 
         mock_client = MagicMock()
-        mock_client.search = MagicMock(return_value={
-            "hits": {
-                "hits": [],
-                "total": {"value": 0},
+        mock_client.search = MagicMock(
+            return_value={
+                "hits": {
+                    "hits": [],
+                    "total": {"value": 0},
+                }
             }
-        })
+        )
 
         backend._set_client(mock_client)
 
@@ -232,12 +234,14 @@ class TestQuery:
         )
 
         mock_client = MagicMock()
-        mock_client.search = MagicMock(return_value={
-            "hits": {
-                "hits": [],
-                "total": {"value": 0},
+        mock_client.search = MagicMock(
+            return_value={
+                "hits": {
+                    "hits": [],
+                    "total": {"value": 0},
+                }
             }
-        })
+        )
 
         backend._set_client(mock_client)
 
@@ -263,29 +267,31 @@ class TestQuery:
         timestamp = "2024-03-15T10:30:00+00:00"
 
         mock_client = MagicMock()
-        mock_client.search = MagicMock(return_value={
-            "hits": {
-                "hits": [
-                    {
-                        "_id": str(entry_id),
-                        "_source": {
-                            "id": str(entry_id),
-                            "timestamp": timestamp,
-                            "user_id": str(user_id),
-                            "username": "testuser",
-                            "tenant_id": str(tenant_id),
-                            "action": "document.create",
-                            "outcome": "success",
-                            "severity": "info",
-                            "resource_type": "document",
-                            "resource_id": "doc-123",
-                            "client_ip": "192.168.1.100",
-                        },
-                    }
-                ],
-                "total": {"value": 1},
+        mock_client.search = MagicMock(
+            return_value={
+                "hits": {
+                    "hits": [
+                        {
+                            "_id": str(entry_id),
+                            "_source": {
+                                "id": str(entry_id),
+                                "timestamp": timestamp,
+                                "user_id": str(user_id),
+                                "username": "testuser",
+                                "tenant_id": str(tenant_id),
+                                "action": "document.create",
+                                "outcome": "success",
+                                "severity": "info",
+                                "resource_type": "document",
+                                "resource_id": "doc-123",
+                                "client_ip": "192.168.1.100",
+                            },
+                        }
+                    ],
+                    "total": {"value": 1},
+                }
             }
-        })
+        )
 
         backend._set_client(mock_client)
 
@@ -312,33 +318,35 @@ class TestGetStats:
         end_time = datetime(2024, 3, 31, 23, 59, 59, tzinfo=UTC)
 
         mock_client = MagicMock()
-        mock_client.search = MagicMock(return_value={
-            "hits": {"total": {"value": 150}},
-            "aggregations": {
-                "by_action": {
-                    "buckets": [
-                        {"key": "document.create", "doc_count": 50},
-                        {"key": "document.read", "doc_count": 80},
-                        {"key": "auth.login", "doc_count": 20},
-                    ]
+        mock_client.search = MagicMock(
+            return_value={
+                "hits": {"total": {"value": 150}},
+                "aggregations": {
+                    "by_action": {
+                        "buckets": [
+                            {"key": "document.create", "doc_count": 50},
+                            {"key": "document.read", "doc_count": 80},
+                            {"key": "auth.login", "doc_count": 20},
+                        ]
+                    },
+                    "by_outcome": {
+                        "buckets": [
+                            {"key": "success", "doc_count": 140},
+                            {"key": "failure", "doc_count": 10},
+                        ]
+                    },
+                    "by_severity": {
+                        "buckets": [
+                            {"key": "info", "doc_count": 130},
+                            {"key": "warning", "doc_count": 15},
+                            {"key": "error", "doc_count": 5},
+                        ]
+                    },
+                    "unique_users": {"value": 25},
+                    "unique_resources": {"value": 42},
                 },
-                "by_outcome": {
-                    "buckets": [
-                        {"key": "success", "doc_count": 140},
-                        {"key": "failure", "doc_count": 10},
-                    ]
-                },
-                "by_severity": {
-                    "buckets": [
-                        {"key": "info", "doc_count": 130},
-                        {"key": "warning", "doc_count": 15},
-                        {"key": "error", "doc_count": 5},
-                    ]
-                },
-                "unique_users": {"value": 25},
-                "unique_resources": {"value": 42},
-            },
-        })
+            }
+        )
 
         backend._set_client(mock_client)
 

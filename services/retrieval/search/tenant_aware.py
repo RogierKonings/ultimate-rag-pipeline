@@ -83,6 +83,7 @@ class TenantAwareHybridSearcher:
         """Get or create config service."""
         if self._config_service is None:
             from shared.tenant.config_service import get_tenant_config_service
+
             self._config_service = get_tenant_config_service()
         return self._config_service
 
@@ -137,9 +138,7 @@ class TenantAwareHybridSearcher:
         Returns:
             HybridSearcher configured for the tenant's collection/index.
         """
-        config = await self._get_config_service().get_index_config(
-            tenant_id, session
-        )
+        config = await self._get_config_service().get_index_config(tenant_id, session)
 
         if config.isolation_mode == "shared":
             return self._default_hybrid

@@ -76,7 +76,7 @@ def sample_audit_entries(sample_tenant_id):
             request_path=f"/api/v1/documents/{i}",
             status_code=200,
             entry_hash=f"hash_{i}" if i == 0 else f"hash_{i}",
-            previous_hash=None if i == 0 else f"hash_{i-1}",
+            previous_hash=None if i == 0 else f"hash_{i - 1}",
         )
         entries.append(entry)
 
@@ -87,7 +87,9 @@ class TestQueryAuditLogs:
     """Tests for GET /api/v1/audit/logs."""
 
     @pytest.mark.asyncio
-    async def test_query_returns_entries(self, mock_db_session, sample_audit_entries, sample_tenant_id):
+    async def test_query_returns_entries(
+        self, mock_db_session, sample_audit_entries, sample_tenant_id
+    ):
         """Test that query returns audit entries."""
         from api.routes.audit import query_audit_logs
 
@@ -108,7 +110,9 @@ class TestQueryAuditLogs:
             mock_repo.search.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_query_with_filters(self, mock_db_session, sample_audit_entries, sample_tenant_id):
+    async def test_query_with_filters(
+        self, mock_db_session, sample_audit_entries, sample_tenant_id
+    ):
         """Test query with various filters."""
         from api.routes.audit import query_audit_logs
 
@@ -146,7 +150,9 @@ class TestQueryAuditLogs:
             assert call_args.offset == 10
 
     @pytest.mark.asyncio
-    async def test_query_with_time_range(self, mock_db_session, sample_audit_entries, sample_tenant_id):
+    async def test_query_with_time_range(
+        self, mock_db_session, sample_audit_entries, sample_tenant_id
+    ):
         """Test query with time range filters."""
         from api.routes.audit import query_audit_logs
 
@@ -221,7 +227,9 @@ class TestGetAuditLogEntry:
             assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_entry_tenant_mismatch(self, mock_db_session, sample_audit_entries, sample_tenant_id):
+    async def test_get_entry_tenant_mismatch(
+        self, mock_db_session, sample_audit_entries, sample_tenant_id
+    ):
         """Test 404 when entry exists but tenant doesn't match."""
         from api.routes.audit import get_audit_log_entry
         from fastapi import HTTPException
@@ -410,7 +418,10 @@ class TestExportAuditLogs:
             )
 
         assert exc_info.value.status_code == 400
-        assert "json" in str(exc_info.value.detail).lower() or "csv" in str(exc_info.value.detail).lower()
+        assert (
+            "json" in str(exc_info.value.detail).lower()
+            or "csv" in str(exc_info.value.detail).lower()
+        )
 
 
 class TestValidateHashChain:
@@ -534,7 +545,7 @@ class TestTenantIdRequired:
             params={
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat(),
-            }
+            },
         )
         assert response.status_code == 422
 

@@ -34,11 +34,13 @@ class TestMiddlewareToHttpClientPropagation:
         @app.post("/api/search")
         async def search(request):
             # Capture correlation headers
-            captured_headers.update({
-                "x-request-id": request.headers.get("x-request-id"),
-                "x-trace-id": request.headers.get("x-trace-id"),
-                "x-tenant-id": request.headers.get("x-tenant-id"),
-            })
+            captured_headers.update(
+                {
+                    "x-request-id": request.headers.get("x-request-id"),
+                    "x-trace-id": request.headers.get("x-trace-id"),
+                    "x-tenant-id": request.headers.get("x-tenant-id"),
+                }
+            )
             return {"results": []}
 
         return app, captured_headers
@@ -131,10 +133,7 @@ class TestLogJoinability:
             return {"status": "ok"}
 
         client = TestClient(app)
-        response = client.get(
-            "/test",
-            headers={"X-Request-ID": "joinable-req-123"}
-        )
+        response = client.get("/test", headers={"X-Request-ID": "joinable-req-123"})
 
         assert response.status_code == 200
 
@@ -175,7 +174,7 @@ class TestEndToEndCorrelation:
                 "X-Request-ID": "e2e-req-123",
                 "X-Trace-ID": "e2e-trace-456",
                 "X-Tenant-ID": "e2e-tenant-789",
-            }
+            },
         )
 
         assert response.status_code == 200

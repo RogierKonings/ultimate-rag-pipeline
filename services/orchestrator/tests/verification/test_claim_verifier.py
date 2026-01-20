@@ -39,9 +39,7 @@ class TestClaimVerifier:
     """Tests for ClaimVerifier."""
 
     @pytest.mark.asyncio
-    async def test_verifies_supported_claim(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_verifies_supported_claim(self, mock_gateway, sample_claim, sample_context):
         """Test verification of a supported claim."""
         mock_response = MagicMock()
         mock_response.choices = [
@@ -83,9 +81,7 @@ class TestClaimVerifier:
     @pytest.mark.asyncio
     async def test_verifies_unsupported_claim(self, mock_gateway, sample_context):
         """Test verification of an unsupported claim."""
-        unsupported_claim = Claim(
-            text="Python was released in 2000", claim_type="temporal"
-        )
+        unsupported_claim = Claim(text="Python was released in 2000", claim_type="temporal")
         mock_response = MagicMock()
         mock_response.choices = [
             MagicMock(
@@ -122,14 +118,10 @@ class TestClaimVerifier:
         assert result.status == VerificationStatus.UNVERIFIABLE
 
     @pytest.mark.asyncio
-    async def test_handles_invalid_json(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_handles_invalid_json(self, mock_gateway, sample_claim, sample_context):
         """Test handling of invalid JSON response."""
         mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="Not valid JSON"))
-        ]
+        mock_response.choices = [MagicMock(message=MagicMock(content="Not valid JSON"))]
         mock_gateway.chat_completion.return_value = mock_response
 
         verifier = ClaimVerifier(mock_gateway)
@@ -138,17 +130,11 @@ class TestClaimVerifier:
         assert result.status == VerificationStatus.UNVERIFIABLE
 
     @pytest.mark.asyncio
-    async def test_handles_invalid_status(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_handles_invalid_status(self, mock_gateway, sample_claim, sample_context):
         """Test handling of invalid status in response."""
         mock_response = MagicMock()
         mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"status": "invalid_status", "evidence": null}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"status": "invalid_status", "evidence": null}'))
         ]
         mock_gateway.chat_completion.return_value = mock_response
 
@@ -158,9 +144,7 @@ class TestClaimVerifier:
         assert result.status == VerificationStatus.UNVERIFIABLE
 
     @pytest.mark.asyncio
-    async def test_handles_gateway_exception(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_handles_gateway_exception(self, mock_gateway, sample_claim, sample_context):
         """Test handling of gateway exception."""
         mock_gateway.chat_completion.side_effect = Exception("Gateway error")
 
@@ -170,9 +154,7 @@ class TestClaimVerifier:
         assert result.status == VerificationStatus.UNVERIFIABLE
 
     @pytest.mark.asyncio
-    async def test_handles_markdown_code_block(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_handles_markdown_code_block(self, mock_gateway, sample_claim, sample_context):
         """Test handling of JSON wrapped in markdown."""
         mock_response = MagicMock()
         mock_response.choices = [
@@ -190,17 +172,11 @@ class TestClaimVerifier:
         assert result.status == VerificationStatus.SUPPORTED
 
     @pytest.mark.asyncio
-    async def test_handles_null_string_evidence(
-        self, mock_gateway, sample_claim, sample_context
-    ):
+    async def test_handles_null_string_evidence(self, mock_gateway, sample_claim, sample_context):
         """Test handling of 'null' string as evidence."""
         mock_response = MagicMock()
         mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"status": "unsupported", "evidence": "null"}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"status": "unsupported", "evidence": "null"}'))
         ]
         mock_gateway.chat_completion.return_value = mock_response
 
@@ -224,11 +200,7 @@ class TestClaimVerifierVerifyAll:
 
         mock_response = MagicMock()
         mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"status": "supported", "evidence": "test"}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"status": "supported", "evidence": "test"}'))
         ]
         mock_gateway.chat_completion.return_value = mock_response
 
@@ -258,18 +230,14 @@ class TestClaimVerifierVerifyAll:
             MagicMock(
                 choices=[
                     MagicMock(
-                        message=MagicMock(
-                            content='{"status": "supported", "evidence": "test"}'
-                        )
+                        message=MagicMock(content='{"status": "supported", "evidence": "test"}')
                     )
                 ]
             ),
             MagicMock(
                 choices=[
                     MagicMock(
-                        message=MagicMock(
-                            content='{"status": "unsupported", "evidence": null}'
-                        )
+                        message=MagicMock(content='{"status": "unsupported", "evidence": null}')
                     )
                 ]
             ),
@@ -297,9 +265,7 @@ class TestClaimVerifierVerifyAll:
                 response = MagicMock()
                 response.choices = [
                     MagicMock(
-                        message=MagicMock(
-                            content='{"status": "supported", "evidence": "test"}'
-                        )
+                        message=MagicMock(content='{"status": "supported", "evidence": "test"}')
                     )
                 ]
                 return response

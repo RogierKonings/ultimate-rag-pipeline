@@ -19,15 +19,11 @@ class TestRetrievalDegradationManager:
         reset_degradation_manager()
         return RetrievalDegradationManager()
 
-    def test_all_healthy_returns_hybrid_full(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_all_healthy_returns_hybrid_full(self, manager: RetrievalDegradationManager) -> None:
         """All circuits closed should return HYBRID_FULL mode."""
         assert manager.get_current_mode() == DegradationMode.HYBRID_FULL
 
-    def test_qdrant_down_returns_keyword_only(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_qdrant_down_returns_keyword_only(self, manager: RetrievalDegradationManager) -> None:
         """Qdrant circuit open should return KEYWORD_ONLY mode."""
         manager.qdrant_breaker._state = CircuitState.OPEN
 
@@ -58,9 +54,7 @@ class TestRetrievalDegradationManager:
 
         assert manager.get_current_mode() == DegradationMode.MINIMAL
 
-    def test_should_use_semantic_in_hybrid_full(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_should_use_semantic_in_hybrid_full(self, manager: RetrievalDegradationManager) -> None:
         """Should use semantic search in HYBRID_FULL mode."""
         assert manager.should_use_semantic() is True
 
@@ -72,9 +66,7 @@ class TestRetrievalDegradationManager:
 
         assert manager.should_use_semantic() is False
 
-    def test_should_use_keyword_in_hybrid_full(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_should_use_keyword_in_hybrid_full(self, manager: RetrievalDegradationManager) -> None:
         """Should use keyword search in HYBRID_FULL mode."""
         assert manager.should_use_keyword() is True
 
@@ -86,9 +78,7 @@ class TestRetrievalDegradationManager:
 
         assert manager.should_use_keyword() is False
 
-    def test_should_use_reranker_in_hybrid_full(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_should_use_reranker_in_hybrid_full(self, manager: RetrievalDegradationManager) -> None:
         """Should use reranker in HYBRID_FULL mode."""
         assert manager.should_use_reranker() is True
 
@@ -100,9 +90,7 @@ class TestRetrievalDegradationManager:
 
         assert manager.should_use_reranker() is False
 
-    def test_get_status_returns_complete_info(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_get_status_returns_complete_info(self, manager: RetrievalDegradationManager) -> None:
         """get_status should return complete degradation info."""
         status = manager.get_status()
 
@@ -113,9 +101,7 @@ class TestRetrievalDegradationManager:
         assert "qdrant" in status.components_available
         assert len(status.components_unavailable) == 0
 
-    def test_get_status_with_failure(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_get_status_with_failure(self, manager: RetrievalDegradationManager) -> None:
         """get_status should reflect component failures."""
         manager.qdrant_breaker._state = CircuitState.OPEN
 
@@ -126,9 +112,7 @@ class TestRetrievalDegradationManager:
         assert "qdrant" in status.components_unavailable
         assert "opensearch" in status.components_available
 
-    def test_reset_all_clears_circuits(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_reset_all_clears_circuits(self, manager: RetrievalDegradationManager) -> None:
         """reset_all should reset all circuit breakers."""
         manager.qdrant_breaker._state = CircuitState.OPEN
         manager.opensearch_breaker._state = CircuitState.OPEN
@@ -139,9 +123,7 @@ class TestRetrievalDegradationManager:
         assert manager.opensearch_breaker.state == CircuitState.CLOSED
         assert manager.get_current_mode() == DegradationMode.HYBRID_FULL
 
-    def test_get_circuit_statuses(
-        self, manager: RetrievalDegradationManager
-    ) -> None:
+    def test_get_circuit_statuses(self, manager: RetrievalDegradationManager) -> None:
         """get_circuit_statuses should return all circuit metrics."""
         statuses = manager.get_circuit_statuses()
 

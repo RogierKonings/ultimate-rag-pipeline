@@ -18,9 +18,7 @@ class TestTracedOpenSearchClient:
     def mock_opensearch_client(self):
         """Create a mock OpenSearch client."""
         client = AsyncMock()
-        client.search = AsyncMock(
-            return_value={"hits": {"total": {"value": 5}, "hits": []}}
-        )
+        client.search = AsyncMock(return_value={"hits": {"total": {"value": 5}, "hits": []}})
         client.index = AsyncMock(return_value={"result": "created"})
         client.bulk = AsyncMock(return_value={"errors": False, "items": []})
         client.delete = AsyncMock(return_value={"result": "deleted"})
@@ -37,9 +35,7 @@ class TestTracedOpenSearchClient:
         )
 
     @pytest.mark.asyncio
-    async def test_search_calls_underlying_client(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_search_calls_underlying_client(self, traced_client, mock_opensearch_client):
         """Test search delegates to underlying client."""
         query = {"match_all": {}}
 
@@ -51,9 +47,7 @@ class TestTracedOpenSearchClient:
         assert call_kwargs["body"] == {"query": query}
 
     @pytest.mark.asyncio
-    async def test_search_uses_custom_index(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_search_uses_custom_index(self, traced_client, mock_opensearch_client):
         """Test search can override index name."""
         await traced_client.search(
             body={"query": {"match_all": {}}},
@@ -64,9 +58,7 @@ class TestTracedOpenSearchClient:
         assert call_kwargs["index"] == "other_index"
 
     @pytest.mark.asyncio
-    async def test_index_calls_underlying_client(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_index_calls_underlying_client(self, traced_client, mock_opensearch_client):
         """Test index delegates to underlying client."""
         document = {"title": "Test", "content": "Test content"}
 
@@ -79,9 +71,7 @@ class TestTracedOpenSearchClient:
         assert call_kwargs["id"] == "doc1"
 
     @pytest.mark.asyncio
-    async def test_bulk_calls_underlying_client(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_bulk_calls_underlying_client(self, traced_client, mock_opensearch_client):
         """Test bulk delegates to underlying client."""
         operations = [
             {"index": {"_index": "test_index", "_id": "1"}},
@@ -95,9 +85,7 @@ class TestTracedOpenSearchClient:
         assert call_kwargs["body"] == operations
 
     @pytest.mark.asyncio
-    async def test_delete_calls_underlying_client(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_delete_calls_underlying_client(self, traced_client, mock_opensearch_client):
         """Test delete delegates to underlying client."""
         await traced_client.delete(id="doc1")
 
@@ -109,9 +97,7 @@ class TestTracedOpenSearchClient:
     @pytest.mark.asyncio
     async def test_search_creates_span(self, traced_client):
         """Test search creates an OTEL span."""
-        with patch(
-            "observability.clients.traced_opensearch.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_opensearch.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -124,9 +110,7 @@ class TestTracedOpenSearchClient:
             assert call_args[0][0] == "opensearch.query.search"
 
     @pytest.mark.asyncio
-    async def test_search_records_exception(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_search_records_exception(self, traced_client, mock_opensearch_client):
         """Test search records exceptions in span."""
         mock_opensearch_client.search.side_effect = Exception("Connection failed")
 
@@ -143,9 +127,7 @@ class TestTracedOpenSearchClient:
     @pytest.mark.asyncio
     async def test_index_creates_span(self, traced_client):
         """Test index creates an OTEL span."""
-        with patch(
-            "observability.clients.traced_opensearch.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_opensearch.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -160,9 +142,7 @@ class TestTracedOpenSearchClient:
     @pytest.mark.asyncio
     async def test_bulk_creates_span(self, traced_client):
         """Test bulk creates an OTEL span."""
-        with patch(
-            "observability.clients.traced_opensearch.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_opensearch.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -177,9 +157,7 @@ class TestTracedOpenSearchClient:
     @pytest.mark.asyncio
     async def test_delete_creates_span(self, traced_client):
         """Test delete creates an OTEL span."""
-        with patch(
-            "observability.clients.traced_opensearch.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_opensearch.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -192,17 +170,11 @@ class TestTracedOpenSearchClient:
             assert call_args[0][0] == "opensearch.mutation.delete"
 
     @pytest.mark.asyncio
-    async def test_search_records_response_size(
-        self, traced_client, mock_opensearch_client
-    ):
+    async def test_search_records_response_size(self, traced_client, mock_opensearch_client):
         """Test search records response size from hits.total.value."""
-        mock_opensearch_client.search.return_value = {
-            "hits": {"total": {"value": 42}, "hits": []}
-        }
+        mock_opensearch_client.search.return_value = {"hits": {"total": {"value": 42}, "hits": []}}
 
-        with patch(
-            "observability.clients.traced_opensearch.tracer"
-        ) as mock_tracer:
+        with patch("observability.clients.traced_opensearch.tracer") as mock_tracer:
             mock_span = MagicMock()
             mock_span.__enter__ = MagicMock(return_value=mock_span)
             mock_span.__exit__ = MagicMock(return_value=False)
@@ -213,8 +185,7 @@ class TestTracedOpenSearchClient:
             # Check that set_attribute was called with result count
             set_attribute_calls = mock_span.set_attribute.call_args_list
             result_count_call = [
-                call for call in set_attribute_calls
-                if call[0][0] == "db.opensearch.result_count"
+                call for call in set_attribute_calls if call[0][0] == "db.opensearch.result_count"
             ]
             assert len(result_count_call) == 1
             assert result_count_call[0][0][1] == 42

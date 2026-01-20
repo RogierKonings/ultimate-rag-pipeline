@@ -192,9 +192,7 @@ class TestFormatMultiHopContext:
         ]
         mapping = {"a": ["What is X?"], "b": ["What is Y?"]}
 
-        context = _format_multi_hop_context(
-            documents, mapping, ["What is X?", "What is Y?"]
-        )
+        context = _format_multi_hop_context(documents, mapping, ["What is X?", "What is Y?"])
 
         assert "Sub-question 1: What is X?" in context
         assert "Sub-question 2: What is Y?" in context
@@ -226,9 +224,7 @@ class TestMultiRetrievalNode:
             # Use MagicMock for response (not async) - only post() is async
             mock_response = MagicMock()
             mock_response.json.return_value = {
-                "results": [
-                    {"chunk_id": "a", "content": "Python is...", "score": 0.9}
-                ]
+                "results": [{"chunk_id": "a", "content": "Python is...", "score": 0.9}]
             }
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response

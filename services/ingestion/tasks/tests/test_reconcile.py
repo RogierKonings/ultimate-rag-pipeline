@@ -190,9 +190,7 @@ class TestDetectMissingChunks:
         )
 
         assert reconciliation_result.issues_found >= 1
-        assert any(
-            i.issue_type == "missing_qdrant" for i in reconciliation_result.issues
-        )
+        assert any(i.issue_type == "missing_qdrant" for i in reconciliation_result.issues)
 
     @pytest.mark.asyncio
     async def test_detects_missing_opensearch_chunks(
@@ -216,9 +214,7 @@ class TestDetectMissingChunks:
         )
 
         assert reconciliation_result.issues_found >= 1
-        assert any(
-            i.issue_type == "missing_opensearch" for i in reconciliation_result.issues
-        )
+        assert any(i.issue_type == "missing_opensearch" for i in reconciliation_result.issues)
 
 
 class TestDetectOrphanedEntries:
@@ -251,9 +247,7 @@ class TestDetectOrphanedEntries:
         )
 
         assert reconciliation_result.issues_found >= 1
-        assert any(
-            i.issue_type == "orphan_qdrant" for i in reconciliation_result.issues
-        )
+        assert any(i.issue_type == "orphan_qdrant" for i in reconciliation_result.issues)
 
     @pytest.mark.asyncio
     async def test_detects_orphaned_opensearch_entries(
@@ -282,9 +276,7 @@ class TestDetectOrphanedEntries:
         )
 
         assert reconciliation_result.issues_found >= 1
-        assert any(
-            i.issue_type == "orphan_opensearch" for i in reconciliation_result.issues
-        )
+        assert any(i.issue_type == "orphan_opensearch" for i in reconciliation_result.issues)
 
 
 class TestDryRunMode:
@@ -422,9 +414,7 @@ class TestRepairActions:
 
         assert issue.action_taken == ReconciliationAction.DELETE_ORPHAN_OPENSEARCH
         assert issue.success is True
-        mock_opensearch.delete_by_chunk_id.assert_called_once_with(
-            chunk_id, "test-tenant"
-        )
+        mock_opensearch.delete_by_chunk_id.assert_called_once_with(chunk_id, "test-tenant")
 
 
 class TestErrorHandling:

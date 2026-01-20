@@ -1,7 +1,6 @@
 """Tests for span naming conventions."""
 
 
-
 class TestSpanNames:
     """Tests for SpanNames constants."""
 

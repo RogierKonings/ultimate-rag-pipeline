@@ -415,15 +415,17 @@ class OpenSearchVideoIndexer:
 
         # ACL filtering - public OR in allowed groups
         if allowed_groups:
-            filter_clauses.append({
-                "bool": {
-                    "should": [
-                        {"term": {"visibility": "public"}},
-                        {"terms": {"allowed_groups": allowed_groups}},
-                    ],
-                    "minimum_should_match": 1,
-                },
-            })
+            filter_clauses.append(
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"visibility": "public"}},
+                            {"terms": {"allowed_groups": allowed_groups}},
+                        ],
+                        "minimum_should_match": 1,
+                    },
+                }
+            )
 
         body = {
             "size": top_k,

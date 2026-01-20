@@ -168,9 +168,7 @@ class OpenSearchIndexManager:
                 "name": index_name,
                 "docs_count": primaries.get("docs", {}).get("count", 0),
                 "deleted_docs": primaries.get("docs", {}).get("deleted", 0),
-                "store_size_bytes": primaries.get("store", {}).get(
-                    "size_in_bytes", 0
-                ),
+                "store_size_bytes": primaries.get("store", {}).get("size_in_bytes", 0),
             }
         except Exception as e:
             logger.error(
@@ -223,11 +221,7 @@ class OpenSearchIndexManager:
         """
         result = base.copy()
         for key, value in override.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value

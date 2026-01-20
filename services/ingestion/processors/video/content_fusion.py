@@ -27,9 +27,9 @@ class FusionConfig:
     """
 
     target_chunk_duration_ms: int = 20_000  # 20 seconds
-    min_chunk_duration_ms: int = 10_000     # 10 seconds
-    max_chunk_duration_ms: int = 30_000     # 30 seconds
-    overlap_ms: int = 2_000                 # 2 second overlap
+    min_chunk_duration_ms: int = 10_000  # 10 seconds
+    max_chunk_duration_ms: int = 30_000  # 30 seconds
+    overlap_ms: int = 2_000  # 2 second overlap
     include_modality_labels: bool = True
     separator: str = "\n\n"
 
@@ -456,6 +456,7 @@ class VideoChunkStorage:
 
             if not self.database_url:
                 from config import get_settings
+
                 settings = get_settings()
                 self.database_url = settings.database_url
 
@@ -496,22 +497,24 @@ class VideoChunkStorage:
         # Insert new chunks
         records = []
         for chunk in chunks:
-            records.append((
-                chunk.id,
-                chunk.video_id,
-                chunk.tenant_id,
-                chunk.chunk_index,
-                chunk.start_time_ms,
-                chunk.end_time_ms,
-                chunk.transcript_text or None,
-                chunk.scene_description or None,
-                chunk.ocr_text or None,
-                chunk.fused_text,
-                chunk.keyframe_path,
-                chunk.keyframe_index,
-                chunk.source_modalities,
-                chunk.embedding_id,
-            ))
+            records.append(
+                (
+                    chunk.id,
+                    chunk.video_id,
+                    chunk.tenant_id,
+                    chunk.chunk_index,
+                    chunk.start_time_ms,
+                    chunk.end_time_ms,
+                    chunk.transcript_text or None,
+                    chunk.scene_description or None,
+                    chunk.ocr_text or None,
+                    chunk.fused_text,
+                    chunk.keyframe_path,
+                    chunk.keyframe_index,
+                    chunk.source_modalities,
+                    chunk.embedding_id,
+                )
+            )
 
         async with pool.acquire() as conn:
             await conn.executemany(

@@ -300,21 +300,13 @@ class DocumentService:
             params: dict[str, Any] = {"tenant_id": tenant_id}
 
             if status_filter == "error":
-                conditions.append(
-                    "(qdrant_status = 'error' OR opensearch_status = 'error')"
-                )
+                conditions.append("(qdrant_status = 'error' OR opensearch_status = 'error')")
             elif status_filter == "pending":
-                conditions.append(
-                    "(qdrant_status = 'pending' OR opensearch_status = 'pending')"
-                )
+                conditions.append("(qdrant_status = 'pending' OR opensearch_status = 'pending')")
             elif status_filter == "ok":
-                conditions.append(
-                    "(qdrant_status = 'ok' AND opensearch_status = 'ok')"
-                )
+                conditions.append("(qdrant_status = 'ok' AND opensearch_status = 'ok')")
             elif status_filter == "any_error":
-                conditions.append(
-                    "(qdrant_status != 'ok' OR opensearch_status != 'ok')"
-                )
+                conditions.append("(qdrant_status != 'ok' OR opensearch_status != 'ok')")
             # "all" means no status filter
 
             if since:

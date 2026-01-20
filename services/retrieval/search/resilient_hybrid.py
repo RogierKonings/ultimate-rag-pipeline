@@ -95,9 +95,7 @@ class ResilientHybridSearcher:
                 query_embedding, final_top_k, filters
             )
         elif mode == DegradationMode.KEYWORD_ONLY:
-            response = await self._search_keyword_with_circuit(
-                query, final_top_k, filters
-            )
+            response = await self._search_keyword_with_circuit(query, final_top_k, filters)
         else:
             # HYBRID_FULL or HYBRID_NO_RERANK - run both searches
             response = await self._search_hybrid_with_circuits(
@@ -168,9 +166,7 @@ class ResilientHybridSearcher:
                 fusion_method=FusionMethod.RRF,
             )
 
-        return await self.degradation.opensearch_breaker.call(
-            do_search, fallback=fallback
-        )
+        return await self.degradation.opensearch_breaker.call(do_search, fallback=fallback)
 
     async def _search_hybrid_with_circuits(
         self,
@@ -229,16 +225,10 @@ class ResilientHybridSearcher:
             return []
 
         # Run both with circuit breakers
-        semantic_task = self.degradation.qdrant_breaker.call(
-            do_semantic, fallback=empty_fallback
-        )
-        keyword_task = self.degradation.opensearch_breaker.call(
-            do_keyword, fallback=empty_fallback
-        )
+        semantic_task = self.degradation.qdrant_breaker.call(do_semantic, fallback=empty_fallback)
+        keyword_task = self.degradation.opensearch_breaker.call(do_keyword, fallback=empty_fallback)
 
-        semantic_results, keyword_results = await asyncio.gather(
-            semantic_task, keyword_task
-        )
+        semantic_results, keyword_results = await asyncio.gather(semantic_task, keyword_task)
 
         # Fuse results
         if semantic_results and keyword_results:

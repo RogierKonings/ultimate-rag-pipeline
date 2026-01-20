@@ -281,9 +281,7 @@ class StreamManager:
         Returns:
             A StreamEvent with DONE type.
         """
-        return StreamEvent.done(
-            request_id, usage, latency_ms, context_quality, retrieval_mode
-        )
+        return StreamEvent.done(request_id, usage, latency_ms, context_quality, retrieval_mode)
 
     def _create_error_event(
         self,

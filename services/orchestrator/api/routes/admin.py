@@ -129,9 +129,7 @@ async def get_quota_status(
         Current quota configuration and usage status.
     """
     # Get quota configuration
-    quota_result = await db.execute(
-        select(TenantQuota).where(TenantQuota.tenant_id == tenant_id)
-    )
+    quota_result = await db.execute(select(TenantQuota).where(TenantQuota.tenant_id == tenant_id))
     quota_config = quota_result.scalar_one_or_none()
 
     # Get current month's usage
@@ -206,9 +204,7 @@ async def set_quota(
         Updated quota configuration.
     """
     # Check if quota config exists
-    result = await db.execute(
-        select(TenantQuota).where(TenantQuota.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantQuota).where(TenantQuota.tenant_id == tenant_id))
     quota_config = result.scalar_one_or_none()
 
     if quota_config is None:
@@ -256,9 +252,7 @@ async def delete_quota(
     Returns:
         Confirmation message.
     """
-    result = await db.execute(
-        select(TenantQuota).where(TenantQuota.tenant_id == tenant_id)
-    )
+    result = await db.execute(select(TenantQuota).where(TenantQuota.tenant_id == tenant_id))
     quota_config = result.scalar_one_or_none()
 
     if quota_config is None:
