@@ -15,7 +15,7 @@
 	type ContentTab = 'transcript' | 'scene' | 'ocr';
 	let activeTab = $state<ContentTab>('transcript');
 
-	let videoElement: HTMLVideoElement;
+	let videoElement = $state<HTMLVideoElement | null>(null);
 
 	function formatTimestamp(seconds: number): string {
 		const mins = Math.floor(seconds / 60);

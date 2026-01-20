@@ -36,12 +36,14 @@
 	}
 </script>
 
-<button
-	type="button"
+<div
 	onclick={onSelect}
+	onkeydown={(e) => e.key === 'Enter' && onSelect?.()}
 	onmouseenter={() => (showDeleteButton = true)}
 	onmouseleave={() => (showDeleteButton = false)}
-	class="group flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors {selected
+	role="button"
+	tabindex="0"
+	class="group flex w-full cursor-pointer items-center gap-3 rounded-lg p-2 text-left transition-colors {selected
 		? 'bg-[var(--color-accent)]/10'
 		: 'hover:bg-gray-50'}"
 >
@@ -113,4 +115,4 @@
 			</span>
 		{/if}
 	</div>
-</button>
+</div>

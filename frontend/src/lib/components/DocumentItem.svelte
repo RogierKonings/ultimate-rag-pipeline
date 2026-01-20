@@ -131,10 +131,11 @@
 		aria-labelledby="delete-dialog-title"
 		tabindex="-1"
 	>
-		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+			<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			role="document"
 		>
 			<h3 id="delete-dialog-title" class="text-lg font-semibold text-[var(--color-text-primary)]">
