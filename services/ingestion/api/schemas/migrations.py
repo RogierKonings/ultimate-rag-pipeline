@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from services.ingestion.migrations.models import MigrationStatus
+from migrations.models import MigrationStatus
 
 
 class ValidationConfigSchema(BaseModel):

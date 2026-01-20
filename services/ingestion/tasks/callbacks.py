@@ -27,7 +27,7 @@ def send_to_dlq(failure_info: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Dict with DLQ entry key and status.
     """
-    from services.shared.cache.redis_client import get_redis_client
+    from shared.cache.redis_client import get_redis_client
 
     task_name = failure_info.get("task_name", "unknown")
     timestamp = datetime.now(tz=UTC).isoformat()
@@ -106,7 +106,7 @@ def retry_dlq_entry(dlq_key: str) -> bool:
     Returns:
         True if task was resubmitted, False otherwise.
     """
-    from services.shared.cache.redis_client import get_redis_client
+    from shared.cache.redis_client import get_redis_client
 
     try:
         redis_client = get_redis_client()

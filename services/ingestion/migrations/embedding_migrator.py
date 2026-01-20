@@ -173,7 +173,7 @@ class EmbeddingMigrator:
             max_concurrent: Maximum concurrent batches.
             tenant_ids: Optional tenant filter.
         """
-        from services.ingestion.tasks.reembed import reembed_migration_batch
+        from tasks.reembed import reembed_migration_batch
 
         # Get all document IDs to process
         document_ids = await self._get_document_ids(
@@ -632,7 +632,7 @@ class EmbeddingMigrator:
         Returns:
             List of result dicts with id and score.
         """
-        from services.ingestion.embedding.service import (
+        from embedding.service import (
             EmbeddingService,
             EmbeddingServiceConfig,
         )

@@ -303,7 +303,7 @@ class TestPIIDetectionTest:
     @pytest.fixture
     def mock_detector(self):
         """Create a mock PIIDetector."""
-        from services.shared.security.pii import PIIResult
+        from shared.security.pii import PIIResult
 
         detector = MagicMock()
         detector.detect = AsyncMock(

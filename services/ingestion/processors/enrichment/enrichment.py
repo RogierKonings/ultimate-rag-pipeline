@@ -18,8 +18,8 @@ from .pii_detector import PIIDetector, PIIDetectorConfig
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from services.shared.security.pii import PIIDetector as SharedPIIDetector
-    from services.shared.security.pii import TenantPIIConfigService
+    from shared.security.pii import PIIDetector as SharedPIIDetector
+    from shared.security.pii import TenantPIIConfigService
 
     from ..parsers.base import ParsedDocument
 

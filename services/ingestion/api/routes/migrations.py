@@ -14,7 +14,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from qdrant_client import AsyncQdrantClient
 
-from services.ingestion.api.schemas import (
+from api.schemas import (
     MigrationListResponseSchema,
     MigrationRequestSchema,
     MigrationResponseSchema,
@@ -23,12 +23,12 @@ from services.ingestion.api.schemas import (
     ValidationRequestSchema,
     ValidationResponseSchema,
 )
-from services.ingestion.migrations.embedding_migrator import EmbeddingMigrator
-from services.ingestion.migrations.models import (
+from migrations.embedding_migrator import EmbeddingMigrator
+from migrations.models import (
     MigrationRequest,
     MigrationStatus,
 )
-from services.ingestion.migrations.progress_tracker import (
+from migrations.progress_tracker import (
     MigrationProgressStore,
     MigrationProgressStoreConfig,
 )
