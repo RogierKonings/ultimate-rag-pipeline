@@ -189,7 +189,7 @@ class TestFilesystemConnectorS3:
     @pytest.mark.asyncio
     async def test_connect_s3_success(self, s3_config):
         """Test successful S3 connection."""
-        with patch("services.ingestion.connectors.filesystem.aioboto3") as mock_boto:
+        with patch("connectors.filesystem.aioboto3") as mock_boto:
             # Mock the session and client
             mock_session = MagicMock()
             mock_client = AsyncMock()
@@ -208,7 +208,7 @@ class TestFilesystemConnectorS3:
     @pytest.mark.asyncio
     async def test_connect_s3_failure(self, s3_config):
         """Test S3 connection failure."""
-        with patch("services.ingestion.connectors.filesystem.aioboto3") as mock_boto:
+        with patch("connectors.filesystem.aioboto3") as mock_boto:
             mock_session = MagicMock()
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
@@ -269,7 +269,7 @@ class TestFilesystemConnectorS3:
         """Test fetching an S3 object."""
         test_content = b"Test S3 content"
 
-        with patch("services.ingestion.connectors.filesystem.aioboto3") as mock_boto:
+        with patch("connectors.filesystem.aioboto3") as mock_boto:
             mock_session = MagicMock()
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client

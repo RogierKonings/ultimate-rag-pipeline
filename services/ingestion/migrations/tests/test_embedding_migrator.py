@@ -63,7 +63,7 @@ class TestEmbeddingMigrator:
 
         # Mock the task dispatch
         with patch(
-            "services.ingestion.migrations.embedding_migrator.EmbeddingMigrator._dispatch_reembedding_tasks"
+            "migrations.embedding_migrator.EmbeddingMigrator._dispatch_reembedding_tasks"
         ) as mock_dispatch:
             mock_dispatch.return_value = None
 
@@ -121,7 +121,7 @@ class TestEmbeddingMigrator:
 
         # Mock the task dispatch
         with patch(
-            "services.ingestion.migrations.embedding_migrator.EmbeddingMigrator._dispatch_reembedding_tasks"
+            "migrations.embedding_migrator.EmbeddingMigrator._dispatch_reembedding_tasks"
         ) as mock_dispatch:
             mock_dispatch.return_value = None
 

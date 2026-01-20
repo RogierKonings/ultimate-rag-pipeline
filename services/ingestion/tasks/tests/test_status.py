@@ -8,7 +8,7 @@ from ..models import JobStatus
 from ..status import JobStatusTracker
 
 # Module path for patching
-STATUS_MODULE = "services.ingestion.tasks.status"
+STATUS_MODULE = "tasks.status"
 
 
 class TestJobStatusTracker:

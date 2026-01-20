@@ -17,8 +17,8 @@ class TestGetConnector:
     def test_filesystem_connector(self):
         """Test getting filesystem connector."""
         with (
-            patch("services.ingestion.tasks.ingest.FilesystemConnector") as mock_class,
-            patch("services.ingestion.tasks.ingest.FilesystemConnectorConfig"),
+            patch("tasks.ingest.FilesystemConnector") as mock_class,
+            patch("tasks.ingest.FilesystemConnectorConfig"),
         ):
             _get_connector("filesystem", {"base_path": "/tmp"})
             mock_class.assert_called_once()
@@ -26,8 +26,8 @@ class TestGetConnector:
     def test_database_connector(self):
         """Test getting database connector."""
         with (
-            patch("services.ingestion.tasks.ingest.DatabaseConnector") as mock_class,
-            patch("services.ingestion.tasks.ingest.DatabaseConnectorConfig"),
+            patch("tasks.ingest.DatabaseConnector") as mock_class,
+            patch("tasks.ingest.DatabaseConnectorConfig"),
         ):
             _get_connector("database", {"connection_string": "sqlite://"})
             mock_class.assert_called_once()
@@ -58,22 +58,22 @@ class TestProcessDocument:
         mock_task = MagicMock()
         mock_task.update_state = MagicMock()
 
-        with patch("services.ingestion.tasks.ingest._get_connector", return_value=mock_connector):
+        with patch("tasks.ingest._get_connector", return_value=mock_connector):
             mock_connector.fetch_document.return_value = mock_raw_document
 
-            with patch("services.ingestion.tasks.ingest.ParserRegistry") as mock_parser:
+            with patch("tasks.ingest.ParserRegistry") as mock_parser:
                 mock_parser.return_value.parse = AsyncMock(return_value=mock_parsed_document)
 
-                with patch("services.ingestion.tasks.ingest.EnrichmentPipeline") as mock_enrichment:
+                with patch("tasks.ingest.EnrichmentPipeline") as mock_enrichment:
                     mock_enrichment.return_value.enrich = AsyncMock(
                         return_value=mock_enriched_metadata,
                     )
 
-                    with patch("services.ingestion.tasks.ingest.ChunkingEngine") as mock_chunker:
+                    with patch("tasks.ingest.ChunkingEngine") as mock_chunker:
                         mock_chunker.return_value.chunk = MagicMock(return_value=mock_chunks)
 
                         with patch(
-                            "services.ingestion.tasks.ingest.create_embedding_service",
+                            "tasks.ingest.create_embedding_service",
                         ) as mock_embed_svc:
                             mock_service = AsyncMock()
                             mock_service.embed_texts = AsyncMock(
@@ -84,7 +84,7 @@ class TestProcessDocument:
                             mock_embed_svc.return_value = mock_service
 
                             with patch(
-                                "services.ingestion.tasks.ingest.IndexCoordinator",
+                                "tasks.ingest.IndexCoordinator",
                             ) as mock_coord:
                                 mock_coordinator = AsyncMock()
                                 mock_coordinator.index_document = AsyncMock(return_value={})
@@ -95,8 +95,8 @@ class TestProcessDocument:
                                 mock_coord.return_value = mock_coordinator
 
                                 with (
-                                    patch("services.ingestion.tasks.ingest.IndexedChunk"),
-                                    patch("services.ingestion.tasks.ingest.DocumentRecord"),
+                                    patch("tasks.ingest.IndexedChunk"),
+                                    patch("tasks.ingest.DocumentRecord"),
                                 ):
                                     result = await _process_document_async(
                                         task=mock_task,
@@ -113,7 +113,7 @@ class TestProcessDocument:
 
     def test_process_document_updates_state(self, celery_app):
         """Test that process_document updates task state during processing."""
-        with patch("services.ingestion.tasks.ingest._process_document_async") as mock:
+        with patch("tasks.ingest._process_document_async") as mock:
             mock.return_value = {
                 "document_id": str(uuid4()),
                 "chunks_created": 5,
@@ -132,7 +132,7 @@ class TestBatchIngest:
         mock_task.update_state = MagicMock()
 
         with patch(
-            "services.ingestion.tasks.ingest._list_documents",
+            "tasks.ingest._list_documents",
             new_callable=AsyncMock,
         ) as mock_list:
             mock_list.return_value = []

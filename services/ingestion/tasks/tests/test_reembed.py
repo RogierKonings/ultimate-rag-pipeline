@@ -16,7 +16,7 @@ class TestReembedCollection:
         mock_task = MagicMock()
         mock_task.update_state = MagicMock()
 
-        with patch("services.ingestion.tasks.reembed.get_async_session") as mock_session:
+        with patch("tasks.reembed.get_async_session") as mock_session:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=None)
@@ -47,7 +47,7 @@ class TestReembedCollection:
         # Create mock chunks
         mock_chunks = [MagicMock(chunk_id=i, content=f"content {i}") for i in range(5)]
 
-        with patch("services.ingestion.tasks.reembed.get_async_session") as mock_session:
+        with patch("tasks.reembed.get_async_session") as mock_session:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=None)
@@ -58,7 +58,7 @@ class TestReembedCollection:
 
             mock_session.return_value = mock_ctx
 
-            with patch("services.ingestion.tasks.reembed.EmbeddingService") as mock_embed:
+            with patch("tasks.reembed.EmbeddingService") as mock_embed:
                 mock_service = AsyncMock()
                 mock_service.embed_texts = AsyncMock(
                     return_value=MagicMock(
@@ -70,7 +70,7 @@ class TestReembedCollection:
                 mock_embed.return_value = mock_service
 
                 with patch(
-                    "services.ingestion.tasks.reembed._update_embeddings_in_qdrant",
+                    "tasks.reembed._update_embeddings_in_qdrant",
                 ) as mock_update:
                     mock_update.return_value = None
 
@@ -88,4 +88,4 @@ class TestReembedCollection:
 
     def test_reembed_task_is_registered(self, celery_app):
         """Test that reembed_collection task is properly registered."""
-        assert reembed_collection.name == "services.ingestion.tasks.reembed.reembed_collection"
+        assert reembed_collection.name == "tasks.reembed.reembed_collection"

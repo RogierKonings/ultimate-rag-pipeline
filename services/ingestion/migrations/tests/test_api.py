@@ -66,7 +66,7 @@ class TestMigrationEndpoints:
     def test_start_migration_success(self, app, mock_migrator, sample_migration):
         """Test successful migration start."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.start_migration.return_value = sample_migration
@@ -85,7 +85,7 @@ class TestMigrationEndpoints:
         migration_id = sample_migration.migration_id
 
         with patch(
-            "services.ingestion.api.routes.migrations.get_progress_store",
+            "api.routes.migrations.get_progress_store",
             return_value=mock_progress_store,
         ):
             mock_progress_store.get_migration.return_value = sample_migration
@@ -98,7 +98,7 @@ class TestMigrationEndpoints:
     def test_get_migration_status_not_found(self, app, mock_progress_store):
         """Test getting migration status when not found."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_progress_store",
+            "api.routes.migrations.get_progress_store",
             return_value=mock_progress_store,
         ):
             mock_progress_store.get_migration.return_value = None
@@ -107,7 +107,7 @@ class TestMigrationEndpoints:
     def test_list_migrations(self, app, mock_progress_store, sample_migration):
         """Test listing migrations."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_progress_store",
+            "api.routes.migrations.get_progress_store",
             return_value=mock_progress_store,
         ):
             mock_progress_store.get_all_migrations.return_value = [sample_migration]
@@ -122,7 +122,7 @@ class TestMigrationEndpoints:
         )
 
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.validate_migration.return_value = validation_result
@@ -133,7 +133,7 @@ class TestMigrationEndpoints:
     def test_switch_collection_success(self, app, mock_migrator):
         """Test successful collection switch."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.switch_to_new_collection.return_value = True
@@ -141,7 +141,7 @@ class TestMigrationEndpoints:
     def test_switch_collection_validation_required(self, app, mock_migrator):
         """Test switch fails without validation."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.switch_to_new_collection.side_effect = ValueError(
@@ -151,7 +151,7 @@ class TestMigrationEndpoints:
     def test_rollback_migration_success(self, app, mock_migrator):
         """Test successful rollback."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.rollback_migration.return_value = True
@@ -159,7 +159,7 @@ class TestMigrationEndpoints:
     def test_cancel_migration_success(self, app, mock_migrator):
         """Test successful cancellation."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.cancel_migration.return_value = True
@@ -167,7 +167,7 @@ class TestMigrationEndpoints:
     def test_cleanup_old_collection(self, app, mock_migrator):
         """Test cleanup old collection."""
         with patch(
-            "services.ingestion.api.routes.migrations.get_migrator",
+            "api.routes.migrations.get_migrator",
             return_value=mock_migrator,
         ):
             mock_migrator.cleanup_old_collection.return_value = True
@@ -178,7 +178,7 @@ class TestMigrationEndpoints:
         sample_migration.status = MigrationStatus.COMPLETED
 
         with patch(
-            "services.ingestion.api.routes.migrations.get_progress_store",
+            "api.routes.migrations.get_progress_store",
             return_value=mock_progress_store,
         ):
             mock_progress_store.get_migration.return_value = sample_migration
@@ -190,7 +190,7 @@ class TestMigrationEndpoints:
         assert sample_migration.is_active is True
 
         with patch(
-            "services.ingestion.api.routes.migrations.get_progress_store",
+            "api.routes.migrations.get_progress_store",
             return_value=mock_progress_store,
         ):
             mock_progress_store.get_migration.return_value = sample_migration
