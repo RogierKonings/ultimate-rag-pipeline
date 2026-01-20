@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from uuid import UUID
 
-from services.shared.security.audit.models import (
+from shared.security.audit.models import (
     AuditLogEntry,
     AuditQuery,
     AuditStats,

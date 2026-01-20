@@ -2,15 +2,61 @@
 
 import logging
 import os
+from typing import AsyncGenerator
 
 import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from rate_limiting.limiter import IngestionRateLimiter
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Singleton database engine and session factory
+_async_engine = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def _get_async_engine():
+    """Get or create the async database engine."""
+    global _async_engine
+    if _async_engine is None:
+        settings = get_settings()
+        db_url = settings.database_url
+        if not db_url.startswith("postgresql+asyncpg://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
+        _async_engine = create_async_engine(db_url, echo=settings.debug)
+    return _async_engine
+
+
+def _get_async_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Get or create the async session factory."""
+    global _async_session_factory
+    if _async_session_factory is None:
+        engine = _get_async_engine()
+        _async_session_factory = async_sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False
+        )
+    return _async_session_factory
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Get an async database session.
+
+    Yields:
+        AsyncSession for database operations.
+    """
+    session_factory = _get_async_session_factory()
+    async with session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 # Singleton rate limiter for API
 _api_redis_client: aioredis.Redis | None = None

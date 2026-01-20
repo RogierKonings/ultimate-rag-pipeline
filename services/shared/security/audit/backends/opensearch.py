@@ -10,8 +10,8 @@ from uuid import UUID
 
 from opensearchpy import OpenSearch
 
-from services.shared.security.audit.backends.base import AuditBackend
-from services.shared.security.audit.models import (
+from shared.security.audit.backends.base import AuditBackend
+from shared.security.audit.models import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,
