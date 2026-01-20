@@ -114,8 +114,8 @@ def _calculate_backoff(
     # Exponential backoff: base * 2^attempt
     delay_ms = min(base_ms * (2 ** attempt), max_ms)
 
-    # Add +/- 25% jitter
-    jitter_factor = 1.0 + random.uniform(-0.25, 0.25)
+    # Add +/- 25% jitter (non-crypto random is fine for backoff timing)
+    jitter_factor = 1.0 + random.uniform(-0.25, 0.25)  # noqa: S311
     delay_ms = delay_ms * jitter_factor
 
     # Convert to seconds
@@ -325,10 +325,10 @@ async def with_timeout(
             timeout=timeout_seconds,
         )
 
-    except TimeoutError:
+    except TimeoutError as err:
         await logger.aerror(
             "Operation timed out",
             operation=operation_name,
             timeout_ms=timeout_ms,
         )
-        raise TimeoutExceeded(operation_name, timeout_ms)
+        raise TimeoutExceeded(operation_name, timeout_ms) from err

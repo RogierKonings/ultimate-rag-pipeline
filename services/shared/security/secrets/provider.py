@@ -10,6 +10,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from .config import SecretsBackend
@@ -454,7 +455,7 @@ def create_secret_provider(
         # Auto-detect from environment
         if os.getenv("VAULT_ADDR"):
             backend = SecretsBackend.VAULT
-        elif os.path.exists("/run/secrets"):
+        elif Path("/run/secrets").exists():
             backend = SecretsBackend.FILE
         else:
             backend = SecretsBackend.ENVIRONMENT

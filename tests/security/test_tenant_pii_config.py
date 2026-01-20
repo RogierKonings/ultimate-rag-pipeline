@@ -356,13 +356,15 @@ class TestTenantPIIConfigUpdate:
         mock_result.scalar_one_or_none.return_value = None
         mock_session.execute.return_value = mock_result
 
-        with patch("services.shared.security.pii.tenant_config.select"):
-            with pytest.raises(ValueError, match="Tenant not found"):
-                await config_service.update_tenant_config(
-                    tenant_id,
-                    mock_session,
-                    {"enabled": False},
-                )
+        with (
+            patch("services.shared.security.pii.tenant_config.select"),
+            pytest.raises(ValueError, match="Tenant not found"),
+        ):
+            await config_service.update_tenant_config(
+                tenant_id,
+                mock_session,
+                {"enabled": False},
+            )
 
 
 class TestCustomPatterns:

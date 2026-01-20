@@ -7,7 +7,7 @@ Reference: US-10.5.4 - Token Usage Accounting
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import redis.asyncio as redis
 from database.models.usage import TenantQuota, TokenUsage

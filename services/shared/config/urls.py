@@ -210,10 +210,7 @@ def get_postgres_url(
         PostgreSQL connection URL.
     """
     # Check for explicit override first
-    if async_driver:
-        explicit = os.getenv("DATABASE_URL")
-    else:
-        explicit = os.getenv("DATABASE_URL_SYNC")
+    explicit = os.getenv("DATABASE_URL") if async_driver else os.getenv("DATABASE_URL_SYNC")
 
     if explicit:
         return explicit
@@ -384,10 +381,7 @@ def get_llm_gateway_url() -> str:
     host = _get_host("llm_gateway")
 
     # In Docker, Ollama runs natively so use Ollama port
-    if deploy_env == DeployEnv.DOCKER:
-        port = _get_port("ollama")
-    else:
-        port = _get_port("llm_gateway")
+    port = _get_port("ollama") if deploy_env == DeployEnv.DOCKER else _get_port("llm_gateway")
 
     return f"http://{host}:{port}"
 

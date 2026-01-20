@@ -339,12 +339,8 @@ class TenantPIIConfigService:
         current_settings = tenant.settings or {}
         current_pii = current_settings.get("pii", {})
 
-        if merge:
-            # Deep merge updates into current
-            new_pii = self._merge_configs(current_pii, updates)
-        else:
-            # Replace entirely
-            new_pii = updates
+        # Deep merge or replace entirely
+        new_pii = self._merge_configs(current_pii, updates) if merge else updates
 
         # Update tenant settings
         current_settings["pii"] = new_pii

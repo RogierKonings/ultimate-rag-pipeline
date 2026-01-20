@@ -3,7 +3,7 @@
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 from api.models.usage import (

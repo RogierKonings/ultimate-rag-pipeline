@@ -94,5 +94,5 @@ class TestTraceHierarchy:
             # Restore original provider (if possible - may fail if already set)
             try:
                 trace.set_tracer_provider(original_provider)
-            except Exception:
-                pass  # Ignore if we can't reset
+            except Exception:  # noqa: S110
+                pass  # Ignore if we can't reset - cleanup is best-effort

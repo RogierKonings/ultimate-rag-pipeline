@@ -211,7 +211,7 @@ class TestDegradationFlowIntegration:
 
         system_content = prompt_result["messages"][0]["content"]
         # Should NOT contain any degradation disclaimers
-        for mode, disclaimer in DEGRADATION_DISCLAIMERS.items():
+        for _mode, disclaimer in DEGRADATION_DISCLAIMERS.items():
             assert disclaimer.strip() not in system_content
 
     @pytest.mark.asyncio

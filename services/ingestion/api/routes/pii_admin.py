@@ -396,8 +396,8 @@ async def remove_custom_pattern(
 async def test_pii_detection(
     tenant_id: str,
     request: PIITestRequest,
-    session: AsyncSession = Depends(get_async_session),
-    current_user: dict = Depends(require_admin),
+    session: AsyncSession = Depends(get_async_session),  # noqa: PT028
+    current_user: dict = Depends(require_admin),  # noqa: PT028
 ) -> PIITestResponse:
     """Test PII detection on sample text.
 

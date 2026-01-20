@@ -141,7 +141,9 @@ ignore = [
     "S105",   # Hardcoded password strings (test data)
     "S106",   # Hardcoded password in function args (test data)
     "S108",   # Hardcoded temp file paths (test fixtures)
+    "S110",   # try-except-pass acceptable in test cleanup
     "S311",   # Suspicious non-cryptographic random (test randomness)
+    "DTZ001", # Naive datetime acceptable in tests for testing naive handling
     "S324",   # Insecure hash functions (testing purposes)
     "S608",   # Hardcoded SQL expressions (test queries)
     "S701",   # Jinja2 autoescape (test templates)

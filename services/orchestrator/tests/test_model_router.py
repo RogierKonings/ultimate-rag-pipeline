@@ -39,12 +39,12 @@ class TestModelConfigs:
 
     def test_all_tiers_have_config(self):
         """Test all tiers have configuration."""
-        for tier in ModelTier:
-            assert tier in MODEL_CONFIGS
+        for _tier in ModelTier:
+            assert _tier in MODEL_CONFIGS
 
     def test_config_structure(self):
         """Test config has required fields."""
-        for tier, config in MODEL_CONFIGS.items():
+        for _tier, config in MODEL_CONFIGS.items():
             assert isinstance(config, ModelConfig)
             assert config.model_name
             assert config.max_tokens > 0
