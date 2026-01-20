@@ -7,7 +7,6 @@ Tests cover:
 """
 
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4

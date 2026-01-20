@@ -21,7 +21,6 @@ from resilience import (
     RetrievalDegradationManager,
     reset_degradation_manager,
 )
-from video.retriever import VideoRetriever, VideoRetrieverConfig
 from search.fusion import HybridSearchConfig
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher, OpenSearchConfig
@@ -30,14 +29,15 @@ from search.models import QdrantConfig as QdrantSearchConfig
 from search.resilient_hybrid import ResilientHybridSearcher
 from search.semantic import QdrantConfig, SemanticSearcher
 from search.tenant_aware import TenantAwareHybridSearcher
-from shared.tenant.config_service import get_tenant_config_service
 from video.clip_cache import ClipCacheConfig, ClipCacheService
+from video.retriever import VideoRetriever, VideoRetrieverConfig
 
 from api.routes import clips, health, retrieve, video_retrieve
 from config import RetrievalConfig
 from shared.config import validate_on_startup
 from shared.observability.correlation import CorrelationMiddleware
 from shared.security.audit import AuditMiddleware
+from shared.tenant.config_service import get_tenant_config_service
 
 
 @asynccontextmanager

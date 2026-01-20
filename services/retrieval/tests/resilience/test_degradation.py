@@ -1,12 +1,11 @@
 """Tests for degradation manager."""
 
 import pytest
-
 from resilience import (
     CircuitState,
     DegradationMode,
-    RetrievalDegradationManager,
     ResilienceConfig,
+    RetrievalDegradationManager,
     reset_degradation_manager,
 )
 

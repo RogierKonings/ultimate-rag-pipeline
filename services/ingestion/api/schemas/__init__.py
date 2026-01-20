@@ -33,6 +33,20 @@ from .ingest import (
     SyncResponse,
     SyncSourceConfig,
 )
+from .pii import (
+    AddCustomPatternRequest,
+    CustomPatternResponse,
+    CustomPatternSchema,
+    IngestionPIIConfig,
+    PIIEntityConfigSchema,
+    PIIEntityDetected,
+    PIITestRequest,
+    PIITestResponse,
+    QueryPIIConfig,
+    ResponsePIIConfig,
+    TenantPIISettingsResponse,
+    TenantPIISettingsUpdate,
+)
 from .video import (
     PresignedUploadRequest,
     PresignedUploadResponse,
@@ -47,20 +61,6 @@ from .video import (
     VideoUploadRequest,
     VideoUploadResponse,
     VideoVisibility,
-)
-from .pii import (
-    AddCustomPatternRequest,
-    CustomPatternResponse,
-    CustomPatternSchema,
-    IngestionPIIConfig,
-    PIIEntityConfigSchema,
-    PIIEntityDetected,
-    PIITestRequest,
-    PIITestResponse,
-    QueryPIIConfig,
-    ResponsePIIConfig,
-    TenantPIISettingsResponse,
-    TenantPIISettingsUpdate,
 )
 
 # Migration schemas are optional - depend on external modules

@@ -11,11 +11,9 @@ from datetime import date
 from uuid import uuid4
 
 import redis.asyncio as redis
-from sqlalchemy import insert
+from database.models.usage import TokenUsage
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-from database.models.usage import TokenUsage
 
 logger = logging.getLogger(__name__)
 

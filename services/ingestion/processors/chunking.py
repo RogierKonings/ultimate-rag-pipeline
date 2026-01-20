@@ -21,6 +21,8 @@ from uuid import UUID, uuid4
 import tiktoken
 from pydantic import BaseModel, Field
 
+from shared.config.defaults import ChunkingConfig
+
 # Lazy load spaCy to avoid import overhead when not using semantic chunking
 _nlp = None
 
@@ -77,9 +79,6 @@ class ChunkingResult(BaseModel):
 # =============================================================================
 # Configuration
 # =============================================================================
-
-# Import shared configuration as the base
-from shared.config.defaults import ChunkingConfig
 
 
 class SemanticChunkerConfig(ChunkingConfig):

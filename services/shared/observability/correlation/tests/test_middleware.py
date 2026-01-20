@@ -1,12 +1,12 @@
 """Tests for CorrelationMiddleware."""
 
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from ..context import clear_correlation_context, get_correlation_context
 from ..middleware import CorrelationMiddleware
-from ..context import get_correlation_context, clear_correlation_context
 
 
 @pytest.fixture

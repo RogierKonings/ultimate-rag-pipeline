@@ -10,8 +10,6 @@ import logging
 from contextlib import asynccontextmanager
 
 from api.middleware import RequestLoggingMiddleware, TenantMiddleware
-from shared.observability.correlation import CorrelationMiddleware
-from shared.security.audit import AuditMiddleware
 from api.routes import (
     admin_router,
     documents_router,
@@ -25,7 +23,6 @@ from api.routes import (
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from shared.config import validate_on_startup
 from telemetry import (
     get_current_trace_context,
     instrument_fastapi,
@@ -33,6 +30,9 @@ from telemetry import (
 )
 
 from config import Settings, get_settings
+from shared.config import validate_on_startup
+from shared.observability.correlation import CorrelationMiddleware
+from shared.security.audit import AuditMiddleware
 
 logger = logging.getLogger(__name__)
 

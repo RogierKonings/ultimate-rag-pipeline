@@ -2,9 +2,9 @@
 
 import pytest
 from workflow.nodes.prompt_building import (
-    prompt_building_node,
     DEGRADATION_DISCLAIMERS,
     _build_messages,
+    prompt_building_node,
 )
 
 

@@ -1,6 +1,5 @@
 """Tests for span naming conventions."""
 
-import pytest
 
 
 class TestSpanNames:

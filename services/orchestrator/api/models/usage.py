@@ -4,7 +4,6 @@ Reference: US-10.5.4 - Token Usage Accounting
 """
 
 from datetime import date
-from typing import Literal
 
 from pydantic import BaseModel, Field
 

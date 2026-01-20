@@ -23,7 +23,7 @@ class CorrelatedHttpClient:
         self._client_kwargs = kwargs
         self._client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self) -> "CorrelatedHttpClient":
+    async def __aenter__(self) -> CorrelatedHttpClient:
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             timeout=self.timeout,

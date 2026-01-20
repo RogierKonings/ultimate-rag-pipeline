@@ -10,7 +10,7 @@ This module tests the service authentication functionality including:
 
 import time
 from datetime import timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -24,7 +24,6 @@ from ..handler import (
 )
 from ..models import ServiceTokenClaims, TokenType
 from ..service_auth_config import (
-    DEFAULT_AUTHORIZATION_MATRIX,
     ServiceAuthSettings,
     get_allowed_endpoints,
     is_service_authorized,
@@ -259,8 +258,9 @@ class TestJWTHandlerServiceTokens:
 
     def test_verify_non_service_token(self, jwt_handler):
         """Should reject non-service token."""
-        from ..models import TokenClaims
         from uuid import uuid4
+
+        from ..models import TokenClaims
 
         # Create a user token
         user_claims = TokenClaims(
@@ -287,8 +287,9 @@ class TestJWTHandlerServiceTokens:
         assert jwt_handler.is_service_token(service_token) is True
 
         # User token should not be identified as service token
-        from ..models import TokenClaims
         from uuid import uuid4
+
+        from ..models import TokenClaims
 
         user_claims = TokenClaims(sub=uuid4(), tenant_id=uuid4())
         user_token = jwt_handler.create_access_token(user_claims)

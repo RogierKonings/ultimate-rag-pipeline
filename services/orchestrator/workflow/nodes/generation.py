@@ -12,15 +12,15 @@ import time
 from typing import TYPE_CHECKING
 
 import httpx
-from opentelemetry import trace
-
-from config import get_config
 from model_router import ModelRouter
 from observability.llm_metrics import (
     record_llm_duration,
     record_llm_request,
     record_model_fallback,
 )
+from opentelemetry import trace
+
+from config import get_config
 from shared.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:

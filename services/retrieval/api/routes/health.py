@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
+from resilience import DegradationMode, get_degradation_manager
 
 from api.schemas.common import ComponentHealth, HealthResponse
-from resilience import DegradationMode, get_degradation_manager
 
 router = APIRouter()
 

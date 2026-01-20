@@ -5,10 +5,8 @@ Reference: US-10.5.4 - Token Usage Accounting
 
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import pytest
-
 from usage.quota import QuotaExceededError
 from usage.tracker import UsageTracker, UsageTrackerConfig
 

@@ -8,8 +8,9 @@ scheduling, and notifies connection pools of credential changes.
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from .vault import VaultClient, VaultError
 

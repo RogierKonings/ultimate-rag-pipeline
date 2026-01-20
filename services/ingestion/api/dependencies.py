@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import redis.asyncio as aioredis
 from fastapi import Depends, HTTPException, Security

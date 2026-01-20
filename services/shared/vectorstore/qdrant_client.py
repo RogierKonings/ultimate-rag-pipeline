@@ -1,10 +1,9 @@
 """Qdrant Vector Store client wrapper for document embeddings."""
 
+import os
 from typing import Any
 
 from qdrant_client import QdrantClient
-
-from shared.config.urls import get_qdrant_url
 from qdrant_client.models import (
     FieldCondition,
     Filter,
@@ -12,6 +11,8 @@ from qdrant_client.models import (
     PointIdsList,
     PointStruct,
 )
+
+from shared.config.urls import get_qdrant_url
 
 
 class QdrantVectorStore:

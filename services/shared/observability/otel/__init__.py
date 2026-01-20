@@ -20,7 +20,6 @@ Usage:
 """
 
 from .attributes import RAGAttributes, RAGOperation, set_rag_attributes
-from .span_names import SpanNames
 from .context import (
     TraceContextPropagator,
     extract_trace_context,
@@ -28,6 +27,7 @@ from .context import (
     get_current_trace_id,
     inject_trace_context,
 )
+from .span_names import SpanNames
 from .spans import add_span_event, get_current_span, rag_span, set_span_error, traced
 from .tracer import (
     OTELConfig,

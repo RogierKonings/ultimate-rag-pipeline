@@ -4,7 +4,6 @@ import asyncio
 import json
 
 import structlog
-
 from gateway.client import ModelGateway
 from gateway.models import ChatCompletionRequest, ChatMessage
 

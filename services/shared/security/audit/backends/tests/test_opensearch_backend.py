@@ -1,6 +1,6 @@
 """Tests for OpenSearch audit backend."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -78,7 +78,7 @@ class TestGetIndexName:
         backend = OpenSearchAuditBackend(index_prefix="audit-logs")
 
         # Test with a specific timestamp
-        timestamp = datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2024, 3, 15, 10, 30, 0, tzinfo=UTC)
         index_name = backend._get_index_name(timestamp)
 
         assert index_name == "audit-logs-2024.03.15"
@@ -87,7 +87,7 @@ class TestGetIndexName:
         """Test index name with custom prefix."""
         backend = OpenSearchAuditBackend(index_prefix="my-custom-audit")
 
-        timestamp = datetime(2024, 12, 1, 0, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2024, 12, 1, 0, 0, 0, tzinfo=UTC)
         index_name = backend._get_index_name(timestamp)
 
         assert index_name == "my-custom-audit-2024.12.01"
@@ -97,7 +97,7 @@ class TestGetIndexName:
         backend = OpenSearchAuditBackend()
 
         # Create a timestamp that's midnight UTC
-        timestamp = datetime(2024, 6, 30, 23, 59, 59, tzinfo=timezone.utc)
+        timestamp = datetime(2024, 6, 30, 23, 59, 59, tzinfo=UTC)
         index_name = backend._get_index_name(timestamp)
 
         # Should still be June 30th in UTC
@@ -112,7 +112,7 @@ class TestWrite:
         """Create a sample audit log entry."""
         return AuditLogEntry(
             id=uuid4(),
-            timestamp=datetime(2024, 3, 15, 10, 30, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 3, 15, 10, 30, 0, tzinfo=UTC),
             user_id=uuid4(),
             username="testuser",
             tenant_id=uuid4(),
@@ -190,8 +190,8 @@ class TestQuery:
             tenant_id=uuid4(),
             actions=[AuditAction.DOCUMENT_CREATE, AuditAction.DOCUMENT_READ],
             outcomes=[AuditOutcome.SUCCESS],
-            start_time=datetime(2024, 3, 1, 0, 0, 0, tzinfo=timezone.utc),
-            end_time=datetime(2024, 3, 31, 23, 59, 59, tzinfo=timezone.utc),
+            start_time=datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC),
+            end_time=datetime(2024, 3, 31, 23, 59, 59, tzinfo=UTC),
             limit=50,
             offset=0,
         )
@@ -308,8 +308,8 @@ class TestGetStats:
         backend = OpenSearchAuditBackend()
 
         tenant_id = uuid4()
-        start_time = datetime(2024, 3, 1, 0, 0, 0, tzinfo=timezone.utc)
-        end_time = datetime(2024, 3, 31, 23, 59, 59, tzinfo=timezone.utc)
+        start_time = datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC)
+        end_time = datetime(2024, 3, 31, 23, 59, 59, tzinfo=UTC)
 
         mock_client = MagicMock()
         mock_client.search = MagicMock(return_value={

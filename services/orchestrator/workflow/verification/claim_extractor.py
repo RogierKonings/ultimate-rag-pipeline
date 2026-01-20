@@ -4,7 +4,6 @@ import json
 import time
 
 import structlog
-
 from gateway.client import ModelGateway
 from gateway.models import ChatCompletionRequest, ChatMessage
 

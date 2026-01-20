@@ -1,10 +1,8 @@
 """Tests for circuit breaker implementation."""
 
-import asyncio
 import time
 
 import pytest
-
 from resilience import CircuitBreaker, CircuitBreakerConfig, CircuitOpenError, CircuitState
 
 

@@ -7,9 +7,9 @@ import pytest
 
 from shared.config.timeouts import (
     ALL_TIMEOUTS,
-    RETRIEVAL_QDRANT_TIMEOUT,
-    RETRIEVAL_EMBEDDING_TIMEOUT,
     ORCHESTRATOR_LLM_TIMEOUT,
+    RETRIEVAL_EMBEDDING_TIMEOUT,
+    RETRIEVAL_QDRANT_TIMEOUT,
     TimeoutConfig,
     get_timeout,
     get_timeout_ms,
@@ -231,6 +231,7 @@ class TestEnvironmentVariableOverrides:
         ):
             # Reimport to pick up the env var
             from importlib import reload
+
             import shared.config.timeouts as timeouts_module
 
             reloaded = reload(timeouts_module)
@@ -250,6 +251,7 @@ class TestEnvironmentVariableOverrides:
             {"RETRIEVAL_QDRANT_RETRIES": "5"},
         ):
             from importlib import reload
+
             import shared.config.timeouts as timeouts_module
 
             reloaded = reload(timeouts_module)
@@ -267,6 +269,7 @@ class TestEnvironmentVariableOverrides:
             {"RETRIEVAL_QDRANT_IDEMPOTENT": "false"},
         ):
             from importlib import reload
+
             import shared.config.timeouts as timeouts_module
 
             reloaded = reload(timeouts_module)
@@ -284,6 +287,7 @@ class TestEnvironmentVariableOverrides:
             {"RETRIEVAL_QDRANT_TIMEOUT_MS": "not_a_number"},
         ):
             from importlib import reload
+
             import shared.config.timeouts as timeouts_module
 
             reloaded = reload(timeouts_module)

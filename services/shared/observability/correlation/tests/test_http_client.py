@@ -1,15 +1,16 @@
 """Tests for CorrelatedHttpClient."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-import httpx
 
-from ..http_client import CorrelatedHttpClient, create_service_client
+import httpx
+import pytest
+
 from ..context import (
     CorrelationContext,
-    set_correlation_context,
     clear_correlation_context,
+    set_correlation_context,
 )
+from ..http_client import CorrelatedHttpClient, create_service_client
 
 
 @pytest.fixture

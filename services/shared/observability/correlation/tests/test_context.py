@@ -1,12 +1,11 @@
 """Tests for CorrelationContext."""
 
-import pytest
 
 from ..context import (
     CorrelationContext,
+    clear_correlation_context,
     get_correlation_context,
     set_correlation_context,
-    clear_correlation_context,
 )
 
 

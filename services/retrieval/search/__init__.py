@@ -23,7 +23,6 @@ from search.fusion import (
 )
 from search.hybrid import HybridSearcher
 from search.keyword import KeywordSearcher
-from search.resilient_hybrid import ResilientHybridSearcher
 from search.models import (
     KeywordSearchRequest,
     KeywordSearchResponse,
@@ -34,6 +33,7 @@ from search.models import (
     SemanticSearchRequest,
     SemanticSearchResponse,
 )
+from search.resilient_hybrid import ResilientHybridSearcher
 from search.semantic import SemanticSearcher
 
 __all__ = [

@@ -12,15 +12,13 @@ Test Coverage:
 - Cross-tenant access prevention
 """
 
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from acl.filter import ACLFilter, AnonymousAccessFilter
-from acl.models import ACLFilterConfig, UserContext, Visibility
+from acl.models import ACLFilterConfig, UserContext
 from acl.safety_net import ACLSafetyNet
 from search.fusion import FusedResult
-
 
 # =============================================================================
 # Helper Functions

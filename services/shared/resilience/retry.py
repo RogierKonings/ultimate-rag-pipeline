@@ -38,7 +38,8 @@ from __future__ import annotations
 import asyncio
 import functools
 import random
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import structlog
 
@@ -189,7 +190,7 @@ async def with_retry(
 
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             last_error = TimeoutExceeded(operation_name, config.timeout_ms)
             await logger.awarning(
                 "Operation timed out",
@@ -319,14 +320,12 @@ async def with_timeout(
             timeout_ms=timeout_ms,
         )
 
-        result = await asyncio.wait_for(
+        return await asyncio.wait_for(
             func(*args, **kwargs),
             timeout=timeout_seconds,
         )
 
-        return result
-
-    except asyncio.TimeoutError:
+    except TimeoutError:
         await logger.aerror(
             "Operation timed out",
             operation=operation_name,

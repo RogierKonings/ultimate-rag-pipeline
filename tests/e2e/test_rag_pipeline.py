@@ -18,7 +18,7 @@ Prerequisites:
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.e2e
 # Canonical Test Dataset
 # ============================================================================
 
-TEST_DOCUMENTS: List[Dict[str, Any]] = [
+TEST_DOCUMENTS: list[dict[str, Any]] = [
     {
         "id": "test-doc-python",
         "title": "Python Programming Language",
@@ -189,10 +189,10 @@ TEST_DOCUMENTS: List[Dict[str, Any]] = [
 async def ingest_document(
     client,
     ingestion_url: str,
-    doc: Dict[str, Any],
+    doc: dict[str, Any],
     tenant_id: str,
-    headers: Dict[str, str],
-) -> Optional[str]:
+    headers: dict[str, str],
+) -> str | None:
     """Ingest a single document and return job ID."""
     payload = {
         "source_type": "filesystem",
@@ -229,7 +229,7 @@ async def wait_for_job(
     client,
     ingestion_url: str,
     job_id: str,
-    headers: Dict[str, str],
+    headers: dict[str, str],
     timeout: int = 60,
     poll_interval: int = 2,
 ) -> bool:
@@ -281,7 +281,7 @@ class TestRagPipelineE2E:
         except Exception as e:
             pytest.skip(f"Ingestion service not available: {e}")
 
-        yield TEST_DOCUMENTS
+        return TEST_DOCUMENTS
 
     @pytest.mark.asyncio
     async def test_health_endpoints(self, http_client, e2e_config):

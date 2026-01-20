@@ -4,7 +4,7 @@
 import uvicorn
 
 from config import get_settings
-from shared.observability.otel.tracer import setup_tracing, setup_auto_instrumentation
+from shared.observability.otel.tracer import setup_auto_instrumentation, setup_tracing
 
 if __name__ == "__main__":
     settings = get_settings()

@@ -3,7 +3,7 @@
 import uvicorn
 
 from config import RetrievalConfig
-from shared.observability.otel.tracer import setup_tracing, setup_auto_instrumentation
+from shared.observability.otel.tracer import setup_auto_instrumentation, setup_tracing
 
 
 def main():

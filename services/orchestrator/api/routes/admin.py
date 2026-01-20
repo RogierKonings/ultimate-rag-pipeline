@@ -3,12 +3,8 @@
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models.usage import (
     QuotaStatusResponse,
@@ -19,6 +15,9 @@ from api.models.usage import (
 )
 from database.connection import get_db
 from database.models.usage import TenantQuota, TokenUsage
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -46,7 +45,7 @@ async def get_usage_stats(
     Returns:
         Usage statistics breakdown by model.
     """
-    end_date = date.today()
+    end_date = datetime.now(UTC).date()
 
     if period == "day":
         start_date = end_date
@@ -136,7 +135,7 @@ async def get_quota_status(
     quota_config = quota_result.scalar_one_or_none()
 
     # Get current month's usage
-    today = date.today()
+    today = datetime.now(UTC).date()
     first_of_month = today.replace(day=1)
 
     usage_result = await db.execute(

@@ -5,8 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 from qdrant_client import AsyncQdrantClient
-
-from shared.config.urls import get_qdrant_url
 from qdrant_client.models import (
     Distance,
     FieldCondition,
@@ -18,6 +16,8 @@ from qdrant_client.models import (
     PointStruct,
     VectorParams,
 )
+
+from shared.config.urls import get_qdrant_url
 
 from .base import BaseIndexWriter
 from .models import IndexedChunk, WriteResult

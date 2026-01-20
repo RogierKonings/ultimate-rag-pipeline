@@ -30,7 +30,6 @@ class AuditBackend(ABC):
         Raises:
             Exception: If the write operation fails.
         """
-        pass
 
     @abstractmethod
     async def query(self, query: AuditQuery) -> list[AuditLogEntry]:
@@ -46,7 +45,6 @@ class AuditBackend(ABC):
         Raises:
             Exception: If the query operation fails.
         """
-        pass
 
     @abstractmethod
     async def get_stats(
@@ -69,7 +67,6 @@ class AuditBackend(ABC):
         Raises:
             Exception: If the stats operation fails.
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
@@ -79,4 +76,3 @@ class AuditBackend(ABC):
         Returns:
             True if the backend is healthy, False otherwise.
         """
-        pass

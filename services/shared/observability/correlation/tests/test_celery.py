@@ -1,18 +1,19 @@
 """Tests for Celery correlation integration."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from ..celery import (
-    inject_correlation_to_task,
-    extract_correlation_from_task,
     cleanup_correlation_for_task,
+    extract_correlation_from_task,
+    inject_correlation_to_task,
 )
 from ..context import (
     CorrelationContext,
+    clear_correlation_context,
     get_correlation_context,
     set_correlation_context,
-    clear_correlation_context,
 )
 
 

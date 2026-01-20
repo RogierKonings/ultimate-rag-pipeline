@@ -4,12 +4,12 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from shared.config import (
-    get_timeout_seconds,
-    get_retrieval_service_url,
     get_llm_gateway_url,
-    get_redis_url,
-    get_postgres_url,
     get_otel_endpoint,
+    get_postgres_url,
+    get_redis_url,
+    get_retrieval_service_url,
+    get_timeout_seconds,
 )
 
 

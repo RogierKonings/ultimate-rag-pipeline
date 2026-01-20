@@ -3,15 +3,15 @@
 Reference: US-10.7.5 - Comprehensive Audit Logging
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
+from api.routes.audit import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.routes.audit import router
 from services.shared.security.audit.models import (
     AuditAction,
     AuditLogEntry,
@@ -56,7 +56,7 @@ def sample_tenant_id():
 @pytest.fixture
 def sample_audit_entries(sample_tenant_id):
     """Create sample audit log entries."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     entries = []
 
     for i in range(5):
@@ -155,10 +155,10 @@ class TestQueryAuditLogs:
             mock_repo.search = AsyncMock(return_value=sample_audit_entries[:3])
             MockRepo.return_value = mock_repo
 
-            start_time = datetime.now(timezone.utc) - timedelta(days=1)
-            end_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC) - timedelta(days=1)
+            end_time = datetime.now(UTC)
 
-            response = await query_audit_logs(
+            await query_audit_logs(
                 tenant_id=sample_tenant_id,
                 db=mock_db_session,
                 start_time=start_time,
@@ -203,9 +203,8 @@ class TestGetAuditLogEntry:
     @pytest.mark.asyncio
     async def test_get_entry_not_found(self, mock_db_session, sample_tenant_id):
         """Test 404 when entry not found."""
-        from fastapi import HTTPException
-
         from api.routes.audit import get_audit_log_entry
+        from fastapi import HTTPException
 
         with patch("api.routes.audit.AuditRepository") as MockRepo:
             mock_repo = MagicMock()
@@ -224,9 +223,8 @@ class TestGetAuditLogEntry:
     @pytest.mark.asyncio
     async def test_get_entry_tenant_mismatch(self, mock_db_session, sample_audit_entries, sample_tenant_id):
         """Test 404 when entry exists but tenant doesn't match."""
-        from fastapi import HTTPException
-
         from api.routes.audit import get_audit_log_entry
+        from fastapi import HTTPException
 
         entry = sample_audit_entries[0]
         different_tenant = uuid4()
@@ -293,19 +291,19 @@ class TestGetAuditStats:
             entries_by_severity={},
             unique_users=5,
             unique_resources=10,
-            time_range_start=datetime.now(timezone.utc) - timedelta(days=7),
-            time_range_end=datetime.now(timezone.utc),
+            time_range_start=datetime.now(UTC) - timedelta(days=7),
+            time_range_end=datetime.now(UTC),
         )
 
-        start_time = datetime.now(timezone.utc) - timedelta(days=7)
-        end_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) - timedelta(days=7)
+        end_time = datetime.now(UTC)
 
         with patch("api.routes.audit.AuditRepository") as MockRepo:
             mock_repo = MagicMock()
             mock_repo.get_stats = AsyncMock(return_value=mock_stats)
             MockRepo.return_value = mock_repo
 
-            result = await get_audit_stats(
+            await get_audit_stats(
                 tenant_id=sample_tenant_id,
                 db=mock_db_session,
                 start_time=start_time,
@@ -332,8 +330,8 @@ class TestExportAuditLogs:
             mock_repo.search = AsyncMock(return_value=sample_audit_entries)
             MockRepo.return_value = mock_repo
 
-            start_time = datetime.now(timezone.utc) - timedelta(days=7)
-            end_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC) - timedelta(days=7)
+            end_time = datetime.now(UTC)
 
             response = await export_audit_logs(
                 tenant_id=sample_tenant_id,
@@ -351,17 +349,16 @@ class TestExportAuditLogs:
     @pytest.mark.asyncio
     async def test_csv_export(self, mock_db_session, sample_audit_entries, sample_tenant_id):
         """Test CSV export returns StreamingResponse."""
-        from fastapi.responses import StreamingResponse
-
         from api.routes.audit import export_audit_logs
+        from fastapi.responses import StreamingResponse
 
         with patch("api.routes.audit.AuditRepository") as MockRepo:
             mock_repo = MagicMock()
             mock_repo.search = AsyncMock(return_value=sample_audit_entries)
             MockRepo.return_value = mock_repo
 
-            start_time = datetime.now(timezone.utc) - timedelta(days=7)
-            end_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC) - timedelta(days=7)
+            end_time = datetime.now(UTC)
 
             response = await export_audit_logs(
                 tenant_id=sample_tenant_id,
@@ -377,12 +374,11 @@ class TestExportAuditLogs:
     @pytest.mark.asyncio
     async def test_export_time_range_limit(self, mock_db_session, sample_tenant_id):
         """Test that export fails for time range exceeding 90 days."""
+        from api.routes.audit import export_audit_logs
         from fastapi import HTTPException
 
-        from api.routes.audit import export_audit_logs
-
-        start_time = datetime.now(timezone.utc) - timedelta(days=100)
-        end_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) - timedelta(days=100)
+        end_time = datetime.now(UTC)
 
         with pytest.raises(HTTPException) as exc_info:
             await export_audit_logs(
@@ -398,12 +394,11 @@ class TestExportAuditLogs:
     @pytest.mark.asyncio
     async def test_export_invalid_format(self, mock_db_session, sample_tenant_id):
         """Test that export fails for invalid format."""
+        from api.routes.audit import export_audit_logs
         from fastapi import HTTPException
 
-        from api.routes.audit import export_audit_logs
-
-        start_time = datetime.now(timezone.utc) - timedelta(days=7)
-        end_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) - timedelta(days=7)
+        end_time = datetime.now(UTC)
 
         with pytest.raises(HTTPException) as exc_info:
             await export_audit_logs(
@@ -432,7 +427,7 @@ class TestValidateHashChain:
         for i in range(3):
             entry = AuditLogEntry(
                 id=uuid4(),
-                timestamp=datetime.now(timezone.utc) + timedelta(seconds=i),
+                timestamp=datetime.now(UTC) + timedelta(seconds=i),
                 tenant_id=sample_tenant_id,
                 action=AuditAction.DOCUMENT_READ,
                 outcome=AuditOutcome.SUCCESS,
@@ -467,7 +462,7 @@ class TestValidateHashChain:
         for i in range(3):
             entry = AuditLogEntry(
                 id=uuid4(),
-                timestamp=datetime.now(timezone.utc) + timedelta(seconds=i),
+                timestamp=datetime.now(UTC) + timedelta(seconds=i),
                 tenant_id=sample_tenant_id,
                 action=AuditAction.DOCUMENT_READ,
                 outcome=AuditOutcome.SUCCESS,
@@ -532,8 +527,8 @@ class TestTenantIdRequired:
 
     def test_export_requires_tenant_id(self, client):
         """Test /export requires tenant_id."""
-        start_time = datetime.now(timezone.utc) - timedelta(days=7)
-        end_time = datetime.now(timezone.utc)
+        start_time = datetime.now(UTC) - timedelta(days=7)
+        end_time = datetime.now(UTC)
         response = client.get(
             "/api/v1/audit/export",
             params={

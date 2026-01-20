@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from resilience import (
     CircuitBreakerConfig,
     CircuitState,
@@ -11,7 +10,7 @@ from resilience import (
     ResilienceConfig,
     RetrievalDegradationManager,
 )
-from search.fusion import FusedResult, FusionMethod, HybridSearchConfig, HybridSearchResponse
+from search.fusion import HybridSearchConfig, HybridSearchResponse
 from search.hybrid import HybridSearcher
 from search.resilient_hybrid import ResilientHybridSearcher
 

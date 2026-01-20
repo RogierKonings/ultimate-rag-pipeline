@@ -10,6 +10,7 @@ import os
 
 import pytest
 
+
 # Mark all tests in the e2e directory as requiring the --e2e flag
 def pytest_configure(config):
     """Configure custom pytest markers for E2E tests."""

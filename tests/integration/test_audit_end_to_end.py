@@ -13,7 +13,7 @@ import csv
 import io
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -33,7 +33,6 @@ from services.shared.security.audit import (
     AuditStats,
 )
 from services.shared.security.audit.backends.opensearch import OpenSearchAuditBackend
-
 
 # ============================================================================
 # Fixtures

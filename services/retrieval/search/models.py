@@ -8,7 +8,7 @@ from uuid import UUID
 import numpy as np
 from pydantic import BaseModel, Field
 
-from shared.config.urls import get_qdrant_url, get_opensearch_url
+from shared.config.urls import get_opensearch_url, get_qdrant_url
 
 
 class SearchResultItem(BaseModel):

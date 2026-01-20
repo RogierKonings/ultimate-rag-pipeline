@@ -8,13 +8,13 @@ import time
 from typing import TYPE_CHECKING
 
 import structlog
-
-from config import get_config
 from gateway.client import ModelGateway
 from observability.verification_metrics import record_verification_metrics
 from workflow.verification.claim_extractor import ClaimExtractor
 from workflow.verification.claim_verifier import ClaimVerifier
 from workflow.verification.models import VerificationResult, VerificationStatus
+
+from config import get_config
 
 if TYPE_CHECKING:
     from workflow.state import RAGState

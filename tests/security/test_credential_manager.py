@@ -5,7 +5,6 @@ This module tests credential rotation, lease management,
 and secret providers with caching.
 """
 
-import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +12,6 @@ import pytest
 
 from services.shared.security.secrets.credential_manager import (
     CredentialManagerConfig,
-    CredentialManagerError,
     DatabaseCredentials,
     DynamicCredentialManager,
 )
@@ -156,8 +154,8 @@ class TestFileSecretProvider:
     @pytest.mark.asyncio
     async def test_caching(self, provider, temp_secrets_dir):
         """Test that secrets are cached."""
-        # First read
-        secret1 = await provider.get("api_key")
+        # First read to populate cache
+        await provider.get("api_key")
 
         # Modify file
         (temp_secrets_dir / "api_key").write_text("modified_value")

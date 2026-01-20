@@ -14,6 +14,23 @@ from processors.video.audio import (
     AudioExtractionResult,
     AudioExtractor,
 )
+
+# Wave 2: Content Analysis
+from processors.video.content_fusion import (
+    ContentFusionService,
+    FusionConfig,
+    KeyframeContent,
+    VideoChunk,
+    VideoChunkStorage,
+)
+
+# Wave 3: Indexing
+from processors.video.embedding import (
+    ChunkEmbedding,
+    EmbeddingBatchResult,
+    VideoChunkEmbedder,
+    VideoChunkEmbedderConfig,
+)
 from processors.video.exceptions import (
     AudioExtractionError,
     KeyframeExtractionError,
@@ -30,12 +47,22 @@ from processors.video.keyframe_extractor import (
     KeyframeExtractor,
 )
 from processors.video.metadata import ValidationConfig, VideoMetadata
+from processors.video.ocr import OCREngine, OCRResult, TesseractOCR, TesseractOCRConfig, TextRegion
+from processors.video.ocr_processor import KeyframeOCR, OCRBatchProcessor, OCRProcessorConfig
+from processors.video.opensearch_indexer import (
+    OpenSearchIndexerConfig,
+    OpenSearchVideoIndexer,
+)
 from processors.video.pipeline import (
     PipelineConfig,
     PipelineProgress,
     PipelineResult,
     PipelineStage,
     VideoProcessingPipeline,
+)
+from processors.video.qdrant_indexer import (
+    QdrantIndexerConfig,
+    QdrantVideoIndexer,
 )
 from processors.video.scene_detection import (
     SceneBoundary,
@@ -52,17 +79,6 @@ from processors.video.transcriber import (
 )
 from processors.video.transcript_storage import TranscriptStorage, TranscriptStorageConfig
 from processors.video.validator import VideoValidator
-
-# Wave 2: Content Analysis
-from processors.video.content_fusion import (
-    ContentFusionService,
-    FusionConfig,
-    KeyframeContent,
-    VideoChunk,
-    VideoChunkStorage,
-)
-from processors.video.ocr import OCREngine, OCRResult, TesseractOCR, TesseractOCRConfig, TextRegion
-from processors.video.ocr_processor import KeyframeOCR, OCRBatchProcessor, OCRProcessorConfig
 from processors.video.vision import (
     OllamaVisionProvider,
     OpenAIVisionProvider,
@@ -73,22 +89,6 @@ from processors.video.vision_analyzer import (
     KeyframeAnalysis,
     VisionAnalyzer,
     VisionAnalyzerConfig,
-)
-
-# Wave 3: Indexing
-from processors.video.embedding import (
-    ChunkEmbedding,
-    EmbeddingBatchResult,
-    VideoChunkEmbedder,
-    VideoChunkEmbedderConfig,
-)
-from processors.video.opensearch_indexer import (
-    OpenSearchIndexerConfig,
-    OpenSearchVideoIndexer,
-)
-from processors.video.qdrant_indexer import (
-    QdrantIndexerConfig,
-    QdrantVideoIndexer,
 )
 
 __all__ = [

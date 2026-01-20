@@ -19,6 +19,7 @@ from .semantic import SemanticSearcher
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
     from shared.tenant.config_service import TenantConfigService, TenantIndexConfig
 
 logger = structlog.get_logger(__name__)

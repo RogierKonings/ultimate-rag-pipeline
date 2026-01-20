@@ -225,7 +225,7 @@ class TenantPIIConfigService:
 
         # Build settings (handle None values from tenant overrides)
         ingestion_config = raw_config.get("ingestion") or {}
-        settings = PIISettings(
+        return PIISettings(
             enabled=raw_config.get("enabled", True),
             default_handling_mode=default_mode,
             confidence_threshold=raw_config.get("confidence_threshold", 0.7),
@@ -238,8 +238,6 @@ class TenantPIIConfigService:
             ),
             log_detections=True,
         )
-
-        return settings
 
     async def get_detector(
         self,

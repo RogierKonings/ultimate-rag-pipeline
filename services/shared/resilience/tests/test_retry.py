@@ -616,7 +616,7 @@ class TestEdgeCases:
             call_count += 1
             if call_count == 1:
                 raise ValueError("Regular error")
-            elif call_count == 2:
+            if call_count == 2:
                 await asyncio.sleep(0.2)  # Timeout
             elif call_count == 3:
                 raise ConnectionError("Connection lost")

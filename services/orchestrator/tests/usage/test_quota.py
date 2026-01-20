@@ -4,7 +4,6 @@ Reference: US-10.5.4 - Token Usage Accounting
 """
 
 import pytest
-
 from usage.quota import QuotaExceededError
 
 

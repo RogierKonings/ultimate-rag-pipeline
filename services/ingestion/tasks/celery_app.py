@@ -26,6 +26,7 @@ from celery import Celery
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 from pydantic import BaseModel
+
 from shared.observability.correlation import setup_celery_correlation_signals
 
 

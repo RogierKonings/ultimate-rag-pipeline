@@ -1,24 +1,25 @@
 """Integration tests for correlation propagation."""
 
+from unittest.mock import MagicMock, patch
+
+import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import httpx
 
-from ..middleware import CorrelationMiddleware
-from ..http_client import CorrelatedHttpClient
+from ..celery import (
+    cleanup_correlation_for_task,
+    extract_correlation_from_task,
+    inject_correlation_to_task,
+)
 from ..context import (
     CorrelationContext,
+    clear_correlation_context,
     get_correlation_context,
     set_correlation_context,
-    clear_correlation_context,
 )
-from ..celery import (
-    inject_correlation_to_task,
-    extract_correlation_from_task,
-    cleanup_correlation_for_task,
-)
+from ..http_client import CorrelatedHttpClient
+from ..middleware import CorrelationMiddleware
 
 
 class TestMiddlewareToHttpClientPropagation:

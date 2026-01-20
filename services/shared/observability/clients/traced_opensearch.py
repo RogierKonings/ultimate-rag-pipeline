@@ -134,7 +134,7 @@ class TracedOpenSearchClient:
     async def index(
         self,
         body: dict[str, Any],
-        id: str | None = None,
+        doc_id: str | None = None,
         index: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -143,7 +143,7 @@ class TracedOpenSearchClient:
 
         Args:
             body: Document to index
-            id: Document ID (optional, auto-generated if not provided)
+            doc_id: Document ID (optional, auto-generated if not provided)
             index: Index to insert into (defaults to instance index)
             **kwargs: Additional arguments passed to underlying client
 
@@ -163,14 +163,14 @@ class TracedOpenSearchClient:
             span.set_attribute("db.system", "opensearch")
             span.set_attribute("db.operation", "index")
             span.set_attribute("db.elasticsearch.index", effective_index)
-            if id:
-                span.set_attribute("db.elasticsearch.doc_id", id)
+            if doc_id:
+                span.set_attribute("db.elasticsearch.doc_id", doc_id)
 
             try:
                 result = await self._client.index(
                     index=effective_index,
                     body=body,
-                    id=id,
+                    id=doc_id,
                     **kwargs,
                 )
 
@@ -184,7 +184,7 @@ class TracedOpenSearchClient:
                     f"OpenSearch index failed: {e}",
                     extra={
                         "index": effective_index,
-                        "doc_id": id,
+                        "doc_id": doc_id,
                     },
                 )
                 raise
@@ -247,7 +247,7 @@ class TracedOpenSearchClient:
 
     async def delete(
         self,
-        id: str,
+        doc_id: str,
         index: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -255,7 +255,7 @@ class TracedOpenSearchClient:
         Delete a document with tracing.
 
         Args:
-            id: Document ID to delete
+            doc_id: Document ID to delete
             index: Index to delete from (defaults to instance index)
             **kwargs: Additional arguments passed to underlying client
 
@@ -275,12 +275,12 @@ class TracedOpenSearchClient:
             span.set_attribute("db.system", "opensearch")
             span.set_attribute("db.operation", "delete")
             span.set_attribute("db.elasticsearch.index", effective_index)
-            span.set_attribute("db.elasticsearch.doc_id", id)
+            span.set_attribute("db.elasticsearch.doc_id", doc_id)
 
             try:
                 result = await self._client.delete(
                     index=effective_index,
-                    id=id,
+                    id=doc_id,
                     **kwargs,
                 )
 
@@ -294,7 +294,7 @@ class TracedOpenSearchClient:
                     f"OpenSearch delete failed: {e}",
                     extra={
                         "index": effective_index,
-                        "doc_id": id,
+                        "doc_id": doc_id,
                     },
                 )
                 raise

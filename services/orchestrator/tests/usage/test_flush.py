@@ -3,11 +3,9 @@
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from usage.flush import UsageFlusher, UsageFlusherConfig
 
 

@@ -3,8 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from workflow.verification import Claim, ClaimExtractor
+from workflow.verification import ClaimExtractor
 
 
 @pytest.fixture

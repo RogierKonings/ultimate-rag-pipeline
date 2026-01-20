@@ -308,8 +308,6 @@ async def _process_document_async(
     from processors import ChunkingConfig, ChunkingEngine
     from processors.enrichment import EnrichmentContext, EnrichmentPipeline
     from processors.parsers import create_default_registry
-    from shared.database.connection import get_session
-    from shared.security.pii import get_tenant_pii_config_service
 
     from config import get_settings
     from services.deduplication import (
@@ -317,6 +315,8 @@ async def _process_document_async(
         DeduplicationResult,
         DeduplicationService,
     )
+    from shared.database.connection import get_session
+    from shared.security.pii import get_tenant_pii_config_service
 
     settings = get_settings()
     start_time = datetime.now(tz=UTC)

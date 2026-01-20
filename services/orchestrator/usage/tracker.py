@@ -7,13 +7,12 @@ Reference: US-10.5.4 - Token Usage Accounting
 """
 
 import logging
-from datetime import date
+from datetime import UTC, datetime
 
 import redis.asyncio as redis
+from database.models.usage import TenantQuota, TokenUsage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-from database.models.usage import TenantQuota, TokenUsage
 from usage.metrics import llm_tokens_total, quota_checks_total
 from usage.quota import QuotaExceededError
 
@@ -118,7 +117,7 @@ class UsageTracker:
             return
 
         try:
-            key = self._build_key(tenant_id, date.today(), model)
+            key = self._build_key(tenant_id, datetime.now(UTC).date(), model)
 
             # Increment Redis counters
             await self._redis.hincrby(key, "prompt", prompt_tokens)
@@ -164,7 +163,7 @@ class UsageTracker:
             return
 
         try:
-            key = self._build_key(tenant_id, date.today(), model)
+            key = self._build_key(tenant_id, datetime.now(UTC).date(), model)
 
             await self._redis.hincrby(key, "embedding", tokens)
             await self._redis.expire(key, self.config.key_ttl_seconds)
@@ -187,7 +186,7 @@ class UsageTracker:
         Returns:
             Total tokens used this month.
         """
-        today = date.today()
+        today = datetime.now(UTC).date()
         first_of_month = today.replace(day=1)
 
         # Get PostgreSQL totals

@@ -4,11 +4,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from shared.config import (
-    get_timeout_seconds,
-    get_qdrant_url,
-    get_opensearch_url,
     get_llm_gateway_url,
+    get_opensearch_url,
+    get_qdrant_url,
     get_redis_url,
+    get_timeout_seconds,
 )
 
 

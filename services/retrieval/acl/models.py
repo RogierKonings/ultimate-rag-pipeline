@@ -8,7 +8,6 @@ from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-
 from tier_config import TenantTier
 
 

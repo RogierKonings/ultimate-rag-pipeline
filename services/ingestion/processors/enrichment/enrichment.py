@@ -202,7 +202,7 @@ class EnrichmentPipeline:
                 has_pii=shared_result.has_pii,
                 high_sensitivity=shared_result.has_high_sensitivity,
             )
-        elif self._pii_detector:
+        if self._pii_detector:
             return await self._pii_detector.detect(text)
         return None
 

@@ -234,7 +234,7 @@ async def export_audit_logs(
     start_time: Annotated[datetime, Query(description="Start of time range")],
     end_time: Annotated[datetime, Query(description="End of time range")],
     db: DbSessionDep,
-    format: Annotated[str, Query(description="Export format: json or csv")] = "json",
+    output_format: Annotated[str, Query(description="Export format: json or csv", alias="format")] = "json",
     include_details: Annotated[bool, Query(description="Include full details field")] = False,
 ):
     """Export audit logs.
@@ -244,7 +244,7 @@ async def export_audit_logs(
         start_time: Required start of time range.
         end_time: Required end of time range.
         db: Database session.
-        format: Export format (json or csv). Default: json.
+        output_format: Export format (json or csv). Default: json.
         include_details: Whether to include full details field.
 
     Returns:
@@ -261,7 +261,7 @@ async def export_audit_logs(
             detail=f"Export time range cannot exceed {MAX_EXPORT_DAYS} days",
         )
 
-    if format not in ("json", "csv"):
+    if output_format not in ("json", "csv"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Format must be 'json' or 'csv'",
@@ -281,7 +281,7 @@ async def export_audit_logs(
     repo = AuditRepository(db)
     entries = await repo.search(query)
 
-    if format == "csv":
+    if output_format == "csv":
         return _generate_csv_response(entries, include_details)
 
     # JSON format

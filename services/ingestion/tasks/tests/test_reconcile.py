@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-
 from tasks.reconcile import (
     ReconciliationAction,
     ReconciliationIssue,
@@ -23,7 +22,6 @@ from tasks.reconcile import (
     _handle_missing_qdrant,
     _handle_orphan_opensearch,
     _handle_orphan_qdrant,
-    _reconcile_index_async,
     _reconcile_missing_chunks,
     _reconcile_orphaned_entries,
 )

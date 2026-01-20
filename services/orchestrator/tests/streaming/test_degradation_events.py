@@ -1,9 +1,8 @@
 """Tests for degradation info in streaming events."""
 
-import pytest
 from streaming.models import (
-    StartEventData,
     DoneEventData,
+    StartEventData,
     StreamEvent,
     StreamEventType,
 )

@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from workflow.nodes.verification import verification_node
 from workflow.state import create_initial_state
 

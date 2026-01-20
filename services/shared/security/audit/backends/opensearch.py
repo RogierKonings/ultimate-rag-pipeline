@@ -3,7 +3,7 @@
 import logging
 import os
 import ssl
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -152,9 +152,9 @@ class OpenSearchAuditBackend(AuditBackend):
         """
         # Ensure we're working with UTC
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         else:
-            timestamp = timestamp.astimezone(timezone.utc)
+            timestamp = timestamp.astimezone(UTC)
 
         date_str = timestamp.strftime("%Y.%m.%d")
         return f"{self._index_prefix}-{date_str}"

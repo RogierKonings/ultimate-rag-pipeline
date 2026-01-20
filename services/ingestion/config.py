@@ -22,16 +22,16 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 from shared.config import (
-    get_timeout_seconds,
-    get_postgres_url,
-    get_redis_url,
-    get_qdrant_url,
-    get_opensearch_url,
-    get_minio_url,
     get_celery_broker_url,
     get_celery_result_backend,
     get_llm_gateway_url,
+    get_minio_url,
+    get_opensearch_url,
     get_otel_endpoint,
+    get_postgres_url,
+    get_qdrant_url,
+    get_redis_url,
+    get_timeout_seconds,
 )
 
 # Architecture-defined constants (US-2.12)

@@ -11,13 +11,10 @@ from api.schemas import (
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentResponse,
-    DocumentSyncStatus,
-    IndexStatusValue,
     IngestResponse,
     ReindexRequest,
     SyncStatusFilter,
     SyncStatusResponse,
-    SyncStatusSummary,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -112,15 +109,13 @@ async def get_sync_status(
     """
     tenant_id = current_user.get("tenant_id")
 
-    result = await document_service.get_sync_status(
+    return await document_service.get_sync_status(
         tenant_id=tenant_id,
         status_filter=status_filter.value,
         since=since,
         limit=limit,
         offset=offset,
     )
-
-    return result
 
 
 @router.get(

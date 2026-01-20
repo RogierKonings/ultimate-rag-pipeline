@@ -2,7 +2,6 @@
 
 import typing
 
-import pytest
 from workflow.state import RAGState, create_initial_state
 
 
@@ -108,10 +107,10 @@ class TestRAGStateRetrievalQuality:
         """retrieval_quality should be defined in RAGState type annotations."""
         type_hints = typing.get_type_hints(RAGState)
         assert "retrieval_quality" in type_hints
-        assert type_hints["retrieval_quality"] == dict
+        assert type_hints["retrieval_quality"] is dict
 
     def test_context_quality_in_type_annotations(self):
         """context_quality should be defined in RAGState type annotations."""
         type_hints = typing.get_type_hints(RAGState)
         assert "context_quality" in type_hints
-        assert type_hints["context_quality"] == str
+        assert type_hints["context_quality"] is str

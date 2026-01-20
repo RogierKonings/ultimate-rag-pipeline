@@ -8,6 +8,7 @@ from resilience import (
     DegradationMode,
     RetrievalDegradationManager,
 )
+
 from search.fusion import FusedResult, FusionMethod, HybridSearchConfig, HybridSearchResponse
 from search.hybrid import HybridSearcher
 

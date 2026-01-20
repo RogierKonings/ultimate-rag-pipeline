@@ -7,7 +7,6 @@ from uuid import uuid4
 import httpx
 import pytest
 from workflow.nodes.multi_retrieval import (
-    AggregatedContext,
     SubQueryResult,
     _aggregate_results,
     _format_multi_hop_context,

@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 
 class TestTraceHierarchy:
@@ -30,9 +30,8 @@ class TestTraceHierarchy:
         """Test that nested spans form correct hierarchy."""
         provider, tracer, exporter = tracer_with_exporter
 
-        with tracer.start_as_current_span("parent") as parent_span:
-            with tracer.start_as_current_span("child") as child_span:
-                pass
+        with tracer.start_as_current_span("parent"), tracer.start_as_current_span("child"):
+            pass
 
         spans = exporter.get_finished_spans()
         assert len(spans) == 2

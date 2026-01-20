@@ -59,6 +59,10 @@ Example:
     ```
 """
 
+from .backends import (
+    AuditBackend,
+    OpenSearchAuditBackend,
+)
 from .logger import (
     AuditLogger,
     AuditLogHandler,
@@ -81,10 +85,6 @@ from .models import (
 )
 from .repository import (
     AuditRepository,
-)
-from .backends import (
-    AuditBackend,
-    OpenSearchAuditBackend,
 )
 
 __all__ = [

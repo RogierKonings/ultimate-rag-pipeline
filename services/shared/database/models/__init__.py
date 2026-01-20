@@ -6,6 +6,7 @@ from database.models.audit import AuditLog
 from database.models.base import Base, SoftDeleteMixin, TimestampMixin
 from database.models.document import Chunk, Document, IndexStatus
 from database.models.feedback import QueryFeedback
+from database.models.usage import TenantQuota, TokenUsage
 from database.models.user import (
     ApiKey,
     Group,
@@ -15,7 +16,6 @@ from database.models.user import (
     UserGroup,
     UserRole,
 )
-from database.models.usage import TenantQuota, TokenUsage
 from database.models.verification_log import VerificationLog
 from database.models.video import (
     ProcessingStage,

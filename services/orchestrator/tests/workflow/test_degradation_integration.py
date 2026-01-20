@@ -4,10 +4,11 @@ These tests verify that degradation information propagates correctly
 through the entire RAG workflow: retrieval → prompt building → response.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from workflow.nodes.prompt_building import DEGRADATION_DISCLAIMERS, prompt_building_node
 from workflow.nodes.retrieval import retrieval_node
-from workflow.nodes.prompt_building import prompt_building_node, DEGRADATION_DISCLAIMERS
 
 
 def create_mock_httpx_response(data: dict) -> MagicMock:

@@ -3,14 +3,12 @@
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-from datetime import date, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from api.routes.admin import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from api.routes.admin import router
 
 
 @pytest.fixture
@@ -289,7 +287,7 @@ class TestSetQuota:
             alert_threshold_percent=90,
         )
 
-        response = await set_quota(
+        await set_quota(
             tenant_id="tenant-123",
             request=request,
             db=mock_db_session,
@@ -332,9 +330,8 @@ class TestDeleteQuota:
     @pytest.mark.asyncio
     async def test_delete_quota_not_found(self, mock_db_session):
         """Test deletion when no config exists."""
-        from fastapi import HTTPException
-
         from api.routes.admin import delete_quota
+        from fastapi import HTTPException
 
         # Mock no config
         mock_result = MagicMock()

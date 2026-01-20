@@ -3,17 +3,15 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import httpx
 import pytest
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-
-from shared.observability.otel.span_names import SpanNames
-from workflow.nodes import retrieval_node, routing_node, generation_node
+from workflow.nodes import generation_node, retrieval_node, routing_node
 from workflow.state import create_initial_state
 
+from shared.observability.otel.span_names import SpanNames
 
 # Module-level span exporter to avoid TracerProvider override issues
 _exporter = InMemorySpanExporter()
@@ -33,7 +31,7 @@ def setup_tracer_provider():
 def clear_spans():
     """Clear spans before each test."""
     _exporter.clear()
-    yield
+    return
 
 
 class TestRetrievalNodeTracing:
@@ -74,7 +72,7 @@ class TestRetrievalNodeTracing:
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            result = await retrieval_node(state)
+            await retrieval_node(state)
 
         # Verify span was created
         spans = _exporter.get_finished_spans()
@@ -122,7 +120,7 @@ class TestRetrievalNodeTracing:
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            result = await retrieval_node(state)
+            await retrieval_node(state)
 
         spans = _exporter.get_finished_spans()
         retrieval_spans = [s for s in spans if s.name == SpanNames.ORCHESTRATOR_RETRIEVAL]
@@ -154,7 +152,7 @@ class TestRoutingNodeTracing:
             tenant_id="tenant-123",
         )
 
-        result = await routing_node(state)
+        await routing_node(state)
 
         spans = _exporter.get_finished_spans()
         routing_spans = [s for s in spans if s.name == SpanNames.ORCHESTRATOR_ROUTING]
@@ -172,7 +170,7 @@ class TestRoutingNodeTracing:
             tenant_id="tenant-789",
         )
 
-        result = await routing_node(state)
+        await routing_node(state)
 
         spans = _exporter.get_finished_spans()
         routing_spans = [s for s in spans if s.name == SpanNames.ORCHESTRATOR_ROUTING]
@@ -235,7 +233,7 @@ class TestGenerationNodeTracing:
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            result = await generation_node(state)
+            await generation_node(state)
 
         spans = _exporter.get_finished_spans()
         generation_spans = [s for s in spans if s.name == SpanNames.ORCHESTRATOR_GENERATION]
@@ -271,7 +269,7 @@ class TestGenerationNodeTracing:
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            result = await generation_node(state)
+            await generation_node(state)
 
         spans = _exporter.get_finished_spans()
         generation_spans = [s for s in spans if s.name == SpanNames.ORCHESTRATOR_GENERATION]

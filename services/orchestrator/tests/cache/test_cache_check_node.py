@@ -3,11 +3,10 @@
 Tests US-10.5.3: Answer-Level Caching workflow integration
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-from cache.answer_cache import AnswerCache, AnswerCacheConfig, CachedAnswer
+from cache.answer_cache import AnswerCache, CachedAnswer
 from workflow.nodes.cache_check import (
     _compute_config_hash_from_options,
     cache_check_node,
@@ -250,7 +249,7 @@ class TestCacheStoreNode:
         base_state["response"] = "Test response"
         base_state["cache_hit"] = True
 
-        result = await cache_store_node(base_state)
+        await cache_store_node(base_state)
 
         mock_answer_cache.set.assert_not_called()
 
@@ -264,7 +263,7 @@ class TestCacheStoreNode:
         base_state["response"] = None
         base_state["cache_hit"] = False
 
-        result = await cache_store_node(base_state)
+        await cache_store_node(base_state)
 
         mock_answer_cache.set.assert_not_called()
 
@@ -292,7 +291,7 @@ class TestCacheStoreNode:
         base_state["retrieval_quality"] = {"mode": "hybrid"}
         base_state["strategy"] = "simple"
 
-        result = await cache_store_node(base_state)
+        await cache_store_node(base_state)
 
         mock_answer_cache.set.assert_called_once()
         call_args = mock_answer_cache.set.call_args

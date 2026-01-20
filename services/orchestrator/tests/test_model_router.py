@@ -8,7 +8,6 @@ Tests cover:
 """
 
 import pytest
-
 from model_router import (
     MODEL_CONFIGS,
     SELECTION_MATRIX,

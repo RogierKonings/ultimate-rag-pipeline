@@ -4,13 +4,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from search.fusion import FusionMethod, HybridSearchConfig
+from search.fusion import FusionMethod
 from search.hybrid import HybridSearcher
 from search.models import (
     KeywordSearchResponse,
     SearchResultItem,
     SemanticSearchResponse,
 )
+
 from shared.observability.otel.span_names import SpanNames
 
 

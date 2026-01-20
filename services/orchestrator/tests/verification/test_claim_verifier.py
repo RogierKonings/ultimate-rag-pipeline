@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from workflow.verification import (
     Claim,
     ClaimVerifier,
@@ -304,8 +303,7 @@ class TestClaimVerifierVerifyAll:
                     )
                 ]
                 return response
-            else:
-                raise Exception("Gateway error")
+            raise Exception("Gateway error")
 
         mock_gateway.chat_completion.side_effect = side_effect
 

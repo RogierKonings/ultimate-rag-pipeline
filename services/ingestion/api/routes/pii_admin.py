@@ -24,13 +24,12 @@ from api.schemas.pii import (
     TenantPIISettingsUpdate,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared.security.pii import (
-    PIIDetector,
     PIIHandlingMode,
-    PIISettings,
     get_tenant_pii_config_service,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

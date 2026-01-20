@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 
 @dataclass(frozen=True)
@@ -268,7 +267,7 @@ HTTP_CONNECTION_TIMEOUT = _create_timeout_config(
 # Timeout Registry
 # =============================================================================
 
-ALL_TIMEOUTS: Dict[str, TimeoutConfig] = {
+ALL_TIMEOUTS: dict[str, TimeoutConfig] = {
     # Retrieval
     "RETRIEVAL_EMBEDDING": RETRIEVAL_EMBEDDING_TIMEOUT,
     "RETRIEVAL_QDRANT": RETRIEVAL_QDRANT_TIMEOUT,

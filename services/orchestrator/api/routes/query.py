@@ -482,10 +482,9 @@ def _rating_to_label(rating: int) -> str:
     """
     if rating >= 4:
         return "positive"
-    elif rating == 3:
+    if rating == 3:
         return "neutral"
-    else:
-        return "negative"
+    return "negative"
 
 
 @router.post(

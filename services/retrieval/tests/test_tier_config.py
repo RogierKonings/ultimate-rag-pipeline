@@ -4,7 +4,6 @@ Tests for US-10.5.1: Dynamic Retrieval Parameters
 """
 
 import pytest
-
 from tier_config import (
     QUERY_TYPE_MODIFIERS,
     TIER_CONFIGS,

@@ -55,7 +55,7 @@ rag_verification_claims = Counter(
 
 
 def record_verification_metrics(
-    result: "VerificationResult",
+    result: VerificationResult,
     tenant_id: str | None = None,
 ) -> None:
     """

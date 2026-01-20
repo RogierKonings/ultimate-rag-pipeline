@@ -4,11 +4,9 @@ Tests US-10.5.3: Answer-Level Caching
 """
 
 import json
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from cache.answer_cache import AnswerCache, AnswerCacheConfig, CachedAnswer
 
 

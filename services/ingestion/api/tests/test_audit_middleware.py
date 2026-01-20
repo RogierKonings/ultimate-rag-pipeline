@@ -1,7 +1,5 @@
 """Tests for audit middleware integration in ingestion service."""
 
-import pytest
-from unittest.mock import AsyncMock, patch
 
 
 class TestAuditMiddlewareIntegration:
