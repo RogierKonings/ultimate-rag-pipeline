@@ -15,9 +15,10 @@ from qdrant_client.models import (
     HnswConfigDiff,
     OptimizersConfigDiff,
     PayloadSchemaType,
-    AliasOperations,
     CreateAliasOperation,
     DeleteAliasOperation,
+    CreateAlias,
+    DeleteAlias,
 )
 
 logger = logging.getLogger(__name__)
@@ -190,21 +191,21 @@ class CollectionManager:
         """
         try:
             # Build alias operations
-            operations: list[AliasOperations] = []
+            operations: list[CreateAliasOperation | DeleteAliasOperation] = []
 
             # Delete existing alias if it exists
             current_target = await self.get_alias_target(alias_name)
             if current_target:
                 operations.append(
-                    AliasOperations(
-                        delete_alias=DeleteAliasOperation(alias_name=alias_name)
+                    DeleteAliasOperation(
+                        delete_alias=DeleteAlias(alias_name=alias_name)
                     )
                 )
 
             # Create new alias
             operations.append(
-                AliasOperations(
-                    create_alias=CreateAliasOperation(
+                CreateAliasOperation(
+                    create_alias=CreateAlias(
                         alias_name=alias_name,
                         collection_name=new_collection,
                     )
@@ -237,8 +238,8 @@ class CollectionManager:
         try:
             await self.client.update_collection_aliases(
                 change_aliases_operations=[
-                    AliasOperations(
-                        create_alias=CreateAliasOperation(
+                    CreateAliasOperation(
+                        create_alias=CreateAlias(
                             alias_name=alias_name,
                             collection_name=collection_name,
                         )
@@ -263,8 +264,8 @@ class CollectionManager:
         try:
             await self.client.update_collection_aliases(
                 change_aliases_operations=[
-                    AliasOperations(
-                        delete_alias=DeleteAliasOperation(alias_name=alias_name)
+                    DeleteAliasOperation(
+                        delete_alias=DeleteAlias(alias_name=alias_name)
                     )
                 ]
             )
