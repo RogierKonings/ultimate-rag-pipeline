@@ -16,7 +16,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
+use thiserror::Error;
 use tracing::debug;
+
+/// Error type for RRF operations.
+#[derive(Debug, Error)]
+pub enum RrfError {
+    /// Weights length does not match the number of lists.
+    #[error("Weights length ({weights_len}) must match lists length ({lists_len})")]
+    WeightsMismatch { weights_len: usize, lists_len: usize },
+}
+
+/// Result type for RRF operations.
+pub type Result<T> = std::result::Result<T, RrfError>;
 
 /// Configuration for RRF fusion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,30 +149,29 @@ pub fn rrf_score(rank: usize, k: f32) -> f32 {
 ///
 /// A vector of scored items with fused scores, sorted descending.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if weights are provided but don't match the number of lists.
-#[must_use]
+/// Returns [`RrfError::WeightsMismatch`] if weights are provided but don't match
+/// the number of lists.
 pub fn reciprocal_rank_fusion<T>(
     lists: &[&[ScoredItem<T>]],
     config: &RrfConfig,
-) -> Vec<ScoredItem<T>>
+) -> Result<Vec<ScoredItem<T>>>
 where
     T: Clone + Eq + Hash,
 {
     if lists.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     // Validate weights
     if let Some(ref weights) = config.weights {
-        assert_eq!(
-            weights.len(),
-            lists.len(),
-            "Weights length ({}) must match lists length ({})",
-            weights.len(),
-            lists.len()
-        );
+        if weights.len() != lists.len() {
+            return Err(RrfError::WeightsMismatch {
+                weights_len: weights.len(),
+                lists_len: lists.len(),
+            });
+        }
     }
 
     // Accumulate RRF scores for each item
@@ -199,12 +210,14 @@ where
         results.truncate(top_k);
     }
 
-    results
+    Ok(results)
 }
 
 /// Perform weighted RRF fusion with explicit weights.
 ///
 /// This is a convenience function that sets up weights in the config.
+/// Since this function always provides exactly 2 weights for 2 lists,
+/// it cannot fail due to weight mismatch.
 ///
 /// # Arguments
 ///
@@ -232,7 +245,10 @@ where
         top_k,
     };
 
+    // SAFETY: This function always provides exactly 2 weights for 2 lists,
+    // so the weight mismatch error can never occur.
     reciprocal_rank_fusion(&[semantic_results, keyword_results], &config)
+        .expect("hybrid_fusion: weight mismatch should be impossible with 2 weights and 2 lists")
 }
 
 /// Normalize scores to the 0-1 range using min-max normalization.
@@ -330,7 +346,7 @@ mod tests {
         ];
 
         let config = RrfConfig::default();
-        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config);
+        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config).unwrap();
 
         // Item "b" appears at rank 1 in list1 and rank 0 in list2
         // It should have the highest combined score
@@ -353,12 +369,12 @@ mod tests {
 
         // Equal weights
         let config = RrfConfig::default().with_weights(vec![1.0, 1.0]);
-        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config);
+        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config).unwrap();
         assert!((fused[0].score - fused[1].score).abs() < 1e-6);
 
         // Higher weight for first list
         let config = RrfConfig::default().with_weights(vec![2.0, 1.0]);
-        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config);
+        let fused = reciprocal_rank_fusion(&[&list1, &list2], &config).unwrap();
         assert_eq!(fused[0].id, "a");
         assert!(fused[0].score > fused[1].score);
     }
@@ -374,7 +390,7 @@ mod tests {
         ];
 
         let config = RrfConfig::default().with_top_k(3);
-        let fused = reciprocal_rank_fusion(&[&list], &config);
+        let fused = reciprocal_rank_fusion(&[&list], &config).unwrap();
 
         assert_eq!(fused.len(), 3);
     }
@@ -382,7 +398,7 @@ mod tests {
     #[test]
     fn test_empty_lists() {
         let config = RrfConfig::default();
-        let fused: Vec<ScoredItem<String>> = reciprocal_rank_fusion(&[], &config);
+        let fused: Vec<ScoredItem<String>> = reciprocal_rank_fusion(&[], &config).unwrap();
         assert!(fused.is_empty());
     }
 
@@ -447,11 +463,21 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Weights length")]
     fn test_invalid_weights() {
         let list = vec![ScoredItem::new("a", 0.9)];
         let config = RrfConfig::default().with_weights(vec![1.0, 2.0]); // 2 weights for 1 list
 
-        let _ = reciprocal_rank_fusion(&[&list], &config);
+        let result = reciprocal_rank_fusion(&[&list], &config);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert!(matches!(
+            err,
+            RrfError::WeightsMismatch {
+                weights_len: 2,
+                lists_len: 1
+            }
+        ));
+        assert!(err.to_string().contains("Weights length"));
     }
 }

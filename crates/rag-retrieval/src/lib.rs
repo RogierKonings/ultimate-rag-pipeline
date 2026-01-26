@@ -26,7 +26,7 @@
 //! ];
 //!
 //! let config = RrfConfig::default();
-//! let fused = reciprocal_rank_fusion(&[&semantic_results, &keyword_results], &config);
+//! let fused = reciprocal_rank_fusion(&[&semantic_results, &keyword_results], &config).unwrap();
 //!
 //! // doc2 appears in both lists, so it should rank highly
 //! assert_eq!(fused[0].id, "doc2");
@@ -37,7 +37,7 @@ pub mod rrf;
 pub mod types;
 
 // Re-export key types from rrf module
-pub use rrf::{reciprocal_rank_fusion, RrfConfig, ScoredItem};
+pub use rrf::{reciprocal_rank_fusion, RrfConfig, RrfError, ScoredItem};
 
 // Re-export error types
 pub use error::{RetrievalError, Result};

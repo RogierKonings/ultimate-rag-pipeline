@@ -138,6 +138,24 @@ impl UserContext {
     }
 
     /// Check if user can access a document with the given visibility and allowed groups.
+    ///
+    /// # Important Limitation
+    ///
+    /// **This method does NOT handle private document ownership verification.**
+    /// For documents with [`Visibility::Private`], this method always returns `false`
+    /// (unless the user is an admin), because it does not have access to the document's
+    /// `owner_id` to verify ownership.
+    ///
+    /// Callers must handle private document ownership checks separately by comparing
+    /// `self.user_id` against the document's owner ID before or after calling this method.
+    ///
+    /// # Returns
+    ///
+    /// - `true` if the user has admin privileges
+    /// - `true` for [`Visibility::Public`] documents
+    /// - `true` for [`Visibility::Tenant`] documents (tenant filtering is done at query level)
+    /// - `false` for [`Visibility::Private`] documents (ownership must be checked separately)
+    /// - For [`Visibility::Group`], returns `true` if the user belongs to any allowed group
     #[must_use]
     pub fn can_access(&self, visibility: Visibility, allowed_groups: &[String]) -> bool {
         if self.is_admin {
@@ -308,6 +326,18 @@ impl RetrievalMetrics {
     }
 
     /// Calculate and set the total time from component times.
+    ///
+    /// This method sums all component timing fields to compute `total_ms`.
+    ///
+    /// # Important Note on Parallel Operations
+    ///
+    /// This calculation assumes **sequential execution** of all retrieval stages.
+    /// In practice, some operations may run in parallel (e.g., semantic search and
+    /// keyword search often execute concurrently). When operations run in parallel,
+    /// the actual wall-clock time will be **less than** the sum computed here.
+    ///
+    /// For accurate wall-clock timing when parallel operations are used, measure
+    /// the total elapsed time externally rather than relying on this method.
     pub fn calculate_total(&mut self) {
         self.total_ms = self.preprocessing_ms
             + self.semantic_search_ms
