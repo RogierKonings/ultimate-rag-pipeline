@@ -87,6 +87,7 @@ pub mod embedding;
 pub mod error;
 pub mod fusion;
 pub mod hybrid;
+pub mod observability;
 pub mod query;
 pub mod reranking;
 pub mod search;
@@ -146,4 +147,11 @@ pub use hybrid::{
 // Re-export API types
 pub use api::{
     create_router, run_server, ApiError, AppState, RetrieveRequest, RetrieveResponse, ServerConfig,
+};
+
+// Re-export observability types
+pub use observability::{
+    encode_metrics, init_tracing, log_error, log_request_complete, log_request_start,
+    log_stage_complete, register_metrics, shutdown_tracing, span_names, RequestContext,
+    RetrievalMetricsCollector, TracingConfig,
 };

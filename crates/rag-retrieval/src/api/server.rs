@@ -34,6 +34,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 /// - `GET /health` - Full health check
 /// - `GET /health/live` - Kubernetes liveness probe
 /// - `GET /health/ready` - Kubernetes readiness probe
+/// - `GET /metrics` - Prometheus metrics endpoint
 ///
 /// # Middleware
 ///
@@ -90,6 +91,8 @@ pub fn create_router_with_timeout(state: Arc<AppState>, timeout_secs: u64) -> Ro
         .route("/health", get(routes::health))
         .route("/health/live", get(routes::liveness))
         .route("/health/ready", get(routes::readiness))
+        // Metrics route (Prometheus scraping)
+        .route("/metrics", get(routes::metrics))
         // Apply middleware
         .layer(middleware)
         // Add shared state
