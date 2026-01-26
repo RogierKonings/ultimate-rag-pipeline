@@ -84,10 +84,9 @@ impl Parser for MarkdownParser {
 
                         let mut block = ContentBlock::text(text, position);
                         if let Some(level) = heading_level {
-                            block.metadata.insert(
-                                "heading_level".to_string(),
-                                Value::Number(level.into()),
-                            );
+                            block
+                                .metadata
+                                .insert("heading_level".to_string(), Value::Number(level.into()));
                         }
                         blocks.push(block);
                         position += 1;

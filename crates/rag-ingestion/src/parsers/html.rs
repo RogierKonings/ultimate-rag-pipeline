@@ -471,9 +471,9 @@ mod tests {
 
         let links = links.unwrap().as_array().unwrap();
         // Should only include external link, not anchor
-        assert!(links.iter().any(
-            |l| { l.get("href").and_then(|h| h.as_str()) == Some("https://example.com") }
-        ));
+        assert!(links
+            .iter()
+            .any(|l| { l.get("href").and_then(|h| h.as_str()) == Some("https://example.com") }));
     }
 
     #[test]

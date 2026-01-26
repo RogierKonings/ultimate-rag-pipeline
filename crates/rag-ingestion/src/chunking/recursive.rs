@@ -13,11 +13,7 @@ const SEPARATORS: &[&str] = &[
     "\n\n", // Paragraphs
     "\n",   // Lines
     ". ",   // Sentences
-    "? ",
-    "! ",
-    "; ",
-    ", ",
-    " ", // Words
+    "? ", "! ", "; ", ", ", " ", // Words
     "",  // Characters (fallback)
 ];
 
@@ -147,7 +143,11 @@ impl RecursiveCharacterSplitter {
                 let sub_parts = self.split_recursive(part, remaining_seps, current_offset);
                 parts.extend(sub_parts);
             } else {
-                parts.push((part.to_string(), current_offset, current_offset + part.len()));
+                parts.push((
+                    part.to_string(),
+                    current_offset,
+                    current_offset + part.len(),
+                ));
             }
 
             current_offset += part.len() + sep.len();
@@ -425,7 +425,9 @@ mod tests {
     #[test]
     fn test_chunk_handles_whitespace_only() {
         let splitter = RecursiveCharacterSplitter::default();
-        let chunks = splitter.chunk("   \n\n   \t  ", make_doc_id(), None).unwrap();
+        let chunks = splitter
+            .chunk("   \n\n   \t  ", make_doc_id(), None)
+            .unwrap();
 
         assert!(chunks.is_empty());
     }
