@@ -80,6 +80,7 @@
 //! let fused = reciprocal_rank_fusion(&[&semantic_results, &keyword_results], &config).unwrap();
 //! ```
 
+pub mod acl;
 pub mod embedding;
 pub mod error;
 pub mod fusion;
@@ -123,3 +124,6 @@ pub use query::{
     HydeConfig, HydeGenerator, HydeResult, PreprocessedQuery, QueryCache, QueryCacheConfig,
     QueryCacheKey, QueryExpander, QueryExpanderConfig, QueryPreprocessor, QueryPreprocessorConfig,
 };
+
+// Re-export ACL types
+pub use acl::{ACLFilter, ACLFilterConfig, FilterCondition, HasACLFields, MatchType, UnifiedFilter};
