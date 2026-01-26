@@ -81,6 +81,7 @@
 //! ```
 
 pub mod acl;
+pub mod api;
 pub mod cache;
 pub mod embedding;
 pub mod error;
@@ -138,6 +139,11 @@ pub use cache::{CacheKeyBuilder, CacheStats, CacheStatsSnapshot, RetrievalCache}
 
 // Re-export hybrid search types
 pub use hybrid::{
-    HybridSearchConfig, HybridSearchResponse, HybridSearcher, PipelineConfig, SearchOptions,
-    SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse,
+    HybridSearchConfig, HybridSearchResponse, HybridSearchResult, HybridSearcher, PipelineConfig,
+    SearchOptions, SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse,
+};
+
+// Re-export API types
+pub use api::{
+    create_router, run_server, ApiError, AppState, RetrieveRequest, RetrieveResponse, ServerConfig,
 };

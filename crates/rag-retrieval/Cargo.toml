@@ -36,11 +36,26 @@ uuid = { workspace = true }
 # HTTP client for embedding service
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 
+# API framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors", "timeout"] }
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
 # Async utilities
 futures = "0.3"
 
 # Parallel processing
 rayon = "1.8"
+
+# Unicode normalization
+unicode-normalization = "0.1"
+
+# Hashing for cache keys
+sha2 = "0.10"
+hex = "0.4"
 
 [dev-dependencies]
 tokio-test = { workspace = true }

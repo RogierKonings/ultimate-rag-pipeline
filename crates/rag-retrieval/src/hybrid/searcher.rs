@@ -455,6 +455,28 @@ impl HybridSearcher {
         }
     }
 
+    /// Check health of the semantic search backend (Qdrant).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the semantic search backend is unhealthy.
+    pub async fn health_check_semantic(&self) -> Result<()> {
+        self.semantic.health_check().await.map_err(|e| {
+            RetrievalError::semantic_search(format!("Health check failed: {e}"))
+        })
+    }
+
+    /// Check health of the keyword search backend (OpenSearch).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the keyword search backend is unhealthy.
+    pub async fn health_check_keyword(&self) -> Result<()> {
+        self.keyword.health_check().await.map_err(|e| {
+            RetrievalError::keyword_search(format!("Health check failed: {e}"))
+        })
+    }
+
     /// Get the current configuration.
     #[must_use]
     pub const fn config(&self) -> &HybridSearchConfig {

@@ -57,5 +57,5 @@ mod searcher;
 
 pub use config::HybridSearchConfig;
 pub use pipeline::{PipelineConfig, SearchOptions, SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse};
-pub use response::HybridSearchResponse;
+pub use response::{HybridSearchResponse, HybridSearchResult};
 pub use searcher::HybridSearcher;
