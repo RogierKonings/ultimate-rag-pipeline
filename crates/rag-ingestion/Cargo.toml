@@ -1,0 +1,35 @@
+[package]
+name = "rag-ingestion"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Document parsing and chunking for RAG pipeline"
+
+[dependencies]
+# Internal crates
+rag-types = { path = "../rag-types" }
+
+# Parsing
+scraper = "0.20"
+pulldown-cmark = "0.12"
+serde_yaml = "0.9"
+
+# Tokenization
+tiktoken-rs = "0.6"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+
+[lints]
+workspace = true

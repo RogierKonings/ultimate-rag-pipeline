@@ -11,6 +11,7 @@ members = [
     "rag-vectorstore",
     "rag-search",
     "rag-database",
+    "rag-ingestion",
 ]
 
 [workspace.package]
