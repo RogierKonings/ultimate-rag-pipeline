@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-#[allow(unused_imports)] // Used by implementation in next task
 use super::base::{ContentBlock, ContentType, ParsedDocument, Parser, TableContent};
 use crate::Result;
 
@@ -65,11 +64,277 @@ impl Parser for HtmlParser {
         content: &[u8],
         metadata: Option<HashMap<String, Value>>,
     ) -> Result<ParsedDocument> {
-        // TODO: Implement
-        let _ = (&self.config, content, metadata);
-        let _ = Html::new_document();
-        let _ = Selector::parse("body");
-        todo!()
+        let html_str = String::from_utf8_lossy(content);
+        let document = Html::parse_document(&html_str);
+
+        let mut result_metadata = metadata.unwrap_or_default();
+        let mut blocks = Vec::new();
+        let mut tables = Vec::new();
+        let mut position = 0u32;
+
+        // Extract title
+        let title = Self::selector("title")
+            .and_then(|sel| document.select(&sel).next())
+            .map(|el| el.text().collect::<String>().trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        // Extract semantic text blocks
+        if let Some(selector) = Self::selector("p, h1, h2, h3, h4, h5, h6, li, blockquote") {
+            for element in document.select(&selector) {
+                // Skip if inside script or style
+                if self.is_inside_excluded_tag(&element) {
+                    continue;
+                }
+
+                let text: String = element.text().collect();
+                let text = text.trim();
+
+                if !text.is_empty() {
+                    let mut block = ContentBlock::text(text, position);
+                    block.metadata.insert(
+                        "tag".to_string(),
+                        Value::String(element.value().name().to_string()),
+                    );
+                    blocks.push(block);
+                    position += 1;
+                }
+            }
+        }
+
+        // Extract code blocks
+        if let Some(selector) = Self::selector("pre") {
+            for element in document.select(&selector) {
+                if self.is_inside_excluded_tag(&element) {
+                    continue;
+                }
+
+                let text: String = element.text().collect();
+                let text = text.trim();
+
+                if !text.is_empty() {
+                    blocks.push(ContentBlock::code(text, position, None));
+                    position += 1;
+                }
+            }
+        }
+
+        // Extract tables
+        if let Some(selector) = Self::selector("table") {
+            for table_el in document.select(&selector) {
+                if let Some(table) = Self::extract_table(&table_el) {
+                    // Add table as a block too
+                    blocks.push(ContentBlock {
+                        content_type: ContentType::Table,
+                        content: table.to_text(),
+                        page_number: None,
+                        position: Some(position),
+                        metadata: HashMap::new(),
+                    });
+                    position += 1;
+                    tables.push(table);
+                }
+            }
+        }
+
+        // Extract links if enabled
+        if self.config.extract_links {
+            if let Some(selector) = Self::selector("a[href]") {
+                let links: Vec<Value> = document
+                    .select(&selector)
+                    .filter_map(|el| {
+                        let href = el.value().attr("href")?;
+                        // Skip internal anchors
+                        if href.starts_with('#') {
+                            return None;
+                        }
+                        let text: String = el.text().collect();
+                        Some(serde_json::json!({
+                            "text": text.trim(),
+                            "href": href
+                        }))
+                    })
+                    .collect();
+
+                if !links.is_empty() {
+                    result_metadata.insert("links".to_string(), Value::Array(links));
+                }
+            }
+        }
+
+        // Extract full text (excluding scripts and styles)
+        let full_text = self.extract_full_text(&document);
+
+        Ok(ParsedDocument {
+            text: full_text,
+            blocks,
+            tables,
+            title,
+            metadata: result_metadata,
+            ..Default::default()
+        })
+    }
+}
+
+impl HtmlParser {
+    /// Create a selector, returning None if invalid.
+    fn selector(s: &str) -> Option<Selector> {
+        Selector::parse(s).ok()
+    }
+
+    /// Check if an element is inside a script or style tag.
+    fn is_inside_excluded_tag(&self, element: &scraper::ElementRef) -> bool {
+        if !self.config.remove_scripts && !self.config.remove_styles {
+            return false;
+        }
+
+        let mut current = element.parent();
+        while let Some(parent) = current {
+            if let Some(el) = parent.value().as_element() {
+                let name = el.name();
+                if (self.config.remove_scripts && name == "script")
+                    || (self.config.remove_styles && name == "style")
+                {
+                    return true;
+                }
+            }
+            current = parent.parent();
+        }
+        false
+    }
+
+    /// Extract full text content, excluding scripts and styles.
+    fn extract_full_text(&self, document: &Html) -> String {
+        let mut texts = Vec::new();
+
+        // Get body or root element
+        let root = Self::selector("body")
+            .and_then(|sel| document.select(&sel).next())
+            .map_or_else(|| document.root_element().id(), |el| el.id());
+
+        self.collect_text_recursive(document, root, &mut texts);
+
+        texts.join("\n")
+    }
+
+    /// Recursively collect text, skipping excluded tags.
+    fn collect_text_recursive(
+        &self,
+        document: &Html,
+        node_id: ego_tree::NodeId,
+        texts: &mut Vec<String>,
+    ) {
+        let node = document.tree.get(node_id);
+        let Some(node) = node else { return };
+
+        match node.value() {
+            scraper::Node::Text(text) => {
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    texts.push(trimmed.to_string());
+                }
+            }
+            scraper::Node::Element(el) => {
+                let name = el.name();
+
+                // Skip excluded tags
+                if (self.config.remove_scripts && name == "script")
+                    || (self.config.remove_styles && name == "style")
+                {
+                    return;
+                }
+
+                // Recurse into children
+                for child in node.children() {
+                    self.collect_text_recursive(document, child.id(), texts);
+                }
+            }
+            _ => {
+                // For other node types, recurse into children
+                for child in node.children() {
+                    self.collect_text_recursive(document, child.id(), texts);
+                }
+            }
+        }
+    }
+
+    /// Extract a table from a table element.
+    fn extract_table(table_el: &scraper::ElementRef) -> Option<TableContent> {
+        let mut headers = Vec::new();
+        let mut rows = Vec::new();
+
+        // Get caption
+        let caption = Self::selector("caption")
+            .and_then(|sel| table_el.select(&sel).next())
+            .map(|el| el.text().collect::<String>().trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        // Try to get headers from thead
+        if let Some(thead_sel) = Self::selector("thead tr") {
+            if let Some(header_row) = table_el.select(&thead_sel).next() {
+                if let Some(cell_sel) = Self::selector("th, td") {
+                    headers = header_row
+                        .select(&cell_sel)
+                        .map(|cell| cell.text().collect::<String>().trim().to_string())
+                        .collect();
+                }
+            }
+        }
+
+        // Get body rows
+        let row_selector = if Self::selector("tbody").is_some() {
+            Self::selector("tbody tr, tr")
+        } else {
+            Self::selector("tr")
+        };
+
+        if let Some(row_sel) = row_selector {
+            for row_el in table_el.select(&row_sel) {
+                // Skip if this is in thead
+                let in_thead = row_el
+                    .parent()
+                    .and_then(|p| p.value().as_element())
+                    .is_some_and(|el| el.name() == "thead");
+
+                if in_thead {
+                    continue;
+                }
+
+                if let Some(cell_sel) = Self::selector("td, th") {
+                    let cells: Vec<_> = row_el.select(&cell_sel).collect();
+
+                    if cells.is_empty() {
+                        continue;
+                    }
+
+                    // Check if this is a header row (all th cells)
+                    let all_th = cells.iter().all(|c| c.value().name() == "th");
+
+                    let cell_texts: Vec<String> = cells
+                        .iter()
+                        .map(|cell| cell.text().collect::<String>().trim().to_string())
+                        .collect();
+
+                    if headers.is_empty() && all_th {
+                        headers = cell_texts;
+                    } else {
+                        rows.push(cell_texts);
+                    }
+                }
+            }
+        }
+
+        // If still no headers, use first row
+        if headers.is_empty() && !rows.is_empty() {
+            headers = rows.remove(0);
+        }
+
+        if headers.is_empty() {
+            return None;
+        }
+
+        let mut table = TableContent::new(headers, rows);
+        table.caption = caption;
+        Some(table)
     }
 }
 

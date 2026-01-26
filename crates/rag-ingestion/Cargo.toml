@@ -12,6 +12,7 @@ rag-types = { path = "../rag-types" }
 
 # Parsing
 scraper = "0.20"
+ego-tree = "0.6"
 pulldown-cmark = "0.12"
 serde_yaml = "0.9"
 
