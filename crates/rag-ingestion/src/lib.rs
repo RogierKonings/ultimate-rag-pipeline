@@ -19,6 +19,7 @@
 //! let chunks = chunker.chunk(&doc.text, document_id, None)?;
 //! ```
 
+pub mod chunking;
 pub mod error;
 pub mod parsers;
 
