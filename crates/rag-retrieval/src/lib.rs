@@ -126,4 +126,7 @@ pub use query::{
 };
 
 // Re-export ACL types
-pub use acl::{ACLFilter, ACLFilterConfig, FilterCondition, HasACLFields, MatchType, UnifiedFilter};
+pub use acl::{
+    ACLFilter, ACLFilterConfig, FilterCondition, HasACLFields, MatchType, OpenSearchFilterBuilder,
+    QdrantFilterBuilder, UnifiedFilter,
+};

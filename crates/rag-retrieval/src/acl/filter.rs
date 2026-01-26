@@ -495,6 +495,87 @@ impl ACLFilter {
             })
             .collect()
     }
+
+    /// Build Qdrant filter directly from user context.
+    ///
+    /// This is a convenience method that combines [`build_filter`] and
+    /// [`QdrantFilterBuilder::build`].
+    ///
+    /// # Arguments
+    ///
+    /// * `user_context` - The authenticated user's context
+    /// * `additional_filters` - Optional extra filters to merge
+    ///
+    /// # Returns
+    ///
+    /// An `Option<qdrant_client::qdrant::Filter>` - `None` if the filter is empty.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
+    /// use rag_retrieval::types::UserContext;
+    /// use uuid::Uuid;
+    ///
+    /// let config = ACLFilterConfig::default();
+    /// let acl = ACLFilter::new(config);
+    ///
+    /// let user = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
+    ///     .with_groups(vec!["engineering".into()]);
+    ///
+    /// let qdrant_filter = acl.build_qdrant_filter(&user, None);
+    /// assert!(qdrant_filter.is_some());
+    /// ```
+    #[must_use]
+    pub fn build_qdrant_filter(
+        &self,
+        user_context: &UserContext,
+        additional_filters: Option<&UnifiedFilter>,
+    ) -> Option<rag_vectorstore::qdrant_client::qdrant::Filter> {
+        let unified = self.build_filter(user_context, additional_filters);
+        super::builders::QdrantFilterBuilder::build(&unified)
+    }
+
+    /// Build OpenSearch filter clauses directly from user context.
+    ///
+    /// This is a convenience method that combines [`build_filter`] and
+    /// [`OpenSearchFilterBuilder::build`].
+    ///
+    /// # Arguments
+    ///
+    /// * `user_context` - The authenticated user's context
+    /// * `additional_filters` - Optional extra filters to merge
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<serde_json::Value>` containing the filter clauses for use
+    /// in an OpenSearch bool query.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
+    /// use rag_retrieval::types::UserContext;
+    /// use uuid::Uuid;
+    ///
+    /// let config = ACLFilterConfig::default();
+    /// let acl = ACLFilter::new(config);
+    ///
+    /// let user = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
+    ///     .with_groups(vec!["engineering".into()]);
+    ///
+    /// let opensearch_clauses = acl.build_opensearch_filter(&user, None);
+    /// assert!(!opensearch_clauses.is_empty());
+    /// ```
+    #[must_use]
+    pub fn build_opensearch_filter(
+        &self,
+        user_context: &UserContext,
+        additional_filters: Option<&UnifiedFilter>,
+    ) -> Vec<serde_json::Value> {
+        let unified = self.build_filter(user_context, additional_filters);
+        super::builders::OpenSearchFilterBuilder::build(&unified)
+    }
 }
 
 /// Convert visibility enum to string for filter conditions.
