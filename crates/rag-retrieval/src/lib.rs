@@ -116,7 +116,7 @@ pub use search::{
 pub use embedding::{EmbeddingClient, EmbeddingConfig};
 
 // Re-export reranking types
-pub use reranking::{RerankerClient, RerankerConfig, RerankResponse, RerankResult};
+pub use reranking::{RerankerClient, RerankerConfig, RerankerService, RerankResponse, RerankResult};
 
 // Re-export query types
 pub use query::{

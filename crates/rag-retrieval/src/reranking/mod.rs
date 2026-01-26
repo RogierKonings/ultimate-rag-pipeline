@@ -1,9 +1,17 @@
-//! Reranker client for cross-encoder reranking.
+//! Reranker client and service for cross-encoder reranking.
 //!
-//! This module provides an HTTP client for the reranker service
-//! that performs cross-encoder reranking on query-document pairs.
+//! This module provides both a low-level HTTP client and a high-level
+//! service for the reranker that performs cross-encoder reranking on
+//! query-document pairs.
 //!
-//! # Example
+//! # Components
+//!
+//! - [`RerankerClient`]: Low-level HTTP client that communicates with the
+//!   LLM Gateway's `/v1/rerank` endpoint using the Cohere API format.
+//! - [`RerankerService`]: High-level service that integrates with
+//!   `FusedResult` and `RetrievalResult` types for convenient reranking.
+//!
+//! # Example (Low-level Client)
 //!
 //! ```no_run
 //! use rag_retrieval::reranking::{RerankerClient, RerankerConfig};
@@ -33,6 +41,35 @@
 //! }
 //! ```
 //!
+//! # Example (High-level Service)
+//!
+//! ```no_run
+//! use rag_retrieval::reranking::{RerankerService, RerankerConfig};
+//! use rag_retrieval::RetrievalResult;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let service = RerankerService::new(RerankerConfig::default())?;
+//!
+//!     let results = vec![
+//!         RetrievalResult::new(
+//!             "chunk1".into(),
+//!             "doc1".into(),
+//!             "Machine learning is AI.".into(),
+//!             0.85,
+//!         ),
+//!     ];
+//!
+//!     let reranked = service.rerank_results("What is ML?", results, Some(10)).await?;
+//!
+//!     for r in &reranked {
+//!         println!("{}: {:.3}", r.chunk_id, r.score);
+//!     }
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
 //! # Cross-Encoder Reranking
 //!
 //! Cross-encoder models jointly encode the query and document together,
@@ -47,6 +84,8 @@
 
 mod client;
 mod config;
+mod service;
 
 pub use client::{RerankerClient, RerankResponse, RerankResult};
 pub use config::RerankerConfig;
+pub use service::RerankerService;
