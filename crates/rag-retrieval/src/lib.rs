@@ -85,6 +85,7 @@ pub mod cache;
 pub mod embedding;
 pub mod error;
 pub mod fusion;
+pub mod hybrid;
 pub mod query;
 pub mod reranking;
 pub mod search;
@@ -134,3 +135,9 @@ pub use acl::{
 
 // Re-export cache types
 pub use cache::{CacheKeyBuilder, CacheStats, CacheStatsSnapshot, RetrievalCache};
+
+// Re-export hybrid search types
+pub use hybrid::{
+    HybridSearchConfig, HybridSearchResponse, HybridSearcher, PipelineConfig, SearchOptions,
+    SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse,
+};
