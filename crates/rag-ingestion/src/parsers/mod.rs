@@ -6,6 +6,8 @@
 
 mod base;
 mod html;
+mod markdown;
 
 pub use base::{ContentBlock, ContentType, ParsedDocument, Parser, TableContent};
 pub use html::{HtmlParser, HtmlParserConfig};
+pub use markdown::MarkdownParser;
