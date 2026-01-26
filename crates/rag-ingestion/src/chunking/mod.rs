@@ -5,5 +5,7 @@
 //! - [`RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words
 
 mod base;
+mod recursive;
 
 pub use base::{Chunk, ChunkingConfig, ChunkingResult, ChunkingStrategy};
+pub use recursive::RecursiveCharacterSplitter;
