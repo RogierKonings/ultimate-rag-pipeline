@@ -226,3 +226,43 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
             detail="Admin role required",
         )
     return user
+
+
+# Singleton asyncpg pool for raw SQL queries
+_asyncpg_pool = None
+
+
+async def get_asyncpg_pool():
+    """
+    Get asyncpg connection pool for raw SQL queries.
+
+    Creates a singleton pool on first access.
+
+    Yields:
+        asyncpg.Pool for database operations.
+    """
+    global _asyncpg_pool
+    if _asyncpg_pool is None:
+        import asyncpg
+
+        settings = get_settings()
+        db_url = settings.database_url
+        # asyncpg uses plain postgresql:// URL, not postgresql+asyncpg://
+        if db_url.startswith("postgresql+asyncpg://"):
+            db_url = db_url.replace("postgresql+asyncpg://", "postgresql://")
+        _asyncpg_pool = await asyncpg.create_pool(
+            db_url,
+            min_size=2,
+            max_size=10,
+        )
+        logger.info("Created asyncpg connection pool")
+    return _asyncpg_pool
+
+
+async def close_asyncpg_pool():
+    """Close the asyncpg pool on shutdown."""
+    global _asyncpg_pool
+    if _asyncpg_pool is not None:
+        await _asyncpg_pool.close()
+        _asyncpg_pool = None
+        logger.info("Closed asyncpg connection pool")

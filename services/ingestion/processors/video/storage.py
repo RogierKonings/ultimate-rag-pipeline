@@ -419,6 +419,25 @@ class VideoStorage:
         object_name = self._original_path(tenant_id, video_id, extension)
         return await self._download_to_temp(object_name, f".{extension.lstrip('.')}")
 
+    async def download_video_by_path(
+        self,
+        storage_path: str,
+    ) -> Path:
+        """Download video to a temporary file using its storage path.
+
+        Args:
+            storage_path: Full storage path of the video file.
+
+        Returns:
+            Path to the downloaded temporary file.
+
+        Raises:
+            VideoStorageError: If download fails.
+        """
+        # Extract extension from the storage path
+        extension = Path(storage_path).suffix or ".mp4"
+        return await self._download_to_temp(storage_path, extension)
+
     async def download_audio(
         self,
         tenant_id: UUID | str,

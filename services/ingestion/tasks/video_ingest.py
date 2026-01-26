@@ -135,6 +135,7 @@ async def _process_video_async(
     Returns:
         Processing results dict.
     """
+    import asyncpg
     from processors.video import (
         PipelineConfig,
         PipelineStage,
@@ -147,6 +148,31 @@ async def _process_video_async(
     from config import get_settings
 
     settings = get_settings()
+
+    # Fetch storage_path from database
+    storage_path = None
+    try:
+        pool = await asyncpg.create_pool(settings.database_url)
+        try:
+            row = await pool.fetchrow(
+                """
+                SELECT storage_path FROM source_videos
+                WHERE id = $1 AND tenant_id = $2
+                """,
+                video_id,
+                tenant_id,
+            )
+            if row:
+                storage_path = row["storage_path"]
+                logger.info(
+                    "Fetched storage_path for video %s: %s",
+                    video_id,
+                    storage_path,
+                )
+        finally:
+            await pool.close()
+    except Exception as e:
+        logger.warning("Failed to fetch storage_path, will use default: %s", e)
 
     # Create progress callback that updates Celery task state
     def progress_callback(stage: PipelineStage, progress: int, message: str) -> None:
@@ -175,11 +201,11 @@ async def _process_video_async(
 
     # Create storage and validator services
     storage_config = VideoStorageConfig(
-        endpoint_url=settings.minio_endpoint,
+        endpoint=settings.minio_url.replace("http://", "").replace("https://", ""),
         access_key=settings.minio_access_key,
         secret_key=settings.minio_secret_key,
-        bucket_name=settings.minio_bucket_name,
-        secure=settings.minio_secure,
+        bucket=settings.minio_bucket,
+        secure=settings.minio_url.startswith("https"),
     )
     storage = VideoStorage(storage_config)
     validator = VideoValidator()
@@ -206,6 +232,7 @@ async def _process_video_async(
         tenant_id=tenant_id,
         progress_callback=progress_callback,
         skip_stages=skip_stages if skip_stages else None,
+        storage_path=storage_path,
     )
 
     # Update database with result
@@ -271,8 +298,7 @@ async def _update_video_status(
                 SET status = $1,
                     processing_stage = $2,
                     error_message = $3,
-                    processing_completed_at = $4,
-                    updated_at = NOW()
+                    processed_at = $4
                 WHERE id = $5 AND tenant_id = $6
                 """,
                 status,

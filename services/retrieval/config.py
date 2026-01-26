@@ -31,10 +31,13 @@ class RetrievalConfig(BaseSettings):
     # LLM Gateway (from centralized config)
     llm_gateway_url: str = Field(default_factory=get_llm_gateway_url)
 
+    # Embedding service (separate from LLM Gateway)
+    embedding_service_url: str = "http://embedding-service:8080"
+
     # Embedding settings
-    embedding_model: str = "nomic-embed-text"
-    embedding_dimension: int = 768
-    embedding_prefix: str = ""  # nomic-embed-text doesn't need prefix
+    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_dimension: int = 384
+    embedding_prefix: str = ""  # MiniLM doesn't use query prefix
 
     # Default Search Weights
     semantic_weight: float = Field(default=0.7, ge=0.0, le=1.0)

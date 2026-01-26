@@ -64,6 +64,14 @@ function createVideosStore() {
 			}));
 		},
 
+		removeVideos(videoIds: string[]) {
+			const idsSet = new Set(videoIds);
+			update((state) => ({
+				...state,
+				videos: state.videos.filter((v) => !idsSet.has(v.video_id))
+			}));
+		},
+
 		reset() {
 			set({
 				videos: [],
@@ -307,3 +315,61 @@ export const activeVideoJobs = derived(videoUpload, ($upload) =>
 		(job) => job.status === 'pending' || job.status === 'uploading' || job.status === 'processing'
 	)
 );
+
+// Selection store for batch operations
+function createVideoSelectionStore() {
+	const { subscribe, set, update } = writable<Set<string>>(new Set());
+
+	return {
+		subscribe,
+
+		toggle(videoId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				if (newSelected.has(videoId)) {
+					newSelected.delete(videoId);
+				} else {
+					newSelected.add(videoId);
+				}
+				return newSelected;
+			});
+		},
+
+		select(videoId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				newSelected.add(videoId);
+				return newSelected;
+			});
+		},
+
+		deselect(videoId: string) {
+			update((selected) => {
+				const newSelected = new Set(selected);
+				newSelected.delete(videoId);
+				return newSelected;
+			});
+		},
+
+		selectAll(videoIds: string[]) {
+			set(new Set(videoIds));
+		},
+
+		deselectAll() {
+			set(new Set());
+		},
+
+		isSelected(videoId: string): boolean {
+			let result = false;
+			subscribe((selected) => {
+				result = selected.has(videoId);
+			})();
+			return result;
+		}
+	};
+}
+
+export const selectedVideos = createVideoSelectionStore();
+
+// Derived store for selection count
+export const selectedVideoCount = derived(selectedVideos, ($selected) => $selected.size);

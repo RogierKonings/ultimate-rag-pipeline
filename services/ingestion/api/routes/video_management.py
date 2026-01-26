@@ -4,17 +4,21 @@ CRUD operations for video library management including list, get,
 update, delete, and chunk/keyframe access.
 """
 
+import json
 import logging
 import math
 from datetime import timedelta
 from uuid import UUID
 
-from api.dependencies import get_current_user
-from api.schemas.video import VideoStatus
+from api.dependencies import get_asyncpg_pool, get_current_user
+from api.schemas.video import VideoRegisterRequest, VideoStatus, VideoUploadResponse
 from api.schemas.video_management import (
     DeletionCounts,
     PaginationMeta,
     ReprocessResponse,
+    VideoBatchDeleteRequest,
+    VideoBatchDeleteResponse,
+    VideoBatchDeleteResult,
     VideoChunkResponse,
     VideoChunksResponse,
     VideoDeleteResponse,
@@ -25,47 +29,160 @@ from api.schemas.video_management import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
+from minio import Minio
+
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-# Database pool placeholder - will be injected
-_db_pool = None
+# MinIO client singleton
+_minio_client: Minio | None = None
 
 
-def get_db_pool():
-    """Get database connection pool."""
-    global _db_pool
-    if _db_pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database not configured",
-        )
-    return _db_pool
-
-
-def set_db_pool(pool):
-    """Set database connection pool (called from main.py)."""
-    global _db_pool
-    _db_pool = pool
-
-
-# MinIO client placeholder
-_minio_client = None
-
-
-def get_minio_client():
-    """Get MinIO client."""
+def get_minio_client() -> Minio | None:
+    """Get MinIO client singleton."""
     global _minio_client
+    if _minio_client is None:
+        settings = get_settings()
+        if settings.minio_url:
+            # Parse endpoint from URL (e.g., http://localhost:9000 -> localhost:9000)
+            minio_url = settings.minio_url
+            secure = minio_url.startswith("https://")
+            endpoint = minio_url.replace("https://", "").replace("http://", "")
+            _minio_client = Minio(
+                endpoint,
+                access_key=settings.minio_access_key,
+                secret_key=settings.minio_secret_key,
+                secure=secure,
+            )
+            logger.info("Created MinIO client for endpoint: %s", endpoint)
     return _minio_client
 
 
-def set_minio_client(client):
-    """Set MinIO client (called from main.py)."""
-    global _minio_client
-    _minio_client = client
+@router.post(
+    "/upload",
+    response_model=VideoUploadResponse,
+    status_code=202,
+    summary="Register pre-uploaded video",
+    description="Register a video that was already uploaded to storage and start processing.",
+)
+async def register_video(
+    body: VideoRegisterRequest,
+    current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
+) -> VideoUploadResponse:
+    """
+    Register a video that was already uploaded directly to MinIO/S3.
+
+    Use this endpoint when the client uploads the video file directly to
+    object storage (e.g., via presigned URL or direct S3 API) and then
+    notifies the backend to start processing.
+
+    The storage_path should be the full key/path where the video was uploaded.
+
+    **Workflow:**
+    1. Client uploads video directly to MinIO
+    2. Client calls this endpoint with the storage path
+    3. Backend validates the file exists and starts processing
+    4. Use GET /{video_id}/status to track progress
+    """
+    from uuid import uuid4
+
+    tenant_id = current_user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Missing tenant_id")
+
+    minio_client = get_minio_client()
+
+    # Verify file exists in MinIO
+    if minio_client:
+        try:
+            minio_client.stat_object("rag-documents", body.storage_path)
+        except Exception as e:
+            logger.warning("File not found in storage: %s - %s", body.storage_path, e)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Video file not found at storage path: {body.storage_path}",
+            ) from e
+
+    # Generate IDs
+    video_id = uuid4()
+    job_id = uuid4()
+
+    # Determine title
+    title = body.title
+    if not title:
+        # Remove extension from filename
+        title = body.filename.rsplit(".", 1)[0] if "." in body.filename else body.filename
+
+    # Create database record
+    insert_query = """
+        INSERT INTO source_videos (
+            id, tenant_id, filename, title, description,
+            storage_path, status, processing_stage, processing_progress,
+            visibility, allowed_groups, tags,
+            created_at, uploaded_at
+        ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8, $9,
+            $10, $11, $12,
+            NOW(), NOW()
+        )
+    """
+
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                insert_query,
+                video_id,
+                UUID(tenant_id),
+                body.filename,
+                title,
+                body.description,
+                body.storage_path,
+                VideoStatus.PROCESSING.value,
+                "uploaded",
+                0,
+                body.visibility.value if hasattr(body.visibility, "value") else body.visibility,
+                json.dumps([str(g) for g in body.allowed_groups]),
+                json.dumps(body.tags),
+            )
+    except Exception as e:
+        logger.exception("Failed to create video record: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create video record",
+        ) from e
+
+    # Queue processing task
+    try:
+        from tasks.video_ingest import process_video
+
+        process_video.delay(
+            video_id=str(video_id),
+            tenant_id=tenant_id,
+            processing_options=body.processing_options.model_dump() if body.processing_options else {},
+        )
+        logger.info(
+            "Queued video processing: video_id=%s, storage_path=%s",
+            video_id,
+            body.storage_path,
+        )
+    except Exception as e:
+        logger.warning("Failed to queue video task (will retry later): %s", e)
+        # Don't fail - the video record is created and can be reprocessed
+
+    return VideoUploadResponse(
+        video_id=video_id,
+        job_id=job_id,
+        filename=body.filename,
+        status=VideoStatus.PROCESSING,
+        storage_path=body.storage_path,
+        message="Video registered successfully. Processing will begin shortly.",
+    )
 
 
 @router.get("", response_model=VideoListResponse)
@@ -81,6 +198,7 @@ async def list_videos(
     sort_by: str = Query(default="created_at", description="Sort field"),
     sort_order: str = Query(default="desc", description="Sort order: asc, desc"),
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> VideoListResponse:
     """
     List videos with pagination, filtering, and sorting.
@@ -97,18 +215,17 @@ async def list_videos(
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Missing tenant_id")
 
-    pool = get_db_pool()
-
     # Build query
     base_query = """
         SELECT
             id as video_id, tenant_id, filename, title, description,
-            duration_ms, width, height, fps, codec, file_size_bytes,
+            (duration_seconds * 1000)::bigint as duration_ms,
+            width, height, fps, codec, file_size_bytes,
             status, processing_stage, processing_progress, error_message,
             detected_language, keyframe_count, chunk_count,
             visibility, allowed_groups, tags,
             thumbnail_path, storage_path,
-            created_at, uploaded_at, processed_at, updated_at
+            created_at, uploaded_at, processed_at
         FROM source_videos
         WHERE tenant_id = $1
     """
@@ -136,7 +253,7 @@ async def list_videos(
     count_query = f"SELECT COUNT(*) FROM ({base_query}) sub"
 
     # Add sorting
-    valid_sort_fields = {"created_at", "title", "duration_ms", "status"}
+    valid_sort_fields = {"created_at", "title", "duration_seconds", "status"}
     if sort_by not in valid_sort_fields:
         sort_by = "created_at"
     sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
@@ -180,6 +297,7 @@ async def list_videos(
 async def get_video(
     video_id: str,
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> VideoDetailResponse:
     """
     Get detailed information about a video.
@@ -198,17 +316,16 @@ async def get_video(
             detail="Invalid video_id format",
         ) from e
 
-    pool = get_db_pool()
-
     query = """
         SELECT
             id as video_id, tenant_id, filename, title, description,
-            duration_ms, width, height, fps, codec, file_size_bytes,
+            (duration_seconds * 1000)::bigint as duration_ms,
+            width, height, fps, codec, file_size_bytes,
             status, processing_stage, processing_progress, error_message,
             detected_language, keyframe_count, chunk_count,
             visibility, allowed_groups, tags,
             thumbnail_path, storage_path,
-            created_at, uploaded_at, processed_at, updated_at
+            created_at, uploaded_at, processed_at
         FROM source_videos
         WHERE id = $1 AND tenant_id = $2
     """
@@ -231,6 +348,7 @@ async def update_video(
     video_id: str,
     body: VideoUpdateRequest,
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> VideoResponse:
     """
     Update video metadata.
@@ -253,8 +371,6 @@ async def update_video(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid video_id format",
         ) from e
-
-    pool = get_db_pool()
 
     # Build update query dynamically
     updates = []
@@ -292,10 +408,6 @@ async def update_video(
             detail="No fields to update",
         )
 
-    # Add updated_at
-    param_count += 1
-    updates.append("updated_at = NOW()")
-
     # Add WHERE clause params
     param_count += 1
     params.append(video_uuid)
@@ -308,7 +420,7 @@ async def update_video(
         WHERE id = ${param_count - 1} AND tenant_id = ${param_count}
         RETURNING
             id as video_id, tenant_id, title, description,
-            status, visibility, allowed_groups, tags, updated_at
+            status, visibility, allowed_groups, tags
     """
 
     async with pool.acquire() as conn:
@@ -327,9 +439,19 @@ async def update_video(
         description=row["description"],
         status=VideoStatus(row["status"]),
         visibility=row["visibility"],
-        allowed_groups=[UUID(g) for g in (row["allowed_groups"] or [])],
-        tags=row["tags"] or [],
-        updated_at=row["updated_at"],
+        allowed_groups=[
+            UUID(g) for g in (
+                json.loads(row["allowed_groups"])
+                if isinstance(row.get("allowed_groups"), str)
+                else (row.get("allowed_groups") or [])
+            )
+        ],
+        tags=(
+            json.loads(row["tags"])
+            if isinstance(row.get("tags"), str)
+            else (row.get("tags") or [])
+        ),
+        updated_at=None,
     )
 
 
@@ -337,6 +459,7 @@ async def update_video(
 async def delete_video(
     video_id: str,
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> VideoDeleteResponse:
     """
     Delete a video and all associated data.
@@ -360,7 +483,6 @@ async def delete_video(
             detail="Invalid video_id format",
         ) from e
 
-    pool = get_db_pool()
     counts = DeletionCounts()
 
     # Check video exists
@@ -474,12 +596,188 @@ async def delete_video(
     )
 
 
+@router.post(
+    "/batch-delete",
+    response_model=VideoBatchDeleteResponse,
+    summary="Batch delete videos",
+    description="Delete multiple videos at once.",
+)
+async def batch_delete_videos(
+    request: VideoBatchDeleteRequest,
+    current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
+) -> VideoBatchDeleteResponse:
+    """
+    Delete multiple videos in a single request.
+
+    Processes each video independently - failures for one video
+    don't prevent deletion of others.
+
+    **Cascade deletion order for each video:**
+    1. Vectors from Qdrant (video_chunks collection)
+    2. Documents from OpenSearch (video_chunks index)
+    3. Chunk records from PostgreSQL (CASCADE)
+    4. Video record from PostgreSQL
+    5. Files from MinIO (original, keyframes, clips)
+
+    Returns detailed results for each video.
+    """
+    tenant_id = current_user.get("tenant_id")
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Missing tenant_id")
+
+    results = []
+    deleted_count = 0
+    failed_count = 0
+
+    minio_client = get_minio_client()
+
+    for video_id in request.video_ids:
+        video_uuid = video_id
+        counts = DeletionCounts()
+
+        # Check video exists
+        async with pool.acquire() as conn:
+            exists = await conn.fetchval(
+                "SELECT 1 FROM source_videos WHERE id = $1 AND tenant_id = $2",
+                video_uuid,
+                UUID(tenant_id),
+            )
+
+        if not exists:
+            results.append(
+                VideoBatchDeleteResult(
+                    video_id=video_uuid,
+                    deleted=False,
+                    message="Video not found",
+                    deletion_counts=counts,
+                )
+            )
+            failed_count += 1
+            continue
+
+        try:
+            # 1. Delete from Qdrant
+            try:
+                import os
+
+                from qdrant_client import QdrantClient
+                from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+                qdrant = QdrantClient(url=os.getenv("QDRANT_URL", "http://localhost:6333"))
+                qdrant.delete(
+                    collection_name="video_chunks",
+                    points_selector=Filter(
+                        must=[
+                            FieldCondition(
+                                key="video_id",
+                                match=MatchValue(value=str(video_uuid)),
+                            ),
+                        ],
+                    ),
+                )
+                counts.qdrant_vectors = 1
+                logger.info("Deleted vectors from Qdrant for video_id=%s", video_uuid)
+            except Exception as e:
+                logger.warning("Failed to delete from Qdrant: %s", e)
+
+            # 2. Delete from OpenSearch
+            try:
+                import os
+
+                from opensearchpy import OpenSearch
+
+                opensearch = OpenSearch(
+                    hosts=[os.getenv("OPENSEARCH_URL", "http://localhost:9200")],
+                )
+                response = opensearch.delete_by_query(
+                    index="video_chunks",
+                    body={"query": {"term": {"video_id": str(video_uuid)}}},
+                )
+                counts.opensearch_documents = response.get("deleted", 0)
+                logger.info(
+                    "Deleted %d documents from OpenSearch for video_id=%s",
+                    counts.opensearch_documents,
+                    video_uuid,
+                )
+            except Exception as e:
+                logger.warning("Failed to delete from OpenSearch: %s", e)
+
+            # 3 & 4. Delete from PostgreSQL (chunks cascade from video)
+            async with pool.acquire() as conn:
+                chunk_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM video_chunks WHERE video_id = $1",
+                    video_uuid,
+                )
+                counts.postgres_chunks = chunk_count or 0
+
+                await conn.execute(
+                    "DELETE FROM source_videos WHERE id = $1 AND tenant_id = $2",
+                    video_uuid,
+                    UUID(tenant_id),
+                )
+
+            logger.info(
+                "Deleted %d chunks from PostgreSQL for video_id=%s",
+                counts.postgres_chunks,
+                video_uuid,
+            )
+
+            # 5. Delete from MinIO
+            if minio_client:
+                try:
+                    prefix = f"videos/{tenant_id}/{video_uuid}/"
+                    bucket = "rag-pipeline"
+
+                    objects = minio_client.list_objects(bucket, prefix=prefix, recursive=True)
+                    for obj in objects:
+                        minio_client.remove_object(bucket, obj.object_name)
+                        counts.minio_files += 1
+
+                    logger.info(
+                        "Deleted %d files from MinIO for video_id=%s",
+                        counts.minio_files,
+                        video_uuid,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to delete from MinIO: %s", e)
+
+            results.append(
+                VideoBatchDeleteResult(
+                    video_id=video_uuid,
+                    deleted=True,
+                    message="Video and all associated data deleted",
+                    deletion_counts=counts,
+                )
+            )
+            deleted_count += 1
+
+        except Exception as e:
+            logger.exception("Failed to delete video %s: %s", video_uuid, e)
+            results.append(
+                VideoBatchDeleteResult(
+                    video_id=video_uuid,
+                    deleted=False,
+                    message=f"Deletion failed: {e!s}",
+                    deletion_counts=counts,
+                )
+            )
+            failed_count += 1
+
+    return VideoBatchDeleteResponse(
+        deleted_count=deleted_count,
+        failed_count=failed_count,
+        results=results,
+    )
+
+
 @router.get("/{video_id}/chunks", response_model=VideoChunksResponse)
 async def get_video_chunks(
     video_id: str,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> VideoChunksResponse:
     """
     Get video chunks with pagination.
@@ -497,8 +795,6 @@ async def get_video_chunks(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid video_id format",
         ) from e
-
-    pool = get_db_pool()
 
     # Verify video access
     async with pool.acquire() as conn:
@@ -651,6 +947,7 @@ async def get_keyframe(
 async def reprocess_video(
     video_id: str,
     current_user: dict = Depends(get_current_user),
+    pool=Depends(get_asyncpg_pool),
 ) -> ReprocessResponse:
     """
     Reprocess a video from scratch.
@@ -669,8 +966,6 @@ async def reprocess_video(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid video_id format",
         ) from e
-
-    pool = get_db_pool()
 
     # Verify video exists and get current status
     async with pool.acquire() as conn:
@@ -709,8 +1004,7 @@ async def reprocess_video(
                 processing_progress = 0,
                 error_message = NULL,
                 keyframe_count = 0,
-                chunk_count = 0,
-                updated_at = NOW()
+                chunk_count = 0
             WHERE id = $1
             """,
             video_uuid,
@@ -722,12 +1016,11 @@ async def reprocess_video(
     job_id = uuid4()
 
     try:
-        from tasks.video import process_video
+        from tasks.video_ingest import process_video
 
         process_video.delay(
             video_id=str(video_uuid),
             tenant_id=tenant_id,
-            job_id=str(job_id),
         )
     except Exception as e:
         logger.error("Failed to queue reprocess job: %s", e)
@@ -801,8 +1094,18 @@ def _row_to_detail_response(row, minio_client) -> VideoDetailResponse:
         keyframe_count=row.get("keyframe_count", 0),
         chunk_count=row.get("chunk_count", 0),
         visibility=row.get("visibility", "private"),
-        allowed_groups=[UUID(g) for g in (row.get("allowed_groups") or [])],
-        tags=row.get("tags") or [],
+        allowed_groups=[
+            UUID(g) for g in (
+                json.loads(row["allowed_groups"])
+                if isinstance(row.get("allowed_groups"), str)
+                else (row.get("allowed_groups") or [])
+            )
+        ],
+        tags=(
+            json.loads(row["tags"])
+            if isinstance(row.get("tags"), str)
+            else (row.get("tags") or [])
+        ),
         thumbnail_url=thumbnail_url,
         stream_url=stream_url,
         storage_path=row.get("storage_path"),

@@ -1,0 +1,19 @@
+# Clippy configuration for RAG Pipeline
+
+# Cognitive complexity threshold for functions
+cognitive-complexity-threshold = 25
+
+# Maximum number of lines in a function
+too-many-lines-threshold = 100
+
+# Maximum number of arguments a function can have
+too-many-arguments-threshold = 7
+
+# Types that should be allowed in the public API
+allowed-wildcard-imports = []
+
+# Disallow certain types in function signatures
+disallowed-types = []
+
+# MSRV for suggesting newer features
+msrv = "1.75"

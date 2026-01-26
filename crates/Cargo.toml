@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "rag-types",
+    "rag-config",
+    "rag-cache",
+    "rag-retrieval",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+repository = "https://github.com/your-org/ultimate-rag-pipeline"
+
+[workspace.dependencies]
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# DateTime
+chrono = { version = "0.4", features = ["serde"] }
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+# Redis
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# Logging & Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Testing
+tokio-test = "0.4"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"

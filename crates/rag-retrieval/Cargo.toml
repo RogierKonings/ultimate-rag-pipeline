@@ -1,0 +1,31 @@
+[package]
+name = "rag-retrieval"
+description = "Retrieval algorithms for RAG Pipeline - RRF fusion, reranking, hybrid search"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rag-types = { path = "../rag-types" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Parallel processing
+rayon = "1.8"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+criterion = { version = "0.5", features = ["html_reports"] }
+rand = "0.8"
+
+[[bench]]
+name = "rrf_benchmark"
+harness = false
+
+[lints]
+workspace = true

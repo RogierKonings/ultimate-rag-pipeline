@@ -1,16 +1,19 @@
 <script lang="ts">
 	import { Loader2, CheckCircle, AlertCircle, Trash2, Play } from 'lucide-svelte';
 	import type { Video } from '$lib/api/types';
+	import { selectedVideos } from '$lib/stores/videos';
 
 	interface Props {
 		video: Video;
 		selected?: boolean;
+		selectionMode?: boolean;
 		onSelect?: () => void;
 		onDelete?: () => void;
 	}
 
-	let { video, selected = false, onSelect, onDelete }: Props = $props();
+	let { video, selected = false, selectionMode = false, onSelect, onDelete }: Props = $props();
 
+	const isChecked = $derived($selectedVideos.has(video.video_id));
 	let showDeleteButton = $state(false);
 
 	function formatDuration(ms: number | null): string {
@@ -46,17 +49,23 @@
 	class="group flex w-full cursor-pointer items-center gap-3 rounded-lg p-2 text-left transition-colors {selected
 		? 'bg-[var(--color-accent)]/10'
 		: 'hover:bg-gray-50'}"
+	class:bg-blue-50={isChecked}
+	class:hover:bg-blue-100={isChecked}
 >
+	{#if selectionMode}
+		<input
+			type="checkbox"
+			checked={isChecked}
+			onchange={() => selectedVideos.toggle(video.video_id)}
+			onclick={(e) => e.stopPropagation()}
+			class="h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+		/>
+	{/if}
+
 	<!-- Thumbnail -->
-	<div
-		class="relative h-10 w-16 shrink-0 overflow-hidden rounded bg-gray-100"
-	>
+	<div class="relative h-10 w-16 shrink-0 overflow-hidden rounded bg-gray-100">
 		{#if video.thumbnail_url}
-			<img
-				src={video.thumbnail_url}
-				alt=""
-				class="h-full w-full object-cover"
-			/>
+			<img src={video.thumbnail_url} alt="" class="h-full w-full object-cover" />
 		{:else}
 			<div class="flex h-full w-full items-center justify-center">
 				<Play class="h-4 w-4 text-gray-400" />
@@ -94,25 +103,27 @@
 
 	<!-- Status/Actions -->
 	<div class="shrink-0">
-		{#if video.status === 'ready'}
-			{#if showDeleteButton && onDelete}
-				<button
-					type="button"
-					onclick={(e) => {
-						e.stopPropagation();
-						onDelete?.();
-					}}
-					class="rounded p-1 text-[var(--color-text-secondary)] hover:bg-red-50 hover:text-red-600"
-				>
-					<Trash2 class="h-4 w-4" />
-				</button>
-			{:else}
-				<CheckCircle class="h-4 w-4 text-green-500" />
+		{#if !selectionMode}
+			{#if video.status === 'ready'}
+				{#if showDeleteButton && onDelete}
+					<button
+						type="button"
+						onclick={(e) => {
+							e.stopPropagation();
+							onDelete?.();
+						}}
+						class="rounded p-1 text-[var(--color-text-secondary)] hover:bg-red-50 hover:text-red-600"
+					>
+						<Trash2 class="h-4 w-4" />
+					</button>
+				{:else}
+					<CheckCircle class="h-4 w-4 text-green-500" />
+				{/if}
+			{:else if video.status === 'processing'}
+				<span class="text-xs text-[var(--color-text-secondary)]">
+					{video.processing_progress}%
+				</span>
 			{/if}
-		{:else if video.status === 'processing'}
-			<span class="text-xs text-[var(--color-text-secondary)]">
-				{video.processing_progress}%
-			</span>
 		{/if}
 	</div>
 </div>

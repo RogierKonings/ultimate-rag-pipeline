@@ -1,0 +1,30 @@
+[package]
+name = "rag-config"
+description = "Configuration management for RAG Pipeline services"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+validator = { workspace = true }
+tracing = { workspace = true }
+
+# URL parsing
+url = { version = "2.5", features = ["serde"] }
+
+# Secrets redaction
+secrecy = { version = "0.8", features = ["serde"] }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+temp-env = "0.3"
+
+[lints]
+workspace = true

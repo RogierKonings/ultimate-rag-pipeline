@@ -55,7 +55,7 @@ class VideoResponse(BaseModel):
         default_factory=list,
         description="Tags",
     )
-    updated_at: datetime = Field(description="Last update timestamp")
+    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
 
 
 class VideoDetailResponse(BaseModel):
@@ -244,3 +244,66 @@ class ReprocessResponse(BaseModel):
     job_id: UUID = Field(description="New processing job ID")
     status: VideoStatus = Field(description="New status")
     message: str = Field(description="Status message")
+
+
+class VideoBatchDeleteRequest(BaseModel):
+    """Request to delete multiple videos at once."""
+
+    video_ids: list[UUID] = Field(..., min_length=1, max_length=100)
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "video_ids": [
+                        "550e8400-e29b-41d4-a716-446655440000",
+                        "550e8400-e29b-41d4-a716-446655440001",
+                    ],
+                },
+            ],
+        },
+    )
+
+
+class VideoBatchDeleteResult(BaseModel):
+    """Result for a single video deletion in batch operation."""
+
+    video_id: UUID = Field(description="Video identifier")
+    deleted: bool = Field(description="Whether deletion succeeded")
+    message: str = Field(description="Status or error message")
+    deletion_counts: DeletionCounts = Field(
+        default_factory=DeletionCounts,
+        description="Counts of deleted items",
+    )
+
+
+class VideoBatchDeleteResponse(BaseModel):
+    """Response after batch deleting videos."""
+
+    deleted_count: int = Field(description="Number of successfully deleted videos")
+    failed_count: int = Field(description="Number of failed deletions")
+    results: list[VideoBatchDeleteResult] = Field(description="Results per video")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "deleted_count": 2,
+                    "failed_count": 0,
+                    "results": [
+                        {
+                            "video_id": "550e8400-e29b-41d4-a716-446655440000",
+                            "deleted": True,
+                            "message": "Video and all associated data deleted",
+                            "deletion_counts": {
+                                "qdrant_vectors": 10,
+                                "opensearch_documents": 10,
+                                "postgres_chunks": 10,
+                                "minio_files": 15,
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+    )

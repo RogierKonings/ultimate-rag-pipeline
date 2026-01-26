@@ -61,6 +61,10 @@ class VideoProcessingOptions(BaseModel):
         default="openai",
         description="Vision LLM provider: openai, anthropic, ollama",
     )
+    enable_vision: bool = Field(
+        default=True,
+        description="Whether to analyze keyframes with vision LLM",
+    )
     enable_ocr: bool = Field(
         default=True,
         description="Whether to extract text via OCR",
@@ -282,4 +286,40 @@ class VideoErrorResponse(BaseModel):
     details: dict | None = Field(
         default=None,
         description="Additional error details",
+    )
+
+
+class VideoRegisterRequest(BaseModel):
+    """Request to register a video that was already uploaded to storage.
+
+    Use this when the client uploads directly to MinIO/S3 and then
+    notifies the API to start processing.
+    """
+
+    filename: str = Field(description="Original filename")
+    storage_path: str = Field(description="Path to the video in MinIO/S3 storage")
+    title: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Video title (defaults to filename without extension)",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Video description",
+    )
+    visibility: VideoVisibility = Field(
+        default=VideoVisibility.PRIVATE,
+        description="Video visibility setting",
+    )
+    allowed_groups: list[UUID] = Field(
+        default_factory=list,
+        description="Group UUIDs with access (for group visibility)",
+    )
+    processing_options: VideoProcessingOptions = Field(
+        default_factory=VideoProcessingOptions,
+        description="Video processing configuration",
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Tags for categorization",
     )

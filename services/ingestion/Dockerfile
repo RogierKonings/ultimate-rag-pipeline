@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies including tesseract for OCR
+# Install system dependencies including tesseract for OCR and ffmpeg for video processing
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     tesseract-ocr \
     tesseract-ocr-eng \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies

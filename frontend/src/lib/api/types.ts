@@ -216,6 +216,18 @@ export interface VideoStatusResponse {
 	processed_at: string | null;
 }
 
+export interface VideoDeleteResult {
+	video_id: string;
+	deleted: boolean;
+	message: string;
+}
+
+export interface VideoBatchDeleteResponse {
+	deleted_count: number;
+	failed_count: number;
+	results: VideoDeleteResult[];
+}
+
 // Video search types
 export interface VideoMatch {
 	chunk_id: string;

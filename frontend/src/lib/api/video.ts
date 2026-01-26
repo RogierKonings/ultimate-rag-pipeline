@@ -1,6 +1,7 @@
 import { ApiClient } from './client';
 import type {
 	Video,
+	VideoBatchDeleteResponse,
 	VideoListResponse,
 	VideoUploadResponse,
 	VideoStatusResponse,
@@ -40,7 +41,7 @@ export async function listVideos(
 		search?: string;
 	}
 ): Promise<VideoListResponse> {
-	return getIngestionClient().get<VideoListResponse>('/videos', {
+	return getIngestionClient().get<VideoListResponse>('/api/v1/videos', {
 		tenant_id: TENANT_ID,
 		page,
 		page_size: pageSize,
@@ -52,7 +53,7 @@ export async function listVideos(
  * Get a single video by ID
  */
 export async function getVideo(videoId: string): Promise<Video> {
-	return getIngestionClient().get<Video>(`/videos/${videoId}`, {
+	return getIngestionClient().get<Video>(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -61,7 +62,7 @@ export async function getVideo(videoId: string): Promise<Video> {
  * Get video processing status
  */
 export async function getVideoStatus(videoId: string): Promise<VideoStatusResponse> {
-	return getIngestionClient().get<VideoStatusResponse>(`/videos/${videoId}/status`, {
+	return getIngestionClient().get<VideoStatusResponse>(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -70,9 +71,21 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatusRespon
  * Delete a video and all its data
  */
 export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; message: string }> {
-	return getIngestionClient().delete(`/videos/${videoId}`, {
+	return getIngestionClient().delete(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
+}
+
+/**
+ * Delete multiple videos at once
+ */
+export async function batchDeleteVideos(videoIds: string[]): Promise<VideoBatchDeleteResponse> {
+	return getIngestionClient().post<VideoBatchDeleteResponse>(
+		`/api/v1/videos/batch-delete?tenant_id=${TENANT_ID}`,
+		{
+			video_ids: videoIds
+		}
+	);
 }
 
 /**

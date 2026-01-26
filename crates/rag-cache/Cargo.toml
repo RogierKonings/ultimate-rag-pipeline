@@ -1,0 +1,28 @@
+[package]
+name = "rag-cache"
+description = "Redis cache client for RAG Pipeline with embedding and query caching"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rag-types = { path = "../rag-types" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+redis = { workspace = true }
+tracing = { workspace = true }
+
+# Hashing for cache keys
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+
+[lints]
+workspace = true

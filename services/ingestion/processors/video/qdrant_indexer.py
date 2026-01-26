@@ -31,7 +31,7 @@ ProgressCallback = Callable[[int, int, str], None]
 
 # Collection configuration
 VIDEO_CHUNKS_COLLECTION = "video_chunks"
-VECTOR_SIZE = 1024
+VECTOR_SIZE = 384  # all-MiniLM-L6-v2 dimensions
 HNSW_M = 16
 HNSW_EF_CONSTRUCT = 100
 

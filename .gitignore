@@ -20,3 +20,7 @@ AGENTS.md
 
 # Frontend
 node_modules/
+
+# Rust
+target/
+Cargo.lock

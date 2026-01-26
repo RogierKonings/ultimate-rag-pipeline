@@ -119,7 +119,9 @@ generation:
 
 Dedicated embedding service using sentence-transformers with batching optimization.
 
-**Model:** `BAAI/bge-large-en-v1.5` (1024 dimensions)
+**Default Model:** `all-MiniLM-L6-v2` (384 dimensions)
+
+> **Note:** The embedding service runs as a standalone microservice at port 8080. See [Embedding Service Documentation](../embedding-service/README.md) for details.
 
 **Features:**
 - Intelligent request batching (configurable batch size)

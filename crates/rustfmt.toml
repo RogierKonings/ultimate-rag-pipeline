@@ -1,0 +1,12 @@
+# Rust formatting configuration for RAG Pipeline
+edition = "2021"
+max_width = 100
+tab_spaces = 4
+newline_style = "Unix"
+use_small_heuristics = "Default"
+
+# Import organization (stable options)
+reorder_imports = true
+
+# Note: Many formatting options require nightly Rust.
+# For full formatting control, run: cargo +nightly fmt

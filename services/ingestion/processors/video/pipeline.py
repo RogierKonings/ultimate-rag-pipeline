@@ -183,6 +183,7 @@ class VideoProcessingPipeline:
         tenant_id: UUID,
         progress_callback: ProgressCallback | None = None,
         skip_stages: list[PipelineStage] | None = None,
+        storage_path: str | None = None,
     ) -> PipelineResult:
         """Process a video through the full pipeline.
 
@@ -191,6 +192,8 @@ class VideoProcessingPipeline:
             tenant_id: Tenant ID for multi-tenancy.
             progress_callback: Optional callback for progress updates.
             skip_stages: Optional list of stages to skip (for reprocessing).
+            storage_path: Optional storage path. If provided, uses this path to
+                download the video instead of constructing from video_id.
 
         Returns:
             PipelineResult with processing outcome.
@@ -208,7 +211,10 @@ class VideoProcessingPipeline:
         try:
             # Download video for processing
             update_progress(PipelineStage.VALIDATING, 5, "Downloading video...")
-            video_path = await self.storage.download_video(tenant_id, video_id)
+            if storage_path:
+                video_path = await self.storage.download_video_by_path(storage_path)
+            else:
+                video_path = await self.storage.download_video(tenant_id, video_id)
 
             try:
                 # Stage 1: Validation

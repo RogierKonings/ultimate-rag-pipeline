@@ -49,9 +49,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     config = app.state.config
 
     # Initialize components
+    # Use embedding service URL for embeddings (separate from LLM Gateway)
     preprocessor = QueryPreprocessor(
         QueryPreprocessorConfig(
-            llm_gateway_url=config.llm_gateway_url,
+            llm_gateway_url=config.embedding_service_url,
             embedding_model=config.embedding_model,
             embedding_dimension=config.embedding_dimension,
             embedding_prefix=config.embedding_prefix,

@@ -166,6 +166,7 @@ flowchart LR
         RET[Retrieval Service<br/>:8002]
         ORC[Orchestrator Service<br/>:8003]
         LLM[LLM Gateway<br/>:8004]
+        EMB[Embedding Service<br/>:8080]
     end
     
     subgraph Data["Data Stores"]
@@ -182,9 +183,11 @@ flowchart LR
     ING --> QD
     ING --> OS
     ING --> S3
+    ING --> EMB
     RET --> QD
     RET --> OS
     RET --> PG
+    RET --> EMB
     ORC --> RET
     ORC --> LLM
     ORC --> RD
