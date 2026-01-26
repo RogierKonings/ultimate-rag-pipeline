@@ -4,6 +4,8 @@
 //! - Reciprocal Rank Fusion (RRF) for combining search results
 //! - Score normalization
 //! - Result deduplication
+//! - Core types for retrieval operations
+//! - Error handling
 //!
 //! # Example
 //!
@@ -30,6 +32,18 @@
 //! assert_eq!(fused[0].id, "doc2");
 //! ```
 
+pub mod error;
 pub mod rrf;
+pub mod types;
 
+// Re-export key types from rrf module
 pub use rrf::{reciprocal_rank_fusion, RrfConfig, ScoredItem};
+
+// Re-export error types
+pub use error::{RetrievalError, Result};
+
+// Re-export core types
+pub use types::{
+    QueryType, RetrievalDebug, RetrievalMetrics, RetrievalResult, SearchMode, UserContext,
+    Visibility,
+};

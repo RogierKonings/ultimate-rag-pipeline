@@ -8,12 +8,36 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# Internal crates
 rag-types = { path = "../rag-types" }
+rag-vectorstore = { path = "../rag-vectorstore" }
+rag-search = { path = "../rag-search" }
+rag-cache = { path = "../rag-cache" }
+rag-auth = { path = "../rag-auth" }
+rag-config = { path = "../rag-config" }
+rag-telemetry = { path = "../rag-telemetry" }
 
+# Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Error handling
 thiserror = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Logging
 tracing = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# HTTP client for embedding service
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# Async utilities
+futures = "0.3"
 
 # Parallel processing
 rayon = "1.8"
