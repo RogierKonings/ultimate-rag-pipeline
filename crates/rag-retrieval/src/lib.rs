@@ -81,6 +81,7 @@
 //! ```
 
 pub mod acl;
+pub mod cache;
 pub mod embedding;
 pub mod error;
 pub mod fusion;
@@ -130,3 +131,6 @@ pub use acl::{
     ACLFilter, ACLFilterConfig, FilterCondition, HasACLFields, MatchType, OpenSearchFilterBuilder,
     QdrantFilterBuilder, UnifiedFilter,
 };
+
+// Re-export cache types
+pub use cache::{CacheKeyBuilder, CacheStats, CacheStatsSnapshot, RetrievalCache};
