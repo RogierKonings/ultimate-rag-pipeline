@@ -1,0 +1,36 @@
+[package]
+name = "rag-database"
+description = "PostgreSQL database client for the RAG Pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+# SQLx for PostgreSQL
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "json",
+    "macros",
+    "migrate"
+] }
+
+# Connection pooling configuration
+deadpool = { version = "0.12", features = ["managed"] }
+
+[dev-dependencies]
+tokio-test.workspace = true

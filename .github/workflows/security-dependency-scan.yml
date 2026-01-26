@@ -47,13 +47,6 @@ jobs:
             --output ingestion-audit.json || true
         continue-on-error: true
 
-      - name: Scan retrieval service
-        run: |
-          pip-audit -r services/retrieval/requirements.txt \
-            --format json \
-            --output retrieval-audit.json || true
-        continue-on-error: true
-
       - name: Scan orchestrator service
         run: |
           pip-audit -r services/orchestrator/requirements.txt \

@@ -1,0 +1,29 @@
+[package]
+name = "rag-search"
+description = "OpenSearch client for the RAG Pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+# OpenSearch client
+opensearch = "2.2"
+
+# HTTP and URL handling
+url = "2.5"
+
+# Retry logic
+backoff = { version = "0.4", features = ["tokio"] }
+
+[dev-dependencies]
+tokio-test.workspace = true

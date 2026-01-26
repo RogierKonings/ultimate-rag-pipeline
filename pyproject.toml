@@ -179,8 +179,6 @@ ignore = [
 "llm-serving/vllm/scripts/*.py" = ["S110"]
 # Ingestion uses content hashing with MD5 for deduplication, database connector uses dynamic SQL
 "services/ingestion/**/*.py" = ["S324", "S608"]
-# Retrieval cache uses MD5 for cache keys
-"services/retrieval/cache/*.py" = ["S324"]
 # Query building may use dynamic SQL construction
 "services/shared/database/**/*.py" = ["S608"]
 # Observability evaluation persistence uses dynamic SQL

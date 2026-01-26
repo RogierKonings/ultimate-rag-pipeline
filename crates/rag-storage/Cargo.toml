@@ -1,0 +1,33 @@
+[package]
+name = "rag-storage"
+description = "S3/MinIO storage client for the RAG Pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+# AWS SDK for S3 (pinned for Rust 1.87 compatibility)
+aws-config = { version = "=1.5.17", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "=1.72.0"
+aws-smithy-runtime-api = "=1.7.3"
+aws-smithy-types = "=1.2.13"
+
+# Async streams
+futures = "0.3"
+tokio-util = { version = "0.7", features = ["io"] }
+bytes = "1.5"
+
+# MIME types
+mime_guess = "2.0"
+
+[dev-dependencies]
+tokio-test.workspace = true

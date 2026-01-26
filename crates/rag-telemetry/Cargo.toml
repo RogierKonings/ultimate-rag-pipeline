@@ -1,0 +1,40 @@
+[package]
+name = "rag-telemetry"
+description = "OpenTelemetry and tracing for the RAG Pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+# Tracing
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "json", "fmt"] }
+
+# OpenTelemetry
+opentelemetry = { version = "0.22", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio", "trace", "metrics"] }
+opentelemetry-otlp = { version = "0.15", features = ["trace", "metrics", "grpc-tonic"] }
+tracing-opentelemetry = "0.23"
+
+# Prometheus metrics
+prometheus = "0.13"
+
+# UUID for request IDs
+uuid = { version = "1.6", features = ["v4"] }
+
+# HTTP server for metrics endpoint
+axum = { version = "0.7", optional = true }
+
+[dev-dependencies]
+tokio-test.workspace = true
+
+[features]
+default = []
+metrics-endpoint = ["axum"]

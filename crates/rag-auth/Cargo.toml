@@ -1,0 +1,39 @@
+[package]
+name = "rag-auth"
+description = "JWT authentication for the RAG Pipeline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+
+# JWT handling
+jsonwebtoken = "9.3"
+
+# Async traits
+async-trait = "0.1"
+
+# For JWKS support
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio.workspace = true
+
+# Glob pattern matching for endpoint authorization
+glob-match = "0.2"
+
+# Duration parsing
+humantime = "2.1"
+
+# Redis for blocklist
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+[dev-dependencies]
+tokio-test.workspace = true

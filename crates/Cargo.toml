@@ -5,6 +5,12 @@ members = [
     "rag-config",
     "rag-cache",
     "rag-retrieval",
+    "rag-auth",
+    "rag-telemetry",
+    "rag-storage",
+    "rag-vectorstore",
+    "rag-search",
+    "rag-database",
 ]
 
 [workspace.package]

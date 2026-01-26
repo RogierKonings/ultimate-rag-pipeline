@@ -1,0 +1,177 @@
+//! Retrieval Service - Rust HTTP Binary
+//!
+//! This is the main entry point for the Rust retrieval service that provides
+//! hybrid search (semantic + keyword) with ACL filtering and reranking.
+//!
+//! # API Endpoints
+//!
+//! - `POST /api/v1/retrieve` - Single query retrieval
+//! - `POST /api/v1/retrieve/multi` - Multi-query retrieval
+//! - `GET /health` - Full health check with component status
+//! - `GET /health/live` - Kubernetes liveness probe
+//! - `GET /health/ready` - Kubernetes readiness probe
+//! - `GET /metrics` - Prometheus metrics endpoint
+//!
+//! # Environment Variables
+//!
+//! See the `ServiceConfig::from_env()` documentation for all supported
+//! environment variables.
+
+use std::sync::Arc;
+
+use tokio::signal;
+use tracing::{error, info, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
+use rag_retrieval::api::{run_server_with_shutdown, AppState, ServerConfig};
+use rag_retrieval::embedding::{EmbeddingClient, EmbeddingConfig};
+use rag_retrieval::hybrid::{HybridSearchConfig, HybridSearcher};
+use rag_retrieval::reranking::{RerankerConfig, RerankerService};
+use rag_retrieval::search::{KeywordSearchConfig, KeywordSearcher, SemanticSearchConfig, SemanticSearcher};
+
+#[tokio::main]
+async fn main() {
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            "retrieval_service=info,rag_retrieval=info,tower_http=info".into()
+        }))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    info!("Starting Rust Retrieval Service v{}", env!("CARGO_PKG_VERSION"));
+
+    // Load configuration from environment
+    let server_config = ServerConfig::from_env();
+    info!(addr = %server_config.addr, "Server configuration loaded");
+
+    // Initialize components
+    let state = match initialize_app_state().await {
+        Ok(state) => Arc::new(state),
+        Err(e) => {
+            error!("Failed to initialize application: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    info!("All components initialized successfully");
+
+    // Run server with graceful shutdown
+    let shutdown_signal = async {
+        let ctrl_c = async {
+            signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            signal::unix::signal(signal::unix::SignalKind::terminate())
+                .expect("Failed to install SIGTERM handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            () = ctrl_c => info!("Received Ctrl+C, shutting down"),
+            () = terminate => info!("Received SIGTERM, shutting down"),
+        }
+    };
+
+    if let Err(e) = run_server_with_shutdown(state, server_config.addr, shutdown_signal).await {
+        error!("Server error: {}", e);
+        std::process::exit(1);
+    }
+
+    info!("Server shut down successfully");
+}
+
+/// Initialize all application components using environment-based configuration.
+async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + Send + Sync>> {
+    // Load configs from environment
+    let semantic_config = SemanticSearchConfig::from_env();
+    let keyword_config = KeywordSearchConfig::from_env();
+    let embedding_config = EmbeddingConfig::from_env();
+    let reranker_config = RerankerConfig::from_env();
+    let hybrid_config = HybridSearchConfig::from_env();
+    let acl_config = ACLFilterConfig::from_env();
+
+    // Initialize semantic searcher (Qdrant)
+    info!(
+        url = %semantic_config.url,
+        collection = %semantic_config.collection,
+        "Connecting to Qdrant"
+    );
+    let semantic = SemanticSearcher::new(&semantic_config).await?;
+    info!("Connected to Qdrant");
+
+    // Initialize keyword searcher (OpenSearch)
+    info!(
+        url = %keyword_config.url,
+        index = %keyword_config.index,
+        "Connecting to OpenSearch"
+    );
+    let keyword = KeywordSearcher::new(&keyword_config)?;
+    info!("Connected to OpenSearch");
+
+    // Initialize embedding client
+    info!(
+        url = %embedding_config.url,
+        model = %embedding_config.model,
+        "Configuring embedding client"
+    );
+    let embedding = EmbeddingClient::new(embedding_config)?;
+
+    // Initialize reranker
+    let reranker = if std::env::var("RERANKER_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(true) {
+        info!(
+            url = %reranker_config.gateway_url,
+            model = %reranker_config.model,
+            "Configuring reranker"
+        );
+        match RerankerService::new(reranker_config) {
+            Ok(service) => Some(Arc::new(service)),
+            Err(e) => {
+                warn!("Failed to initialize reranker, continuing without it: {}", e);
+                None
+            }
+        }
+    } else {
+        warn!("Reranker disabled via RERANKER_ENABLED=false");
+        None
+    };
+
+    // Initialize hybrid searcher
+    info!(
+        semantic_weight = hybrid_config.semantic_weight,
+        keyword_weight = hybrid_config.keyword_weight,
+        "Creating hybrid searcher"
+    );
+    let hybrid = HybridSearcher::new(
+        Arc::new(semantic),
+        Arc::new(keyword),
+        hybrid_config,
+    );
+
+    // Initialize ACL filter
+    let acl_filter = ACLFilter::new(acl_config);
+
+    // Build application state
+    let mut builder = AppState::builder()
+        .hybrid(Arc::new(hybrid))
+        .embedding(Arc::new(embedding))
+        .acl_filter(Arc::new(acl_filter))
+        .version(env!("CARGO_PKG_VERSION"));
+
+    if let Some(reranker) = reranker {
+        builder = builder.reranker(reranker);
+    }
+
+    let state = builder.build()?;
+
+    Ok(state)
+}

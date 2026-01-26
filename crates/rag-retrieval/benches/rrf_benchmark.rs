@@ -27,24 +27,22 @@ fn generate_overlapping_results(
     let shared: Vec<String> = (0..overlap_count).map(|i| format!("shared_{i}")).collect();
 
     // List 1: shared + unique to list 1
-    let list1: Vec<ScoredItem<String>> = shared
+    let mut list1: Vec<ScoredItem<String>> = shared
         .iter()
         .map(|id| ScoredItem::new(id.clone(), rng.gen_range(0.0..1.0)))
-        .chain(
-            (0..unique_count)
-                .map(|i| ScoredItem::new(format!("unique1_{i}"), rng.gen_range(0.0..1.0))),
-        )
         .collect();
+    list1.extend(
+        (0..unique_count).map(|i| ScoredItem::new(format!("unique1_{i}"), rng.gen_range(0.0..1.0))),
+    );
 
     // List 2: shared + unique to list 2
-    let list2: Vec<ScoredItem<String>> = shared
+    let mut list2: Vec<ScoredItem<String>> = shared
         .iter()
         .map(|id| ScoredItem::new(id.clone(), rng.gen_range(0.0..1.0)))
-        .chain(
-            (0..unique_count)
-                .map(|i| ScoredItem::new(format!("unique2_{i}"), rng.gen_range(0.0..1.0))),
-        )
         .collect();
+    list2.extend(
+        (0..unique_count).map(|i| ScoredItem::new(format!("unique2_{i}"), rng.gen_range(0.0..1.0))),
+    );
 
     (list1, list2)
 }

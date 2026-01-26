@@ -116,6 +116,43 @@ impl ACLFilterConfig {
     pub fn is_super_tenant(&self, tenant_id: Uuid) -> bool {
         self.super_tenant_id.map_or(false, |super_id| super_id == tenant_id)
     }
+
+    /// Load configuration from environment variables.
+    ///
+    /// Environment variables:
+    /// - `ACL_ENABLED`: Whether ACL filtering is enabled (default: true)
+    /// - `ACL_ADMIN_BYPASS`: Whether admin users bypass ACL (default: true)
+    /// - `ACL_SUPER_TENANT_ID`: UUID of super tenant (optional)
+    /// - `ACL_DEFAULT_VISIBILITY`: Default visibility (public, tenant, group, private; default: private)
+    #[must_use]
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+
+        if let Ok(enabled) = std::env::var("ACL_ENABLED") {
+            config.enabled = enabled.to_lowercase() == "true";
+        }
+
+        if let Ok(admin_bypass) = std::env::var("ACL_ADMIN_BYPASS") {
+            config.admin_bypass = admin_bypass.to_lowercase() == "true";
+        }
+
+        if let Ok(super_tenant) = std::env::var("ACL_SUPER_TENANT_ID") {
+            if let Ok(uuid) = super_tenant.parse() {
+                config.super_tenant_id = Some(uuid);
+            }
+        }
+
+        if let Ok(visibility) = std::env::var("ACL_DEFAULT_VISIBILITY") {
+            config.default_visibility = match visibility.to_lowercase().as_str() {
+                "public" => Visibility::Public,
+                "tenant" => Visibility::Tenant,
+                "group" => Visibility::Group,
+                _ => Visibility::Private,
+            };
+        }
+
+        config
+    }
 }
 
 /// Builder for [`ACLFilterConfig`].

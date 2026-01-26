@@ -93,49 +93,30 @@ jobs:
         if: always()
 
   test-retrieval:
-    name: Test Retrieval Service
+    name: Test Retrieval Service (Rust)
     runs-on: ubuntu-latest
     needs: lint
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: services/ingestion/requirements.txt
+          workspaces: crates
 
-      - name: Install dependencies
+      - name: Run Rust tests
         run: |
-          pip install --upgrade pip
-          # Install core test dependencies
-          pip install pytest pytest-asyncio pytest-cov httpx
-          # Install from ingestion requirements (has common deps)
-          pip install -r services/ingestion/requirements.txt 2>/dev/null || true
+          cd crates
+          cargo test -p rag-retrieval --no-fail-fast 2>&1 | tee test-output.txt
 
-      - name: Run tests
+      - name: Generate test summary
         run: |
-          pytest services/retrieval/ \
-            -v \
-            --tb=short \
-            -m "not integration and not slow" \
-            --junitxml=test-results-retrieval.xml \
-            --cov=services/retrieval \
-            --cov-report=xml:coverage-retrieval.xml \
-            --cov-report=term-missing
-        env:
-          PYTHONPATH: ${{ github.workspace }}/services:${{ github.workspace }}/services/retrieval
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-retrieval
-          path: |
-            test-results-retrieval.xml
-            coverage-retrieval.xml
-        if: always()
+          echo "## Retrieval Service (Rust) Test Results" >> $GITHUB_STEP_SUMMARY
+          grep -E "^test |passed|failed" crates/test-output.txt >> $GITHUB_STEP_SUMMARY || true
 
   test-orchestrator:
     name: Test Orchestrator Service
@@ -248,7 +229,7 @@ jobs:
           echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Ingestion | ${{ needs.test-ingestion.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Retrieval | ${{ needs.test-retrieval.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Retrieval (Rust) | ${{ needs.test-retrieval.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Orchestrator | ${{ needs.test-orchestrator.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Shared | ${{ needs.test-shared.result }} |" >> $GITHUB_STEP_SUMMARY
 
