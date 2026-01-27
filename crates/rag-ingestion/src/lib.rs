@@ -45,6 +45,7 @@
 pub mod chunking;
 pub mod embedding;
 pub mod error;
+pub mod indexing;
 pub mod parsers;
 
 pub use error::{Error, Result};
