@@ -49,7 +49,7 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
-wiremock = "0.6"
+wiremock = "0.5"
 tempfile = "3.10"
 tokio-test = { workspace = true }
 
