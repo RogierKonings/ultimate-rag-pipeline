@@ -8,9 +8,14 @@
 //! - Multi-modal fusion of text sources
 //! - Vector indexing for semantic search
 
+pub mod clients;
 pub mod error;
 pub mod extraction;
 
+pub use clients::{
+    SceneBoundary, SceneDetectionClient, SceneDetectionConfig, SceneDetectionResult,
+    TranscriptSegment,
+};
 pub use error::VideoError;
 pub use extraction::{
     AudioConfig, AudioExtractor, AudioMetadata, ExtractedKeyframe, KeyframeConfig,
