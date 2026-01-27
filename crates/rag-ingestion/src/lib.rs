@@ -43,6 +43,7 @@
 //! - Semantic chunker (sentence-boundary based)
 
 pub mod chunking;
+pub mod embedding;
 pub mod error;
 pub mod parsers;
 
