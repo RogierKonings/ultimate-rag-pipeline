@@ -13,7 +13,7 @@ pub mod extraction;
 
 pub use error::VideoError;
 pub use extraction::{
-    AudioConfig, AudioMetadata, ExtractedKeyframe, KeyframeConfig, VideoMetadata,
+    AudioConfig, AudioMetadata, ExtractedKeyframe, KeyframeConfig, MetadataProbe, VideoMetadata,
 };
 
 /// A specialized Result type for video processing operations.
