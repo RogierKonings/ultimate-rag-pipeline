@@ -4,11 +4,14 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Document parsing and chunking for RAG pipeline"
+description = "Document parsing, chunking, embedding, and indexing for RAG pipeline"
 
 [dependencies]
 # Internal crates
 rag-types = { path = "../rag-types" }
+rag-vectorstore = { path = "../rag-vectorstore" }
+rag-search = { path = "../rag-search" }
+rag-database = { path = "../rag-database" }
 
 # Parsing
 scraper = "0.20"
@@ -26,11 +29,29 @@ serde_json = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 
+# Async runtime
+tokio = { workspace = true, features = ["fs"] }
+
+# HTTP client
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+
+# AWS S3
+aws-sdk-s3 = "1.65"
+aws-config = { version = "1.5", features = ["behavior-version-latest"] }
+
 # Utilities
 uuid = { workspace = true }
+chrono = { workspace = true }
+bytes = "1.5"
+mime_guess = "2.0"
+async-trait = "0.1"
+tracing = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+wiremock = "0.6"
+tempfile = "3.10"
+tokio-test = { workspace = true }
 
 [lints]
 workspace = true
