@@ -9,8 +9,12 @@
 //! - Vector indexing for semantic search
 
 pub mod error;
+pub mod extraction;
 
 pub use error::VideoError;
+pub use extraction::{
+    AudioConfig, AudioMetadata, ExtractedKeyframe, KeyframeConfig, VideoMetadata,
+};
 
 /// A specialized Result type for video processing operations.
 pub type Result<T> = std::result::Result<T, VideoError>;
