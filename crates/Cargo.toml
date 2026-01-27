@@ -12,6 +12,7 @@ members = [
     "rag-search",
     "rag-database",
     "rag-ingestion",
+    "rag-video",
 ]
 
 [workspace.package]
