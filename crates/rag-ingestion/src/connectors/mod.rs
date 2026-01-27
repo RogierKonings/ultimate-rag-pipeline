@@ -6,8 +6,8 @@
 
 mod base;
 mod filesystem;
-// mod s3;
+mod s3;
 
 pub use base::{Connector, DocumentMetadata, RawDocument, SourceType};
 pub use filesystem::{FilesystemConfig, FilesystemConnector};
-// pub use s3::{S3Config, S3Connector};
+pub use s3::{S3Config, S3Connector};
