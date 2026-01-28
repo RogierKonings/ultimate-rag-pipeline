@@ -13,6 +13,7 @@ pub mod error;
 pub mod extraction;
 pub mod fusion;
 pub mod indexer;
+pub mod pipeline;
 
 pub use clients::{
     SceneBoundary, SceneDetectionClient, SceneDetectionConfig, SceneDetectionResult,
@@ -25,8 +26,11 @@ pub use extraction::{
 };
 pub use fusion::{ContentFusionService, FusionConfig, KeyframeWithContent, VideoChunk};
 pub use indexer::{
-    CollectionInfo, IndexResult, ProgressCallback, SearchFilters, SearchHit, VideoChunkPayload,
+    CollectionInfo, IndexResult, SearchFilters, SearchHit, VideoChunkPayload,
     VideoIndexerConfig, VideoQdrantIndexer,
+};
+pub use pipeline::{
+    PipelineConfig, PipelineProgress, PipelineResult, PipelineStage, StageResult, VideoPipeline,
 };
 
 /// A specialized Result type for video processing operations.
