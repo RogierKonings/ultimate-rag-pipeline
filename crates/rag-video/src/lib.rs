@@ -12,6 +12,7 @@ pub mod clients;
 pub mod error;
 pub mod extraction;
 pub mod fusion;
+pub mod indexer;
 
 pub use clients::{
     SceneBoundary, SceneDetectionClient, SceneDetectionConfig, SceneDetectionResult,
@@ -23,6 +24,9 @@ pub use extraction::{
     KeyframeExtractor, MetadataProbe, VideoMetadata,
 };
 pub use fusion::{ContentFusionService, FusionConfig, KeyframeWithContent, VideoChunk};
+pub use indexer::{
+    CollectionInfo, IndexResult, SearchFilters, SearchHit, VideoChunkPayload, VideoIndexerConfig,
+};
 
 /// A specialized Result type for video processing operations.
 pub type Result<T> = std::result::Result<T, VideoError>;
