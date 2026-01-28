@@ -22,7 +22,7 @@ pub use extraction::{
     AudioConfig, AudioExtractor, AudioMetadata, ExtractedKeyframe, KeyframeConfig,
     KeyframeExtractor, MetadataProbe, VideoMetadata,
 };
-pub use fusion::{FusionConfig, KeyframeWithContent, VideoChunk};
+pub use fusion::{ContentFusionService, FusionConfig, KeyframeWithContent, VideoChunk};
 
 /// A specialized Result type for video processing operations.
 pub type Result<T> = std::result::Result<T, VideoError>;
