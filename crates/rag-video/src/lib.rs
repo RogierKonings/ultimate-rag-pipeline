@@ -25,7 +25,8 @@ pub use extraction::{
 };
 pub use fusion::{ContentFusionService, FusionConfig, KeyframeWithContent, VideoChunk};
 pub use indexer::{
-    CollectionInfo, IndexResult, SearchFilters, SearchHit, VideoChunkPayload, VideoIndexerConfig,
+    CollectionInfo, IndexResult, ProgressCallback, SearchFilters, SearchHit, VideoChunkPayload,
+    VideoIndexerConfig, VideoQdrantIndexer,
 };
 
 /// A specialized Result type for video processing operations.
