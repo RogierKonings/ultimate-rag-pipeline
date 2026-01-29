@@ -2,7 +2,9 @@
 
 use crate::error::Result;
 use super::models::{DocumentRecord, IndexedChunk, WriteResult};
-use rag_database::DatabasePool;
+use rag_database::{
+    ChunkRepository, DatabasePool, DocumentRepository, NewChunk, NewSourceDocument, Visibility,
+};
 use rag_search::SearchClient;
 use rag_types::{DocumentId, TenantId};
 use rag_vectorstore::{FilterBuilder, VectorStoreClient};
@@ -10,6 +12,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Instant;
 use tracing::{debug, instrument, warn};
+use uuid::Uuid;
 
 /// Configuration for the index coordinator.
 #[derive(Debug, Clone)]
@@ -33,11 +36,10 @@ impl Default for IndexCoordinatorConfig {
 pub struct IndexCoordinator {
     qdrant: VectorStoreClient,
     opensearch: SearchClient,
-    /// Database pool for `PostgreSQL` operations.
-    ///
-    /// TODO: Implement actual `PostgreSQL` writes in `write_to_database` and `delete_from_database`.
-    #[allow(dead_code)]
-    database: DatabasePool,
+    /// Repository for document operations.
+    document_repo: DocumentRepository,
+    /// Repository for chunk operations.
+    chunk_repo: ChunkRepository,
     config: IndexCoordinatorConfig,
 }
 
@@ -50,10 +52,12 @@ impl IndexCoordinator {
         database: DatabasePool,
         config: IndexCoordinatorConfig,
     ) -> Self {
+        let pool = database.inner().clone();
         Self {
             qdrant,
             opensearch,
-            database,
+            document_repo: DocumentRepository::new(pool.clone()),
+            chunk_repo: ChunkRepository::new(pool),
             config,
         }
     }
@@ -246,7 +250,6 @@ impl IndexCoordinator {
         }
     }
 
-    #[allow(clippy::unused_async)]
     async fn write_to_database(
         &self,
         document: &DocumentRecord,
@@ -254,24 +257,134 @@ impl IndexCoordinator {
     ) -> WriteResult {
         let start = Instant::now();
 
-        // TODO: Implement actual PostgreSQL writes using sqlx
-        // The actual implementation would:
-        // 1. Upsert document metadata to source_documents table
-        // 2. Upsert chunk records to chunks table
-        //
-        // Example query for documents:
-        // INSERT INTO source_documents (id, tenant_id, source_uri, title, metadata)
-        // VALUES ($1, $2, $3, $4, $5)
-        // ON CONFLICT (id) DO UPDATE SET ...
-        //
-        // For now, return success as a placeholder.
-        // This requires defining the exact table schema and sqlx queries.
+        // Convert DocumentRecord to NewSourceDocument
+        let doc_id = Uuid::parse_str(&document.document_id.to_string())
+            .unwrap_or_else(|_| Uuid::new_v4());
 
-        let chunk_count = chunks.len();
+        let new_doc = NewSourceDocument {
+            id: doc_id,
+            tenant_id: document.tenant_id.to_string(),
+            title: document.title.clone(),
+            source_uri: document.source_id.clone(),
+            source_type: document
+                .metadata
+                .get("source_type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("file")
+                .to_string(),
+            mime_type: document
+                .metadata
+                .get("mime_type")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            content_hash: document
+                .metadata
+                .get("content_hash")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string(),
+            file_size: document
+                .metadata
+                .get("file_size")
+                .and_then(|v| v.as_i64()),
+            visibility: Visibility::Private,
+            allowed_groups: document
+                .metadata
+                .get("allowed_groups")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            metadata: serde_json::to_value(&document.metadata).unwrap_or(Value::Null),
+        };
+
+        // Insert document
+        if let Err(e) = self.document_repo.create(&new_doc).await {
+            warn!(error = %e, "Failed to write document to PostgreSQL");
+            return WriteResult::failure(format!("Document insert failed: {e}"), start.elapsed());
+        }
+
+        // Convert IndexedChunks to NewChunks
+        let new_chunks: Vec<NewChunk> = chunks
+            .iter()
+            .map(|c| {
+                let chunk_id =
+                    Uuid::parse_str(&c.chunk_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
+
+                NewChunk {
+                    id: chunk_id,
+                    document_id: doc_id,
+                    tenant_id: c.tenant_id.to_string(),
+                    chunk_index: c.chunk_index as i32,
+                    content: c.content.clone(),
+                    token_count: c
+                        .metadata
+                        .get("token_count")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0) as i32,
+                    char_count: c.content.len() as i32,
+                    embedding_model: c
+                        .metadata
+                        .get("embedding_model")
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
+                    content_hash: c
+                        .metadata
+                        .get("content_hash")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    start_offset: c
+                        .metadata
+                        .get("start_char")
+                        .and_then(|v| v.as_i64())
+                        .map(|v| v as i32),
+                    end_offset: c
+                        .metadata
+                        .get("end_char")
+                        .and_then(|v| v.as_i64())
+                        .map(|v| v as i32),
+                    metadata: serde_json::to_value(&c.metadata).unwrap_or(Value::Null),
+                }
+            })
+            .collect();
+
+        // Bulk insert chunks
+        let chunk_count = new_chunks.len();
+        if !new_chunks.is_empty() {
+            if let Err(e) = self.chunk_repo.create_many(&new_chunks).await {
+                warn!(error = %e, "Failed to write chunks to PostgreSQL");
+                return WriteResult::failure(format!("Chunk insert failed: {e}"), start.elapsed());
+            }
+        }
+
+        // Update document chunk count
+        if let Err(e) = self
+            .document_repo
+            .update_chunk_count(doc_id, chunk_count as i32)
+            .await
+        {
+            warn!(error = %e, "Failed to update document chunk count");
+            // Don't fail the whole operation for this
+        }
+
+        // Update document status to completed
+        if let Err(e) = self
+            .document_repo
+            .update_status(doc_id, "completed", None)
+            .await
+        {
+            warn!(error = %e, "Failed to update document status");
+            // Don't fail the whole operation for this
+        }
+
         debug!(
             document_id = %document.document_id,
             chunks = chunk_count,
-            "Writing to PostgreSQL (placeholder)"
+            "Wrote to PostgreSQL"
         );
 
         WriteResult::success(chunk_count + 1, start.elapsed()) // +1 for document record
@@ -332,23 +445,51 @@ impl IndexCoordinator {
         }
     }
 
-    #[allow(clippy::unused_async)]
     async fn delete_from_database(&self, document_id: DocumentId) -> WriteResult {
         let start = Instant::now();
 
-        // TODO: Implement actual PostgreSQL deletes using sqlx
-        // The actual implementation would:
-        // 1. Delete chunks associated with this document
-        // 2. Delete the document record
-        //
-        // Example:
-        // DELETE FROM chunks WHERE document_id = $1;
-        // DELETE FROM source_documents WHERE id = $1;
-        //
-        // For now, return success as a placeholder.
+        let doc_uuid = match Uuid::parse_str(&document_id.to_string()) {
+            Ok(id) => id,
+            Err(e) => {
+                warn!(error = %e, "Invalid document ID format");
+                return WriteResult::failure(format!("Invalid document ID: {e}"), start.elapsed());
+            }
+        };
 
-        debug!(document_id = %document_id, "Deleting from PostgreSQL (placeholder)");
-        WriteResult::success(0, start.elapsed())
+        // Delete chunks first (due to foreign key constraint)
+        let chunks_deleted = match self.chunk_repo.delete_by_document(doc_uuid).await {
+            Ok(count) => count,
+            Err(e) => {
+                warn!(error = %e, "Failed to delete chunks from PostgreSQL");
+                return WriteResult::failure(
+                    format!("Chunk deletion failed: {e}"),
+                    start.elapsed(),
+                );
+            }
+        };
+
+        // Delete document record
+        match self.document_repo.delete(doc_uuid).await {
+            Ok(deleted) => {
+                if deleted {
+                    debug!(
+                        document_id = %document_id,
+                        chunks_deleted = chunks_deleted,
+                        "Deleted from PostgreSQL"
+                    );
+                    #[allow(clippy::cast_possible_truncation)]
+                    WriteResult::success(chunks_deleted as usize + 1, start.elapsed())
+                } else {
+                    debug!(document_id = %document_id, "Document not found in PostgreSQL");
+                    #[allow(clippy::cast_possible_truncation)]
+                    WriteResult::success(chunks_deleted as usize, start.elapsed())
+                }
+            }
+            Err(e) => {
+                warn!(error = %e, "Failed to delete document from PostgreSQL");
+                WriteResult::failure(format!("Document deletion failed: {e}"), start.elapsed())
+            }
+        }
     }
 }
 

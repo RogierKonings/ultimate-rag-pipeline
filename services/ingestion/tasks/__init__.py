@@ -2,14 +2,15 @@
 
 This module provides Celery-based background job processing for:
 - Document ingestion (process_document, batch_ingest)
-- Video processing (process_video)
 - Re-embedding (reembed_collection)
 - Deletion propagation (propagate_deletion)
 - Job status tracking
 
+Note: Video processing has been migrated to the Rust rag-video crate.
+
 Example:
     Start a worker:
-    $ celery -A services.ingestion.tasks.celery_app worker --loglevel=info --queues=ingestion,video,embedding,reembed
+    $ celery -A services.ingestion.tasks.celery_app worker --loglevel=info --queues=ingestion,embedding,reembed
 """
 
 from .callbacks import send_to_dlq
@@ -24,7 +25,8 @@ from .models import (
 from .reembed import reembed_collection
 from .status import JobStatusTracker
 from .tombstone import propagate_deletion
-from .video_ingest import process_video
+
+# Note: process_video task removed - video processing now handled by Rust rag-video crate
 
 __all__ = [
     # Celery app
@@ -39,7 +41,6 @@ __all__ = [
     # Tasks
     "process_document",
     "batch_ingest",
-    "process_video",
     "reembed_collection",
     "propagate_deletion",
     "send_to_dlq",

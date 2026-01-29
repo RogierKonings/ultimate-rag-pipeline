@@ -157,23 +157,13 @@ async def register_video(
             detail="Failed to create video record",
         ) from e
 
-    # Queue processing task
-    try:
-        from tasks.video_ingest import process_video
-
-        process_video.delay(
-            video_id=str(video_id),
-            tenant_id=tenant_id,
-            processing_options=body.processing_options.model_dump() if body.processing_options else {},
-        )
-        logger.info(
-            "Queued video processing: video_id=%s, storage_path=%s",
-            video_id,
-            body.storage_path,
-        )
-    except Exception as e:
-        logger.warning("Failed to queue video task (will retry later): %s", e)
-        # Don't fail - the video record is created and can be reprocessed
+    # NOTE: Video processing task has been migrated to Rust rag-video crate
+    # The video record is created but processing must be triggered via Rust pipeline
+    logger.info(
+        "Video registered: video_id=%s, storage_path=%s (processing via Rust pipeline pending)",
+        video_id,
+        body.storage_path,
+    )
 
     return VideoUploadResponse(
         video_id=video_id,
@@ -1010,41 +1000,15 @@ async def reprocess_video(
             video_uuid,
         )
 
-    # Queue new processing job
-    from uuid import uuid4
-
-    job_id = uuid4()
-
-    try:
-        from tasks.video_ingest import process_video
-
-        process_video.delay(
-            video_id=str(video_uuid),
-            tenant_id=tenant_id,
-        )
-    except Exception as e:
-        logger.error("Failed to queue reprocess job: %s", e)
-        # Update status to failed if we can't queue
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE source_videos
-                SET status = 'failed', error_message = $2
-                WHERE id = $1
-                """,
-                video_uuid,
-                f"Failed to queue job: {e}",
-            )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to queue reprocessing job",
-        ) from e
-
-    return ReprocessResponse(
-        video_id=video_uuid,
-        job_id=job_id,
-        status=VideoStatus.PROCESSING,
-        message="Video reprocessing started",
+    # NOTE: Video processing task has been migrated to Rust rag-video crate
+    # The reprocess endpoint is currently not functional until Rust integration
+    logger.warning(
+        "Reprocess requested for video_id=%s but Rust pipeline integration pending",
+        video_uuid,
+    )
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Reprocessing not available. Video processing has been migrated to Rust rag-video crate.",
     )
 
 

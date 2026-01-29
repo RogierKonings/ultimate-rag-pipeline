@@ -8,11 +8,12 @@ Queue configuration:
 - ingestion_normal: Normal priority document ingestion tasks (default)
 - ingestion_low: Low priority/batch document ingestion tasks
 - ingestion: Legacy queue (alias for ingestion_normal)
-- video: Video processing tasks
 - embedding: Embedding generation tasks
 - reembed: Re-embedding tasks for model migration
 - maintenance: Background maintenance tasks (reconciliation, cleanup)
 - dlq: Dead letter queue for failed tasks
+
+Note: Video processing has been migrated to the Rust rag-video crate.
 
 Priority queue usage:
 - Tenant priority is configured via the rate limiting admin API
@@ -93,7 +94,6 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
 
     # Define exchanges
     ingestion_exchange = Exchange("ingestion", type="direct")
-    video_exchange = Exchange("video", type="direct")
     embedding_exchange = Exchange("embedding", type="direct")
     reembed_exchange = Exchange("reembed", type="direct")
     maintenance_exchange = Exchange("maintenance", type="direct")
@@ -108,7 +108,6 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
         # Legacy queue - alias for normal priority
         Queue("ingestion", ingestion_exchange, routing_key="ingestion"),
         # Other queues
-        Queue("video", video_exchange, routing_key="video"),
         Queue("embedding", embedding_exchange, routing_key="embedding"),
         Queue("reembed", reembed_exchange, routing_key="reembed"),
         Queue("maintenance", maintenance_exchange, routing_key="maintenance"),
@@ -119,7 +118,6 @@ def create_celery_app(config: CeleryConfig | None = None) -> Celery:
     app.conf.task_routes = {
         "tasks.ingest.*": {"queue": "ingestion_normal"},
         "tasks.tombstone.*": {"queue": "ingestion_high"},  # High priority deletion propagation
-        "tasks.video_ingest.*": {"queue": "video"},
         "tasks.reembed.*": {"queue": "reembed"},
         "tasks.reconcile.*": {"queue": "maintenance"},
         "tasks.callbacks.*": {"queue": "dlq"},
