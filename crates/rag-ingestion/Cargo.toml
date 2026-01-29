@@ -28,6 +28,9 @@ zip = "0.6"
 tiktoken-rs = "0.6"
 # Sentence segmentation
 unicode-segmentation = "1.10"
+# PII detection
+regex = "1.10"
+lazy_static = "1.4"
 
 # Serialization
 serde = { workspace = true }

@@ -66,6 +66,7 @@ pub mod embedding;
 pub mod error;
 pub mod indexing;
 pub mod parsers;
+pub mod pii;
 
 pub use error::{Error, Result};
 
