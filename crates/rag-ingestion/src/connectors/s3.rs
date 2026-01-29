@@ -8,8 +8,8 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
-use crate::error::{Error, Result};
 use super::base::{Connector, DocumentMetadata, RawDocument, SourceType};
+use crate::error::{Error, Result};
 
 /// Configuration for the S3 connector.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,7 +98,9 @@ impl S3Connector {
             None => true,
             Some(extensions) => {
                 let key_lower = key.to_lowercase();
-                extensions.iter().any(|ext| key_lower.ends_with(&ext.to_lowercase()))
+                extensions
+                    .iter()
+                    .any(|ext| key_lower.ends_with(&ext.to_lowercase()))
             }
         }
     }
@@ -109,7 +111,9 @@ impl S3Connector {
     }
 
     fn client(&self) -> Result<&Client> {
-        self.client.as_ref().ok_or_else(|| Error::Connector("Not connected".to_string()))
+        self.client
+            .as_ref()
+            .ok_or_else(|| Error::Connector("Not connected".to_string()))
     }
 }
 
@@ -140,10 +144,12 @@ impl Connector for S3Connector {
             .bucket(&self.config.bucket)
             .send()
             .await
-            .map_err(|e| Error::Connector(format!(
-                "Failed to connect to bucket {}: {}",
-                self.config.bucket, e
-            )))?;
+            .map_err(|e| {
+                Error::Connector(format!(
+                    "Failed to connect to bucket {}: {}",
+                    self.config.bucket, e
+                ))
+            })?;
 
         debug!(bucket = %self.config.bucket, "Connected to S3");
         Ok(())
@@ -170,9 +176,7 @@ impl Connector for S3Connector {
         let mut continuation_token: Option<String> = None;
 
         loop {
-            let mut request = client
-                .list_objects_v2()
-                .bucket(&self.config.bucket);
+            let mut request = client.list_objects_v2().bucket(&self.config.bucket);
 
             if let Some(ref p) = prefix {
                 request = request.prefix(p);
@@ -182,9 +186,10 @@ impl Connector for S3Connector {
                 request = request.continuation_token(token);
             }
 
-            let response = request.send().await.map_err(|e| {
-                Error::Connector(format!("Failed to list objects: {e}"))
-            })?;
+            let response = request
+                .send()
+                .await
+                .map_err(|e| Error::Connector(format!("Failed to list objects: {e}")))?;
 
             if let Some(contents) = response.contents {
                 for object in contents {
@@ -204,7 +209,8 @@ impl Connector for S3Connector {
                         .first()
                         .map(|m| m.to_string());
 
-                    let modified_at = object.last_modified
+                    let modified_at = object
+                        .last_modified
                         .and_then(|t| DateTime::from_timestamp(t.secs(), t.subsec_nanos()));
 
                     let mut meta = DocumentMetadata::new(&key, SourceType::S3, filename)
@@ -263,7 +269,8 @@ impl Connector for S3Connector {
             .first()
             .map(|m| m.to_string());
 
-        let modified_at = response.last_modified
+        let modified_at = response
+            .last_modified
             .and_then(|t| DateTime::from_timestamp(t.secs(), t.subsec_nanos()));
 
         let mut metadata = DocumentMetadata::new(source_id, SourceType::S3, filename)
@@ -298,7 +305,10 @@ mod tests {
 
         assert_eq!(config.bucket, "my-bucket");
         assert_eq!(config.prefix, Some("documents/".to_string()));
-        assert_eq!(config.endpoint_url, Some("http://localhost:9000".to_string()));
+        assert_eq!(
+            config.endpoint_url,
+            Some("http://localhost:9000".to_string())
+        );
         assert!(config.force_path_style); // Auto-enabled for custom endpoint
         assert_eq!(config.file_extensions, Some(vec![".pdf".to_string()]));
     }
@@ -315,8 +325,8 @@ mod tests {
 
     #[test]
     fn test_should_include_with_filter() {
-        let config = S3Config::new("bucket")
-            .with_extensions(vec![".pdf".to_string(), ".docx".to_string()]);
+        let config =
+            S3Config::new("bucket").with_extensions(vec![".pdf".to_string(), ".docx".to_string()]);
         let connector = S3Connector::new(config);
 
         assert!(connector.should_include("file.pdf"));
@@ -329,7 +339,10 @@ mod tests {
     fn test_get_filename() {
         assert_eq!(S3Connector::get_filename("file.txt"), "file.txt");
         assert_eq!(S3Connector::get_filename("path/to/file.txt"), "file.txt");
-        assert_eq!(S3Connector::get_filename("deep/nested/path/doc.pdf"), "doc.pdf");
+        assert_eq!(
+            S3Connector::get_filename("deep/nested/path/doc.pdf"),
+            "doc.pdf"
+        );
     }
 
     // Note: Integration tests for S3 operations require MinIO/LocalStack

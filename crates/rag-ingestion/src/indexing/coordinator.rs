@@ -1,7 +1,7 @@
 //! Index coordinator for parallel writes to multiple stores.
 
-use crate::error::Result;
 use super::models::{DocumentRecord, IndexedChunk, WriteResult};
+use crate::error::Result;
 use rag_database::{
     ChunkRepository, DatabasePool, DocumentRepository, NewChunk, NewSourceDocument, Visibility,
 };
@@ -258,8 +258,8 @@ impl IndexCoordinator {
         let start = Instant::now();
 
         // Convert DocumentRecord to NewSourceDocument
-        let doc_id = Uuid::parse_str(&document.document_id.to_string())
-            .unwrap_or_else(|_| Uuid::new_v4());
+        let doc_id =
+            Uuid::parse_str(&document.document_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
 
         let new_doc = NewSourceDocument {
             id: doc_id,
@@ -283,10 +283,7 @@ impl IndexCoordinator {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
-            file_size: document
-                .metadata
-                .get("file_size")
-                .and_then(|v| v.as_i64()),
+            file_size: document.metadata.get("file_size").and_then(|v| v.as_i64()),
             visibility: Visibility::Private,
             allowed_groups: document
                 .metadata
@@ -390,7 +387,11 @@ impl IndexCoordinator {
         WriteResult::success(chunk_count + 1, start.elapsed()) // +1 for document record
     }
 
-    async fn delete_from_qdrant(&self, document_id: DocumentId, _tenant_id: TenantId) -> WriteResult {
+    async fn delete_from_qdrant(
+        &self,
+        document_id: DocumentId,
+        _tenant_id: TenantId,
+    ) -> WriteResult {
         let start = Instant::now();
 
         // Create filter to match all chunks for this document

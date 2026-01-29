@@ -187,10 +187,7 @@ mod tests {
     #[test]
     fn test_app_state_builder_with_tracker() {
         let tracker = Arc::new(JobTracker::new());
-        let state = AppStateBuilder::new()
-            .job_tracker(tracker)
-            .build()
-            .unwrap();
+        let state = AppStateBuilder::new().job_tracker(tracker).build().unwrap();
 
         assert!(!state.has_index_coordinator());
         assert!(!state.has_embedding_client());

@@ -90,11 +90,7 @@ impl FilesystemConnector {
 
         while let Some(dir) = dirs_to_scan.pop() {
             let mut entries = fs::read_dir(&dir).await.map_err(|e| {
-                Error::Connector(format!(
-                    "Failed to read directory {}: {}",
-                    dir.display(),
-                    e
-                ))
+                Error::Connector(format!("Failed to read directory {}: {}", dir.display(), e))
             })?;
 
             while let Some(entry) = entries
@@ -166,15 +162,13 @@ impl Connector for FilesystemConnector {
     #[instrument(skip(self))]
     async fn connect(&mut self) -> Result<()> {
         // Verify the base path exists and is a directory
-        let metadata = fs::metadata(&self.config.base_path)
-            .await
-            .map_err(|e| {
-                Error::Connector(format!(
-                    "Base path {} does not exist or is not accessible: {}",
-                    self.config.base_path.display(),
-                    e
-                ))
-            })?;
+        let metadata = fs::metadata(&self.config.base_path).await.map_err(|e| {
+            Error::Connector(format!(
+                "Base path {} does not exist or is not accessible: {}",
+                self.config.base_path.display(),
+                e
+            ))
+        })?;
 
         if !metadata.is_dir() {
             return Err(Error::Connector(format!(
@@ -308,8 +302,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_documents_filtered() {
         let dir = setup_test_dir().await;
-        let config =
-            FilesystemConfig::new(dir.path()).with_extensions(vec![".txt".to_string()]);
+        let config = FilesystemConfig::new(dir.path()).with_extensions(vec![".txt".to_string()]);
         let mut connector = FilesystemConnector::new(config);
         connector.connect().await.unwrap();
 

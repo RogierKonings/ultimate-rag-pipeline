@@ -75,7 +75,9 @@ async fn test_full_ingestion_pipeline() {
         ..Default::default()
     };
     let chunker = RecursiveCharacterSplitter::new(chunking_config).unwrap();
-    let chunks = chunker.chunk(&md_parsed.text, DocumentId::new(), None).unwrap();
+    let chunks = chunker
+        .chunk(&md_parsed.text, DocumentId::new(), None)
+        .unwrap();
     assert!(!chunks.is_empty());
 
     // 7. Set up mock embedding server
@@ -297,8 +299,7 @@ async fn test_html_parser_complex_structures() {
 /// Test chunking behavior with different configurations
 #[tokio::test]
 async fn test_chunking_configurations() {
-    let long_text = "This is a sentence with some words. "
-        .repeat(100);
+    let long_text = "This is a sentence with some words. ".repeat(100);
 
     // Small chunks
     let small_config = ChunkingConfig {
@@ -472,10 +473,7 @@ fn test_document_record_to_new_source_document_conversion() {
     // Create a DocumentRecord with all metadata fields
     let doc_record = DocumentRecord::new(document_id, tenant_id, "s3://bucket/path/file.pdf")
         .with_title("Test Document")
-        .with_metadata(
-            "source_type",
-            serde_json::Value::String("s3".to_string()),
-        )
+        .with_metadata("source_type", serde_json::Value::String("s3".to_string()))
         .with_metadata(
             "mime_type",
             serde_json::Value::String("application/pdf".to_string()),
@@ -485,14 +483,11 @@ fn test_document_record_to_new_source_document_conversion() {
             serde_json::Value::String("abc123hash".to_string()),
         )
         .with_metadata("file_size", serde_json::Value::Number(1024.into()))
-        .with_metadata(
-            "allowed_groups",
-            serde_json::json!(["admin", "users"]),
-        );
+        .with_metadata("allowed_groups", serde_json::json!(["admin", "users"]));
 
     // Simulate the conversion logic from write_to_database
-    let doc_id = Uuid::parse_str(&doc_record.document_id.to_string())
-        .unwrap_or_else(|_| Uuid::new_v4());
+    let doc_id =
+        Uuid::parse_str(&doc_record.document_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
 
     let new_doc = NewSourceDocument {
         id: doc_id,
@@ -516,7 +511,10 @@ fn test_document_record_to_new_source_document_conversion() {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string(),
-        file_size: doc_record.metadata.get("file_size").and_then(|v| v.as_i64()),
+        file_size: doc_record
+            .metadata
+            .get("file_size")
+            .and_then(|v| v.as_i64()),
         visibility: Visibility::Private,
         allowed_groups: doc_record
             .metadata
@@ -553,8 +551,8 @@ fn test_document_record_conversion_with_defaults() {
     let doc_record = DocumentRecord::new(document_id, tenant_id, "/local/path/file.txt");
 
     // Simulate conversion
-    let doc_id = Uuid::parse_str(&doc_record.document_id.to_string())
-        .unwrap_or_else(|_| Uuid::new_v4());
+    let doc_id =
+        Uuid::parse_str(&doc_record.document_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
 
     let new_doc = NewSourceDocument {
         id: doc_id,
@@ -578,7 +576,10 @@ fn test_document_record_conversion_with_defaults() {
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string(),
-        file_size: doc_record.metadata.get("file_size").and_then(|v| v.as_i64()),
+        file_size: doc_record
+            .metadata
+            .get("file_size")
+            .and_then(|v| v.as_i64()),
         visibility: Visibility::Private,
         allowed_groups: doc_record
             .metadata
@@ -705,7 +706,10 @@ fn test_multiple_chunks_conversion() {
                 vec![0.1 * i as f32; 384],
                 i,
             )
-            .with_metadata("token_count", serde_json::Value::Number((10 + i as i64).into()))
+            .with_metadata(
+                "token_count",
+                serde_json::Value::Number((10 + i as i64).into()),
+            )
         })
         .collect();
 
@@ -786,7 +790,10 @@ fn test_uuid_parsing_from_type_ids() {
 
     // TenantId is used as string directly
     let tenant_str = tenant_id.to_string();
-    assert!(!tenant_str.is_empty(), "TenantId should produce non-empty string");
+    assert!(
+        !tenant_str.is_empty(),
+        "TenantId should produce non-empty string"
+    );
 }
 
 /// Test empty chunks handling

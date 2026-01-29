@@ -52,7 +52,11 @@ pub struct DocumentMetadata {
 
 impl DocumentMetadata {
     /// Create new document metadata.
-    pub fn new(source_id: impl Into<String>, source_type: SourceType, filename: impl Into<String>) -> Self {
+    pub fn new(
+        source_id: impl Into<String>,
+        source_type: SourceType,
+        filename: impl Into<String>,
+    ) -> Self {
         Self {
             source_id: source_id.into(),
             source_type,
@@ -81,7 +85,11 @@ impl DocumentMetadata {
 
     /// Set timestamps.
     #[must_use]
-    pub fn with_timestamps(mut self, created_at: Option<DateTime<Utc>>, modified_at: Option<DateTime<Utc>>) -> Self {
+    pub fn with_timestamps(
+        mut self,
+        created_at: Option<DateTime<Utc>>,
+        modified_at: Option<DateTime<Utc>>,
+    ) -> Self {
         self.created_at = created_at;
         self.modified_at = modified_at;
         self

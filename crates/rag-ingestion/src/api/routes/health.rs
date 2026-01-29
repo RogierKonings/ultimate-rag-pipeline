@@ -14,9 +14,7 @@ pub async fn liveness() -> Json<LivenessResponse> {
 }
 
 /// Handle the GET /health/ready endpoint (Kubernetes readiness probe).
-pub async fn readiness(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<Json<ReadinessResponse>> {
+pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<ReadinessResponse>> {
     // Check if we have the required components
     let has_coordinator = state.has_index_coordinator();
     let has_embedding = state.has_embedding_client();

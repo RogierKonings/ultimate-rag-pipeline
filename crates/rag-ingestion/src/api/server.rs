@@ -52,18 +52,33 @@ pub fn create_router_with_timeout(state: Arc<AppState>, timeout_secs: u64) -> Ro
         // Ingest routes
         .route("/api/v1/ingest", post(routes::start_ingestion))
         .route("/api/v1/ingest", get(routes::list_active_jobs))
-        .route("/api/v1/ingest/single", post(routes::ingest_single_document))
+        .route(
+            "/api/v1/ingest/single",
+            post(routes::ingest_single_document),
+        )
         .route("/api/v1/ingest/sync", post(routes::start_sync))
         .route("/api/v1/ingest/reembed", post(routes::start_reembed))
         .route("/api/v1/ingest/:job_id", get(routes::get_job_status))
         .route("/api/v1/ingest/:job_id", delete(routes::cancel_job))
         // Document routes
         .route("/api/v1/documents", get(routes::list_documents))
-        .route("/api/v1/documents/sync-status", get(routes::get_sync_status))
-        .route("/api/v1/documents/batch-delete", post(routes::batch_delete_documents))
+        .route(
+            "/api/v1/documents/sync-status",
+            get(routes::get_sync_status),
+        )
+        .route(
+            "/api/v1/documents/batch-delete",
+            post(routes::batch_delete_documents),
+        )
         .route("/api/v1/documents/:document_id", get(routes::get_document))
-        .route("/api/v1/documents/:document_id", delete(routes::delete_document))
-        .route("/api/v1/documents/:document_id/reindex", post(routes::reindex_document))
+        .route(
+            "/api/v1/documents/:document_id",
+            delete(routes::delete_document),
+        )
+        .route(
+            "/api/v1/documents/:document_id/reindex",
+            post(routes::reindex_document),
+        )
         // Health routes
         .route("/health", get(routes::health))
         .route("/health/live", get(routes::liveness))
@@ -111,7 +126,10 @@ where
 {
     let app = create_router(state);
 
-    tracing::info!("Starting ingestion server on {} with graceful shutdown", addr);
+    tracing::info!(
+        "Starting ingestion server on {} with graceful shutdown",
+        addr
+    );
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await

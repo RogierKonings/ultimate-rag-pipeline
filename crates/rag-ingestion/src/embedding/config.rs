@@ -225,8 +225,8 @@ mod tests {
 
     #[test]
     fn test_custom_endpoint() {
-        let config = EmbeddingClientConfig::new("http://localhost:8080")
-            .with_endpoint("/api/embed");
+        let config =
+            EmbeddingClientConfig::new("http://localhost:8080").with_endpoint("/api/embed");
         assert_eq!(config.embeddings_url(), "http://localhost:8080/api/embed");
     }
 

@@ -14,9 +14,7 @@
 
 use std::sync::Arc;
 
-use rag_ingestion::api::{
-    run_server_with_shutdown, AppState, JobTracker, ServerConfig,
-};
+use rag_ingestion::api::{run_server_with_shutdown, AppState, JobTracker, ServerConfig};
 use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -25,8 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "ingestion_api=info,rag_ingestion=info,tower_http=debug".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "ingestion_api=info,rag_ingestion=info,tower_http=debug".into()
+            }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

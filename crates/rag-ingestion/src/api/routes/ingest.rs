@@ -15,9 +15,9 @@ use crate::api::error::{ApiError, ApiResult};
 use crate::api::jobs::JobTracker;
 use crate::api::state::AppState;
 use crate::api::types::{
-    ActiveJobsResponse, CancelJobResponse, IngestRequest, IngestResponse, JobProgress,
-    JobStatus, JobStatusResponse, ReembedRequest, ReembedResponse, SingleIngestRequest,
-    SyncRequest, SyncResponse,
+    ActiveJobsResponse, CancelJobResponse, IngestRequest, IngestResponse, JobProgress, JobStatus,
+    JobStatusResponse, ReembedRequest, ReembedResponse, SingleIngestRequest, SyncRequest,
+    SyncResponse,
 };
 
 /// POST /api/v1/ingest - Start a batch ingestion job.
@@ -226,7 +226,10 @@ pub async fn start_reembed(
             embedding_job_id,
             status: "pending".into(),
             estimated_completion: None,
-            message: format!("Re-embedding job started with model {}", request.embedding_model),
+            message: format!(
+                "Re-embedding job started with model {}",
+                request.embedding_model
+            ),
         }),
     ))
 }

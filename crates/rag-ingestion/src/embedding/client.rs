@@ -160,9 +160,7 @@ impl EmbeddingClient {
     fn is_retryable(error: &Error) -> bool {
         match error {
             Error::Http(e) => {
-                e.is_timeout()
-                    || e.is_connect()
-                    || e.status().is_some_and(|s| s.is_server_error())
+                e.is_timeout() || e.is_connect() || e.status().is_some_and(|s| s.is_server_error())
             }
             Error::Embedding(msg) => {
                 // Check for 5xx status codes in error message
@@ -372,8 +370,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri())
-            .with_max_retries(0); // No retries for faster test
+        let config = EmbeddingClientConfig::new(&mock_server.uri()).with_max_retries(0); // No retries for faster test
         let client = EmbeddingClient::new(config).unwrap();
 
         let healthy = client.health_check().await.unwrap();
@@ -383,7 +380,8 @@ mod tests {
     #[test]
     fn test_is_retryable_server_errors() {
         // Embedding error with 500 status
-        let err = Error::Embedding("Embedding service returned 500 Internal Server Error".to_string());
+        let err =
+            Error::Embedding("Embedding service returned 500 Internal Server Error".to_string());
         assert!(EmbeddingClient::is_retryable(&err));
 
         // Embedding error with 502 status

@@ -74,7 +74,11 @@ impl ApiError {
     /// Create a service unavailable error (503).
     #[must_use]
     pub fn service_unavailable(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", message)
+        Self::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "SERVICE_UNAVAILABLE",
+            message,
+        )
     }
 }
 
@@ -123,19 +127,20 @@ impl From<IngestionError> for ApiError {
         match &err {
             IngestionError::NotFound(msg) => Self::not_found(msg),
             IngestionError::Config(msg) => Self::bad_request(msg),
-            IngestionError::Parse(_) => Self::internal(err.to_string()),
-            IngestionError::Embedding(_) => Self::internal(err.to_string()),
-            IngestionError::Chunking(_) => Self::internal(err.to_string()),
-            IngestionError::VectorStore(_) => Self::internal(err.to_string()),
-            IngestionError::SearchStore(_) => Self::internal(err.to_string()),
-            IngestionError::Database(_) => Self::internal(err.to_string()),
-            IngestionError::Storage(_) => Self::internal(err.to_string()),
-            IngestionError::Io(_) => Self::internal(err.to_string()),
-            IngestionError::Serialization(_) => Self::internal(err.to_string()),
-            IngestionError::Http(_) => Self::internal(err.to_string()),
-            IngestionError::Indexing(_) => Self::internal(err.to_string()),
-            IngestionError::Connector(_) => Self::internal(err.to_string()),
             IngestionError::Timeout(_) => Self::service_unavailable(err.to_string()),
+            // All other errors map to internal server error
+            IngestionError::Parse(_)
+            | IngestionError::Embedding(_)
+            | IngestionError::Chunking(_)
+            | IngestionError::VectorStore(_)
+            | IngestionError::SearchStore(_)
+            | IngestionError::Database(_)
+            | IngestionError::Storage(_)
+            | IngestionError::Io(_)
+            | IngestionError::Serialization(_)
+            | IngestionError::Http(_)
+            | IngestionError::Indexing(_)
+            | IngestionError::Connector(_) => Self::internal(err.to_string()),
         }
     }
 }

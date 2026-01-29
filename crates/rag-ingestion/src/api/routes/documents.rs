@@ -17,8 +17,8 @@ use crate::api::jobs::JobTracker;
 use crate::api::state::AppState;
 use crate::api::types::{
     BatchDeleteRequest, BatchDeleteResponse, DocumentDeleteResponse, DocumentListResponse,
-    DocumentResponse, IngestResponse, ReindexRequest,
-    SyncStatusFilter, SyncStatusResponse, SyncStatusSummary,
+    DocumentResponse, IngestResponse, ReindexRequest, SyncStatusFilter, SyncStatusResponse,
+    SyncStatusSummary,
 };
 
 /// Query parameters for list_documents.

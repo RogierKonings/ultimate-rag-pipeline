@@ -220,10 +220,7 @@ impl JobTracker {
     pub fn cleanup_old_jobs(&self, max_age: chrono::Duration) {
         let cutoff = Utc::now() - max_age;
         self.jobs.retain(|_, v| {
-            v.state
-                .completed_at
-                .map(|t| t > cutoff)
-                .unwrap_or(true) // Keep active jobs
+            v.state.completed_at.map(|t| t > cutoff).unwrap_or(true) // Keep active jobs
         });
     }
 }
