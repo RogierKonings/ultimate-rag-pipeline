@@ -67,6 +67,7 @@ pub mod error;
 pub mod indexing;
 pub mod parsers;
 pub mod pii;
+pub mod worker;
 
 pub use error::{Error, Result};
 

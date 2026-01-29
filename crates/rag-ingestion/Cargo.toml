@@ -66,6 +66,10 @@ tower-http = { version = "0.5", features = ["cors", "trace", "timeout"] }
 dashmap = "5.5"
 tokio-util = { version = "0.7", features = ["rt"] }
 
+# Worker system
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+futures = "0.3"
+
 # Logging (for binary)
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
