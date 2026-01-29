@@ -59,6 +59,7 @@
 //! - DOCX parser
 //! - Semantic chunker (sentence-boundary based)
 
+pub mod api;
 pub mod chunking;
 pub mod connectors;
 pub mod embedding;
