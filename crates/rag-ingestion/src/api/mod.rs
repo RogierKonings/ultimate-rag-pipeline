@@ -4,7 +4,9 @@
 //! job management, and document CRUD operations.
 
 pub mod error;
+pub mod jobs;
 pub mod types;
 
 pub use error::{ApiError, ApiResult, ErrorBody, ErrorResponse};
+pub use jobs::{JobState, JobTracker};
 pub use types::*;
