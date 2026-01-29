@@ -47,6 +47,18 @@ mime_guess = "2.0"
 async-trait = "0.1"
 tracing = { workspace = true }
 
+# API server
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "timeout"] }
+
+# Job tracking
+dashmap = "5.5"
+tokio-util = { version = "0.7", features = ["rt"] }
+
+# Logging (for binary)
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
 [dev-dependencies]
 pretty_assertions = "1.4"
 wiremock = "0.5"
