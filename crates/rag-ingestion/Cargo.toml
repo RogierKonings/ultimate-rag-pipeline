@@ -26,6 +26,8 @@ zip = "0.6"
 
 # Tokenization
 tiktoken-rs = "0.6"
+# Sentence segmentation
+unicode-segmentation = "1.10"
 
 # Serialization
 serde = { workspace = true }
