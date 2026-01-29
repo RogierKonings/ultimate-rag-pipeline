@@ -65,5 +65,9 @@ wiremock = "0.5"
 tempfile = "3.10"
 tokio-test = { workspace = true }
 
+[[bin]]
+name = "ingestion-api"
+path = "src/bin/ingestion-api.rs"
+
 [lints]
 workspace = true
