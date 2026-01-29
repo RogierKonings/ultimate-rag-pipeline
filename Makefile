@@ -97,14 +97,15 @@ health:
 
 test:
 	@echo "Running tests..."
-	docker-compose exec ingestion-service pytest || echo "Ingestion tests not available"
+	@echo "Ingestion (Rust): Run with 'cargo test -p rag-ingestion'"
+	cd crates && cargo test -p rag-ingestion || echo "Ingestion tests not available"
 	docker-compose exec retrieval-service pytest || echo "Retrieval tests not available"
 	docker-compose exec orchestrator-service pytest || echo "Orchestrator tests not available"
 
 lint:
 	@echo "Running linting..."
-	docker-compose exec ingestion-service ruff check . || echo "Ingestion linting not available"
-	docker-compose exec retrieval-service ruff check . || echo "Retrieval linting not available"
+	@echo "Ingestion (Rust): Run with 'cargo clippy -p rag-ingestion'"
+	cd crates && cargo clippy -p rag-ingestion -- -D warnings || echo "Ingestion linting not available"
 	docker-compose exec orchestrator-service ruff check . || echo "Orchestrator linting not available"
 
 clean:

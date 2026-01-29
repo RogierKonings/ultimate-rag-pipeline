@@ -130,55 +130,48 @@ services:
   # ============ APPLICATION SERVICES ============
   # NOTE: Run 'make env-docker' before 'docker-compose --profile app up' to generate .env
 
-  ingestion-service:
-    build:
-      context: ./services/ingestion
-      dockerfile: Dockerfile
-    container_name: rag-ingestion
-    ports:
-      - "8001:8001"
-    env_file:
-      - .env.base
-      - .env.docker
-    environment:
-      # Service-specific overrides
-      - LOG_LEVEL=DEBUG
-    volumes:
-      - ./services/ingestion:/app
-      - ./services/shared:/app/shared
-    depends_on:
-      postgres:
-        condition: service_healthy
-      qdrant:
-        condition: service_healthy
-      opensearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - rag-network
-    profiles:
-      - app
-
-  ingestion-worker:
-    build:
-      context: ./services/ingestion
-      dockerfile: Dockerfile
-    container_name: rag-ingestion-worker
-    command: celery -A tasks worker -l info -c 2
-    env_file:
-      - .env.base
-      - .env.docker
-    volumes:
-      - ./services/ingestion:/app
-      - ./services/shared:/app/shared
-    depends_on:
-      - redis
-      - ingestion-service
-    networks:
-      - rag-network
-    profiles:
-      - app
+  # NOTE: The Python ingestion service has been replaced by the Rust implementation.
+  # Use the Rust rag-ingestion service instead (crates/rag-ingestion/).
+  # The Rust service includes:
+  # - PDF and DOCX parsing
+  # - Semantic chunking
+  # - PII detection
+  # - Redis-backed async worker system
+  #
+  # To build and run the Rust ingestion service:
+  #   cargo build --release -p rag-ingestion
+  #   ./target/release/ingestion-api
+  #
+  # Or with a Dockerfile (TODO: create crates/rag-ingestion/Dockerfile):
+  # ingestion-service:
+  #   build:
+  #     context: .
+  #     dockerfile: crates/rag-ingestion/Dockerfile
+  #   container_name: rag-ingestion
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     - RUST_LOG=info,rag_ingestion=debug
+  #     - DATABASE_URL=postgres://raguser:ragpass@postgres:5432/ragpipeline
+  #     - QDRANT_URL=http://qdrant:6333
+  #     - OPENSEARCH_URL=http://opensearch:9200
+  #     - REDIS_URL=redis://:ragredis@redis:6379
+  #     - EMBEDDING_SERVICE_URL=http://embedding-service:8080
+  #     - INGESTION_HOST=0.0.0.0
+  #     - INGESTION_PORT=8001
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     qdrant:
+  #       condition: service_healthy
+  #     opensearch:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - rag-network
+  #   profiles:
+  #     - app
 
   retrieval-service:
     build:

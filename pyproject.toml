@@ -177,8 +177,7 @@ ignore = [
 "llm-serving/resource_management/gpu_monitor.py" = ["S607", "S314"]
 # Warmup/healthcheck scripts use simple try-except-pass patterns
 "llm-serving/vllm/scripts/*.py" = ["S110"]
-# Ingestion uses content hashing with MD5 for deduplication, database connector uses dynamic SQL
-"services/ingestion/**/*.py" = ["S324", "S608"]
+# NOTE: Python ingestion service has been replaced by Rust (crates/rag-ingestion/)
 # Query building may use dynamic SQL construction
 "services/shared/database/**/*.py" = ["S608"]
 # Observability evaluation persistence uses dynamic SQL
