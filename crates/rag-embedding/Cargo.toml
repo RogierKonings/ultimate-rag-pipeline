@@ -1,0 +1,41 @@
+[package]
+name = "rag-embedding"
+description = "Embedding service for RAG Pipeline - ONNX-based text embeddings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# ML inference (ONNX-based embeddings)
+fastembed = "4"
+
+# HTTP server
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors", "timeout"] }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+
+[[bin]]
+name = "embedding-service"
+path = "src/bin/main.rs"
+
+[lints]
+workspace = true
