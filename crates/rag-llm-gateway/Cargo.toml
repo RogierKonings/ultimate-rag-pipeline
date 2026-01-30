@@ -1,0 +1,61 @@
+[package]
+name = "rag-llm-gateway"
+description = "Unified LLM Gateway for RAG Pipeline - embeddings, reranking, and LLM proxy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Internal crates
+rag-embedding = { path = "../rag-embedding" }
+rag-config = { path = "../rag-config" }
+rag-telemetry = { path = "../rag-telemetry" }
+
+# HTTP server
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors", "timeout", "request-id"] }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# JWT authentication
+jsonwebtoken = "9"
+
+# HTTP client (for vLLM proxy)
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Metrics
+prometheus = "0.13"
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# UUID
+uuid = { workspace = true }
+
+# DateTime
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+axum-test = "15"
+
+[[bin]]
+name = "llm-gateway"
+path = "src/bin/main.rs"
+
+[lints]
+workspace = true

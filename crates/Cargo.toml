@@ -17,6 +17,7 @@ members = [
     "rag-tenant",
     "rag-secrets",
     "rag-encryption",
+    "rag-llm-gateway",
 ]
 
 [workspace.package]
