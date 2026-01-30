@@ -1,6 +1,7 @@
 //! Error types for JWT authentication.
 
 use thiserror::Error;
+use uuid::Uuid;
 
 /// Result type for authentication operations.
 pub type Result<T> = std::result::Result<T, AuthError>;
@@ -12,6 +13,10 @@ pub enum AuthError {
     #[error("Token has expired")]
     TokenExpired,
 
+    /// Token has expired (alias).
+    #[error("Token has expired")]
+    ExpiredToken,
+
     /// Token signature is invalid.
     #[error("Invalid token signature")]
     InvalidSignature,
@@ -19,6 +24,10 @@ pub enum AuthError {
     /// Token format is invalid.
     #[error("Invalid token format: {0}")]
     InvalidFormat(String),
+
+    /// Invalid token.
+    #[error("Invalid token: {0}")]
+    InvalidToken(String),
 
     /// Token audience mismatch.
     #[error("Invalid token audience")]
@@ -32,6 +41,10 @@ pub enum AuthError {
     #[error("Missing required claim: {0}")]
     MissingClaim(String),
 
+    /// Token is missing from request.
+    #[error("Missing authentication token")]
+    MissingToken,
+
     /// Token type mismatch.
     #[error("Expected {expected} token, got {actual}")]
     TokenTypeMismatch { expected: String, actual: String },
@@ -43,6 +56,22 @@ pub enum AuthError {
     /// Service not authorized for endpoint.
     #[error("Service '{service}' not authorized for endpoint '{endpoint}'")]
     EndpointNotAuthorized { service: String, endpoint: String },
+
+    /// Permission denied.
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+
+    /// Insufficient role level.
+    #[error("Insufficient role: {0} required")]
+    InsufficientRole(String),
+
+    /// Tenant mismatch.
+    #[error("Tenant access denied: expected {expected}, got {actual}")]
+    TenantMismatch { expected: Uuid, actual: Uuid },
+
+    /// General access denied.
+    #[error("Access denied: {0}")]
+    AccessDenied(String),
 
     /// Key configuration error.
     #[error("Key configuration error: {0}")]

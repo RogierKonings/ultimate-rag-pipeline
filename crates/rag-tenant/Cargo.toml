@@ -1,0 +1,31 @@
+[package]
+name = "rag-tenant"
+description = "Tenant configuration management for multi-tenancy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+
+# Internal crates
+rag-database = { path = "../rag-database" }
+rag-cache = { path = "../rag-cache" }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
+
+# Async traits
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test.workspace = true

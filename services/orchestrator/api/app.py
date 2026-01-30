@@ -17,9 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import OrchestratorConfig, get_config
-from shared.config import validate_on_startup
-from shared.observability.correlation import CorrelationMiddleware
-from shared.security.audit import AuditMiddleware
+from orchestrator.config import validate_on_startup
+from orchestrator.observability.correlation import CorrelationMiddleware
+from orchestrator.audit import AuditMiddleware
 
 logger = logging.getLogger(__name__)
 

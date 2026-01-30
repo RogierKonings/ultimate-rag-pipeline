@@ -10,7 +10,7 @@ import pytest
 from api.app import create_app
 from fastapi.testclient import TestClient
 
-from shared.security.audit import AuditMiddleware
+from orchestrator.audit import AuditMiddleware
 
 
 class TestAuditMiddlewareConfiguration:
@@ -183,7 +183,7 @@ class TestAuditMiddlewareOrder:
         AuditMiddleware reads trace_id from incoming request headers, not from
         context set by CorrelationMiddleware, so this order is correct.
         """
-        from shared.observability.correlation import CorrelationMiddleware
+        from orchestrator.observability.correlation import CorrelationMiddleware
 
         middleware_classes = [m.cls for m in app.user_middleware]
 

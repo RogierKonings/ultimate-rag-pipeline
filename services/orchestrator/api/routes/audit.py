@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.security.audit import (
+from orchestrator.audit import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,
@@ -23,7 +23,7 @@ from shared.security.audit import (
     AuditSeverity,
     AuditStats,
 )
-from shared.security.audit.repository import AuditRepository
+from orchestrator.audit.repository import AuditRepository
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 

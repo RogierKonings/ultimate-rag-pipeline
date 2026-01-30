@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from opentelemetry import trace
 
-from shared.observability.otel.span_names import SpanNames
+from orchestrator.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:
     from cache.answer_cache import AnswerCache

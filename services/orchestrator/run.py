@@ -9,7 +9,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from config import get_config
-from shared.observability.otel.tracer import setup_auto_instrumentation
+from orchestrator.observability.otel.tracer import setup_auto_instrumentation
 
 
 def setup_telemetry(config) -> None:

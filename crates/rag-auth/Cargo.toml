@@ -35,5 +35,10 @@ humantime = "2.1"
 # Redis for blocklist
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
+# Axum middleware support
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+http-body-util = "0.1"
+
 [dev-dependencies]
 tokio-test.workspace = true

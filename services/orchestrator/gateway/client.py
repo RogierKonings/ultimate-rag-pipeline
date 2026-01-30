@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 
 from config import OrchestratorConfig
-from shared.observability.correlation import get_correlation_context
+from orchestrator.observability.correlation import get_correlation_context
 
 from .exceptions import (
     AuthenticationError,

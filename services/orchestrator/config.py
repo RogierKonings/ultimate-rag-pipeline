@@ -3,7 +3,7 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-from shared.config import (
+from orchestrator.config import (
     get_llm_gateway_url,
     get_otel_endpoint,
     get_postgres_url,

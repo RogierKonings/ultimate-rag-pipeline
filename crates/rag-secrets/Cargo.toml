@@ -1,0 +1,36 @@
+[package]
+name = "rag-secrets"
+description = "Secrets management for Vault, Kubernetes, and environment variables"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+# Async traits
+async-trait = "0.1"
+
+# HTTP client for Vault
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# For Kubernetes secrets
+kube = { version = "0.93", features = ["client", "runtime", "rustls-tls"], default-features = false, optional = true }
+k8s-openapi = { version = "0.22", features = ["v1_29"], optional = true }
+
+# Base64 for decoding K8s secrets
+base64 = "0.22"
+
+[features]
+default = []
+kubernetes = ["kube", "k8s-openapi"]
+
+[dev-dependencies]
+tokio-test.workspace = true

@@ -42,6 +42,7 @@ mod claims;
 mod config;
 mod error;
 mod handler;
+pub mod rbac;
 mod service;
 
 pub use blocklist::{InMemoryBlocklist, RedisBlocklist, TokenBlocklist};
@@ -49,4 +50,5 @@ pub use claims::{TokenClaims, TokenPair, TokenType};
 pub use config::{JwtAlgorithm, JwtConfig};
 pub use error::{AuthError, Result};
 pub use handler::JwtHandler;
+pub use rbac::{AuthLayer, AuthorizationService, Permission, Role};
 pub use service::ServiceTokenClaims;

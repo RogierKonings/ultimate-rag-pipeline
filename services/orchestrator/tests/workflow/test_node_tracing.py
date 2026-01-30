@@ -11,7 +11,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from workflow.nodes import generation_node, retrieval_node, routing_node
 from workflow.state import create_initial_state
 
-from shared.observability.otel.span_names import SpanNames
+from orchestrator.observability.otel.span_names import SpanNames
 
 # Module-level span exporter to avoid TracerProvider override issues
 _exporter = InMemorySpanExporter()

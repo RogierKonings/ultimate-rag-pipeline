@@ -1,0 +1,47 @@
+[package]
+name = "rag-encryption"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Field-level encryption for sensitive data in the RAG pipeline"
+
+[dependencies]
+# Workspace dependencies
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+# Encryption
+aes-gcm = "0.10"
+ring = "0.17"
+rand = "0.8"
+
+# Encoding
+base64 = "0.22"
+hex = "0.4"
+
+# Key derivation
+argon2 = { version = "0.5", optional = true }
+hkdf = "0.12"
+sha2 = "0.10"
+
+# Async trait
+async-trait = "0.1"
+
+# Internal dependencies
+rag-secrets = { path = "../rag-secrets", optional = true }
+
+[features]
+default = []
+secrets-integration = ["rag-secrets"]
+key-derivation = ["argon2"]
+
+[dev-dependencies]
+tokio-test.workspace = true
+
+[lints]
+workspace = true

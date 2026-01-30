@@ -1,0 +1,44 @@
+//! Field-level encryption for the RAG Pipeline.
+//!
+//! This crate provides encryption utilities for sensitive data:
+//! - AES-GCM encryption for field-level data protection
+//! - Key management with support for key rotation
+//! - Integration with secrets providers
+//!
+//! # Example
+//!
+//! ```no_run
+//! use rag_encryption::{FieldEncryptor, EncryptionConfig};
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let config = EncryptionConfig::from_env()?;
+//!     let encryptor = FieldEncryptor::new(config)?;
+//!
+//!     // Encrypt sensitive data
+//!     let plaintext = "sensitive-api-key";
+//!     let encrypted = encryptor.encrypt(plaintext)?;
+//!
+//!     // Decrypt when needed
+//!     let decrypted = encryptor.decrypt(&encrypted)?;
+//!     assert_eq!(plaintext, decrypted);
+//!
+//!     Ok(())
+//! }
+//! ```
+
+mod config;
+mod error;
+mod encryptor;
+mod key_management;
+
+pub use config::EncryptionConfig;
+pub use error::{EncryptionError, Result};
+pub use encryptor::{FieldEncryptor, EncryptedValue};
+pub use key_management::{KeyManager, KeyVersion, DerivedKey};
+
+#[cfg(feature = "secrets-integration")]
+mod secrets_key_provider;
+
+#[cfg(feature = "secrets-integration")]
+pub use secrets_key_provider::SecretsKeyProvider;

@@ -21,7 +21,7 @@ from observability.llm_metrics import (
 from opentelemetry import trace
 
 from config import get_config
-from shared.observability.otel.span_names import SpanNames
+from orchestrator.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
