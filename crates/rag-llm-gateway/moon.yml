@@ -1,0 +1,49 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'application'
+
+project:
+  name: 'rag-llm-gateway'
+  description: 'Unified LLM Gateway with OpenAI-compatible API (Rust)'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-embedding:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+
+  check:
+    command: 'cargo check -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-llm-gateway -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-llm-gateway'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-llm-gateway -- --check'

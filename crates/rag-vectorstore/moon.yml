@@ -1,0 +1,49 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-vectorstore'
+  description: 'Qdrant vector store integration for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-vectorstore'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+
+  check:
+    command: 'cargo check -p rag-vectorstore'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-vectorstore'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-vectorstore -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-vectorstore'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-vectorstore -- --check'

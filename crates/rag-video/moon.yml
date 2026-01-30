@@ -1,0 +1,52 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-video'
+  description: 'Video processing pipeline for RAG'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-video'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+      - 'rag-vectorstore:build'
+      - 'rag-search:build'
+      - 'rag-storage:build'
+
+  check:
+    command: 'cargo check -p rag-video'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-video'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-video -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-video'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-video -- --check'

@@ -1,0 +1,49 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-embedding'
+  description: 'Embedding service with ONNX-based inference (Rust)'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+
+  check:
+    command: 'cargo check -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-embedding -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-embedding'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-embedding -- --check'

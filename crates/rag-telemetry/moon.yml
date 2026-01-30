@@ -1,0 +1,48 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-telemetry'
+  description: 'Observability and telemetry for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-telemetry'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+
+  check:
+    command: 'cargo check -p rag-telemetry'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-telemetry'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-telemetry -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-telemetry'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-telemetry -- --check'

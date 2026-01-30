@@ -1,0 +1,49 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-database'
+  description: 'PostgreSQL database layer for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-database'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+
+  check:
+    command: 'cargo check -p rag-database'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-database'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-database -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-database'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-database -- --check'

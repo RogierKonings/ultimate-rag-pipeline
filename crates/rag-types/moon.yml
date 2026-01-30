@@ -1,0 +1,56 @@
+# Moon project configuration for rag-types
+# https://moonrepo.dev/docs/config/project
+
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: 'rust'
+type: 'library'
+
+# Project metadata
+project:
+  name: 'rag-types'
+  description: 'Core type definitions for RAG pipeline'
+
+# File groups for dependency tracking
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+# Tasks
+tasks:
+  build:
+    command: 'cargo build -p rag-types'
+    inputs:
+      - '@group(sources)'
+
+  check:
+    command: 'cargo check -p rag-types'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-types'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-types -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-types'
+    inputs:
+      - '@group(sources)'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-types -- --check'
+    inputs:
+      - '@group(sources)'
