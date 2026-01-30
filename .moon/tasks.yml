@@ -1,0 +1,38 @@
+# Global tasks available across the workspace
+# https://moonrepo.dev/docs/config/tasks
+
+$schema: 'https://moonrepo.dev/schemas/tasks.json'
+
+tasks:
+  # Development
+  dev:
+    command: 'echo "Use moon run <project>:dev to start a specific service"'
+    local: true
+
+  # Testing
+  test-all:
+    command: 'moon run :test'
+
+  # Linting
+  lint-all:
+    command: 'moon run :lint'
+
+  # Formatting
+  format-all:
+    command: 'moon run :format'
+    local: true
+
+  format-check-all:
+    command: 'moon run :format-check'
+
+  # Type checking
+  check-all:
+    command: 'moon run :check'
+
+  # CI pipeline
+  ci:
+    command: 'moon ci'
+
+  # Build everything
+  build-all:
+    command: 'moon run :build'
