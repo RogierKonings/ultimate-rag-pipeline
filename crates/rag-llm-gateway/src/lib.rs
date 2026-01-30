@@ -8,6 +8,7 @@
 //! - Rate limiting
 //! - Prometheus metrics
 
+pub mod api;
 pub mod auth;
 pub mod clients;
 pub mod config;
@@ -16,9 +17,7 @@ pub mod metrics;
 pub mod rate_limit;
 pub mod reranker;
 
-// These modules will be added in subsequent tasks
-// pub mod api;
-
+pub use api::{create_router, AppState};
 pub use auth::{auth_middleware, AuthContext, JwtValidator};
 pub use clients::VllmClient;
 pub use config::GatewayConfig;
