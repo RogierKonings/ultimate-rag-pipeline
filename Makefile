@@ -1,4 +1,4 @@
-.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama e2e e2e-full env-local env-docker env-frontend
+.PHONY: help dev up up-all down logs test lint clean status health opensearch-bootstrap opensearch-bootstrap-prod minio-bootstrap minio-service-accounts postgres-backup postgres-backup-manual postgres-migrate pull-models pull-model list-models remove-model test-llm check-ollama e2e e2e-full env-local env-docker env-frontend moon-setup moon-check moon-test moon-lint moon-format moon-format-check moon-build moon-ci dev-frontend dev-orchestrator affected-test affected-lint
 
 help:
 	@echo "RAG Pipeline Development Commands"
@@ -28,6 +28,19 @@ help:
 	@echo "  make list-models  - List installed models"
 	@echo "  make remove-model MODEL=<name> - Remove a model"
 	@echo "  make test-llm     - Test LLM inference"
+	@echo ""
+	@echo "Moon Monorepo:"
+	@echo "  make moon-setup      - Initialize Moon workspace"
+	@echo "  make moon-check      - Run type checks (all projects)"
+	@echo "  make moon-test       - Run tests (all projects)"
+	@echo "  make moon-lint       - Run linters (all projects)"
+	@echo "  make moon-format     - Format code (all projects)"
+	@echo "  make moon-build      - Build all projects"
+	@echo "  make moon-ci         - Run full CI pipeline"
+	@echo ""
+	@echo "Dev Servers (via Moon):"
+	@echo "  make dev-frontend    - Start frontend dev server"
+	@echo "  make dev-orchestrator - Start orchestrator service"
 
 # =============================================================================
 # Environment Configuration
@@ -83,6 +96,56 @@ logs:
 
 logs-%:
 	docker-compose logs -f $*
+
+# =============================================================================
+# Moon Monorepo Commands
+# =============================================================================
+
+moon-setup:
+	@echo "Setting up Moon workspace..."
+	moon setup
+
+moon-check:
+	@echo "Running type checks across all projects..."
+	moon run :check
+
+moon-test:
+	@echo "Running tests across all projects..."
+	moon run :test
+
+moon-lint:
+	@echo "Running linters across all projects..."
+	moon run :lint
+
+moon-format:
+	@echo "Formatting all projects..."
+	moon run :format
+
+moon-format-check:
+	@echo "Checking formatting across all projects..."
+	moon run :format-check
+
+moon-build:
+	@echo "Building all projects..."
+	moon run :build
+
+moon-ci:
+	@echo "Running CI pipeline..."
+	moon ci
+
+# Project-specific dev servers
+dev-frontend:
+	moon run frontend:dev
+
+dev-orchestrator:
+	moon run orchestrator-service:dev
+
+# Run affected tasks only (useful for PRs)
+affected-test:
+	moon run :test --affected
+
+affected-lint:
+	moon run :lint --affected
 
 status:
 	docker-compose ps
