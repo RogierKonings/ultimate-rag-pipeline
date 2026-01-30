@@ -22,22 +22,16 @@ tasks:
     command: 'npx quicktype --src-lang schema --lang rust --out ../crates/rag-types/src/generated/mod.rs *.schema.json'
     inputs:
       - '@group(schemas)'
-    outputs:
-      - '../crates/rag-types/src/generated/mod.rs'
 
   generate-python:
     command: 'npx quicktype --src-lang schema --lang python --out ../services/orchestrator/shared/generated/types.py *.schema.json'
     inputs:
       - '@group(schemas)'
-    outputs:
-      - '../services/orchestrator/shared/generated/types.py'
 
   generate-typescript:
     command: 'npx quicktype --src-lang schema --lang typescript --out ../frontend/src/lib/generated/types.ts *.schema.json'
     inputs:
       - '@group(schemas)'
-    outputs:
-      - '../frontend/src/lib/generated/types.ts'
 
   generate:
     command: 'echo "Generating types for all languages..."'
