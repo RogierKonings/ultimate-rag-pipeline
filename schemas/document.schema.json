@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "document",
+  "title": "SourceDocument",
+  "description": "A source document in the RAG pipeline",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the document"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Tenant that owns this document"
+    },
+    "title": {
+      "type": "string",
+      "description": "Document title"
+    },
+    "source_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "Original source location"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["file", "web", "api", "database"],
+      "description": "Type of source"
+    },
+    "content_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of content for deduplication"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["private", "group", "public"],
+      "default": "private"
+    },
+    "allowed_groups": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["id", "tenant_id", "source_type", "content_hash"]
+}

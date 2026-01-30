@@ -1,0 +1,17 @@
+{
+  "name": "schemas",
+  "version": "1.0.0",
+  "description": "This directory contains JSON Schema definitions that are the single source of truth for types shared across the Rust, Python, and TypeScript codebases.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "ajv-cli": "^5.0.0",
+    "quicktype": "^23.2.6"
+  }
+}
