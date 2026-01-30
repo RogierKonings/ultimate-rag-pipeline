@@ -1,0 +1,60 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'python'
+type: 'application'
+
+project:
+  name: 'orchestrator-service'
+  description: 'RAG orchestration microservice with LangGraph'
+
+fileGroups:
+  sources:
+    - '**/*.py'
+    - 'requirements.txt'
+    - '!tests/**/*'
+  tests:
+    - 'tests/**/*.py'
+    - 'pytest.ini'
+  configs:
+    - 'Dockerfile'
+    - 'config.py'
+  shared:
+    - 'shared/**/*.py'
+
+tasks:
+  install:
+    command: 'uv pip install -r requirements.txt'
+    inputs:
+      - 'requirements.txt'
+
+  dev:
+    command: 'uvicorn run:app --reload --host 0.0.0.0 --port 8003'
+    local: true
+    deps:
+      - '~:install'
+
+  test:
+    command: 'pytest tests/ -v'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:install'
+
+  lint:
+    command: 'ruff check .'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'ruff format .'
+    local: true
+
+  format-check:
+    command: 'ruff format --check .'
+
+  typecheck:
+    command: 'mypy . --ignore-missing-imports'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - '~:install'
