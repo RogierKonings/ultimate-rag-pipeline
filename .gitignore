@@ -25,3 +25,4 @@ node_modules/
 target/
 Cargo.lock
 
+.fastembed_cache/
