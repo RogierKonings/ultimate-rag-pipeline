@@ -1,0 +1,22 @@
+# Moon toolchain configuration
+# https://moonrepo.dev/docs/config/toolchain
+
+$schema: 'https://moonrepo.dev/schemas/toolchain.json'
+
+# Node.js for frontend
+node:
+  version: '22.11.0'
+  packageManager: 'pnpm'
+  pnpm:
+    version: '9.15.0'
+
+# Python for services (using system python, managed by uv)
+# Moon doesn't have native Python support yet, we use system tasks
+
+# Rust configuration
+rust:
+  version: '1.75.0'
+  syncToolchainConfig: true
+  components:
+    - 'clippy'
+    - 'rustfmt'

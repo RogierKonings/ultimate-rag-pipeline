@@ -1,0 +1,55 @@
+# Moon workspace configuration
+# https://moonrepo.dev/docs/config/workspace
+
+$schema: 'https://moonrepo.dev/schemas/workspace.json'
+
+# Projects are auto-discovered via globs
+projects:
+  # Rust crates - core libraries
+  rag-types: 'crates/rag-types'
+  rag-config: 'crates/rag-config'
+  rag-cache: 'crates/rag-cache'
+  rag-auth: 'crates/rag-auth'
+  rag-telemetry: 'crates/rag-telemetry'
+  rag-search: 'crates/rag-search'
+  rag-database: 'crates/rag-database'
+  rag-storage: 'crates/rag-storage'
+  rag-vectorstore: 'crates/rag-vectorstore'
+
+  # Rust crates - services
+  rag-retrieval: 'crates/rag-retrieval'
+  rag-ingestion: 'crates/rag-ingestion'
+  rag-video: 'crates/rag-video'
+  rag-embedding: 'crates/rag-embedding'
+  rag-llm-gateway: 'crates/rag-llm-gateway'
+
+  # Rust crates - security/tenant
+  rag-encryption: 'crates/rag-encryption'
+  rag-tenant: 'crates/rag-tenant'
+  rag-secrets: 'crates/rag-secrets'
+
+  # Python services (orchestrator only - ingestion/embedding are now Rust)
+  orchestrator-service: 'services/orchestrator'
+
+  # Frontend
+  frontend: 'frontend'
+
+  # Shared schemas (for type generation)
+  schemas: 'schemas'
+
+# Version control settings
+vcs:
+  manager: 'git'
+  defaultBranch: 'main'
+
+# Caching configuration
+hasher:
+  optimization: 'performance'
+
+# Telemetry (optional, can disable)
+telemetry: false
+
+# Extensions for additional functionality
+extensions:
+  rust:
+    plugin: 'https://moonrepo.dev/extensions/rust'
