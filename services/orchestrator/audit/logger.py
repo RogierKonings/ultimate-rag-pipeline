@@ -68,7 +68,7 @@ class AuditLogger:
 
     Example:
         ```python
-        from services.shared.security.audit import AuditLogger
+        from shared.security.audit import AuditLogger
 
         logger = AuditLogger(service_name="ingestion-service")
 

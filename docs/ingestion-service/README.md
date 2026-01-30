@@ -1,5 +1,7 @@
 # Ingestion Service Documentation
 
+**Language:** Rust (Axum) | **Port:** 8001 | **Implementation:** `crates/rag-ingestion/`
+
 The Ingestion Service is responsible for document intake, processing, and indexing in the RAG pipeline. It handles the complete workflow from source acquisition to vector storage.
 
 ## Table of Contents
@@ -20,14 +22,14 @@ The Ingestion Service is responsible for document intake, processing, and indexi
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Ingestion Service                                  │
+│                      Ingestion Service (Rust/Axum)                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐  │
 │  │   Source     │   │   Document   │   │   Chunking   │   │   Embedding  │  │
-│  │  Connectors  │──▶│   Parsers    │──▶│    Engine    │──▶│   Service    │  │
+│  │  Connectors  │──▶│   Parsers    │──▶│    Engine    │──▶│   Client     │  │
 │  └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘  │
 │         │                                                         │          │
 │         │                                                         ▼          │
@@ -43,190 +45,119 @@ The Ingestion Service is responsible for document intake, processing, and indexi
 │                                                        └──────────────────┘  │
 │                                                                              │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │                     Celery Task Queue (Redis)                          │  │
-│  │  Queues: ingestion | embedding | reembed | dlq                        │  │
+│  │                   Redis-backed Async Worker System                     │  │
+│  │  Queues: high_priority | normal | low_priority | dlq                  │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Directory Structure
 
-```
-services/ingestion/
-├── api/
-│   ├── routes/
-│   │   ├── documents.py      # Document CRUD operations
-│   │   ├── ingest.py         # Ingestion endpoints (sync/reembed)
-│   │   └── migrations.py     # Embedding migration endpoints
-│   ├── schemas/
-│   │   ├── documents.py      # Document request/response schemas
-│   │   ├── ingest.py         # Ingestion schemas
-│   │   └── migrations.py     # Migration schemas
-│   ├── dependencies.py       # FastAPI dependency injection
-│   └── middleware.py         # Authentication, logging middleware
-├── connectors/
-│   ├── base.py               # BaseConnector ABC
-│   ├── filesystem.py         # Local/S3 file connector
-│   ├── database.py           # PostgreSQL/MySQL connector
-│   ├── web.py                # Web crawler connector
-│   └── api.py                # REST API connector
-├── processors/
-│   ├── parsers/
-│   │   ├── base.py           # BaseParser ABC
-│   │   ├── pdf.py            # PDF parsing (PyMuPDF)
-│   │   ├── docx.py           # Word document parsing
-│   │   ├── html.py           # HTML/web page parsing
-│   │   ├── markdown.py       # Markdown parsing
-│   │   ├── text.py           # Plain text parsing
-│   │   └── registry.py       # Parser auto-detection registry
-│   ├── chunking.py           # Chunking strategies (784 lines)
-│   └── enrichment/
-│       ├── enrichment.py     # Enrichment orchestrator
-│       ├── language_detector.py
-│       ├── pii_detector.py   # Presidio-based PII detection
-│       ├── metadata_extractor.py
-│       └── models.py         # Enrichment data models
-├── embedding/
-│   ├── service.py            # EmbeddingService main class
-│   ├── client.py             # Model client abstraction
-│   ├── cache.py              # Redis embedding cache
-│   └── models.py             # Embedding data models
-├── indexing/
-│   ├── base.py               # BaseIndexWriter ABC
-│   ├── qdrant.py             # Qdrant vector writer
-│   ├── opensearch.py         # OpenSearch keyword writer
-│   ├── postgres.py           # PostgreSQL metadata writer
-│   └── coordinator.py        # Multi-store index coordinator
-├── migrations/
-│   ├── embedding_migrator.py # Zero-downtime model migration
-│   ├── collection_manager.py # Qdrant collection aliasing
-│   └── progress_tracker.py   # Migration progress tracking
-├── tasks/
-│   ├── celery_app.py         # Celery configuration
-│   ├── ingest.py             # Ingestion task definitions
-│   ├── reembed.py            # Re-embedding tasks
-│   ├── status.py             # Job status management
-│   └── callbacks.py          # Task lifecycle callbacks
-├── services/
-│   └── documents.py          # Document service layer
-├── config.py                 # Settings with validation
-├── telemetry.py              # OpenTelemetry + Prometheus
-├── run.py                    # Application entry point
-└── worker.py                 # Celery worker entry
+```text
+crates/rag-ingestion/
+├── src/
+│   ├── api/                    # Axum HTTP routes
+│   │   ├── routes.rs           # Endpoint handlers
+│   │   ├── state.rs            # Application state
+│   │   └── models.rs           # Request/response models
+│   ├── connectors/             # Source connectors
+│   │   ├── base.rs             # Connector trait
+│   │   ├── filesystem.rs       # Local filesystem connector
+│   │   └── s3.rs               # S3/MinIO connector
+│   ├── parsers/                # Document format parsers
+│   │   ├── base.rs             # Parser trait
+│   │   ├── pdf.rs              # PDF parsing
+│   │   ├── docx.rs             # Office Open XML (DOCX)
+│   │   ├── html.rs             # HTML/web page parsing
+│   │   ├── markdown.rs         # Markdown with YAML frontmatter
+│   │   ├── text.rs             # Plain text parsing
+│   │   └── registry.rs         # Parser auto-detection registry
+│   ├── chunking/               # Text chunking strategies
+│   │   ├── recursive.rs        # Recursive character splitter
+│   │   └── config.rs           # Chunking configuration
+│   ├── embedding/              # Embedding service client
+│   │   ├── client.rs           # HTTP client to embedding service
+│   │   └── cache.rs            # Redis embedding cache
+│   ├── indexing/               # Multi-store index writers
+│   │   ├── coordinator.rs      # Multi-store coordination
+│   │   ├── qdrant.rs           # Qdrant vector writer
+│   │   ├── opensearch.rs       # OpenSearch keyword writer
+│   │   └── postgres.rs         # PostgreSQL metadata writer
+│   ├── pii/                    # PII detection
+│   │   ├── detector.rs         # PII pattern detection
+│   │   └── config.rs           # Sensitivity configuration
+│   ├── worker/                 # Redis-backed async job system
+│   │   ├── queue.rs            # Priority queues with DLQ
+│   │   ├── processor.rs        # Job processing
+│   │   └── status.rs           # Job status tracking
+│   ├── config.rs               # Service configuration
+│   ├── error.rs                # Error types
+│   └── lib.rs                  # Library root
+├── Cargo.toml
+├── Dockerfile
+└── tests/                      # Integration tests
 ```
 
 ---
 
 ## Source Connectors
 
-Four production-ready connectors for acquiring documents from various sources.
+Two production-ready connectors for acquiring documents from various sources.
 
 ### Filesystem Connector
 
-```python
-from ingestion.connectors.filesystem import FilesystemConnector
+```rust
+use rag_ingestion::connectors::{FilesystemConnector, ConnectorConfig};
 
-connector = FilesystemConnector(
-    source_type="filesystem",
-    config={
-        "path": "/data/documents",
-        "recursive": True,
-        "include_patterns": ["*.pdf", "*.docx"],
-        "exclude_patterns": ["*draft*", "*temp*"]
-    }
-)
+let connector = FilesystemConnector::new(ConnectorConfig {
+    path: "/data/documents".into(),
+    recursive: true,
+    include_patterns: vec!["*.pdf".into(), "*.docx".into()],
+    exclude_patterns: vec!["*draft*".into(), "*temp*".into()],
+});
 
-# List available documents
-documents = await connector.list_documents()
+// List available documents
+let documents = connector.list_documents().await?;
 
-# Fetch specific document
-doc = await connector.fetch("report.pdf")
+// Fetch specific document
+let doc = connector.fetch("report.pdf").await?;
 ```
 
 **Features:**
-- Local filesystem and S3/MinIO support
+
+- Local filesystem support
 - Recursive directory traversal
 - Glob pattern filtering (include/exclude)
 - Automatic MIME type detection
 - Metadata extraction (size, modified date)
 
-### Database Connector
+### S3/MinIO Connector
 
-```python
-from ingestion.connectors.database import DatabaseConnector
+```rust
+use rag_ingestion::connectors::{S3Connector, S3Config};
 
-connector = DatabaseConnector(
-    source_type="database",
-    config={
-        "type": "postgresql",  # or "mysql"
-        "connection_string": "postgresql://user:pass@host:5432/db",
-        "query": "SELECT id, title, content FROM documents WHERE updated_at > :since",
-        "id_column": "id",
-        "content_column": "content"
-    }
-)
+let connector = S3Connector::new(S3Config {
+    endpoint: "http://minio:9000".into(),
+    bucket: "documents".into(),
+    prefix: Some("tenant-123/".into()),
+    access_key: env::var("MINIO_ACCESS_KEY")?,
+    secret_key: env::var("MINIO_SECRET_KEY")?,
+});
+
+// List objects in bucket
+let objects = connector.list_objects().await?;
+
+// Fetch specific object
+let content = connector.fetch("report.pdf").await?;
 ```
 
 **Features:**
-- PostgreSQL and MySQL support
-- Custom SQL queries with parameterization
-- Incremental sync via timestamp columns
-- Connection pooling with asyncpg/aiomysql
-- Batch fetching for large result sets
 
-### Web Connector
-
-```python
-from ingestion.connectors.web import WebConnector
-
-connector = WebConnector(
-    source_type="web",
-    config={
-        "start_urls": ["https://docs.example.com"],
-        "max_depth": 3,
-        "max_pages": 100,
-        "allowed_domains": ["docs.example.com"],
-        "respect_robots_txt": True,
-        "rate_limit": 1.0  # requests per second
-    }
-)
-```
-
-**Features:**
-- Configurable crawl depth and page limits
-- Domain restriction and robots.txt compliance
-- Rate limiting to avoid overloading servers
-- URL deduplication
-- JavaScript rendering support (optional)
-
-### API Connector
-
-```python
-from ingestion.connectors.api import APIConnector
-
-connector = APIConnector(
-    source_type="api",
-    config={
-        "base_url": "https://api.example.com",
-        "endpoints": ["/documents", "/articles"],
-        "auth": {
-            "type": "bearer",
-            "token": "${API_TOKEN}"
-        },
-        "pagination": {
-            "type": "cursor",
-            "cursor_param": "next_cursor"
-        }
-    }
-)
-```
-
-**Features:**
-- Multiple authentication methods (API key, Bearer, OAuth2)
-- Pagination handling (offset, cursor, link-based)
-- Rate limiting and retry logic
-- Response mapping configuration
-- Webhook support for push-based updates
+- S3-compatible storage (AWS S3, MinIO, etc.)
+- Prefix-based filtering
+- Streaming downloads for large files
+- Automatic retry with exponential backoff
+- Presigned URL generation
 
 ---
 
@@ -236,214 +167,200 @@ Format-specific parsers with automatic detection via registry.
 
 ### Parser Registry
 
-```python
-from ingestion.processors.parsers.registry import ParserRegistry
+```rust
+use rag_ingestion::parsers::{ParserRegistry, ParseResult};
 
-registry = ParserRegistry()
+let registry = ParserRegistry::new();
 
-# Auto-detect parser from content/filename
-parser = registry.get_parser(filename="report.pdf", content_type="application/pdf")
+// Auto-detect parser from content/filename
+let parser = registry.get_parser("report.pdf", Some("application/pdf"))?;
 
-# Parse document
-result = await parser.parse(content, metadata={"source_uri": "s3://bucket/report.pdf"})
+// Parse document
+let result: ParseResult = parser.parse(&content, metadata).await?;
 
-# Result contains:
-# - text: Extracted text content
-# - metadata: Document metadata (title, author, page_count, etc.)
-# - sections: Structured sections (if available)
+// Result contains:
+// - text: Extracted text content
+// - metadata: Document metadata (title, author, page_count, etc.)
+// - sections: Structured sections (if available)
 ```
 
 ### Supported Formats
 
 | Format | Parser | Library | Features |
 |--------|--------|---------|----------|
-| PDF | `PDFParser` | PyMuPDF | Text extraction, tables, images, metadata |
-| DOCX | `DocxParser` | python-docx | Paragraphs, tables, styles, headers |
-| HTML | `HTMLParser` | BeautifulSoup4 | Content extraction, link preservation |
-| Markdown | `MarkdownParser` | markdown-it-py | AST parsing, frontmatter (planned) |
+| PDF | `PdfParser` | pdf-extract | Text extraction, metadata |
+| DOCX | `DocxParser` | docx-rs | Paragraphs, tables, styles |
+| HTML | `HtmlParser` | scraper | Content extraction, link preservation |
+| Markdown | `MarkdownParser` | pulldown-cmark | AST parsing, YAML frontmatter |
 | Plain Text | `TextParser` | Built-in | Encoding detection, line normalization |
 
 ### Custom Parser
 
-```python
-from ingestion.processors.parsers.base import BaseParser
+```rust
+use rag_ingestion::parsers::{Parser, ParseResult};
+use async_trait::async_trait;
 
-class CustomParser(BaseParser):
-    supported_extensions = [".xyz"]
-    supported_mimetypes = ["application/x-xyz"]
+struct CustomParser;
 
-    async def parse(self, content: bytes, metadata: dict = None) -> ParseResult:
-        # Custom parsing logic
-        text = self.extract_text(content)
-        return ParseResult(
-            text=text,
-            metadata={"format": "xyz", **metadata}
-        )
+#[async_trait]
+impl Parser for CustomParser {
+    fn supported_extensions(&self) -> &[&str] {
+        &[".xyz"]
+    }
 
-# Register custom parser
-registry.register(CustomParser())
+    fn supported_mimetypes(&self) -> &[&str] {
+        &["application/x-xyz"]
+    }
+
+    async fn parse(&self, content: &[u8], metadata: Option<Metadata>) -> Result<ParseResult> {
+        let text = self.extract_text(content)?;
+        Ok(ParseResult {
+            text,
+            metadata: metadata.unwrap_or_default(),
+            sections: vec![],
+        })
+    }
+}
+
+// Register custom parser
+registry.register(Box::new(CustomParser));
 ```
 
 ---
 
 ## Chunking Engine
 
-Three chunking strategies optimized for different content types.
+Recursive character-based chunking optimized for RAG retrieval.
 
 ### Configuration
 
-```python
-from ingestion.processors.chunking import ChunkingEngine, ChunkingConfig
+```rust
+use rag_ingestion::chunking::{ChunkingEngine, ChunkingConfig};
 
-config = ChunkingConfig(
-    strategy="recursive",  # recursive | semantic | hierarchical
-    target_tokens=300,     # ~200-400 optimal range
-    max_tokens=512,
-    overlap_tokens=50,     # 10-20% overlap
-    preserve_headings=True
-)
+let config = ChunkingConfig {
+    target_tokens: 300,      // ~200-400 optimal range
+    max_tokens: 512,
+    overlap_tokens: 50,      // 10-20% overlap
+    separators: vec!["\n\n", "\n", ". ", " "],
+    preserve_headings: true,
+};
 
-engine = ChunkingEngine(config)
-chunks = engine.chunk(document_text, metadata=doc_metadata)
+let engine = ChunkingEngine::new(config);
+let chunks = engine.chunk(&document_text, &doc_metadata)?;
 ```
 
-### Strategies
+### Recursive Chunking Strategy
 
-#### Recursive Chunking (Default)
-Best for general documents with clear paragraph structure.
+The default strategy splits text recursively using a hierarchy of separators:
 
-```python
-config = ChunkingConfig(
-    strategy="recursive",
-    separators=["\n\n", "\n", ". ", " "],
-    target_tokens=300,
-    max_tokens=512,
-    overlap_tokens=50
-)
+```rust
+let config = ChunkingConfig {
+    separators: vec![
+        "\n\n",  // Paragraph breaks (highest priority)
+        "\n",    // Line breaks
+        ". ",    // Sentence endings
+        " ",     // Word boundaries (last resort)
+    ],
+    target_tokens: 300,
+    max_tokens: 512,
+    overlap_tokens: 50,
+};
 ```
 
-#### Semantic Chunking
-Uses spaCy sentence boundaries for semantically coherent chunks.
+**Algorithm:**
 
-```python
-config = ChunkingConfig(
-    strategy="semantic",
-    spacy_model="en_core_web_sm",
-    similarity_threshold=0.7,
-    target_tokens=300
-)
-```
-
-#### Hierarchical Chunking
-Creates parent-child relationships preserving document structure.
-
-```python
-config = ChunkingConfig(
-    strategy="hierarchical",
-    levels=["h1", "h2", "paragraph"],
-    target_tokens=300,
-    create_parent_chunks=True
-)
-```
+1. Try to split on the first separator (paragraph breaks)
+2. If chunks are still too large, recursively split with next separator
+3. Continue until all chunks are within `max_tokens`
+4. Apply overlap between adjacent chunks
 
 ### Chunk Output
 
-```python
-@dataclass
-class Chunk:
-    content: str
-    index: int
-    token_count: int
-    metadata: dict  # Includes:
-        # - parent_chunk_id (for hierarchical)
-        # - section_heading
-        # - start_char, end_char
-        # - embedding_model, embedding_version
+```rust
+#[derive(Debug, Clone, Serialize)]
+pub struct Chunk {
+    pub content: String,
+    pub index: usize,
+    pub token_count: usize,
+    pub metadata: ChunkMetadata,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ChunkMetadata {
+    pub section_heading: Option<String>,
+    pub start_char: usize,
+    pub end_char: usize,
+    pub document_id: Uuid,
+}
 ```
 
 ---
 
 ## Embedding Service
 
-High-performance embedding generation with caching and batch processing.
+The ingestion service calls the separate Embedding Service (port 8080) for vector generation.
 
 ### Configuration
 
-```python
-# config.py settings
-EMBEDDING_MODEL = "BAAI/bge-large-en-v1.5"
-EMBEDDING_DIMENSIONS = 1024
-EMBEDDING_BATCH_SIZE = 32
-EMBEDDING_CACHE_TTL = 86400  # 24 hours
+```bash
+# Environment variables
+EMBEDDING_SERVICE_URL=http://embedding-service:8080
+EMBEDDING_BATCH_SIZE=32
+EMBEDDING_CACHE_TTL=86400  # 24 hours
 ```
 
-### Usage
+### Embedding Client
 
-```python
-from ingestion.embedding.service import EmbeddingService
+```rust
+use rag_ingestion::embedding::EmbeddingClient;
 
-service = EmbeddingService(
-    model_name="BAAI/bge-large-en-v1.5",
-    cache_enabled=True,
-    batch_size=32
-)
+let client = EmbeddingClient::new(
+    "http://embedding-service:8080",
+    Some(redis_client),  // Optional cache
+);
 
-# Single embedding
-embedding = await service.embed("Search query text")
+// Single embedding
+let embedding = client.embed("Search query text").await?;
 
-# Batch embedding with progress callback
-embeddings = await service.embed_batch(
-    texts=chunk_contents,
-    show_progress=True
-)
-
-# Query embedding (with instruction prefix for BGE models)
-query_embedding = await service.embed_query("What is RAG?")
+// Batch embedding
+let embeddings = client.embed_batch(&chunk_contents).await?;
 ```
 
 ### Caching
 
 Embeddings are cached in Redis using content hash as key:
 
-```python
-from ingestion.embedding.cache import EmbeddingCache
+```rust
+use rag_ingestion::embedding::EmbeddingCache;
+use sha2::{Sha256, Digest};
 
-cache = EmbeddingCache(redis_client)
+let cache = EmbeddingCache::new(redis_client);
 
-# Cache lookup
-cached = await cache.get(content_hash="sha256:abc123...")
+// Generate content hash
+let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
 
-# Cache store
-await cache.set(
-    content_hash="sha256:abc123...",
-    embedding=vector,
-    model="bge-large-en-v1.5",
-    ttl=86400
-)
+// Cache lookup
+if let Some(cached) = cache.get(&hash).await? {
+    return Ok(cached);
+}
+
+// Generate and cache
+let embedding = client.embed(content).await?;
+cache.set(&hash, &embedding, Duration::from_secs(86400)).await?;
 ```
 
-### Model Migration
+### Re-embedding Jobs
 
-Zero-downtime embedding model migration:
+Trigger re-embedding when changing embedding models:
 
-```python
-from ingestion.migrations.embedding_migrator import EmbeddingMigrator
-
-migrator = EmbeddingMigrator(
-    source_model="bge-large-en-v1.5",
-    target_model="bge-m3",
-    batch_size=100
-)
-
-# Start migration job
-job_id = await migrator.start_migration(
-    scope={"tenant_id": "uuid"},
-    validation_samples=100
-)
-
-# Check progress
-progress = await migrator.get_progress(job_id)
-# {"processed": 5000, "total": 10000, "status": "running"}
+```bash
+# API call to start re-embedding job
+curl -X POST http://localhost:8001/api/v1/ingest/reembed \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": {"tenant_id": "uuid"},
+    "batch_size": 100
+  }'
 ```
 
 ---
@@ -454,77 +371,78 @@ Coordinated writing to multiple stores for hybrid search support.
 
 ### Index Coordinator
 
-```python
-from ingestion.indexing.coordinator import IndexCoordinator
+```rust
+use rag_ingestion::indexing::IndexCoordinator;
 
-coordinator = IndexCoordinator(
-    qdrant_client=qdrant,
-    opensearch_client=opensearch,
-    postgres_pool=db_pool
-)
+let coordinator = IndexCoordinator::new(
+    qdrant_client,
+    opensearch_client,
+    postgres_pool,
+);
 
-# Index chunks with embeddings
-await coordinator.index(
-    document_id="uuid",
-    chunks=processed_chunks,
-    embeddings=vectors,
-    metadata=doc_metadata
-)
+// Index chunks with embeddings (parallel writes)
+coordinator.index(IndexRequest {
+    document_id,
+    chunks: processed_chunks,
+    embeddings: vectors,
+    metadata: doc_metadata,
+}).await?;
 
-# Atomic rollback on failure
-await coordinator.delete_document("uuid")
+// Atomic rollback on failure
+coordinator.delete_document(document_id).await?;
 ```
 
 ### Qdrant Writer
 
-```python
-from ingestion.indexing.qdrant import QdrantIndexWriter
+```rust
+use rag_ingestion::indexing::QdrantWriter;
+use qdrant_client::qdrant::PointStruct;
 
-writer = QdrantIndexWriter(
-    client=qdrant_client,
-    collection="documents",
-    vector_size=1024
-)
+let writer = QdrantWriter::new(
+    qdrant_client,
+    "documents",  // collection name
+    384,          // vector size
+);
 
-await writer.upsert(
-    points=[
-        {
-            "id": chunk_id,
-            "vector": embedding,
-            "payload": {
-                "tenant_id": "uuid",
-                "document_id": "uuid",
-                "chunk_index": 0,
-                "content": chunk_text[:500],  # Preview
-                "allowed_groups": ["group1", "group2"]
-            }
-        }
-    ]
-)
+let points = chunks.iter().zip(embeddings.iter()).map(|(chunk, embedding)| {
+    PointStruct::new(
+        chunk.id.to_string(),
+        embedding.clone(),
+        json!({
+            "tenant_id": tenant_id,
+            "document_id": document_id,
+            "chunk_index": chunk.index,
+            "content": &chunk.content[..500.min(chunk.content.len())],
+            "allowed_groups": allowed_groups,
+        }),
+    )
+}).collect();
+
+writer.upsert(points).await?;
 ```
 
 ### OpenSearch Writer
 
-```python
-from ingestion.indexing.opensearch import OpenSearchIndexWriter
+```rust
+use rag_ingestion::indexing::OpenSearchWriter;
 
-writer = OpenSearchIndexWriter(
-    client=opensearch_client,
-    index="rag-chunks"
-)
+let writer = OpenSearchWriter::new(
+    opensearch_client,
+    "rag-chunks",  // index name
+);
 
-await writer.bulk_index(
-    documents=[
-        {
-            "_id": chunk_id,
-            "document_id": doc_id,
-            "tenant_id": tenant_id,
-            "content": chunk_text,
-            "title": doc_title,
-            "source_uri": source_uri
-        }
-    ]
-)
+let documents: Vec<_> = chunks.iter().map(|chunk| {
+    json!({
+        "_id": chunk.id,
+        "document_id": document_id,
+        "tenant_id": tenant_id,
+        "content": chunk.content,
+        "title": doc_title,
+        "source_uri": source_uri,
+    })
+}).collect();
+
+writer.bulk_index(documents).await?;
 ```
 
 ---
@@ -590,76 +508,76 @@ language = detector.detect(text)  # "en", "es", "fr", etc.
 
 ## Async Processing
 
-Celery-based task queue for scalable document processing.
+Redis-backed async worker system for scalable document processing.
 
 ### Task Queues
 
 | Queue | Purpose | Priority |
 |-------|---------|----------|
-| `ingestion` | Document ingestion tasks | High |
-| `embedding` | Embedding generation | Medium |
-| `reembed` | Re-embedding jobs | Low |
+| `high_priority` | Urgent ingestion tasks | High |
+| `normal` | Standard document ingestion | Medium |
+| `low_priority` | Re-embedding, bulk jobs | Low |
 | `dlq` | Dead letter queue | - |
 
-### Celery Configuration
+### Worker Configuration
 
-```python
-# tasks/celery_app.py
-celery_app = Celery(
-    "ingestion",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/1"
-)
+```rust
+use rag_ingestion::worker::{WorkerPool, WorkerConfig};
 
-celery_app.conf.update(
-    task_routes={
-        "ingestion.tasks.ingest.*": {"queue": "ingestion"},
-        "ingestion.tasks.reembed.*": {"queue": "reembed"}
-    },
-    task_acks_late=True,
-    worker_prefetch_multiplier=1,
-    task_reject_on_worker_lost=True
-)
+let config = WorkerConfig {
+    redis_url: "redis://localhost:6379".into(),
+    queues: vec!["high_priority", "normal", "low_priority"],
+    concurrency: 4,
+    max_retries: 3,
+    retry_delay: Duration::from_secs(60),
+};
+
+let pool = WorkerPool::new(config).await?;
+pool.start().await?;
 ```
 
-### Ingestion Task
+### Job Submission
 
-```python
-from ingestion.tasks.ingest import ingest_document
+```rust
+use rag_ingestion::worker::{JobQueue, IngestJob};
 
-# Async task call
-result = ingest_document.delay(
-    source_config={
-        "type": "filesystem",
-        "path": "/data/documents/report.pdf"
+let queue = JobQueue::new(redis_client);
+
+// Submit ingestion job
+let job_id = queue.submit(IngestJob {
+    source_config: SourceConfig::Filesystem {
+        path: "/data/documents/report.pdf".into(),
     },
-    tenant_id="uuid",
-    options={
-        "chunking_strategy": "recursive",
-        "skip_pii_detection": False
-    }
-)
+    tenant_id,
+    options: IngestOptions {
+        chunking_strategy: "recursive".into(),
+        skip_pii_detection: false,
+    },
+}, Priority::Normal).await?;
 
-# Check status
-status = result.status  # PENDING, STARTED, SUCCESS, FAILURE
+// Check status
+let status = queue.get_status(job_id).await?;
+// JobStatus { state: Processing, progress: 50, total: 100 }
 ```
 
 ### Job Status Tracking
 
-```python
-from ingestion.tasks.status import JobStatusTracker
+```rust
+use rag_ingestion::worker::JobStatusTracker;
 
-tracker = JobStatusTracker(redis_client)
+let tracker = JobStatusTracker::new(redis_client);
 
-# Update progress
-await tracker.update(
-    job_id="uuid",
-    status="processing",
-    progress={"processed": 50, "total": 100}
-)
+// Update progress
+tracker.update(UpdateStatus {
+    job_id,
+    state: JobState::Processing,
+    progress: Some(50),
+    total: Some(100),
+    error: None,
+}).await?;
 
-# Get status
-status = await tracker.get("uuid")
+// Get status
+let status = tracker.get(job_id).await?;
 ```
 
 ---
@@ -828,22 +746,22 @@ See: **[Rate Limiting Documentation](./rate-limiting.md)**
 ### Environment Variables
 
 ```bash
+# Service
+INGESTION_LISTEN_ADDR=0.0.0.0:8001
+
 # Database
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/ragpipeline
+DATABASE_URL=postgresql://user:pass@localhost:5432/ragpipeline
 REDIS_URL=redis://localhost:6379/0
 
 # Vector Store
-QDRANT_HOST=localhost
-QDRANT_PORT=6333
+QDRANT_URL=http://localhost:6333
 QDRANT_COLLECTION=documents
 
 # Search
-OPENSEARCH_HOST=localhost
-OPENSEARCH_PORT=9200
+OPENSEARCH_URL=http://localhost:9200
 OPENSEARCH_INDEX=rag-chunks
 
-# Embedding
-EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
+# Embedding Service
 EMBEDDING_SERVICE_URL=http://localhost:8080
 EMBEDDING_BATCH_SIZE=32
 EMBEDDING_CACHE_TTL=86400
@@ -854,37 +772,43 @@ CHUNK_MAX_TOKENS=512
 CHUNK_OVERLAP_TOKENS=50
 
 # Object Storage
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=rag-documents
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=rag-documents
 
-# Celery
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/1
+# Worker
+WORKER_CONCURRENCY=4
+WORKER_MAX_RETRIES=3
 
 # Telemetry
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-PROMETHEUS_PORT=9090
+METRICS_PORT=9090
 ```
 
-### Settings Validation
+### Configuration Struct
 
-The service validates configuration against architecture requirements at startup:
+```rust
+use serde::Deserialize;
 
-```python
-# config.py
-class Settings(BaseSettings):
-    embedding_dimensions: int = 1024
-    chunk_target_tokens: int = 300
-    chunk_max_tokens: int = 512
-    chunk_overlap_tokens: int = 50
+#[derive(Debug, Clone, Deserialize)]
+pub struct IngestionConfig {
+    pub listen_addr: SocketAddr,
+    pub database_url: String,
+    pub redis_url: String,
+    pub qdrant_url: String,
+    pub opensearch_url: String,
+    pub embedding_service_url: String,
 
-    @validator("embedding_dimensions")
-    def validate_dimensions(cls, v):
-        if v != 1024:
-            raise ValueError("Embedding dimensions must be 1024 for BGE-large")
-        return v
+    #[serde(default = "default_chunk_target")]
+    pub chunk_target_tokens: usize,  // default: 300
+
+    #[serde(default = "default_chunk_max")]
+    pub chunk_max_tokens: usize,     // default: 512
+
+    #[serde(default = "default_chunk_overlap")]
+    pub chunk_overlap_tokens: usize, // default: 50
+}
 ```
 
 ---
@@ -940,30 +864,33 @@ All operations are traced with span context:
 
 ```bash
 # All ingestion tests
-cd services/ingestion
-pytest
+cd crates
+cargo test -p rag-ingestion
 
-# Specific component
-pytest connectors/tests/
-pytest processors/tests/
-pytest embedding/tests/
-pytest indexing/tests/
+# Specific module
+cargo test -p rag-ingestion connectors::
+cargo test -p rag-ingestion parsers::
+cargo test -p rag-ingestion chunking::
+cargo test -p rag-ingestion indexing::
 
-# With coverage
-pytest --cov=. --cov-report=html
+# With coverage (requires cargo-tarpaulin)
+cargo tarpaulin -p rag-ingestion --out Html
+
+# Linting
+cargo clippy -p rag-ingestion -- -D warnings
 ```
 
 ### Test Coverage
 
-| Component | Test Files | Coverage |
-|-----------|------------|----------|
-| Connectors | 5 files, 2662+ lines | 95%+ |
-| Parsers | 2 files | 90%+ |
-| Chunking | 1 file | 95%+ |
-| Embedding | 4 files | 90%+ |
-| Indexing | 3 files | 90%+ |
-| Tasks | 4 files | 85%+ |
-| API | 2 files | 90%+ |
+| Component | Coverage |
+|-----------|----------|
+| Connectors | 90%+ |
+| Parsers | 90%+ |
+| Chunking | 95%+ |
+| Embedding Client | 90%+ |
+| Indexing | 90%+ |
+| Worker | 85%+ |
+| API | 90%+ |
 
 ---
 
@@ -1018,25 +945,41 @@ new_version = await db.get_latest_version(tenant_id, source_uri) + 1
 
 ### Common Issues
 
-**Celery workers not processing:**
+**Workers not processing jobs:**
+
 ```bash
-# Check worker status
-celery -A ingestion.tasks.celery_app inspect active
+# Check Redis connection
+redis-cli ping
 
 # Check queue lengths
-celery -A ingestion.tasks.celery_app inspect reserved
+redis-cli LLEN ingestion:queue:normal
+
+# Check DLQ for failed jobs
+redis-cli LLEN ingestion:queue:dlq
 ```
 
 **Embedding service timeout:**
+
 ```bash
-# Increase batch size or timeout
+# Increase timeout or reduce batch size
+EMBEDDING_TIMEOUT_MS=30000
 EMBEDDING_BATCH_SIZE=16
-EMBEDDING_TIMEOUT=60
 ```
 
 **Memory issues with large documents:**
+
 ```bash
-# Enable streaming for large files
-STREAM_LARGE_FILES=true
+# The service streams large files automatically
+# Adjust the threshold if needed
 LARGE_FILE_THRESHOLD_MB=100
+```
+
+**Qdrant connection issues:**
+
+```bash
+# Check Qdrant health
+curl http://localhost:6333/health
+
+# Verify collection exists
+curl http://localhost:6333/collections/documents
 ```

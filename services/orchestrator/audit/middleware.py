@@ -27,7 +27,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
     Example:
         ```python
         from fastapi import FastAPI
-        from services.shared.security.audit import AuditMiddleware
+        from shared.security.audit import AuditMiddleware
 
         app = FastAPI()
         app.add_middleware(

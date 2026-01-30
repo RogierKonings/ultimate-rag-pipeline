@@ -12,7 +12,7 @@ from api.routes.audit import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.shared.security.audit.models import (
+from shared.security.audit.models import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,

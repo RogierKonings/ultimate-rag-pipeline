@@ -1,0 +1,156 @@
+"""
+Security module for the RAG Pipeline.
+
+This module provides authentication, authorization, encryption, and audit
+functionality for securing the RAG pipeline services.
+"""
+
+from .acl import (
+    AccessDeniedError,
+    ACLError,
+    ACLService,
+    DocumentACL,
+    DocumentNotFoundError,
+    OpenSearchACLFilter,
+    QdrantACLFilter,
+    Visibility,
+    build_chunk_acl_payload,
+)
+from .encryption import (
+    DecryptionError,
+    EncryptionError,
+    EncryptionKeyManager,
+    EnvironmentKeyProvider,
+    FieldEncryption,
+    FileKeyProvider,
+    VaultKeyProvider,
+)
+from .jwt import JWTHandler, JWTSettings, TokenClaims, TokenPair
+from .pii import (
+    PIIDetectionError,
+    PIIDetector,
+    PIIEntity,
+    PIIEntityType,
+    PIIHandlingMode,
+    PIIQueryFilter,
+    PIIResponseFilter,
+    PIIResult,
+    PIISensitivity,
+    PIISettings,
+    detect_pii,
+    redact_pii,
+)
+from .rbac import (
+    AuthorizationError,
+    AuthorizationService,
+    InsufficientPermissionsError,
+    Permission,
+    PermissionScope,
+    Role,
+    RoleHierarchy,
+    TenantContext,
+    TenantContextManager,
+    TenantMismatchError,
+    require_admin,
+    require_permission,
+    require_role,
+)
+from .secrets import (
+    K8sSecretsClient,
+    SecretsBackend,
+    SecretsError,
+    SecretsInjector,
+    SecretsService,
+    SecretsSettings,
+    VaultAuthMethod,
+    VaultClient,
+    VaultError,
+    VaultSettings,
+    get_secret,
+    get_secrets_service,
+    optional_secret,
+    require_secret,
+)
+from .tls import (
+    TLSMode,
+    TLSSettings,
+    create_client_ssl_context,
+    create_postgres_ssl_context,
+    create_redis_ssl_context,
+    create_server_ssl_context,
+)
+
+__all__ = [
+    # JWT
+    "JWTHandler",
+    "JWTSettings",
+    "TokenClaims",
+    "TokenPair",
+    # RBAC
+    "AuthorizationService",
+    "AuthorizationError",
+    "InsufficientPermissionsError",
+    "TenantMismatchError",
+    "Permission",
+    "PermissionScope",
+    "Role",
+    "RoleHierarchy",
+    "TenantContext",
+    "TenantContextManager",
+    "require_permission",
+    "require_role",
+    "require_admin",
+    # ACL
+    "ACLService",
+    "ACLError",
+    "DocumentNotFoundError",
+    "AccessDeniedError",
+    "DocumentACL",
+    "Visibility",
+    "QdrantACLFilter",
+    "OpenSearchACLFilter",
+    "build_chunk_acl_payload",
+    # Encryption
+    "FieldEncryption",
+    "EncryptionError",
+    "DecryptionError",
+    "EncryptionKeyManager",
+    "EnvironmentKeyProvider",
+    "VaultKeyProvider",
+    "FileKeyProvider",
+    # TLS
+    "TLSSettings",
+    "TLSMode",
+    "create_server_ssl_context",
+    "create_client_ssl_context",
+    "create_postgres_ssl_context",
+    "create_redis_ssl_context",
+    # PII
+    "PIIDetector",
+    "PIIDetectionError",
+    "PIISettings",
+    "PIIHandlingMode",
+    "PIIEntityType",
+    "PIISensitivity",
+    "PIIResult",
+    "PIIEntity",
+    "PIIResponseFilter",
+    "PIIQueryFilter",
+    "detect_pii",
+    "redact_pii",
+    # Secrets
+    "SecretsService",
+    "SecretsError",
+    "SecretsSettings",
+    "SecretsBackend",
+    "VaultClient",
+    "VaultSettings",
+    "VaultAuthMethod",
+    "VaultError",
+    "K8sSecretsClient",
+    "SecretsInjector",
+    "get_secrets_service",
+    "get_secret",
+    "require_secret",
+    "optional_secret",
+]

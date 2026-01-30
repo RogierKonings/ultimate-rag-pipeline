@@ -25,7 +25,7 @@ The Retrieval Service is the core search component of the RAG pipeline, responsi
 
 ## Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                            Retrieval Service                                     │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -88,7 +88,7 @@ The Retrieval Service is the core search component of the RAG pipeline, responsi
 
 ### Directory Structure
 
-```
+```text
 crates/rag-retrieval/
 ├── src/
 │   ├── lib.rs              # Library root with module exports

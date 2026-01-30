@@ -15,7 +15,7 @@ Features:
 
 Example:
     ```python
-    from services.shared.security.audit import (
+    from shared.security.audit import (
         AuditLogger,
         AuditAction,
         AuditMiddleware,

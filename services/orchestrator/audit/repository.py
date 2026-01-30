@@ -30,7 +30,7 @@ class AuditRepository:
 
     Example:
         ```python
-        from services.shared.security.audit import AuditRepository
+        from shared.security.audit import AuditRepository
 
         repo = AuditRepository(session)
 
@@ -73,7 +73,7 @@ class AuditRepository:
             Created entry with database ID.
         """
         # Import here to avoid circular imports
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         db_entry = AuditLog(
             id=entry.id,
@@ -122,7 +122,7 @@ class AuditRepository:
         Returns:
             List of matching audit entries.
         """
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         stmt = select(AuditLog)
         conditions = []
@@ -191,7 +191,7 @@ class AuditRepository:
 
     async def get_by_id(self, entry_id: UUID) -> AuditLogEntry | None:
         """Get audit entry by ID."""
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         stmt = select(AuditLog).where(AuditLog.id == entry_id)
         result = await self.session.execute(stmt)
@@ -270,7 +270,7 @@ class AuditRepository:
         Returns:
             Audit statistics.
         """
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         conditions = []
         if tenant_id:
@@ -351,7 +351,7 @@ class AuditRepository:
         end_time: datetime | None = None,
     ) -> int:
         """Count entries for a specific action."""
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         conditions = [AuditLog.action == action.value]
         if tenant_id:
@@ -380,7 +380,7 @@ class AuditRepository:
         Returns:
             Tuple of (is_valid, error_message).
         """
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         stmt = select(AuditLog).order_by(AuditLog.timestamp).limit(limit)
         if start_id:
@@ -409,7 +409,7 @@ class AuditRepository:
 
     async def get_latest_hash(self) -> str | None:
         """Get the hash of the most recent audit entry."""
-        from services.shared.database.models.audit_log import AuditLog
+        from shared.database.models.audit_log import AuditLog
 
         stmt = select(AuditLog.entry_hash).order_by(desc(AuditLog.timestamp)).limit(1)
         result = await self.session.execute(stmt)

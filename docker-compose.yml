@@ -245,7 +245,6 @@ services:
       - LOG_LEVEL=DEBUG
     volumes:
       - ./services/orchestrator:/app
-      - ./services/shared:/app/shared
     depends_on:
       - retrieval-service
       - redis

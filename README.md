@@ -16,7 +16,8 @@ A production-grade Retrieval-Augmented Generation (RAG) architecture that is mod
   - [Ingestion Service](#ingestion-service)
   - [Retrieval Service](#retrieval-service)
   - [Orchestrator Service](#orchestrator-service)
-  - [LLM Serving Layer](#llm-serving-layer)
+  - [LLM Gateway](#llm-gateway)
+  - [Embedding Service](#embedding-service)
 - [Data Flow](#data-flow)
 - [API Reference](#api-reference)
 - [Deployment](#deployment)
@@ -46,11 +47,12 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 ## Key Capabilities
 
 ### Document Ingestion
-- Multiple source connectors (filesystem, S3, databases, web crawlers, APIs)
+
+- Multiple source connectors (filesystem, S3/MinIO)
 - Intelligent document parsing (PDF, DOCX, HTML, Markdown, plain text)
-- Configurable chunking strategies (recursive, semantic, hierarchical)
+- Configurable chunking strategies (recursive, semantic)
 - Automated metadata enrichment and PII detection
-- Async processing with Celery for scalable ingestion
+- Redis-backed async worker system with priority queues and DLQ
 
 ### Video RAG Pipeline
 
@@ -161,18 +163,18 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 
 | Layer | Technology | Rationale |
 |-------|------------|-----------|
-| **Language** | Python 3.11+ | Ecosystem maturity, ML library support |
-| **API Framework** | FastAPI + Pydantic v2 | Async support, auto OpenAPI docs |
-| **Task Queue** | Celery + Redis | Distributed ingestion, re-embedding jobs |
+| **Languages** | Rust (services) + Python 3.11+ (orchestrator) | Performance-critical services in Rust, ML orchestration in Python |
+| **API Framework** | Axum (Rust) + FastAPI (Python) | High-performance async HTTP, OpenAPI docs |
+| **Task Queue** | Redis-backed async workers (Rust) | Priority queues, DLQ, job tracking |
 | **Vector Database** | Qdrant | High-performance HNSW, excellent filtering |
 | **Keyword Search** | OpenSearch | BM25, rich analyzers, production-ready |
-| **Metadata DB** | PostgreSQL 16+ | ACID, JSON support, mature tooling |
+| **Metadata DB** | PostgreSQL 16+ (sqlx) | ACID, JSON support, async Rust driver |
 | **Object Storage** | MinIO / S3 | Raw document storage |
-| **Cache** | Redis | Query cache, embedding cache |
+| **Cache** | Redis | Query cache, embedding cache, job queue |
 | **Orchestration** | LangGraph | Stateful workflows, graph-based control |
 | **LLM Serving** | vLLM | High-throughput, OpenAI-compatible API |
-| **Embedding Model** | BAAI/bge-large-en-v1.5 | Top MTEB performance, MIT license |
-| **Reranker** | BAAI/bge-reranker-v2-m3 | Cross-encoder, multilingual |
+| **Embedding** | fastembed (ONNX) | all-MiniLM-L6-v2 (384d), fast CPU inference |
+| **Reranker** | ONNX cross-encoder | BAAI/bge-reranker-v2-m3, multilingual |
 | **Tracing** | OpenTelemetry + Jaeger | Distributed tracing |
 | **Metrics** | Prometheus + Grafana | Dashboards, alerting |
 | **Evaluation** | Ragas | RAG-specific quality metrics |
@@ -184,7 +186,8 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 ### Prerequisites
 
 - **Docker** and **Docker Compose** (v2.20+)
-- **Python 3.11+** (for local development)
+- **Rust 1.75+** (for local Rust service development)
+- **Python 3.11+** (for orchestrator development)
 - **Make** (for development commands)
 - **kubectl** and **helm** (for Kubernetes deployment)
 - **GPU with CUDA** (optional, for vLLM)
@@ -231,7 +234,7 @@ The PostgreSQL database requires schema migrations before the services can funct
 
 ```bash
 # From the project root, run migrations using Alembic
-cd services/shared/database/migrations
+cd services/orchestrator/shared/database/migrations
 alembic upgrade head
 ```
 
@@ -243,7 +246,7 @@ alembic upgrade head
 You can also run migrations explicitly with the database URL:
 
 ```bash
-cd services/shared/database/migrations
+cd services/orchestrator/shared/database/migrations
 INGESTION_DATABASE_URL=postgresql://raguser:ragpass@localhost:5432/ragpipeline alembic upgrade head
 ```
 
@@ -386,27 +389,32 @@ See `.env.example` for the complete list of available variables with documentati
 
 ### Ingestion Service
 
-**Port:** 8001
+**Port:** 8001 | **Language:** Rust (Axum)
 
 Handles document intake, processing, and indexing.
 
+**Implementation:** `crates/rag-ingestion/`
+
 **Features:**
-- Source connectors: filesystem, S3, databases, web crawlers, REST APIs
-- Document parsing: PDF, DOCX, HTML, Markdown, plain text
-- Chunking strategies: recursive (default), semantic, hierarchical
-- Embedding generation with caching
-- Multi-store indexing with explicit status tracking and background reconciliation
-- Soft-delete propagation across all stores (Qdrant, OpenSearch, PostgreSQL)
-- Optional per-tenant index isolation for large tenants
+
+- Source connectors: filesystem, S3/MinIO
+- Document parsing: PDF, DOCX (Office Open XML), HTML, Markdown (with YAML frontmatter), plain text
+- Chunking strategies: recursive character splitting (300 tokens target, 50 token overlap)
+- Embedding generation via HTTP client to embedding service
+- Multi-store indexing with explicit status tracking (Qdrant, OpenSearch, PostgreSQL)
+- Soft-delete propagation across all stores
 - Per-tenant rate limiting with priority queues (high/normal/low)
-- PII detection with Microsoft Presidio
-- Async processing via Celery
+- PII detection with configurable sensitivity levels
+- Redis-backed async worker system with DLQ
 
 **Key Endpoints:**
+
 ```
-POST /api/v1/ingest/sync    # Trigger document ingestion
+POST /api/v1/ingest         # Batch ingestion job
+POST /api/v1/ingest/single  # Single document ingest
+POST /api/v1/ingest/sync    # Incremental sync
 POST /api/v1/ingest/reembed # Start re-embedding job
-GET  /api/v1/ingest/jobs/{id} # Check job status
+GET  /api/v1/ingest/{id}    # Check job status
 GET  /api/v1/documents      # List documents
 ```
 
@@ -414,18 +422,21 @@ GET  /api/v1/documents      # List documents
 
 ### Retrieval Service
 
-**Port:** 8002
+**Port:** 8002 | **Language:** Rust (Axum)
 
 Core search component implementing hybrid search with reranking.
 
+**Implementation:** `crates/rag-retrieval/`
+
 **Features:**
+
 - Query preprocessing (normalization, classification, expansion, HyDE)
 - Hybrid search combining semantic (Qdrant) and keyword (OpenSearch)
-- Reciprocal Rank Fusion (RRF) with configurable weights
+- Multiple fusion algorithms: RRF (rank-based), Linear (weighted), DBSF (distribution-aware)
 - Cross-encoder reranking via LLM Gateway
-- Circuit breakers with graceful degradation (semantic-only, keyword-only modes)
-- Early ACL filtering at query level with safety net verification
-- Query and result caching
+- Visibility-based ACL enforcement (Public, Tenant, Group, Private)
+- Query and result caching with Redis
+- OpenTelemetry tracing and Prometheus metrics
 
 **Hybrid Search Parameters:**
 
@@ -440,10 +451,14 @@ Core search component implementing hybrid search with reranking.
 | Final top-k | 10 | Results returned to client |
 
 **Key Endpoints:**
+
 ```
 POST /api/v1/retrieve       # Search for relevant chunks
 POST /api/v1/retrieve/multi # Multi-query search
-GET  /health                # Health check
+GET  /health                # Full health check
+GET  /health/live           # Kubernetes liveness probe
+GET  /health/ready          # Kubernetes readiness probe
+GET  /metrics               # Prometheus metrics
 ```
 
 [Full Documentation](docs/retrieval-service/README.md)
@@ -485,17 +500,20 @@ POST   /api/v1/videos/{id}/reprocess  # Re-process video
 
 ### Orchestrator Service
 
-**Port:** 8003
+**Port:** 8003 | **Language:** Python (FastAPI)
 
 Central coordination layer managing the complete query lifecycle.
 
+**Implementation:** `services/orchestrator/`
+
 **Features:**
+
 - LangGraph-based stateful workflows
 - Intelligent query routing with multi-hop detection
 - Multi-hop query decomposition with parallel sub-question retrieval
 - CRAG-style answer verification (claim extraction and validation)
 - Jinja2 prompt templates
-- Input/output guardrails
+- Input/output guardrails (PII detection, injection prevention)
 - Conversation memory (Redis + PostgreSQL)
 - Streaming with SSE and TTFT tracking
 - Circuit breakers and graceful degradation
@@ -521,29 +539,55 @@ POST /api/v1/sessions       # Create conversation session
 
 [Full Documentation](docs/orchestrator-service/README.md)
 
-### LLM Serving Layer
+### LLM Gateway
 
-**Port:** 8004 (Gateway)
+**Port:** 8004 | **Language:** Rust (Axum)
 
 Unified API gateway for all language model operations.
+
+**Implementation:** `crates/rag-llm-gateway/`
 
 **Components:**
 
 | Service | Port | Model | Purpose |
 |---------|------|-------|---------|
-| Gateway | 8004 | - | Unified API entry point |
-| vLLM | 8000 | Qwen/Qwen2.5-7B-Instruct | Text generation |
-| Embedding | 8001 | BAAI/bge-large-en-v1.5 | Vector embeddings (1024d) |
-| Reranker | 8002 | BAAI/bge-reranker-v2-m3 | Cross-encoder reranking |
+| LLM Gateway | 8004 | - | Unified API entry point (Rust) |
+| Embedding Service | 8080 | all-MiniLM-L6-v2 | Vector embeddings (384d, Rust) |
+| vLLM | 11434 | Configurable | Text generation |
 
 **Features:**
-- OpenAI-compatible API (`/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`)
-- JWT and API key authentication
-- Per-tenant rate limiting
-- Streaming responses
-- Health monitoring and metrics
 
-> **Implementation:** The LLM Gateway is implemented in Rust at `crates/rag-llm-gateway/`.
+- OpenAI-compatible API (`/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`)
+- vLLM proxy with streaming support
+- ONNX-based cross-encoder reranking
+- JWT and API key authentication
+- Token bucket rate limiting (per-tenant)
+- Prometheus metrics collection
+- Comprehensive request/response logging
+
+### Embedding Service
+
+**Port:** 8080 | **Language:** Rust (Axum)
+
+ONNX-based text embedding service with OpenAI-compatible API.
+
+**Implementation:** `crates/rag-embedding/`
+
+**Features:**
+
+- OpenAI-compatible `/v1/embeddings` endpoint
+- ONNX inference via `fastembed` crate
+- Models: `all-MiniLM-L6-v2` (384d, default), `BAAI/bge-small-en-v1.5`
+- Thread pool for async CPU-bound operations (`spawn_blocking`)
+- Batch processing (max 32 texts per request)
+
+**Key Endpoints:**
+
+```
+POST /v1/embeddings    # Generate embeddings
+GET  /v1/models        # List available models
+GET  /health           # Health check
+```
 
 ---
 
@@ -849,14 +893,17 @@ The pipeline implements defense-in-depth security:
 # Run all tests
 make test
 
-# Run tests for specific service
-docker-compose exec retrieval-service pytest
+# Rust services (ingestion, retrieval, embedding, llm-gateway)
+cd crates && cargo test                           # All Rust tests
+cd crates && cargo test -p rag-ingestion          # Ingestion tests
+cd crates && cargo test -p rag-retrieval          # Retrieval tests
+cd crates && cargo test -p rag-embedding          # Embedding tests
+cd crates && cargo test -p rag-llm-gateway        # LLM Gateway tests
+cd crates && cargo clippy -- -D warnings          # Linting
 
-# Run specific test file
-docker-compose exec retrieval-service pytest tests/test_hybrid_search.py
-
-# Run with coverage
-docker-compose exec retrieval-service pytest --cov=. --cov-report=html
+# Python orchestrator
+docker-compose exec orchestrator-service pytest
+docker-compose exec orchestrator-service pytest --cov=. --cov-report=html
 
 # Run E2E smoke tests (requires running services)
 pytest tests/e2e/ -v --e2e
@@ -868,12 +915,13 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 
 ### Test Coverage
 
-| Service | Tests | Coverage |
-|---------|-------|----------|
-| Ingestion | Multiple suites | 90%+ |
-| Retrieval | 190+ | 90%+ |
-| Orchestrator | 883 | 96% |
-| LLM Serving | Multiple suites | 90%+ |
+| Service | Language | Tests | Coverage |
+|---------|----------|-------|----------|
+| Ingestion | Rust | Multiple suites | 90%+ |
+| Retrieval | Rust | 190+ | 90%+ |
+| Embedding | Rust | Multiple suites | 90%+ |
+| LLM Gateway | Rust | Multiple suites | 90%+ |
+| Orchestrator | Python | 883 | 96% |
 
 ---
 
@@ -888,7 +936,8 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 | [Retrieval Service](docs/retrieval-service/README.md) | Hybrid search and reranking |
 | [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
 | [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration, answer verification, multi-hop RAG, cost optimization |
-| [LLM Gateway](crates/rag-llm-gateway/) | Rust LLM Gateway (embeddings, reranking, chat proxy) |
+| [LLM Gateway](docs/llm-gateway/README.md) | Rust LLM Gateway (embeddings, reranking, chat proxy) |
+| [Embedding Service](docs/embedding-service/README.md) | Rust embedding service with ONNX inference |
 | [Security](docs/security/README.md) | Security and compliance overview |
 | [Inter-Service Auth](docs/security/inter-service-authentication.md) | JWT-based service-to-service authentication |
 | [Database Security](docs/security/database-security.md) | SSL/TLS for PostgreSQL, Redis, OpenSearch |
@@ -940,7 +989,11 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 pip install pre-commit
 pre-commit install
 
-# Install development dependencies
+# Install Rust toolchain (for service development)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup default stable
+
+# Install Python development dependencies (for orchestrator)
 pip install -r requirements-dev.txt
 
 # Run security scans
@@ -960,6 +1013,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Qdrant Documentation](https://qdrant.tech/documentation/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [vLLM Documentation](https://docs.vllm.ai/)
+- [fastembed (Rust ONNX Embeddings)](https://github.com/Anush008/fastembed-rs)
+- [Axum Web Framework](https://docs.rs/axum/latest/axum/)
 - [BGE Embedding Models](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [Ragas Evaluation Framework](https://docs.ragas.io/)
+- [OpenTelemetry Rust](https://docs.rs/opentelemetry/latest/opentelemetry/)
 - [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)

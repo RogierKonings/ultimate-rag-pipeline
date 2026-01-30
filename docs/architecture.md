@@ -104,19 +104,18 @@ flowchart TB
 
 | Layer | Technology | Rationale |
 |-------|------------|-----------|
-| **Language** | Python 3.11+ | Ecosystem maturity, ML library support |
-| **Package Manager** | `uv` or `poetry` | Reproducible environments |
-| **API Framework** | FastAPI + Pydantic v2 | Async support, auto OpenAPI docs, typed validation |
-| **Task Queue** | Celery + Redis | Distributed ingestion, re-embedding jobs |
+| **Languages** | Rust (services) + Python 3.11+ (orchestrator) | Performance-critical services in Rust, ML orchestration in Python |
+| **API Framework** | Axum (Rust) + FastAPI (Python) | High-performance async HTTP, OpenAPI docs |
+| **Task Queue** | Redis-backed async workers (Rust) | Priority queues, DLQ, job tracking |
 | **Vector Database** | **Qdrant** | High-performance HNSW, excellent filtering, hybrid search, easy ops |
 | **Keyword Search** | **OpenSearch** | BM25, rich analyzers, production-ready |
-| **Metadata DB** | PostgreSQL 16+ | ACID, JSON support, mature tooling |
+| **Metadata DB** | PostgreSQL 16+ (sqlx) | ACID, JSON support, async Rust driver |
 | **Object Storage** | MinIO / S3 | Raw document storage |
-| **Cache** | Redis | Query cache, embedding cache |
+| **Cache** | Redis | Query cache, embedding cache, job queue |
 | **Orchestration** | **LangGraph** (LangChain) | Stateful workflows, graph-based control flow |
 | **LLM Serving** | **vLLM** | High-throughput, OpenAI-compatible API |
-| **Embedding Models** | `BAAI/bge-large-en-v1.5` | Top MTEB performance, MIT license |
-| **Reranker** | `BAAI/bge-reranker-v2-m3` | Cross-encoder, multilingual |
+| **Embedding** | fastembed (ONNX) | all-MiniLM-L6-v2 (384d), fast CPU inference |
+| **Reranker** | ONNX cross-encoder | BAAI/bge-reranker-v2-m3, multilingual |
 | **Evaluation** | Ragas + Arize Phoenix | RAG-specific metrics, LLM observability |
 | **Tracing** | OpenTelemetry → Jaeger | Distributed tracing |
 | **Metrics** | Prometheus + Grafana | Dashboards, alerting |
@@ -195,11 +194,14 @@ flowchart LR
 
 ### 1. Ingestion Service
 
+**Language:** Rust (Axum) | **Port:** 8001 | **Implementation:** `crates/rag-ingestion/`
+
 **Responsibilities:**
-- Source connectors (files, databases, APIs, web)
-- Document parsing and validation
-- Chunking with configurable strategies
-- Embedding generation (batched, parallelized)
+
+- Source connectors (filesystem, S3/MinIO)
+- Document parsing and validation (PDF, DOCX, HTML, Markdown)
+- Chunking with configurable strategies (recursive character splitting)
+- Embedding generation via HTTP client to embedding service
 - Multi-store indexing with status tracking (Qdrant, OpenSearch, PostgreSQL)
 - Background reconciliation for store consistency
 - Soft-delete propagation to all stores
@@ -209,34 +211,37 @@ flowchart LR
 **Components:**
 
 ```
-ingestion-service/
-├── api/
-│   ├── routes.py          # FastAPI endpoints
-│   └── schemas.py         # Pydantic models
-├── connectors/
-│   ├── filesystem.py      # Local/S3 file connector
-│   ├── database.py        # SQL database connector
-│   ├── web.py             # Web scraper connector
-│   └── api.py             # REST API connector
-├── processors/
-│   ├── parsers/
-│   │   ├── pdf.py         # PDF parsing (PyMuPDF, Unstructured)
-│   │   ├── docx.py        # Word documents
-│   │   └── html.py        # HTML/web pages
-│   ├── chunking.py        # Chunking strategies
-│   └── enrichment.py      # Metadata extraction
-├── embedding/
-│   ├── service.py         # Embedding generation
-│   └── cache.py           # Embedding cache (Redis)
-├── indexing/
-│   ├── qdrant.py          # Vector store writer
-│   ├── opensearch.py      # Keyword index writer
-│   └── postgres.py        # Metadata store
-└── tasks/
-    ├── ingest.py          # Celery ingestion tasks
-    ├── reembed.py         # Re-embedding tasks
-    ├── reconcile.py       # Background index reconciliation
-    └── tombstone.py       # Soft-delete propagation
+crates/rag-ingestion/
+├── src/
+│   ├── api/                # Axum HTTP routes
+│   │   ├── routes.rs       # Endpoint handlers
+│   │   └── state.rs        # Application state
+│   ├── parsers/            # Document format parsers
+│   │   ├── pdf.rs          # PDF parsing
+│   │   ├── docx.rs         # Office Open XML documents
+│   │   ├── html.rs         # HTML/web pages
+│   │   ├── markdown.rs     # Markdown with YAML frontmatter
+│   │   └── base.rs         # Parser trait
+│   ├── chunking/           # Text chunking strategies
+│   │   └── recursive.rs    # Recursive character splitter
+│   ├── embedding/          # Embedding service client
+│   │   └── client.rs       # HTTP client to embedding service
+│   ├── indexing/           # Multi-store coordinator
+│   │   ├── coordinator.rs  # Parallel writes orchestration
+│   │   ├── qdrant.rs       # Vector store writer
+│   │   ├── opensearch.rs   # Keyword index writer
+│   │   └── postgres.rs     # Metadata store
+│   ├── connectors/         # Source connectors
+│   │   ├── filesystem.rs   # Local filesystem
+│   │   └── s3.rs           # S3/MinIO connector
+│   ├── pii/                # PII detection
+│   │   └── detector.rs     # Configurable sensitivity levels
+│   ├── worker/             # Redis-backed async job system
+│   │   ├── queue.rs        # Priority queues with DLQ
+│   │   └── processor.rs    # Job processing
+│   └── error.rs            # Error types
+├── Cargo.toml
+└── Dockerfile
 ```
 
 #### Multi-Store Indexing Architecture
@@ -261,7 +266,7 @@ flowchart LR
         RECON[Reconciler] -.-> QD
         RECON -.-> OS
         RECON -.-> PG
-        TOMB[Tombstone Task] -.-> QD
+        TOMB[Tombstone Worker] -.-> QD
         TOMB -.-> OS
     end
 ```
@@ -279,7 +284,7 @@ Each document tracks its indexing status per store:
 
 **Background Reconciliation:**
 
-A Celery Beat task runs nightly to:
+A scheduled background task runs to:
 
 - Detect chunks missing from Qdrant/OpenSearch
 - Remove orphaned entries after deletion
@@ -289,8 +294,8 @@ A Celery Beat task runs nightly to:
 
 When a document is soft-deleted (`status='deleted'`):
 
-1. SQLAlchemy event listener triggers tombstone task
-2. Tombstone task deletes from Qdrant and OpenSearch
+1. Database trigger enqueues tombstone job
+2. Async worker deletes from Qdrant and OpenSearch
 3. Safety net: All queries filter by `status='active'`
 
 **Tenant-Scoped Isolation:**
@@ -304,16 +309,17 @@ Large tenants can be configured to use dedicated collections/indices:
 
 ### 2. Retrieval Service
 
+**Language:** Rust (Axum) | **Port:** 8002 | **Implementation:** `crates/rag-retrieval/`
+
 The Retrieval Service is the core search component, implementing a multi-stage hybrid search pipeline with semantic and keyword search, fusion algorithms, cross-encoder reranking, and ACL-based access control.
 
 **Responsibilities:**
 
 - Query preprocessing (normalization, classification, expansion, HyDE)
 - Hybrid search combining semantic (Qdrant) and keyword (OpenSearch) search
-- Result fusion using Reciprocal Rank Fusion (RRF) with configurable weights
+- Multiple fusion algorithms: RRF (rank-based), Linear (weighted), DBSF (distribution-aware)
 - Cross-encoder reranking via LLM Gateway
-- Circuit breakers with graceful degradation (semantic-only, keyword-only, no-rerank modes)
-- ACL enforcement based on user context (tenant, groups, visibility)
+- Visibility-based ACL enforcement (Public, Tenant, Group, Private)
 - Query and result caching (Redis-backed)
 - Comprehensive observability (structured logging, Prometheus metrics, OpenTelemetry tracing)
 
@@ -334,52 +340,43 @@ flowchart LR
 **Components:**
 
 ```
-retrieval-service/
-├── api/
-│   ├── main.py              # FastAPI app with lifespan management
-│   ├── routes/
-│   │   ├── retrieve.py      # POST /retrieve, multi-query endpoints
-│   │   └── health.py        # Health checks for Kubernetes
-│   ├── schemas/
-│   │   ├── retrieve.py      # Request/response Pydantic models
-│   │   └── common.py        # Shared models
-│   └── dependencies.py      # Dependency injection setup
-├── acl/                     # Access Control Layer
-│   ├── models.py            # UserContext, DocumentACL, Visibility enums
-│   ├── filter.py            # ACLFilter for Qdrant/OpenSearch
-│   ├── context.py           # UserContextExtractor for JWT parsing
-│   └── middleware.py        # FastAPI dependencies
-├── search/                  # Hybrid search implementation
-│   ├── base.py              # BaseSearcher abstract interface
-│   ├── semantic.py          # SemanticSearcher (Qdrant)
-│   ├── keyword.py           # KeywordSearcher (OpenSearch)
-│   ├── fusion.py            # RRF, Linear, DBSF fusion algorithms
-│   ├── hybrid.py            # HybridSearcher orchestrator
-│   ├── models.py            # SearchResultItem, FusedResult, configs
-│   └── exceptions.py        # Custom exceptions
-├── query/                   # Query Preprocessing Pipeline
-│   ├── preprocessor.py      # QueryPreprocessor main pipeline
-│   ├── expander.py          # QueryExpander (synonyms + LLM)
-│   ├── hyde.py              # HyDEGenerator, MultiQueryGenerator
-│   ├── cache.py             # QueryCache (Redis-backed)
-│   └── models.py            # ProcessedQuery, QueryType configs
-├── reranking/               # Cross-encoder Reranking
-│   ├── reranker.py          # RerankerService calling LLM Gateway
-│   ├── models.py            # RerankRequest, RerankResult, configs
-│   └── exceptions.py        # Reranking exceptions
-├── cache/                   # Result Caching
-│   └── retrieval_cache.py   # RetrievalCache (Redis)
-├── observability/           # Metrics & Logging
-│   ├── retrieval_logger.py  # Structured JSON logging with structlog
-│   ├── metrics.py           # Prometheus metrics
-│   ├── tracing.py           # OpenTelemetry setup for Jaeger
-│   └── middleware.py        # LoggingMiddleware
-├── resilience/              # Circuit Breakers & Degradation
-│   ├── circuit_breaker.py   # CircuitBreaker class with state management
-│   ├── degradation.py       # RetrievalDegradationManager
-│   └── config.py            # CircuitBreakerConfig, ResilienceConfig
-├── config.py                # RetrievalConfig with pydantic-settings
-├── run.py                   # Uvicorn entry point
+crates/rag-retrieval/
+├── src/
+│   ├── api/                 # Axum HTTP routes
+│   │   ├── routes.rs        # POST /retrieve, multi-query endpoints
+│   │   ├── health.rs        # Health checks (liveness, readiness)
+│   │   └── state.rs         # Application state
+│   ├── acl/                 # Access Control Layer
+│   │   ├── models.rs        # UserContext, DocumentACL, Visibility enums
+│   │   ├── filter.rs        # ACLFilter for Qdrant/OpenSearch
+│   │   └── context.rs       # UserContextExtractor for JWT parsing
+│   ├── search/              # Hybrid search implementation
+│   │   ├── semantic.rs      # SemanticSearcher (Qdrant client)
+│   │   ├── keyword.rs       # KeywordSearcher (OpenSearch client)
+│   │   └── models.rs        # SearchResult, ScoredItem types
+│   ├── hybrid/              # Hybrid search orchestration
+│   │   └── orchestrator.rs  # HybridSearcher coordinating searches
+│   ├── fusion/              # Result fusion algorithms
+│   │   ├── rrf.rs           # Reciprocal Rank Fusion
+│   │   ├── linear.rs        # Linear weighted fusion
+│   │   └── dbsf.rs          # Distribution-based score fusion
+│   ├── query/               # Query Preprocessing Pipeline
+│   │   ├── preprocessor.rs  # QueryPreprocessor main pipeline
+│   │   ├── expander.rs      # Query expansion (synonyms)
+│   │   └── hyde.rs          # HyDE generator
+│   ├── reranking/           # Cross-encoder Reranking
+│   │   ├── service.rs       # RerankerService calling LLM Gateway
+│   │   └── models.rs        # RerankRequest, RerankResult
+│   ├── cache/               # Result Caching
+│   │   └── redis.rs         # Redis-backed query cache
+│   ├── embedding/           # Embedding service client
+│   │   └── client.rs        # HTTP client to embedding service
+│   ├── observability/       # Metrics & Tracing
+│   │   ├── metrics.rs       # Prometheus metrics
+│   │   └── tracing.rs       # OpenTelemetry setup
+│   ├── config.rs            # Service configuration
+│   └── types.rs             # Core retrieval types
+├── Cargo.toml
 └── tests/                   # Comprehensive test suite (190+ tests, >90% coverage)
 ```
 
@@ -553,6 +550,8 @@ Deletion counts are returned in the response for audit purposes.
 
 ### 3. Orchestrator Service
 
+**Language:** Python (FastAPI) | **Port:** 8003 | **Implementation:** `services/orchestrator/`
+
 **Responsibilities:**
 
 - Intent classification and routing (simple/complex/multi-hop/comparison/aggregation/no_retrieval strategies)
@@ -569,7 +568,7 @@ Deletion counts are returned in the response for audit purposes.
 **Components:**
 
 ```
-orchestrator-service/
+services/orchestrator/
 ├── api/
 │   ├── app.py                 # FastAPI application factory
 │   ├── dependencies.py        # Dependency injection
@@ -662,27 +661,28 @@ Verification is opt-in per tenant and adds ~500ms latency when enabled.
 
 > **Full Documentation:** See [docs/orchestrator-service/README.md](orchestrator-service/README.md) for detailed API reference, configuration, and usage examples.
 
-### 4. LLM Serving Layer
+### 4. LLM Gateway
 
-The LLM Serving Layer provides a unified, OpenAI-compatible API gateway for all language model operations including text generation, embeddings, and reranking.
+**Language:** Rust (Axum) | **Port:** 8004 | **Implementation:** `crates/rag-llm-gateway/`
+
+The LLM Gateway provides a unified, OpenAI-compatible API gateway for all language model operations including text generation, embeddings, and reranking.
 
 **Services:**
 
-| Service   | Port | Model                     | Purpose                    |
-| --------- | ---- | ------------------------- | -------------------------- |
-| Gateway   | 8004 | -                         | Unified API entry point    |
-| vLLM      | 8000 | Qwen/Qwen2.5-7B-Instruct  | Text generation            |
-| Embedding | 8001 | BAAI/bge-large-en-v1.5    | Vector embeddings (1024d)  |
-| Reranker  | 8002 | BAAI/bge-reranker-v2-m3   | Cross-encoder reranking    |
+| Service | Port | Model | Purpose |
+|---------|------|-------|---------|
+| LLM Gateway | 8004 | - | Unified API entry point (Rust) |
+| Embedding Service | 8080 | all-MiniLM-L6-v2 | Vector embeddings (384d, Rust) |
+| vLLM | 11434 | Configurable | Text generation |
 
 **Gateway Responsibilities:**
 
 - OpenAI-compatible API contract (`/v1/chat/completions`, `/v1/embeddings`, `/v1/rerank`)
+- vLLM proxy with streaming support
+- ONNX-based cross-encoder reranking
 - JWT authentication (RS256) with JWKS support
 - API key validation
 - Per-tenant/per-user rate limiting (token bucket)
-- Request routing to backend services
-- Security headers and request logging
 - Prometheus metrics and health checks
 
 **Components:**
@@ -694,9 +694,9 @@ crates/rag-llm-gateway/
 │   │   ├── routes/       # health, embeddings, rerank, chat, models
 │   │   └── state.rs      # AppState with services
 │   ├── auth/             # JWT and API key authentication
-│   ├── clients/          # vLLM HTTP client
+│   ├── clients/          # vLLM HTTP client with streaming
 │   ├── rate_limit/       # Token bucket rate limiter
-│   ├── reranker/         # Cross-encoder reranking (ONNX stub)
+│   ├── reranker/         # Cross-encoder reranking (ONNX-based)
 │   ├── metrics/          # Prometheus metrics
 │   ├── config.rs         # Service configuration
 │   └── error.rs          # Error types
@@ -704,7 +704,38 @@ crates/rag-llm-gateway/
 └── Dockerfile
 ```
 
-**Security Configuration:**
+### 5. Embedding Service
+
+**Language:** Rust (Axum) | **Port:** 8080 | **Implementation:** `crates/rag-embedding/`
+
+ONNX-based text embedding service with OpenAI-compatible API.
+
+**Features:**
+
+- OpenAI-compatible `/v1/embeddings` endpoint
+- ONNX inference via `fastembed` crate
+- Models: `all-MiniLM-L6-v2` (384d, default), `BAAI/bge-small-en-v1.5`
+- Thread pool for async CPU-bound operations (`spawn_blocking`)
+- Batch processing (max 32 texts per request)
+
+**Components:**
+
+```text
+crates/rag-embedding/
+├── src/
+│   ├── api/              # Axum routes
+│   │   ├── routes.rs     # /v1/embeddings, /v1/models, /health
+│   │   └── state.rs      # AppState with embedding model
+│   ├── embedding/        # Embedding generation
+│   │   ├── service.rs    # EmbeddingService with fastembed
+│   │   └── models.rs     # Request/response types
+│   ├── config.rs         # Service configuration
+│   └── error.rs          # Error types
+├── Cargo.toml
+└── Dockerfile
+```
+
+**Configuration:**
 
 ```yaml
 # Gateway authentication
@@ -732,11 +763,9 @@ model:
 
 serving:
   host: "0.0.0.0"
-  port: 8000
+  port: 11434
   max_num_seqs: 256
 ```
-
-> **Implementation:** The LLM Gateway is implemented in Rust at `crates/rag-llm-gateway/`. It provides OpenAI-compatible endpoints for embeddings, reranking, and chat completions (proxied to vLLM).
 
 ---
 
@@ -2069,6 +2098,9 @@ curl http://localhost:8003/health
 - [Qdrant Documentation](https://qdrant.tech/documentation/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [vLLM Documentation](https://docs.vllm.ai/)
+- [fastembed (Rust ONNX Embeddings)](https://github.com/Anush008/fastembed-rs)
+- [Axum Web Framework](https://docs.rs/axum/latest/axum/)
 - [BGE Embedding Models](https://huggingface.co/BAAI/bge-large-en-v1.5)
 - [Ragas Evaluation Framework](https://docs.ragas.io/)
+- [OpenTelemetry Rust](https://docs.rs/opentelemetry/latest/opentelemetry/)
 - [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)
