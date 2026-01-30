@@ -688,32 +688,20 @@ The LLM Serving Layer provides a unified, OpenAI-compatible API gateway for all 
 **Components:**
 
 ```text
-llm-serving/
-├── gateway/
-│   ├── api/              # FastAPI routes
-│   ├── clients/          # Service clients (vLLM, embedding, reranker)
-│   ├── security/         # Auth, rate limiting, middleware
-│   └── models.py         # OpenAI-compatible request/response models
-├── embedding-service/
-│   ├── api/              # FastAPI application
-│   └── core/             # Batching, embedder
-├── reranker-service/
-│   ├── api/              # FastAPI application
-│   └── core/             # Batching, reranker
-├── vllm/
-│   ├── config/           # vLLM serving configuration
-│   └── scripts/          # Warmup, healthcheck, benchmark
-├── monitoring/
-│   ├── health.py         # Health checker
-│   ├── metrics.py        # Prometheus metrics
-│   └── anomaly.py        # Anomaly detection
-├── config/
-│   ├── manager.py        # Dynamic configuration with hot reload
-│   └── router.py         # Model routing, A/B testing
-└── resource_management/
-    ├── gpu_monitor.py    # GPU utilization tracking
-    ├── cost_tracker.py   # Usage and cost tracking
-    └── batch_optimizer.py # Dynamic batch optimization
+crates/rag-llm-gateway/
+├── src/
+│   ├── api/              # Axum routes and state
+│   │   ├── routes/       # health, embeddings, rerank, chat, models
+│   │   └── state.rs      # AppState with services
+│   ├── auth/             # JWT and API key authentication
+│   ├── clients/          # vLLM HTTP client
+│   ├── rate_limit/       # Token bucket rate limiter
+│   ├── reranker/         # Cross-encoder reranking (ONNX stub)
+│   ├── metrics/          # Prometheus metrics
+│   ├── config.rs         # Service configuration
+│   └── error.rs          # Error types
+├── Cargo.toml
+└── Dockerfile
 ```
 
 **Security Configuration:**
@@ -748,7 +736,7 @@ serving:
   max_num_seqs: 256
 ```
 
-> **Full Documentation:** See [docs/llm-serving/README.md](llm-serving/README.md) for detailed API reference, security configuration, monitoring, and deployment guides.
+> **Implementation:** The LLM Gateway is implemented in Rust at `crates/rag-llm-gateway/`. It provides OpenAI-compatible endpoints for embeddings, reranking, and chat completions (proxied to vLLM).
 
 ---
 

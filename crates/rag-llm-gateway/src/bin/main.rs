@@ -55,8 +55,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Start server
     let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
-        .parse()
-        .expect("Invalid server address");
+        .parse()?;
 
     info!("Listening on http://{}", addr);
 

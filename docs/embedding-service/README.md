@@ -417,6 +417,5 @@ uvicorn main:app --host 0.0.0.0 --port 8080
 ## Related Documentation
 
 - [Architecture Overview](../architecture.md)
-- [LLM Serving Layer](../llm-serving/README.md)
 - [Retrieval Service](../retrieval-service/README.md)
 - [Health Check Specification](../health-check-specification.md)

@@ -15,10 +15,17 @@ use axum::{
 };
 
 use crate::api::AppState;
+use crate::auth::{auth_middleware, AuthState};
 use crate::rate_limit::rate_limit_middleware;
 
 /// Create the main router with all API routes.
 pub fn create_router(state: Arc<AppState>) -> Router {
+    // Create auth state from app state
+    let auth_state = AuthState {
+        validator: state.jwt_validator.clone(),
+        config: Arc::new(state.config.auth.clone()),
+    };
+
     let api_routes = Router::new()
         // OpenAI-compatible endpoints
         .route("/v1/embeddings", post(embeddings::create_embeddings))
@@ -31,6 +38,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             state.rate_limiter.clone(),
             rate_limit_middleware,
         ))
+        // Apply authentication to API routes
+        .layer(middleware::from_fn_with_state(auth_state, auth_middleware))
         .with_state(state.clone());
 
     Router::new()

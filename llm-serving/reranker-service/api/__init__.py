@@ -1,1 +1,0 @@
-"""Reranker service API module."""

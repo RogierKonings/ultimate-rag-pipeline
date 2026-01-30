@@ -543,7 +543,7 @@ Unified API gateway for all language model operations.
 - Streaming responses
 - Health monitoring and metrics
 
-[Full Documentation](docs/llm-serving/README.md)
+> **Implementation:** The LLM Gateway is implemented in Rust at `crates/rag-llm-gateway/`.
 
 ---
 
@@ -888,7 +888,7 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 | [Retrieval Service](docs/retrieval-service/README.md) | Hybrid search and reranking |
 | [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
 | [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration, answer verification, multi-hop RAG, cost optimization |
-| [LLM Serving](docs/llm-serving/README.md) | Model serving infrastructure |
+| [LLM Gateway](crates/rag-llm-gateway/) | Rust LLM Gateway (embeddings, reranking, chat proxy) |
 | [Security](docs/security/README.md) | Security and compliance overview |
 | [Inter-Service Auth](docs/security/inter-service-authentication.md) | JWT-based service-to-service authentication |
 | [Database Security](docs/security/database-security.md) | SSL/TLS for PostgreSQL, Redis, OpenSearch |
