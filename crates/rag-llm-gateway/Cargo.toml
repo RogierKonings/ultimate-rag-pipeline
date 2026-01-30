@@ -39,6 +39,7 @@ futures-util = "0.3"
 
 # Metrics
 prometheus = "0.13"
+once_cell = "1.19"
 
 # Reranker (cross-encoder via ONNX)
 # Note: ort is re-exported via fastembed from rag-embedding dependency

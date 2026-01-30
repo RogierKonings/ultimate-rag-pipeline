@@ -12,12 +12,12 @@ pub mod auth;
 pub mod clients;
 pub mod config;
 pub mod error;
+pub mod metrics;
 pub mod rate_limit;
 pub mod reranker;
 
 // These modules will be added in subsequent tasks
 // pub mod api;
-// pub mod metrics;
 
 pub use auth::{auth_middleware, AuthContext, JwtValidator};
 pub use clients::VllmClient;
