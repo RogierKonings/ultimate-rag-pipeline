@@ -12,7 +12,7 @@ pub enum ModelType {
 }
 
 impl ModelType {
-    /// Get the HuggingFace model ID.
+    /// Get the `HuggingFace` model ID.
     #[must_use]
     pub const fn model_id(&self) -> &'static str {
         match self {
@@ -97,6 +97,10 @@ impl EmbeddingConfig {
     }
 
     /// Get the socket address for the server.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the host and port combination cannot be parsed as a valid socket address.
     #[must_use]
     pub fn addr(&self) -> std::net::SocketAddr {
         format!("{}:{}", self.host, self.port)

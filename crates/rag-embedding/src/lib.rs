@@ -6,5 +6,5 @@
 // TODO: Uncomment as modules are implemented
 pub mod config;
 pub mod error;
-// pub mod model;
+pub mod model;
 // pub mod api;
