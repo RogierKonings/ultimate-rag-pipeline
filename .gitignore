@@ -26,3 +26,15 @@ target/
 Cargo.lock
 
 .fastembed_cache/
+
+# Moon
+.moon/cache/
+.moon/docker/
+
+# Generated types (regenerate with moon run schemas:generate)
+crates/rag-types/src/generated/*.rs
+!crates/rag-types/src/generated/.gitkeep
+services/orchestrator/shared/generated/*.py
+!services/orchestrator/shared/generated/.gitkeep
+frontend/src/lib/generated/*.ts
+!frontend/src/lib/generated/.gitkeep
