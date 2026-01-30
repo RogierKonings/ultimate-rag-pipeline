@@ -12,14 +12,15 @@ pub mod auth;
 pub mod config;
 pub mod error;
 pub mod rate_limit;
+pub mod reranker;
 
 // These modules will be added in subsequent tasks
 // pub mod api;
 // pub mod clients;
 // pub mod metrics;
-// pub mod reranker;
 
 pub use auth::{auth_middleware, AuthContext, JwtValidator};
 pub use config::GatewayConfig;
 pub use error::{GatewayError, Result};
 pub use rate_limit::{rate_limit_middleware, RateLimitResult, RateLimiter};
+pub use reranker::RerankerModel;

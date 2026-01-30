@@ -39,6 +39,11 @@ reqwest = { version = "0.12", features = ["json", "stream"] }
 # Metrics
 prometheus = "0.13"
 
+# Reranker (cross-encoder via ONNX)
+# Note: ort is re-exported via fastembed from rag-embedding dependency
+# For direct ort usage: ort = { version = "=2.0.0-rc.5", features = ["download-binaries"] }
+tokenizers = "0.19"
+
 # Logging
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
