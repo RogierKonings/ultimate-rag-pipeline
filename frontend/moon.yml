@@ -1,0 +1,57 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'typescript'
+type: 'application'
+
+project:
+  name: 'frontend'
+  description: 'SvelteKit frontend application'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'static/**/*'
+    - 'package.json'
+    - 'svelte.config.js'
+    - 'vite.config.ts'
+    - 'tsconfig.json'
+  tests:
+    - 'tests/**/*'
+  configs:
+    - 'tailwind.config.js'
+    - 'postcss.config.js'
+
+tasks:
+  install:
+    command: 'pnpm install'
+    inputs:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+  dev:
+    command: 'pnpm run dev'
+    local: true
+    deps:
+      - '~:install'
+
+  build:
+    command: 'pnpm run build'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - '.svelte-kit'
+      - 'build'
+    deps:
+      - '~:install'
+
+  preview:
+    command: 'pnpm run preview'
+    local: true
+    deps:
+      - '~:build'
+
+  check:
+    command: 'pnpm run check'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - '~:install'
