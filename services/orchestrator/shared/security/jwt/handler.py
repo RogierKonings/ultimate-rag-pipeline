@@ -245,7 +245,7 @@ class JWTHandler:
         return TokenPair(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="Bearer",
+            token_type="Bearer",  # noqa: S106
             expires_in=int(access_delta.total_seconds()),
             refresh_expires_in=int(refresh_delta.total_seconds()),
         )

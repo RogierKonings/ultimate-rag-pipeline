@@ -19,10 +19,9 @@ Usage:
 import logging
 from typing import Any
 
+from observability.otel.span_names import SpanNames
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
-
-from observability.otel.span_names import SpanNames
 
 logger = logging.getLogger(__name__)
 

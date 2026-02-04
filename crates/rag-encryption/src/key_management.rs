@@ -246,7 +246,7 @@ impl std::fmt::Debug for KeyManager {
         f.debug_struct("KeyManager")
             .field("current_version", &self.current_version)
             .field("key_id", &self.config.key_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

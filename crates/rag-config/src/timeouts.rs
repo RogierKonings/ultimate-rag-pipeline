@@ -16,6 +16,7 @@ use validator::Validate;
 
 /// Timeout configuration for the retrieval service.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[allow(clippy::struct_field_names)] // _ms suffix indicates units
 pub struct RetrievalTimeouts {
     /// Embedding request timeout (ms)
     #[validate(range(min = 100, max = 30000))]
@@ -27,7 +28,7 @@ pub struct RetrievalTimeouts {
     #[serde(default = "default_qdrant_timeout")]
     pub qdrant_ms: u64,
 
-    /// OpenSearch query timeout (ms)
+    /// `OpenSearch` query timeout (ms)
     #[validate(range(min = 100, max = 30000))]
     #[serde(default = "default_opensearch_timeout")]
     pub opensearch_ms: u64,
@@ -88,7 +89,7 @@ impl RetrievalTimeouts {
         Duration::from_millis(self.qdrant_ms)
     }
 
-    /// Get OpenSearch timeout as Duration.
+    /// Get `OpenSearch` timeout as Duration.
     #[must_use]
     pub const fn opensearch(&self) -> Duration {
         Duration::from_millis(self.opensearch_ms)
@@ -142,6 +143,7 @@ impl RetrievalTimeouts {
 
 /// Timeout configuration for the orchestrator service.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[allow(clippy::struct_field_names)] // _ms suffix indicates units
 pub struct OrchestratorTimeouts {
     /// Retrieval service call timeout (ms)
     #[validate(range(min = 1000, max = 60000))]
@@ -149,12 +151,12 @@ pub struct OrchestratorTimeouts {
     pub retrieval_ms: u64,
 
     /// LLM generation timeout (ms)
-    #[validate(range(min = 1000, max = 120000))]
+    #[validate(range(min = 1000, max = 120_000))]
     #[serde(default = "default_llm_timeout")]
     pub llm_ms: u64,
 
     /// Total RAG pipeline timeout (ms)
-    #[validate(range(min = 5000, max = 180000))]
+    #[validate(range(min = 5000, max = 180_000))]
     #[serde(default = "default_rag_total_timeout")]
     pub total_ms: u64,
 }
@@ -226,29 +228,30 @@ impl OrchestratorTimeouts {
 
 /// Timeout configuration for the ingestion service.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[allow(clippy::struct_field_names)] // _ms suffix indicates units
 pub struct IngestionTimeouts {
     /// Document parsing timeout (ms)
-    #[validate(range(min = 1000, max = 300000))]
+    #[validate(range(min = 1000, max = 300_000))]
     #[serde(default = "default_parsing_timeout")]
     pub parsing_ms: u64,
 
     /// Embedding batch timeout (ms)
-    #[validate(range(min = 1000, max = 60000))]
+    #[validate(range(min = 1000, max = 60_000))]
     #[serde(default = "default_ingestion_embedding_timeout")]
     pub embedding_ms: u64,
 
     /// Qdrant upsert timeout (ms)
-    #[validate(range(min = 1000, max = 60000))]
+    #[validate(range(min = 1000, max = 60_000))]
     #[serde(default = "default_qdrant_upsert_timeout")]
     pub qdrant_upsert_ms: u64,
 
-    /// OpenSearch index timeout (ms)
-    #[validate(range(min = 1000, max = 60000))]
+    /// `OpenSearch` index timeout (ms)
+    #[validate(range(min = 1000, max = 60_000))]
     #[serde(default = "default_opensearch_index_timeout")]
     pub opensearch_index_ms: u64,
 
     /// Total document processing timeout (ms)
-    #[validate(range(min = 10000, max = 600000))]
+    #[validate(range(min = 10_000, max = 600_000))]
     #[serde(default = "default_document_timeout")]
     pub document_total_ms: u64,
 }
@@ -270,7 +273,7 @@ const fn default_opensearch_index_timeout() -> u64 {
 }
 
 const fn default_document_timeout() -> u64 {
-    300000
+    300_000
 }
 
 impl Default for IngestionTimeouts {
@@ -304,7 +307,7 @@ impl IngestionTimeouts {
         Duration::from_millis(self.qdrant_upsert_ms)
     }
 
-    /// Get OpenSearch index timeout as Duration.
+    /// Get `OpenSearch` index timeout as Duration.
     #[must_use]
     pub const fn opensearch_index(&self) -> Duration {
         Duration::from_millis(self.opensearch_index_ms)

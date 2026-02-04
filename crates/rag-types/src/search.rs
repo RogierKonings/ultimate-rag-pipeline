@@ -317,7 +317,7 @@ pub struct SearchResult {
     /// Retrieved chunks
     pub results: Vec<RetrievedChunk>,
 
-    /// Total matching results (before top_k limit)
+    /// Total matching results (before `top_k` limit)
     pub total_results: u32,
 
     /// Original query
@@ -355,6 +355,7 @@ impl SearchResult {
         mode: SearchMode,
         metrics: SearchMetrics,
     ) -> Self {
+        #[allow(clippy::cast_possible_truncation)]
         let total_results = results.len() as u32;
         Self {
             results,
@@ -392,7 +393,7 @@ pub struct AclContext {
 impl AclContext {
     /// Create a new ACL context.
     #[must_use]
-    pub fn new(tenant_id: TenantId) -> Self {
+    pub const fn new(tenant_id: TenantId) -> Self {
         Self {
             tenant_id,
             user_id: None,
@@ -403,7 +404,7 @@ impl AclContext {
 
     /// Create an admin ACL context.
     #[must_use]
-    pub fn admin(tenant_id: TenantId) -> Self {
+    pub const fn admin(tenant_id: TenantId) -> Self {
         Self {
             tenant_id,
             user_id: None,

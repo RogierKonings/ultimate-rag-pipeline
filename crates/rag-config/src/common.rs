@@ -38,11 +38,11 @@ impl fmt::Display for LogLevel {
 impl From<LogLevel> for tracing::Level {
     fn from(level: LogLevel) -> Self {
         match level {
-            LogLevel::Trace => tracing::Level::TRACE,
-            LogLevel::Debug => tracing::Level::DEBUG,
-            LogLevel::Info => tracing::Level::INFO,
-            LogLevel::Warn => tracing::Level::WARN,
-            LogLevel::Error => tracing::Level::ERROR,
+            LogLevel::Trace => Self::TRACE,
+            LogLevel::Debug => Self::DEBUG,
+            LogLevel::Info => Self::INFO,
+            LogLevel::Warn => Self::WARN,
+            LogLevel::Error => Self::ERROR,
         }
     }
 }
@@ -108,7 +108,7 @@ impl Default for ServiceConfig {
 /// Database configuration.
 #[derive(Clone, Deserialize, Validate)]
 pub struct DatabaseConfig {
-    /// PostgreSQL connection URL
+    /// `PostgreSQL` connection URL
     #[serde(alias = "database_url")]
     url: Secret<String>,
 
@@ -299,10 +299,10 @@ impl QdrantConfig {
     }
 }
 
-/// OpenSearch configuration.
+/// `OpenSearch` configuration.
 #[derive(Clone, Deserialize, Validate)]
 pub struct OpenSearchConfig {
-    /// OpenSearch server URL
+    /// `OpenSearch` server URL
     #[serde(alias = "opensearch_url", default = "default_opensearch_url")]
     pub url: String,
 
@@ -395,7 +395,7 @@ pub struct StorageConfig {
     #[serde(default = "default_region")]
     pub region: String,
 
-    /// Use path-style addressing (required for MinIO)
+    /// Use path-style addressing (required for `MinIO`)
     #[serde(default = "default_true")]
     pub path_style: bool,
 }

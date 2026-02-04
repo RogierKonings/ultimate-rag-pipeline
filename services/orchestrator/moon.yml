@@ -44,6 +44,7 @@ tasks:
     command: 'ruff check .'
     inputs:
       - '@group(sources)'
+    toolchain: 'system'
 
   format:
     command: 'ruff format .'

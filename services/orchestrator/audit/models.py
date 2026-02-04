@@ -21,9 +21,9 @@ class AuditAction(str, Enum):
     # Authentication
     AUTH_LOGIN = "auth.login"
     AUTH_LOGOUT = "auth.logout"
-    AUTH_TOKEN_REFRESH = "auth.token_refresh"
-    AUTH_TOKEN_REVOKE = "auth.token_revoke"
-    AUTH_PASSWORD_CHANGE = "auth.password_change"
+    AUTH_TOKEN_REFRESH = "auth.token_refresh"  # noqa: S105
+    AUTH_TOKEN_REVOKE = "auth.token_revoke"  # noqa: S105
+    AUTH_PASSWORD_CHANGE = "auth.password_change"  # noqa: S105
     AUTH_MFA_ENABLE = "auth.mfa_enable"
     AUTH_MFA_DISABLE = "auth.mfa_disable"
 
@@ -61,7 +61,7 @@ class AuditAction(str, Enum):
 
     # Configuration
     CONFIG_UPDATE = "config.update"
-    CONFIG_SECRET_ACCESS = "config.secret_access"
+    CONFIG_SECRET_ACCESS = "config.secret_access"  # noqa: S105
     CONFIG_KEY_ROTATE = "config.key_rotate"
 
     # Data operations

@@ -160,6 +160,7 @@ impl FilterBuilder {
 /// - `tenant_id` matches the specified tenant AND
 /// - `visibility` is "public" OR `allowed_groups` contains any of the user's groups
 #[must_use]
+#[allow(dead_code)] // Used by consuming crates
 pub fn acl_filter(
     tenant_id: impl Into<String>,
     user_groups: &[String],

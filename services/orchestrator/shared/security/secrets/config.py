@@ -22,7 +22,7 @@ class SecretsBackend(str, Enum):
 class VaultAuthMethod(str, Enum):
     """Vault authentication methods."""
 
-    TOKEN = "token"  # Direct token auth
+    TOKEN = "token"  # noqa: S105  # Direct token auth
     KUBERNETES = "kubernetes"  # Kubernetes service account
     APPROLE = "approle"  # AppRole auth
 

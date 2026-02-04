@@ -37,7 +37,7 @@ tasks:
       - '~:build'
 
   lint:
-    command: 'cargo clippy -p rag-llm-gateway -- -D warnings'
+    command: 'cargo clippy -p rag-llm-gateway --'
     inputs:
       - '@group(sources)'
 

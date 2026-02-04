@@ -44,6 +44,7 @@ impl tracing::field::Visit for RequestIdVisitor {
 
 /// Stored request ID in span extensions.
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Used via span extensions
 pub struct RequestId(pub String);
 
 /// Create a request ID layer.
@@ -57,6 +58,7 @@ where
 
 /// Generate a new request ID.
 #[must_use]
+#[allow(dead_code)] // Used by consuming crates
 pub fn generate_request_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }

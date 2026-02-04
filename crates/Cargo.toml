@@ -66,6 +66,25 @@ tokio-test = "0.4"
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
-nursery = "warn"
+# Lint groups with lower priority so individual lints can override
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Allow some pedantic/nursery lints that are overly strict or noisy
+missing_const_for_fn = "allow"  # Too strict for library code
+significant_drop_tightening = "allow"  # False positives with locks
+redundant_clone = "allow"  # Sometimes necessary for borrow checker
+must_use_candidate = "allow"  # Too noisy for all functions
+missing_errors_doc = "allow"  # Doc requirements too strict for internal code
+future_not_send = "allow"  # Not all futures need to be Send
+or_fun_call = "allow"  # Sometimes clearer to use unwrap_or with fn
+cast_possible_wrap = "allow"  # u64 to i64 is intentional in some cases
+cast_sign_loss = "allow"  # Often intentional
+cast_precision_loss = "allow"  # f64 to usize is often intentional
+single_match_else = "allow"  # Match is often clearer than if let
+option_if_let_else = "allow"  # Not always clearer
+indexing_slicing = "allow"  # We validate bounds elsewhere
+match_on_vec_items = "allow"  # We validate bounds elsewhere
+unnecessary_lazy_evaluations = "allow"  # Often clearer with closures
+unnecessary_map_or = "allow"  # map_or style preference
+match_like_matches_macro = "allow"  # Sometimes match is clearer

@@ -7,6 +7,7 @@ for comparison, aggregation, and multi-hop queries.
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import httpx
 import pytest
 from workflow.nodes.decomposition import (
     QueryDecomposer,
@@ -263,10 +264,11 @@ class TestQueryDecomposer:
 
     @pytest.mark.asyncio
     async def test_decompose_returns_original_on_error(self):
-        """Test decomposer returns original query on error."""
+        """Test decomposer returns original query on HTTP error."""
         with patch("httpx.AsyncClient") as mock_client:
+            # Use httpx.ConnectError which inherits from httpx.HTTPError
             mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                side_effect=Exception("Connection error"),
+                side_effect=httpx.ConnectError("Connection error"),
             )
 
             decomposer = QueryDecomposer(

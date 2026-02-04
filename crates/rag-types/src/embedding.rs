@@ -187,10 +187,10 @@ pub mod dimensions {
     /// Dimension for `BAAI/bge-small-en-v1.5` model
     pub const BGE_SMALL_EN: usize = 384;
 
-    /// Dimension for OpenAI `text-embedding-3-small`
+    /// Dimension for `OpenAI` `text-embedding-3-small`
     pub const OPENAI_SMALL: usize = 1536;
 
-    /// Dimension for OpenAI `text-embedding-3-large`
+    /// Dimension for `OpenAI` `text-embedding-3-large`
     pub const OPENAI_LARGE: usize = 3072;
 }
 

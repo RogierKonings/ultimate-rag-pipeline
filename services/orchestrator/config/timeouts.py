@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict
 
 
 @dataclass
@@ -153,7 +152,7 @@ HTTP_CONNECTION_TIMEOUT = TimeoutConfig(
 )
 
 # Registry of all timeouts for validation
-ALL_TIMEOUTS: Dict[str, TimeoutConfig] = {
+ALL_TIMEOUTS: dict[str, TimeoutConfig] = {
     "RETRIEVAL_EMBEDDING": RETRIEVAL_EMBEDDING_TIMEOUT,
     "RETRIEVAL_QDRANT": RETRIEVAL_QDRANT_TIMEOUT,
     "RETRIEVAL_OPENSEARCH": RETRIEVAL_OPENSEARCH_TIMEOUT,

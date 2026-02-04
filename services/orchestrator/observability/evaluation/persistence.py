@@ -3,6 +3,7 @@ Evaluation Data Persistence.
 
 Provides comprehensive persistence for evaluation datasets, runs, and results.
 """
+# ruff: noqa: S608  # SQL queries use table_prefix from config, not user input
 
 import json
 import logging

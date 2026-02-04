@@ -12,7 +12,7 @@ from api.routes.audit import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from shared.security.audit.models import (
+from orchestrator.audit import (
     AuditAction,
     AuditLogEntry,
     AuditOutcome,
@@ -346,7 +346,7 @@ class TestExportAuditLogs:
                 start_time=start_time,
                 end_time=end_time,
                 db=mock_db_session,
-                format="json",
+                output_format="json",
                 include_details=False,
             )
 
@@ -373,7 +373,7 @@ class TestExportAuditLogs:
                 start_time=start_time,
                 end_time=end_time,
                 db=mock_db_session,
-                format="csv",
+                output_format="csv",
             )
 
             assert isinstance(response, StreamingResponse)
@@ -414,7 +414,7 @@ class TestExportAuditLogs:
                 start_time=start_time,
                 end_time=end_time,
                 db=mock_db_session,
-                format="xml",  # Invalid format
+                output_format="xml",  # Invalid format
             )
 
         assert exc_info.value.status_code == 400

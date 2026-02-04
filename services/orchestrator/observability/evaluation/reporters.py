@@ -7,6 +7,7 @@ Provides various reporters for evaluation results:
 - Grafana annotations
 - Slack notifications
 """
+# ruff: noqa: S608  # SQL queries use table_prefix from config, not user input
 
 import json
 import logging

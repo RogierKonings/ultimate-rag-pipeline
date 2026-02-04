@@ -248,9 +248,9 @@ def create_auth_router(
         """
         try:
             expected_type = None
-            if token_type_hint == "access_token":
+            if token_type_hint == "access_token":  # noqa: S105
                 expected_type = TokenType.ACCESS
-            elif token_type_hint == "refresh_token":
+            elif token_type_hint == "refresh_token":  # noqa: S105
                 expected_type = TokenType.REFRESH
 
             claims = jwt_handler.verify_token(token, expected_type=expected_type)

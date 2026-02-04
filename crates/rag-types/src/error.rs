@@ -95,7 +95,7 @@ pub enum Error {
         source: Option<Box<dyn std::error::Error + Send + Sync>>,
     },
 
-    /// Search engine (OpenSearch) operation failed
+    /// Search engine (`OpenSearch`) operation failed
     #[error("Search error: {message}")]
     Search {
         /// Error description

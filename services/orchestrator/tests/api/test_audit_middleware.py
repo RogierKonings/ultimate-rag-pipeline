@@ -88,7 +88,7 @@ class TestAuditMiddlewareExclusions:
         with (
             patch("api.app.validate_on_startup"),
             patch(
-                "shared.security.audit.middleware.get_audit_logger",
+                "audit.middleware.get_audit_logger",
                 return_value=mock_audit_logger,
             ),
         ):

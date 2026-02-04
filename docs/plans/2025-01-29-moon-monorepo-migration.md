@@ -1,12 +1,20 @@
 # Moon Monorepo Migration Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+>
+> **Last Updated:** 2025-01-30 - Updated to reflect Rust rewrites (ingestion, embedding services now in Rust)
 
 **Goal:** Migrate the ultimate-rag-pipeline repository to use Moon as a polyglot monorepo build system, enabling unified dev experience, proper dependency tracking across Rust/Python/TypeScript, and smart caching.
 
-**Architecture:** Moon workspace at repo root with three project types: Rust crates (inherits from cargo workspace), Python services (uv-based), and frontend (node/pnpm). Task dependencies flow: types → services → frontend. Shared schemas in `schemas/` generate types for all languages.
+**Architecture:** Moon workspace at repo root with three project types: Rust crates (inherits from cargo workspace), Python orchestrator service (uv-based), and frontend (node/pnpm). Task dependencies flow: types → services → frontend. Shared schemas in `schemas/` generate types for all languages.
 
 **Tech Stack:** Moon 1.x, Rust/Cargo workspace, Python/uv, Node/pnpm, JSON Schema for shared types
+
+**Current Service Layout (as of 2025-01-30):**
+
+- **Rust crates (17 total):** rag-types, rag-config, rag-cache, rag-auth, rag-telemetry, rag-search, rag-database, rag-storage, rag-vectorstore, rag-retrieval, rag-ingestion, rag-video, rag-embedding, rag-encryption, rag-tenant, rag-secrets, rag-llm-gateway
+- **Python services (1):** orchestrator (with nested `shared/` module)
+- **Frontend:** SvelteKit application
 
 ---
 
@@ -68,7 +76,7 @@ $schema: 'https://moonrepo.dev/schemas/workspace.json'
 
 # Projects are auto-discovered via globs
 projects:
-  # Rust crates - individual projects
+  # Rust crates - core libraries
   rag-types: 'crates/rag-types'
   rag-config: 'crates/rag-config'
   rag-cache: 'crates/rag-cache'
@@ -78,15 +86,21 @@ projects:
   rag-database: 'crates/rag-database'
   rag-storage: 'crates/rag-storage'
   rag-vectorstore: 'crates/rag-vectorstore'
-  rag-retrieval: 'crates/rag-retrieval'
-  rag-ingestion-rust: 'crates/rag-ingestion'
-  rag-video: 'crates/rag-video'
 
-  # Python services
-  ingestion-service: 'services/ingestion'
-  embedding-service: 'services/embedding'
+  # Rust crates - services
+  rag-retrieval: 'crates/rag-retrieval'
+  rag-ingestion: 'crates/rag-ingestion'
+  rag-video: 'crates/rag-video'
+  rag-embedding: 'crates/rag-embedding'
+  rag-llm-gateway: 'crates/rag-llm-gateway'
+
+  # Rust crates - security/tenant
+  rag-encryption: 'crates/rag-encryption'
+  rag-tenant: 'crates/rag-tenant'
+  rag-secrets: 'crates/rag-secrets'
+
+  # Python services (orchestrator only - ingestion/embedding are now Rust)
   orchestrator-service: 'services/orchestrator'
-  shared-lib: 'services/shared'
 
   # Frontend
   frontend: 'frontend'
@@ -178,6 +192,11 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 - Create: `crates/rag-retrieval/moon.yml`
 - Create: `crates/rag-ingestion/moon.yml`
 - Create: `crates/rag-video/moon.yml`
+- Create: `crates/rag-embedding/moon.yml`
+- Create: `crates/rag-llm-gateway/moon.yml`
+- Create: `crates/rag-encryption/moon.yml`
+- Create: `crates/rag-tenant/moon.yml`
+- Create: `crates/rag-secrets/moon.yml`
 
 **Step 1: Create base Rust project template**
 
@@ -836,6 +855,271 @@ tasks:
     command: 'cargo fmt -p rag-video -- --check'
 ```
 
+`crates/rag-embedding/moon.yml`:
+```yaml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'application'
+
+project:
+  name: 'rag-embedding'
+  description: 'Embedding service with ONNX-based inference (Rust)'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+
+  check:
+    command: 'cargo check -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-embedding'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-embedding -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-embedding'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-embedding -- --check'
+```
+
+`crates/rag-llm-gateway/moon.yml`:
+```yaml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'application'
+
+project:
+  name: 'rag-llm-gateway'
+  description: 'Unified LLM Gateway with OpenAI-compatible API (Rust)'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-telemetry:build'
+      - 'rag-auth:build'
+
+  check:
+    command: 'cargo check -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-llm-gateway'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-llm-gateway -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-llm-gateway'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-llm-gateway -- --check'
+```
+
+`crates/rag-encryption/moon.yml`:
+```yaml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-encryption'
+  description: 'Encryption utilities for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-encryption'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+
+  check:
+    command: 'cargo check -p rag-encryption'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-encryption'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-encryption -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-encryption'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-encryption -- --check'
+```
+
+`crates/rag-tenant/moon.yml`:
+```yaml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-tenant'
+  description: 'Multi-tenant management for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-tenant'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-database:build'
+
+  check:
+    command: 'cargo check -p rag-tenant'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-tenant'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-tenant -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-tenant'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-tenant -- --check'
+```
+
+`crates/rag-secrets/moon.yml`:
+```yaml
+$schema: 'https://moonrepo.dev/schemas/project.json'
+language: 'rust'
+type: 'library'
+
+project:
+  name: 'rag-secrets'
+  description: 'Secrets management for RAG pipeline'
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build -p rag-secrets'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'rag-types:build'
+      - 'rag-config:build'
+      - 'rag-encryption:build'
+
+  check:
+    command: 'cargo check -p rag-secrets'
+    inputs:
+      - '@group(sources)'
+
+  test:
+    command: 'cargo test -p rag-secrets'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+    deps:
+      - '~:build'
+
+  lint:
+    command: 'cargo clippy -p rag-secrets -- -D warnings'
+    inputs:
+      - '@group(sources)'
+
+  format:
+    command: 'cargo fmt -p rag-secrets'
+    local: true
+
+  format-check:
+    command: 'cargo fmt -p rag-secrets -- --check'
+```
+
 **Step 3: Verify Rust projects are recognized**
 
 Run:
@@ -870,146 +1154,17 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Configure Python Services
+### Task 3: Configure Python Orchestrator Service
+
+> **Note:** The Python ingestion and embedding services have been rewritten in Rust.
+> Only the orchestrator service remains as Python. The `shared/` module is now nested
+> inside `services/orchestrator/shared/` rather than being a standalone service.
 
 **Files:**
-- Create: `services/ingestion/moon.yml`
-- Create: `services/embedding/moon.yml`
+
 - Create: `services/orchestrator/moon.yml`
-- Create: `services/shared/moon.yml`
 
-**Step 1: Create ingestion service Moon config**
-
-Create `services/ingestion/moon.yml`:
-```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'python'
-type: 'application'
-
-project:
-  name: 'ingestion-service'
-  description: 'Document ingestion microservice'
-
-fileGroups:
-  sources:
-    - '**/*.py'
-    - 'requirements.txt'
-    - '!tests/**/*'
-  tests:
-    - 'tests/**/*.py'
-    - 'pytest.ini'
-  configs:
-    - 'config.py'
-    - 'Dockerfile'
-
-tasks:
-  install:
-    command: 'uv pip install -r requirements.txt'
-    inputs:
-      - 'requirements.txt'
-    deps:
-      - 'shared-lib:install'
-
-  dev:
-    command: 'uvicorn run:app --reload --host 0.0.0.0 --port 8001'
-    local: true
-    deps:
-      - '~:install'
-
-  test:
-    command: 'pytest tests/ -v'
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-    deps:
-      - '~:install'
-
-  lint:
-    command: 'ruff check .'
-    inputs:
-      - '@group(sources)'
-
-  format:
-    command: 'ruff format .'
-    inputs:
-      - '@group(sources)'
-    local: true
-
-  format-check:
-    command: 'ruff format --check .'
-    inputs:
-      - '@group(sources)'
-
-  typecheck:
-    command: 'mypy . --ignore-missing-imports'
-    inputs:
-      - '@group(sources)'
-    deps:
-      - '~:install'
-
-  worker:
-    command: 'celery -A tasks.celery_app worker --loglevel=info'
-    local: true
-    deps:
-      - '~:install'
-```
-
-**Step 2: Create embedding service Moon config**
-
-Create `services/embedding/moon.yml`:
-```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'python'
-type: 'application'
-
-project:
-  name: 'embedding-service'
-  description: 'Embedding model serving microservice'
-
-fileGroups:
-  sources:
-    - '**/*.py'
-    - 'requirements.txt'
-    - '!tests/**/*'
-  tests:
-    - 'tests/**/*.py'
-  configs:
-    - 'Dockerfile'
-
-tasks:
-  install:
-    command: 'uv pip install -r requirements.txt'
-    inputs:
-      - 'requirements.txt'
-
-  dev:
-    command: 'uvicorn main:app --reload --host 0.0.0.0 --port 8080'
-    local: true
-    deps:
-      - '~:install'
-
-  test:
-    command: 'pytest tests/ -v'
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-    deps:
-      - '~:install'
-
-  lint:
-    command: 'ruff check .'
-    inputs:
-      - '@group(sources)'
-
-  format:
-    command: 'ruff format .'
-    local: true
-
-  format-check:
-    command: 'ruff format --check .'
-```
-
-**Step 3: Create orchestrator service Moon config**
+**Step 1: Create orchestrator service Moon config**
 
 Create `services/orchestrator/moon.yml`:
 ```yaml
@@ -1028,19 +1183,21 @@ fileGroups:
     - '!tests/**/*'
   tests:
     - 'tests/**/*.py'
+    - 'pytest.ini'
   configs:
     - 'Dockerfile'
+    - 'config.py'
+  shared:
+    - 'shared/**/*.py'
 
 tasks:
   install:
     command: 'uv pip install -r requirements.txt'
     inputs:
       - 'requirements.txt'
-    deps:
-      - 'shared-lib:install'
 
   dev:
-    command: 'uvicorn main:app --reload --host 0.0.0.0 --port 8003'
+    command: 'uvicorn run:app --reload --host 0.0.0.0 --port 8003'
     local: true
     deps:
       - '~:install'
@@ -1073,87 +1230,33 @@ tasks:
       - '~:install'
 ```
 
-**Step 4: Create shared library Moon config**
-
-Create `services/shared/moon.yml`:
-```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'python'
-type: 'library'
-
-project:
-  name: 'shared-lib'
-  description: 'Shared Python libraries for RAG services'
-
-fileGroups:
-  sources:
-    - '**/*.py'
-    - 'requirements.txt'
-    - '!tests/**/*'
-  tests:
-    - 'tests/**/*.py'
-
-tasks:
-  install:
-    command: 'uv pip install -r requirements.txt'
-    inputs:
-      - 'requirements.txt'
-
-  test:
-    command: 'pytest tests/ -v'
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-    deps:
-      - '~:install'
-
-  lint:
-    command: 'ruff check .'
-    inputs:
-      - '@group(sources)'
-
-  format:
-    command: 'ruff format .'
-    local: true
-
-  format-check:
-    command: 'ruff format --check .'
-
-  typecheck:
-    command: 'mypy . --ignore-missing-imports'
-    inputs:
-      - '@group(sources)'
-    deps:
-      - '~:install'
-```
-
-**Step 5: Verify Python projects**
+**Step 2: Verify Python project**
 
 Run:
 ```bash
 moon project-graph
 ```
 
-Expected: Graph now includes Python services with their dependencies
+Expected: Graph shows orchestrator-service project
 
-**Step 6: Test running a Python task**
+**Step 3: Test running a Python task**
 
 Run:
 ```bash
-moon run shared-lib:lint
+moon run orchestrator-service:lint
 ```
 
-Expected: Ruff runs on shared library
+Expected: Ruff runs on orchestrator service
 
-**Step 7: Commit Python project configurations**
+**Step 4: Commit Python project configuration**
 
 Run:
 ```bash
-git add services/*/moon.yml
-git commit -m "chore: add Moon project configs for Python services
+git add services/orchestrator/moon.yml
+git commit -m "chore: add Moon project config for Python orchestrator service
 
 - Configure install, dev, test, lint, format, typecheck tasks
-- Set up service dependencies on shared-lib
+- Include shared/ module in file groups
 - Enable file group tracking for smart caching
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
@@ -1400,12 +1503,6 @@ moon-ci:
 dev-frontend:
 	moon run frontend:dev
 
-dev-ingestion:
-	moon run ingestion-service:dev
-
-dev-embedding:
-	moon run embedding-service:dev
-
 dev-orchestrator:
 	moon run orchestrator-service:dev
 
@@ -1434,8 +1531,6 @@ Add to the help section in Makefile:
 	@echo ""
 	@echo "Dev Servers (via Moon):"
 	@echo "  make dev-frontend    - Start frontend dev server"
-	@echo "  make dev-ingestion   - Start ingestion service"
-	@echo "  make dev-embedding   - Start embedding service"
 	@echo "  make dev-orchestrator - Start orchestrator service"
 ```
 
@@ -1602,7 +1697,7 @@ This directory contains JSON Schema definitions that are the single source of tr
 2. Run `moon run schemas:generate` to generate types for all languages
 3. Generated types are placed in:
    - Rust: `crates/rag-types/src/generated/`
-   - Python: `services/shared/generated/`
+   - Python: `services/orchestrator/shared/generated/`
    - TypeScript: `frontend/src/lib/generated/`
 
 ## Adding a New Schema
@@ -1650,11 +1745,11 @@ tasks:
       - '../crates/rag-types/src/generated/mod.rs'
 
   generate-python:
-    command: 'npx quicktype --src-lang schema --lang python --out ../services/shared/generated/types.py *.schema.json'
+    command: 'npx quicktype --src-lang schema --lang python --out ../services/orchestrator/shared/generated/types.py *.schema.json'
     inputs:
       - '@group(schemas)'
     outputs:
-      - '../services/shared/generated/types.py'
+      - '../services/orchestrator/shared/generated/types.py'
 
   generate-typescript:
     command: 'npx quicktype --src-lang schema --lang typescript --out ../frontend/src/lib/generated/types.ts *.schema.json'
@@ -1749,10 +1844,10 @@ cd schemas && npm init -y && npm install --save-dev quicktype ajv-cli
 Run:
 ```bash
 mkdir -p crates/rag-types/src/generated
-mkdir -p services/shared/generated
+mkdir -p services/orchestrator/shared/generated
 mkdir -p frontend/src/lib/generated
 touch crates/rag-types/src/generated/.gitkeep
-touch services/shared/generated/.gitkeep
+touch services/orchestrator/shared/generated/.gitkeep
 touch frontend/src/lib/generated/.gitkeep
 ```
 
@@ -1760,7 +1855,7 @@ touch frontend/src/lib/generated/.gitkeep
 
 Run:
 ```bash
-git add schemas/ crates/rag-types/src/generated/.gitkeep services/shared/generated/.gitkeep frontend/src/lib/generated/.gitkeep
+git add schemas/ crates/rag-types/src/generated/.gitkeep services/orchestrator/shared/generated/.gitkeep frontend/src/lib/generated/.gitkeep
 git commit -m "chore: add shared schema infrastructure
 
 - Add schemas directory with JSON Schema definitions
@@ -1790,8 +1885,8 @@ Add to `.gitignore`:
 # Generated types (regenerate with moon run schemas:generate)
 crates/rag-types/src/generated/*.rs
 !crates/rag-types/src/generated/.gitkeep
-services/shared/generated/*.py
-!services/shared/generated/.gitkeep
+services/orchestrator/shared/generated/*.py
+!services/orchestrator/shared/generated/.gitkeep
 frontend/src/lib/generated/*.ts
 !frontend/src/lib/generated/.gitkeep
 ```
@@ -1808,7 +1903,7 @@ moon run :test
 
 # Run tests for specific project
 moon run rag-types:test
-moon run ingestion-service:test
+moon run orchestrator-service:test
 
 # Run all linters
 moon run :lint
@@ -1932,3 +2027,13 @@ After completing this plan, you will have:
 5. **Dependency graph**: `moon project-graph` shows all project relationships
 
 The existing Makefile and docker-compose setup remain functional alongside Moon, allowing gradual adoption.
+
+## Change Log
+
+### 2025-01-30: Updated for Rust Rewrites
+
+- **Removed Python services**: `services/ingestion` and `services/embedding` no longer exist (rewritten in Rust)
+- **Added new Rust crates**: `rag-embedding`, `rag-llm-gateway`, `rag-encryption`, `rag-tenant`, `rag-secrets`
+- **Updated shared module path**: Now at `services/orchestrator/shared/` instead of `services/shared/`
+- **Updated project count**: 17 Rust crates, 1 Python service (orchestrator), 1 frontend
+- **Removed defunct Makefile targets**: `dev-ingestion`, `dev-embedding`

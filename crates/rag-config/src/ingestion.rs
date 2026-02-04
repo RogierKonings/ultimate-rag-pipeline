@@ -25,7 +25,7 @@ pub struct IngestionConfig {
     #[validate(nested)]
     pub qdrant: QdrantConfig,
 
-    /// OpenSearch configuration
+    /// `OpenSearch` configuration
     #[serde(default)]
     #[validate(nested)]
     pub opensearch: OpenSearchConfig,
@@ -209,6 +209,7 @@ impl Default for WorkerConfig {
 
 /// Feature flags for the ingestion service.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(clippy::struct_excessive_bools)] // Feature flags are naturally boolean
 pub struct IngestionFeatures {
     /// Enable PII detection
     #[serde(default = "default_true")]

@@ -5,7 +5,6 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from security.audit.backends.opensearch import OpenSearchAuditBackend
 from security.audit.models import (
     AuditAction,

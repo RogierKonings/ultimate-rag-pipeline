@@ -7,6 +7,7 @@ import pytest
 from api.routes.health import router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from gateway.models import HealthStatus
 
 
 @pytest.fixture
@@ -38,7 +39,7 @@ def mock_model_gateway():
     """Create mock model gateway."""
     gateway = AsyncMock()
     gateway.health_check = AsyncMock(
-        return_value={"llama": {"status": "healthy", "latency_ms": 10}},
+        return_value={"llama": HealthStatus(status="healthy", latency_ms=10)},
     )
     return gateway
 

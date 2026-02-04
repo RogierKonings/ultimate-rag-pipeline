@@ -245,7 +245,7 @@ impl VectorStoreClient {
             with_vectors,
             score_threshold: request.score_threshold,
             params: request.params.map(|p| qdrant_client::qdrant::SearchParams {
-                hnsw_ef: p.ef.map(|ef| ef as u64),
+                hnsw_ef: p.ef,
                 exact: Some(p.exact),
                 ..Default::default()
             }),
@@ -503,12 +503,10 @@ fn json_to_qdrant_value(value: &Value) -> Option<qdrant_client::qdrant::Value> {
                 Some(qdrant_client::qdrant::Value {
                     kind: Some(Kind::IntegerValue(i)),
                 })
-            } else if let Some(f) = n.as_f64() {
-                Some(qdrant_client::qdrant::Value {
+            } else {
+                n.as_f64().map(|f| qdrant_client::qdrant::Value {
                     kind: Some(Kind::DoubleValue(f)),
                 })
-            } else {
-                None
             }
         }
         Value::String(s) => Some(qdrant_client::qdrant::Value {

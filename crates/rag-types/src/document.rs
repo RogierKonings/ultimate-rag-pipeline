@@ -140,7 +140,7 @@ pub struct Document {
     #[serde(default)]
     pub qdrant_status: IndexStatus,
 
-    /// OpenSearch index status
+    /// `OpenSearch` index status
     #[serde(default)]
     pub opensearch_status: IndexStatus,
 

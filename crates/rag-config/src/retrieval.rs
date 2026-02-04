@@ -18,7 +18,7 @@ pub struct RetrievalConfig {
     #[validate(nested)]
     pub qdrant: QdrantConfig,
 
-    /// OpenSearch configuration
+    /// `OpenSearch` configuration
     #[serde(default)]
     #[validate(nested)]
     pub opensearch: OpenSearchConfig,
@@ -205,6 +205,7 @@ impl Default for RerankerConfig {
 
 /// Feature flags for the retrieval service.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[allow(clippy::struct_excessive_bools)] // Feature flags are naturally boolean
 pub struct RetrievalFeatures {
     /// Enable query caching
     #[serde(default)]

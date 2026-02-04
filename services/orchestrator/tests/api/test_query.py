@@ -450,8 +450,12 @@ class TestStreamingQuery:
         assert response.status_code == 503
 
 
+@pytest.mark.integration
 class TestFeedback:
-    """Tests for POST /api/v1/feedback endpoint."""
+    """Tests for POST /api/v1/feedback endpoint.
+
+    Note: These tests require a PostgreSQL database connection.
+    """
 
     def test_feedback_success(self, client, app):
         """Test successful feedback submission."""

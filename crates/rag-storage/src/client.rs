@@ -9,7 +9,6 @@ use aws_sdk_s3::{
     Client,
 };
 use bytes::Bytes;
-use futures::TryStreamExt;
 use tracing::instrument;
 
 use crate::{Result, StorageConfig, StorageError};

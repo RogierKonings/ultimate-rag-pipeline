@@ -13,6 +13,15 @@ from orchestrator.config.defaults import (
     get_retrieval_config,
     validate_all_configs,
 )
+from orchestrator.config.settings import (
+    OrchestratorConfig,
+    get_config,
+)
+from orchestrator.config.timeouts import (
+    get_timeout,
+    get_timeout_ms,
+    get_timeout_seconds,
+)
 from orchestrator.config.urls import (
     HOSTS,
     PORTS,
@@ -42,11 +51,6 @@ from orchestrator.config.urls import (
     get_retrieval_service_url,
     get_vault_url,
 )
-from orchestrator.config.timeouts import (
-    get_timeout,
-    get_timeout_ms,
-    get_timeout_seconds,
-)
 from orchestrator.config.validation import (
     ConfigurationError,
     validate_on_startup,
@@ -62,6 +66,9 @@ __all__ = [
     "get_embedding_config",
     "get_retrieval_config",
     "validate_all_configs",
+    # Service configuration
+    "OrchestratorConfig",
+    "get_config",
     # URL configuration
     "DeployEnv",
     "get_deploy_env",

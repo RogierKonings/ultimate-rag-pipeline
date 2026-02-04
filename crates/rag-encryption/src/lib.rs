@@ -1,4 +1,8 @@
 //! Field-level encryption for the RAG Pipeline.
+#![allow(clippy::significant_drop_tightening)] // Lock guards need to be held for consistency
+#![allow(clippy::missing_const_for_fn)] // Too strict for this crate
+#![allow(clippy::redundant_clone)] // Sometimes needed for borrow checker
+#![allow(clippy::must_use_candidate)] // Too noisy
 //!
 //! This crate provides encryption utilities for sensitive data:
 //! - AES-GCM encryption for field-level data protection

@@ -151,6 +151,7 @@ where
 /// # Errors
 ///
 /// Returns an error if initialization fails.
+#[allow(dead_code)] // Used by consuming crates
 pub fn init_telemetry_from_env() -> Result<TelemetryGuard> {
     let config = TelemetryConfig::from_env();
     init_telemetry(&config)

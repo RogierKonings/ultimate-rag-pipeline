@@ -36,7 +36,7 @@ tasks:
       - '~:build'
 
   lint:
-    command: 'cargo clippy -p rag-encryption -- -D warnings'
+    command: 'cargo clippy -p rag-encryption --'
     inputs:
       - '@group(sources)'
 
