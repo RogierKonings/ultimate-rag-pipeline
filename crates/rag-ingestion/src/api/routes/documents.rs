@@ -8,6 +8,7 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, Utc};
+use rag_database::DocumentRepository;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -24,6 +25,8 @@ use crate::api::types::{
 /// Query parameters for list_documents.
 #[derive(Debug, Deserialize)]
 pub struct ListDocumentsQuery {
+    /// Tenant ID for multi-tenancy (required).
+    pub tenant_id: String,
     #[serde(default = "default_page")]
     pub page: i32,
     #[serde(default = "default_page_size")]
@@ -58,20 +61,75 @@ fn default_limit() -> i32 {
 
 /// GET /api/v1/documents - List documents.
 pub async fn list_documents(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<ListDocumentsQuery>,
 ) -> ApiResult<Json<DocumentListResponse>> {
-    // TODO: Implement actual database query
-    // For now, return empty list
-
     let page_size = query.page_size.clamp(1, 100);
+    let page = query.page.max(1);
+    let offset = (page - 1) * page_size;
+
+    // Check if database is available
+    let database = state.database.as_ref().ok_or_else(|| {
+        ApiError::internal("Database not configured")
+    })?;
+
+    let repo = DocumentRepository::new(database.inner().clone());
+
+    // Get total count for pagination
+    let total = repo
+        .count(&query.tenant_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to count documents: {e}")))?;
+
+    // Get documents for this page
+    let documents = repo
+        .list(&query.tenant_id, i64::from(page_size), i64::from(offset))
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to list documents: {e}")))?;
+
+    // Convert to response format
+    let document_responses: Vec<DocumentResponse> = documents
+        .into_iter()
+        .map(|doc| DocumentResponse {
+            document_id: doc.id,
+            source_id: doc.source_uri.clone(),
+            source_type: doc.source_type.clone(),
+            filename: doc.title.clone(),
+            mime_type: doc.mime_type.clone(),
+            title: doc.title,
+            author: None,
+            chunk_count: doc.chunk_count,
+            total_tokens: 0, // Not tracked in current schema
+            tenant_id: doc.tenant_id,
+            visibility: format!("{:?}", doc.visibility).to_lowercase(),
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+            indexed_at: None, // Could be tracked separately
+            status: doc.status,
+        })
+        .collect();
+
+    let pages = if total == 0 {
+        0
+    } else {
+        ((total as i32) + page_size - 1) / page_size
+    };
+
+    tracing::debug!(
+        tenant_id = %query.tenant_id,
+        total = total,
+        page = page,
+        page_size = page_size,
+        returned = document_responses.len(),
+        "Listed documents"
+    );
 
     Ok(Json(DocumentListResponse {
-        documents: vec![],
-        total: 0,
-        page: query.page,
+        documents: document_responses,
+        total,
+        page,
         page_size,
-        pages: 0,
+        pages,
     }))
 }
 
@@ -205,9 +263,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_documents_empty() {
+    async fn test_list_documents_no_database() {
+        // Without database configured, should return an error
         let state = test_state();
         let query = ListDocumentsQuery {
+            tenant_id: "test-tenant".to_string(),
             page: 1,
             page_size: 20,
             source_type: None,
@@ -216,11 +276,8 @@ mod tests {
         };
 
         let result = list_documents(State(state), Query(query)).await;
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.total, 0);
-        assert!(response.documents.is_empty());
+        // Should fail because database is not configured in test state
+        assert!(result.is_err());
     }
 
     #[tokio::test]

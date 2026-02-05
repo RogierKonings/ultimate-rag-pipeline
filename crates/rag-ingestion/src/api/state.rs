@@ -1,10 +1,14 @@
 //! Application state for the ingestion service.
 
 use std::sync::Arc;
+use tokio::sync::Mutex;
+
+use rag_database::DatabasePool;
 
 use crate::api::jobs::JobTracker;
 use crate::embedding::EmbeddingClient;
 use crate::indexing::IndexCoordinator;
+use crate::worker::JobQueue;
 
 /// Application state shared across all request handlers.
 pub struct AppState {
@@ -16,6 +20,12 @@ pub struct AppState {
 
     /// Embedding client (optional for tests).
     pub embedding_client: Option<Arc<EmbeddingClient>>,
+
+    /// Job queue for async processing (optional for tests).
+    pub job_queue: Option<Arc<Mutex<JobQueue>>>,
+
+    /// Database pool for PostgreSQL queries (optional for tests).
+    pub database: Option<DatabasePool>,
 
     /// Service version string.
     pub version: String,
@@ -45,6 +55,18 @@ impl AppState {
     pub fn has_embedding_client(&self) -> bool {
         self.embedding_client.is_some()
     }
+
+    /// Check if job queue is available.
+    #[must_use]
+    pub fn has_job_queue(&self) -> bool {
+        self.job_queue.is_some()
+    }
+
+    /// Check if database is available.
+    #[must_use]
+    pub fn has_database(&self) -> bool {
+        self.database.is_some()
+    }
 }
 
 impl std::fmt::Debug for AppState {
@@ -52,6 +74,8 @@ impl std::fmt::Debug for AppState {
         f.debug_struct("AppState")
             .field("has_index_coordinator", &self.index_coordinator.is_some())
             .field("has_embedding_client", &self.embedding_client.is_some())
+            .field("has_job_queue", &self.job_queue.is_some())
+            .field("has_database", &self.database.is_some())
             .field("active_jobs", &self.job_tracker.active_count())
             .field("version", &self.version)
             .finish()
@@ -63,6 +87,8 @@ pub struct AppStateBuilder {
     job_tracker: Option<Arc<JobTracker>>,
     index_coordinator: Option<Arc<IndexCoordinator>>,
     embedding_client: Option<Arc<EmbeddingClient>>,
+    job_queue: Option<Arc<Mutex<JobQueue>>>,
+    database: Option<DatabasePool>,
     version: String,
 }
 
@@ -74,6 +100,8 @@ impl AppStateBuilder {
             job_tracker: None,
             index_coordinator: None,
             embedding_client: None,
+            job_queue: None,
+            database: None,
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
@@ -99,6 +127,20 @@ impl AppStateBuilder {
         self
     }
 
+    /// Set the job queue.
+    #[must_use]
+    pub fn job_queue(mut self, queue: Arc<Mutex<JobQueue>>) -> Self {
+        self.job_queue = Some(queue);
+        self
+    }
+
+    /// Set the database pool.
+    #[must_use]
+    pub fn database(mut self, pool: DatabasePool) -> Self {
+        self.database = Some(pool);
+        self
+    }
+
     /// Set the service version.
     #[must_use]
     pub fn version(mut self, version: impl Into<String>) -> Self {
@@ -120,6 +162,8 @@ impl AppStateBuilder {
             job_tracker,
             index_coordinator: self.index_coordinator,
             embedding_client: self.embedding_client,
+            job_queue: self.job_queue,
+            database: self.database,
             version: self.version,
         })
     }
@@ -170,6 +214,7 @@ mod tests {
         assert!(builder.job_tracker.is_none());
         assert!(builder.index_coordinator.is_none());
         assert!(builder.embedding_client.is_none());
+        assert!(builder.job_queue.is_none());
     }
 
     #[test]
@@ -191,6 +236,7 @@ mod tests {
 
         assert!(!state.has_index_coordinator());
         assert!(!state.has_embedding_client());
+        assert!(!state.has_job_queue());
     }
 
     #[test]

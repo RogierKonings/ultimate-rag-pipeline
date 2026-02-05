@@ -290,9 +290,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_router_list_documents() {
+    async fn test_router_list_documents_requires_tenant_id() {
         let app = create_router(test_state());
 
+        // Without tenant_id, should return 400 Bad Request
         let response = app
             .oneshot(
                 Request::builder()
@@ -303,7 +304,25 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_router_list_documents_no_database() {
+        let app = create_router(test_state());
+
+        // With tenant_id but no database, should return 500 Internal Server Error
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/documents?tenant_id=test-tenant")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[tokio::test]

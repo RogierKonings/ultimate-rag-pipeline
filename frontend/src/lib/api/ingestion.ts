@@ -25,7 +25,7 @@ export async function listDocuments(
 		search?: string;
 	}
 ): Promise<DocumentListResponse> {
-	return getClient().get<DocumentListResponse>('/documents', {
+	return getClient().get<DocumentListResponse>('/api/v1/documents', {
 		tenant_id: TENANT_ID,
 		page,
 		page_size: pageSize,
@@ -37,21 +37,21 @@ export async function listDocuments(
  * Get a single document by ID
  */
 export async function getDocument(documentId: string): Promise<Document> {
-	return getClient().get<Document>(`/documents/${documentId}`);
+	return getClient().get<Document>(`/api/v1/documents/${documentId}`);
 }
 
 /**
  * Get the status of an ingestion job
  */
 export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
-	return getClient().get<JobStatusResponse>(`/ingest/${jobId}`);
+	return getClient().get<JobStatusResponse>(`/api/v1/ingest/${jobId}`);
 }
 
 /**
  * Delete a document and all its chunks
  */
 export async function deleteDocument(documentId: string): Promise<DocumentDeleteResponse> {
-	return getClient().delete<DocumentDeleteResponse>(`/documents/${documentId}`, {
+	return getClient().delete<DocumentDeleteResponse>(`/api/v1/documents/${documentId}`, {
 		tenant_id: TENANT_ID
 	});
 }
@@ -60,7 +60,7 @@ export async function deleteDocument(documentId: string): Promise<DocumentDelete
  * Delete multiple documents at once
  */
 export async function batchDeleteDocuments(documentIds: string[]): Promise<BatchDeleteResponse> {
-	return getClient().post<BatchDeleteResponse>(`/documents/batch-delete?tenant_id=${TENANT_ID}`, {
+	return getClient().post<BatchDeleteResponse>(`/api/v1/documents/batch-delete?tenant_id=${TENANT_ID}`, {
 		document_ids: documentIds
 	});
 }

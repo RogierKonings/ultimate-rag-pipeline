@@ -82,8 +82,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			})
 		);
 
-		// Trigger ingestion via the ingestion API (include tenant_id for dev mode auth bypass)
-		const ingestionResponse = await fetch(`${INGESTION_API}/ingest?tenant_id=${TENANT_ID}`, {
+		// Trigger ingestion via the ingestion API
+		const ingestionResponse = await fetch(`${INGESTION_API}/api/v1/ingest`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'

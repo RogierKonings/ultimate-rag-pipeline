@@ -31,10 +31,12 @@
 //! pool.start(queue).await?;
 //! ```
 
+mod handler;
 mod job;
 mod pool;
 mod queue;
 
+pub use handler::IngestionJobHandler;
 pub use job::{Job, JobPriority, JobResult, JobStatus};
 pub use pool::{JobHandler, RouterHandler, WorkerPool, WorkerPoolConfig};
 pub use queue::{JobQueue, QueueError};

@@ -8,6 +8,7 @@ use axum::{
     Json,
 };
 use chrono::Utc;
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::api::error::{ApiError, ApiResult};
@@ -19,6 +20,7 @@ use crate::api::types::{
     JobStatusResponse, ReembedRequest, ReembedResponse, SingleIngestRequest, SyncRequest,
     SyncResponse,
 };
+use crate::worker::{Job, JobPriority};
 
 /// POST /api/v1/ingest - Start a batch ingestion job.
 pub async fn start_ingestion(
@@ -35,8 +37,48 @@ pub async fn start_ingestion(
         "Started ingestion job"
     );
 
-    // TODO: Spawn actual processing task
-    // For now, just return the job ID
+    // Enqueue job to Redis for async processing
+    if let Some(job_queue) = &state.job_queue {
+        let worker_job = Job::new(
+            "ingest_batch",
+            &request.acl.tenant_id,
+            json!({
+                "tracker_job_id": job_id.to_string(),
+                "source_type": request.source_type,
+                "source_config": request.source_config,
+                "processing": {
+                    "chunking_strategy": request.processing.chunking_strategy,
+                    "chunk_size": request.processing.chunk_size,
+                    "chunk_overlap": request.processing.chunk_overlap,
+                    "enable_pii_detection": request.processing.enable_pii_detection,
+                    "custom_metadata": request.processing.custom_metadata
+                },
+                "acl": {
+                    "tenant_id": request.acl.tenant_id,
+                    "visibility": request.acl.visibility,
+                    "allowed_groups": request.acl.allowed_groups,
+                    "allowed_users": request.acl.allowed_users
+                }
+            }),
+        )
+        .with_priority(JobPriority::Normal)
+        .with_metadata("tracker_job_id", json!(job_id.to_string()));
+
+        let mut queue = job_queue.lock().await;
+        if let Err(e) = queue.enqueue(&worker_job).await {
+            tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
+            state.job_tracker.fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            return Err(ApiError::internal(format!("Failed to queue job: {e}")));
+        }
+
+        tracing::info!(
+            job_id = %job_id,
+            worker_job_id = %worker_job.id,
+            "Job enqueued to Redis"
+        );
+    } else {
+        tracing::warn!(job_id = %job_id, "No job queue configured - job will remain pending");
+    }
 
     Ok((
         StatusCode::ACCEPTED,
@@ -63,7 +105,49 @@ pub async fn ingest_single_document(
         "Started single document ingestion"
     );
 
-    // TODO: Spawn actual processing task
+    // Enqueue job to Redis for async processing
+    if let Some(job_queue) = &state.job_queue {
+        let worker_job = Job::new(
+            "ingest_single",
+            &request.acl.tenant_id,
+            json!({
+                "tracker_job_id": job_id.to_string(),
+                "source_type": request.source_type,
+                "source_id": request.source_id,
+                "source_config": request.source_config,
+                "processing": {
+                    "chunking_strategy": request.processing.chunking_strategy,
+                    "chunk_size": request.processing.chunk_size,
+                    "chunk_overlap": request.processing.chunk_overlap,
+                    "enable_pii_detection": request.processing.enable_pii_detection,
+                    "custom_metadata": request.processing.custom_metadata
+                },
+                "acl": {
+                    "tenant_id": request.acl.tenant_id,
+                    "visibility": request.acl.visibility,
+                    "allowed_groups": request.acl.allowed_groups,
+                    "allowed_users": request.acl.allowed_users
+                }
+            }),
+        )
+        .with_priority(JobPriority::Normal)
+        .with_metadata("tracker_job_id", json!(job_id.to_string()));
+
+        let mut queue = job_queue.lock().await;
+        if let Err(e) = queue.enqueue(&worker_job).await {
+            tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
+            state.job_tracker.fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            return Err(ApiError::internal(format!("Failed to queue job: {e}")));
+        }
+
+        tracing::info!(
+            job_id = %job_id,
+            worker_job_id = %worker_job.id,
+            "Job enqueued to Redis"
+        );
+    } else {
+        tracing::warn!(job_id = %job_id, "No job queue configured - job will remain pending");
+    }
 
     Ok((
         StatusCode::ACCEPTED,

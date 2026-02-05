@@ -130,48 +130,57 @@ services:
   # ============ APPLICATION SERVICES ============
   # NOTE: Run 'make env-docker' before 'docker-compose --profile app up' to generate .env
 
-  # NOTE: The Python ingestion service has been replaced by the Rust implementation.
-  # Use the Rust rag-ingestion service instead (crates/rag-ingestion/).
-  # The Rust service includes:
-  # - PDF and DOCX parsing
-  # - Semantic chunking
-  # - PII detection
-  # - Redis-backed async worker system
-  #
-  # To build and run the Rust ingestion service:
-  #   cargo build --release -p rag-ingestion
-  #   ./target/release/ingestion-api
-  #
-  # Or with a Dockerfile (TODO: create crates/rag-ingestion/Dockerfile):
-  # ingestion-service:
-  #   build:
-  #     context: .
-  #     dockerfile: crates/rag-ingestion/Dockerfile
-  #   container_name: rag-ingestion
-  #   ports:
-  #     - "8001:8001"
-  #   environment:
-  #     - RUST_LOG=info,rag_ingestion=debug
-  #     - DATABASE_URL=postgres://raguser:ragpass@postgres:5432/ragpipeline
-  #     - QDRANT_URL=http://qdrant:6333
-  #     - OPENSEARCH_URL=http://opensearch:9200
-  #     - REDIS_URL=redis://:ragredis@redis:6379
-  #     - EMBEDDING_SERVICE_URL=http://embedding-service:8080
-  #     - INGESTION_HOST=0.0.0.0
-  #     - INGESTION_PORT=8001
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     qdrant:
-  #       condition: service_healthy
-  #     opensearch:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - rag-network
-  #   profiles:
-  #     - app
+  ingestion-service:
+    build:
+      context: ./crates
+      dockerfile: rag-ingestion/Dockerfile
+    container_name: rag-ingestion
+    ports:
+      - "8001:8001"
+    environment:
+      - RUST_LOG=info,rag_ingestion=debug
+      - DATABASE_URL=postgres://raguser:ragpass@postgres:5432/ragpipeline
+      - QDRANT_URL=http://qdrant:6333
+      - OPENSEARCH_URL=http://opensearch:9200
+      - REDIS_URL=redis://:ragredis@redis:6379
+      - EMBEDDING_SERVICE_URL=http://embedding-service:8080
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # AWS SDK credentials for S3 connector
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - AWS_REGION=us-east-1
+      - INGESTION_HOST=0.0.0.0
+      - INGESTION_PORT=8001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      embedding-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - rag-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    profiles:
+      - app
 
   retrieval-service:
     build:

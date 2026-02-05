@@ -8,6 +8,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use uuid::Uuid;
 
+use rag_retrieval::acl::{FilterCondition, UnifiedFilter};
 use rag_retrieval::cache::CacheKeyBuilder;
 use rag_retrieval::hybrid::{HybridSearchConfig, PipelineConfig, SearchOptions};
 use rag_retrieval::query::{QueryPreprocessor, QueryPreprocessorConfig};
@@ -32,7 +33,7 @@ fn bench_query_preprocessing(c: &mut Criterion) {
     let mut group = c.benchmark_group("Query Preprocessing");
 
     let config = QueryPreprocessorConfig::default();
-    let preprocessor = QueryPreprocessor::new(&config);
+    let preprocessor = QueryPreprocessor::new(config);
 
     // Different query lengths
     for query in SAMPLE_QUERIES {
@@ -52,7 +53,7 @@ fn bench_preprocessing_by_length(c: &mut Criterion) {
     let mut group = c.benchmark_group("Preprocessing by Length");
 
     let config = QueryPreprocessorConfig::default();
-    let preprocessor = QueryPreprocessor::new(&config);
+    let preprocessor = QueryPreprocessor::new(config);
 
     for word_count in [5, 10, 25, 50, 100, 200].iter() {
         let query = generate_long_query(*word_count);
@@ -80,9 +81,9 @@ fn bench_cache_key_generation(c: &mut Criterion) {
         let param = format!("{}_chars", query.len());
 
         group.bench_with_input(BenchmarkId::new("build_key", &param), query, |b, query| {
-            let builder = CacheKeyBuilder::new(*query, tenant_id)
+            let builder = CacheKeyBuilder::new(tenant_id, *query)
                 .with_user_id(user_id)
-                .with_mode(SearchMode::Hybrid)
+                .with_search_mode(SearchMode::Hybrid)
                 .with_top_k(10);
 
             b.iter(|| builder.clone().build());
@@ -103,31 +104,32 @@ fn bench_cache_key_complexity(c: &mut Criterion) {
     // Minimal key (query + tenant only)
     group.bench_function("minimal", |b| {
         b.iter(|| {
-            CacheKeyBuilder::new(black_box(query), black_box(tenant_id)).build()
+            CacheKeyBuilder::new(black_box(tenant_id), black_box(query)).build()
         });
     });
 
     // Standard key (with user and mode)
     group.bench_function("standard", |b| {
         b.iter(|| {
-            CacheKeyBuilder::new(black_box(query), black_box(tenant_id))
+            CacheKeyBuilder::new(black_box(tenant_id), black_box(query))
                 .with_user_id(black_box(user_id))
-                .with_mode(black_box(SearchMode::Hybrid))
+                .with_search_mode(black_box(SearchMode::Hybrid))
                 .with_top_k(black_box(10))
                 .build()
         });
     });
 
-    // Full key (with groups)
-    group.bench_function("with_groups", |b| {
-        let groups = vec!["engineering".to_string(), "backend".to_string()];
+    // Full key (with filters)
+    group.bench_function("with_filters", |b| {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::any_of("allowed_groups", vec!["engineering".to_string(), "backend".to_string()]));
 
         b.iter(|| {
-            CacheKeyBuilder::new(black_box(query), black_box(tenant_id))
+            CacheKeyBuilder::new(black_box(tenant_id), black_box(query))
                 .with_user_id(black_box(user_id))
-                .with_mode(black_box(SearchMode::Hybrid))
+                .with_search_mode(black_box(SearchMode::Hybrid))
                 .with_top_k(black_box(10))
-                .with_groups(black_box(&groups))
+                .with_filters(black_box(&filter))
                 .build()
         });
     });
