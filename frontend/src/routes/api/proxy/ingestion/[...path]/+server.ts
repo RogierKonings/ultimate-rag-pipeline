@@ -4,6 +4,20 @@ import { INGESTION_URL } from '$env/static/private';
 
 const INGESTION_API = INGESTION_URL || 'http://localhost:8001';
 
+/**
+ * Extract a clean filename from a source_uri like:
+ * "uploads/{tenant_id}/{timestamp}-{filename}" -> "filename"
+ */
+function extractFilename(sourceUri: string): string | null {
+	const lastSegment = sourceUri.split('/').pop();
+	if (!lastSegment) return null;
+	const dashIndex = lastSegment.indexOf('-');
+	if (dashIndex > 0 && /^\d+$/.test(lastSegment.substring(0, dashIndex))) {
+		return lastSegment.substring(dashIndex + 1);
+	}
+	return lastSegment;
+}
+
 export const GET: RequestHandler = async ({ params, url }) => {
 	const path = params.path;
 	const queryString = url.search;
@@ -23,6 +37,22 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		}
 
 		const data = await response.json();
+
+		// Fix document filenames: extract clean name from source_id path
+		if (data.documents && Array.isArray(data.documents)) {
+			for (const doc of data.documents) {
+				if (doc.source_id) {
+					const cleanName = extractFilename(doc.source_id);
+					if (cleanName) {
+						doc.filename = cleanName;
+					}
+					if (doc.title === doc.source_id) {
+						doc.title = null;
+					}
+				}
+			}
+		}
+
 		return json(data);
 	} catch (err) {
 		if (err && typeof err === 'object' && 'status' in err) {

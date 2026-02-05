@@ -42,12 +42,19 @@
 	});
 
 	const displayName = $derived.by(() => {
-		// For uploaded files (filesystem source), prefer filename over auto-extracted title
-		// as the title is often just the first line of content which may not be meaningful
-		if (document.source_type === 'filesystem' && document.filename) {
+		if (document.filename) {
 			return document.filename;
 		}
-		return document.title || document.filename || document.source_id.split('/').pop() || 'Document';
+		if (document.title) {
+			return document.title;
+		}
+		// Extract original filename from source_id (format: uploads/{tenant}/{timestamp}-{filename})
+		const lastSegment = document.source_id.split('/').pop() || 'Document';
+		const dashIndex = lastSegment.indexOf('-');
+		if (dashIndex > 0 && /^\d+$/.test(lastSegment.substring(0, dashIndex))) {
+			return lastSegment.substring(dashIndex + 1);
+		}
+		return lastSegment;
 	});
 
 	function handleDeleteClick(e: MouseEvent) {

@@ -90,22 +90,40 @@ pub async fn list_documents(
     // Convert to response format
     let document_responses: Vec<DocumentResponse> = documents
         .into_iter()
-        .map(|doc| DocumentResponse {
-            document_id: doc.id,
-            source_id: doc.source_uri.clone(),
-            source_type: doc.source_type.clone(),
-            filename: doc.title.clone(),
-            mime_type: doc.mime_type.clone(),
-            title: doc.title,
-            author: None,
-            chunk_count: doc.chunk_count,
-            total_tokens: 0, // Not tracked in current schema
-            tenant_id: doc.tenant_id,
-            visibility: format!("{:?}", doc.visibility).to_lowercase(),
-            created_at: doc.created_at,
-            updated_at: doc.updated_at,
-            indexed_at: None, // Could be tracked separately
-            status: doc.status,
+        .map(|doc| {
+            // Extract clean filename from source_uri
+            // source_uri format: uploads/{tenant_id}/{timestamp}-{filename}
+            let filename = doc.source_uri
+                .rsplit('/')
+                .next()
+                .and_then(|name| {
+                    // Remove timestamp prefix (digits followed by dash)
+                    if let Some(dash_pos) = name.find('-') {
+                        let prefix = &name[..dash_pos];
+                        if prefix.chars().all(|c| c.is_ascii_digit()) {
+                            return Some(name[dash_pos + 1..].to_string());
+                        }
+                    }
+                    Some(name.to_string())
+                });
+
+            DocumentResponse {
+                document_id: doc.id,
+                source_id: doc.source_uri.clone(),
+                source_type: doc.source_type.clone(),
+                filename,
+                mime_type: doc.mime_type.clone(),
+                title: doc.title.filter(|t| t != &doc.source_uri),
+                author: None,
+                chunk_count: doc.chunk_count,
+                total_tokens: 0, // Not tracked in current schema
+                tenant_id: doc.tenant_id,
+                visibility: format!("{:?}", doc.visibility).to_lowercase(),
+                created_at: doc.created_at,
+                updated_at: doc.updated_at,
+                indexed_at: None, // Could be tracked separately
+                status: doc.status,
+            }
         })
         .collect();
 
@@ -165,23 +183,59 @@ pub async fn get_document(
 
 /// DELETE /api/v1/documents/{document_id} - Delete document.
 pub async fn delete_document(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(document_id): Path<Uuid>,
     Query(query): Query<DeleteDocumentQuery>,
 ) -> ApiResult<Json<DocumentDeleteResponse>> {
-    // TODO: Implement actual deletion
-    // For now, return not found
+    // Check if database is available
+    let database = state.database.as_ref().ok_or_else(|| {
+        ApiError::internal("Database not configured")
+    })?;
 
-    let _ = query.hard_delete; // Would use this
+    let repo = DocumentRepository::new(database.inner().clone());
 
-    Err(ApiError::not_found(format!(
-        "Document {document_id} not found"
-    )))
+    // Verify document exists and belongs to tenant
+    let document = repo
+        .find_by_id_and_tenant(document_id, &query.tenant_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to find document: {e}")))?
+        .ok_or_else(|| ApiError::not_found(format!("Document {document_id} not found")))?;
+
+    // Delete the document
+    let deleted = repo
+        .delete_by_tenant(document_id, &query.tenant_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to delete document: {e}")))?;
+
+    if !deleted {
+        return Err(ApiError::not_found(format!(
+            "Document {document_id} not found"
+        )));
+    }
+
+    // TODO: Also delete from Qdrant and OpenSearch if hard_delete is true
+    // For now, just delete from PostgreSQL
+
+    tracing::info!(
+        document_id = %document_id,
+        tenant_id = %query.tenant_id,
+        hard_delete = query.hard_delete,
+        "Document deleted"
+    );
+
+    Ok(Json(DocumentDeleteResponse {
+        document_id,
+        deleted: true,
+        chunks_deleted: i64::from(document.chunk_count),
+        message: "Document deleted successfully".to_string(),
+    }))
 }
 
 /// Query parameters for delete_document.
 #[derive(Debug, Deserialize)]
 pub struct DeleteDocumentQuery {
+    /// Tenant ID for multi-tenancy (required).
+    pub tenant_id: String,
     #[serde(default = "default_hard_delete")]
     pub hard_delete: bool,
 }
@@ -192,30 +246,91 @@ fn default_hard_delete() -> bool {
 
 /// POST /api/v1/documents/batch-delete - Batch delete documents.
 pub async fn batch_delete_documents(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<DeleteDocumentQuery>,
     Json(request): Json<BatchDeleteRequest>,
 ) -> ApiResult<Json<BatchDeleteResponse>> {
-    // TODO: Implement actual batch deletion
-    // For now, return all as not found
+    // Check if database is available
+    let database = state.database.as_ref().ok_or_else(|| {
+        ApiError::internal("Database not configured")
+    })?;
 
-    let _ = query.hard_delete;
+    let repo = DocumentRepository::new(database.inner().clone());
 
-    let results: Vec<DocumentDeleteResponse> = request
-        .document_ids
-        .iter()
-        .map(|id| DocumentDeleteResponse {
-            document_id: *id,
-            deleted: false,
-            chunks_deleted: 0,
-            message: format!("Document {} not found", id),
-        })
-        .collect();
+    let mut results: Vec<DocumentDeleteResponse> = Vec::with_capacity(request.document_ids.len());
+    let mut deleted_count = 0i32;
+    let mut failed_count = 0i32;
 
-    let failed_count = results.len() as i32;
+    for document_id in &request.document_ids {
+        // Try to find the document first to get chunk_count
+        let document = match repo.find_by_id_and_tenant(*document_id, &query.tenant_id).await {
+            Ok(Some(doc)) => doc,
+            Ok(None) => {
+                failed_count += 1;
+                results.push(DocumentDeleteResponse {
+                    document_id: *document_id,
+                    deleted: false,
+                    chunks_deleted: 0,
+                    message: format!("Document {} not found", document_id),
+                });
+                continue;
+            }
+            Err(e) => {
+                failed_count += 1;
+                results.push(DocumentDeleteResponse {
+                    document_id: *document_id,
+                    deleted: false,
+                    chunks_deleted: 0,
+                    message: format!("Failed to find document: {}", e),
+                });
+                continue;
+            }
+        };
+
+        // Delete the document
+        match repo.delete_by_tenant(*document_id, &query.tenant_id).await {
+            Ok(true) => {
+                deleted_count += 1;
+                results.push(DocumentDeleteResponse {
+                    document_id: *document_id,
+                    deleted: true,
+                    chunks_deleted: i64::from(document.chunk_count),
+                    message: "Document deleted successfully".to_string(),
+                });
+            }
+            Ok(false) => {
+                failed_count += 1;
+                results.push(DocumentDeleteResponse {
+                    document_id: *document_id,
+                    deleted: false,
+                    chunks_deleted: 0,
+                    message: format!("Document {} not found", document_id),
+                });
+            }
+            Err(e) => {
+                failed_count += 1;
+                results.push(DocumentDeleteResponse {
+                    document_id: *document_id,
+                    deleted: false,
+                    chunks_deleted: 0,
+                    message: format!("Failed to delete document: {}", e),
+                });
+            }
+        }
+    }
+
+    // TODO: Also delete from Qdrant and OpenSearch if hard_delete is true
+
+    tracing::info!(
+        tenant_id = %query.tenant_id,
+        hard_delete = query.hard_delete,
+        deleted_count = deleted_count,
+        failed_count = failed_count,
+        "Batch delete completed"
+    );
 
     Ok(Json(BatchDeleteResponse {
-        deleted_count: 0,
+        deleted_count,
         failed_count,
         results,
     }))
@@ -308,7 +423,10 @@ mod tests {
         let request = BatchDeleteRequest {
             document_ids: vec![Uuid::new_v4(), Uuid::new_v4()],
         };
-        let query = DeleteDocumentQuery { hard_delete: true };
+        let query = DeleteDocumentQuery {
+            tenant_id: "test-tenant".to_string(),
+            hard_delete: true,
+        };
 
         let result = batch_delete_documents(State(state), Query(query), Json(request)).await;
         assert!(result.is_ok());
