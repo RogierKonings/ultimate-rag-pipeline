@@ -162,7 +162,7 @@ test:
 	@echo "Running tests..."
 	@echo "Ingestion (Rust): Run with 'cargo test -p rag-ingestion'"
 	cd crates && cargo test -p rag-ingestion || echo "Ingestion tests not available"
-	docker-compose exec retrieval-service pytest || echo "Retrieval tests not available"
+	cd crates && cargo test -p rag-retrieval || echo "Retrieval tests not available"
 	docker-compose exec orchestrator-service pytest || echo "Orchestrator tests not available"
 
 lint:

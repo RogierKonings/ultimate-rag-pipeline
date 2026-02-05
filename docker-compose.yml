@@ -119,7 +119,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: [ "CMD-SHELL", "mc ready local || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -184,14 +184,14 @@ services:
 
   retrieval-service:
     build:
-      context: .
-      dockerfile: crates/rag-retrieval/Dockerfile
+      context: ./crates
+      dockerfile: rag-retrieval/Dockerfile
     container_name: rag-retrieval
     ports:
       - "8002:8002"
     environment:
-      # Qdrant configuration
-      - QDRANT_URL=http://qdrant:6333
+      # Qdrant configuration (gRPC port for qdrant-client)
+      - QDRANT_URL=http://qdrant:6334
       - QDRANT_COLLECTION=documents
       # OpenSearch configuration
       - OPENSEARCH_URL=http://opensearch:9200
