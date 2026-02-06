@@ -12,7 +12,7 @@ repository.workspace = true
 rag-types = { path = "../rag-types", features = ["axum"] }
 
 # ML inference (ONNX-based embeddings)
-fastembed = "5"
+fastembed = "=5.8.0"
 
 # HTTP server
 axum = "0.7"
