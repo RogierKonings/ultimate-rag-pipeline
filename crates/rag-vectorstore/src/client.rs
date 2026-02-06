@@ -269,7 +269,7 @@ impl VectorStoreClient {
                 let payload = qdrant_to_payload(&p.payload);
                 let vector = p.vectors.and_then(|v| {
                     match v.vectors_options {
-                        Some(qdrant_client::qdrant::vectors::VectorsOptions::Vector(vec)) => {
+                        Some(qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec)) => {
                             Some(vec.data)
                         }
                         _ => None,
@@ -419,7 +419,7 @@ impl VectorStoreClient {
                 let payload = qdrant_to_payload(&p.payload);
                 let vector = p.vectors.and_then(|v| {
                     match v.vectors_options {
-                        Some(qdrant_client::qdrant::vectors::VectorsOptions::Vector(vec)) => {
+                        Some(qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec)) => {
                             Some(vec.data)
                         }
                         _ => None,

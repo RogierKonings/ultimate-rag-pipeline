@@ -1,6 +1,6 @@
 //! Common configuration types shared across services.
 
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use url::Url;
@@ -110,7 +110,7 @@ impl Default for ServiceConfig {
 pub struct DatabaseConfig {
     /// `PostgreSQL` connection URL
     #[serde(alias = "database_url")]
-    url: Secret<String>,
+    url: SecretString,
 
     /// Maximum connections in the pool
     #[validate(range(min = 1, max = 100))]
@@ -192,7 +192,7 @@ impl fmt::Debug for DatabaseConfig {
 pub struct RedisConfig {
     /// Redis connection URL
     #[serde(alias = "redis_url")]
-    url: Secret<String>,
+    url: SecretString,
 
     /// Maximum connections in the pool
     #[validate(range(min = 1, max = 100))]
@@ -246,7 +246,7 @@ pub struct QdrantConfig {
 
     /// API key (optional)
     #[serde(default)]
-    api_key: Option<Secret<String>>,
+    api_key: Option<SecretString>,
 
     /// Default collection name
     #[serde(default = "default_collection")]
@@ -295,7 +295,7 @@ impl QdrantConfig {
     /// Get the API key if configured (exposes secret).
     #[must_use]
     pub fn api_key(&self) -> Option<&str> {
-        self.api_key.as_ref().map(|s| s.expose_secret().as_str())
+        self.api_key.as_ref().map(|s| s.expose_secret())
     }
 }
 
@@ -308,11 +308,11 @@ pub struct OpenSearchConfig {
 
     /// Username for authentication
     #[serde(default)]
-    username: Option<Secret<String>>,
+    username: Option<SecretString>,
 
     /// Password for authentication
     #[serde(default)]
-    password: Option<Secret<String>>,
+    password: Option<SecretString>,
 
     /// Default index name
     #[serde(default = "default_index")]
@@ -352,13 +352,13 @@ impl OpenSearchConfig {
     /// Get the username if configured (exposes secret).
     #[must_use]
     pub fn username(&self) -> Option<&str> {
-        self.username.as_ref().map(|s| s.expose_secret().as_str())
+        self.username.as_ref().map(|s| s.expose_secret())
     }
 
     /// Get the password if configured (exposes secret).
     #[must_use]
     pub fn password(&self) -> Option<&str> {
-        self.password.as_ref().map(|s| s.expose_secret().as_str())
+        self.password.as_ref().map(|s| s.expose_secret())
     }
 }
 
@@ -382,10 +382,10 @@ pub struct StorageConfig {
     pub url: String,
 
     /// Access key
-    access_key: Secret<String>,
+    access_key: SecretString,
 
     /// Secret key
-    secret_key: Secret<String>,
+    secret_key: SecretString,
 
     /// Default bucket name
     #[serde(default = "default_bucket")]

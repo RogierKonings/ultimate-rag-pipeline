@@ -412,7 +412,7 @@ impl VideoQdrantIndexer {
                 let result = info.result.map(|r| {
                     CollectionInfo::new(
                         &self.config.collection_name,
-                        r.vectors_count.unwrap_or(0),
+                        r.indexed_vectors_count.unwrap_or(0),
                         r.points_count.unwrap_or(0),
                         format!("{:?}", r.status),
                     )

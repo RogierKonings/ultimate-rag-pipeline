@@ -1,8 +1,8 @@
 //! Telemetry initialization.
 
+use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_sdk::{
-    runtime,
-    trace::{Config as TraceConfig, Sampler},
+    trace::{Sampler, SdkTracerProvider},
     Resource,
 };
 use opentelemetry_otlp::WithExportConfig;
@@ -17,13 +17,17 @@ use crate::{LogFormat, Result, TelemetryConfig, TelemetryError};
 
 /// Guard that shuts down telemetry on drop.
 pub struct TelemetryGuard {
-    _private: (),
+    provider: Option<SdkTracerProvider>,
 }
 
 impl Drop for TelemetryGuard {
     fn drop(&mut self) {
-        // Shutdown OpenTelemetry
-        opentelemetry::global::shutdown_tracer_provider();
+        // Shutdown OpenTelemetry tracer provider
+        if let Some(provider) = self.provider.take() {
+            if let Err(e) = provider.shutdown() {
+                eprintln!("Error shutting down tracer provider: {e}");
+            }
+        }
     }
 }
 
@@ -47,14 +51,15 @@ pub fn init_telemetry(config: &TelemetryConfig) -> Result<TelemetryGuard> {
     };
 
     // Build OpenTelemetry layer if enabled
-    let otel_layer = if config.otlp_enabled {
+    let (otel_layer, provider) = if config.otlp_enabled {
         if let Some(endpoint) = &config.otlp_endpoint {
-            Some(build_otel_layer(config, endpoint)?)
+            let (layer, prov) = build_otel_layer(config, endpoint)?;
+            (Some(layer), Some(prov))
         } else {
-            None
+            (None, None)
         }
     } else {
-        None
+        (None, None)
     };
 
     // Compose and initialize subscriber
@@ -65,7 +70,7 @@ pub fn init_telemetry(config: &TelemetryConfig) -> Result<TelemetryGuard> {
         .try_init()
         .map_err(|e| TelemetryError::TracingInit(e.to_string()))?;
 
-    Ok(TelemetryGuard { _private: () })
+    Ok(TelemetryGuard { provider })
 }
 
 fn build_fmt_layer<S>(config: &TelemetryConfig) -> Box<dyn Layer<S> + Send + Sync + 'static>
@@ -96,7 +101,10 @@ where
 fn build_otel_layer<S>(
     config: &TelemetryConfig,
     endpoint: &str,
-) -> Result<tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::Tracer>>
+) -> Result<(
+    tracing_opentelemetry::OpenTelemetryLayer<S, opentelemetry_sdk::trace::Tracer>,
+    SdkTracerProvider,
+)>
 where
     S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
@@ -113,7 +121,9 @@ where
         resource_attrs.push(opentelemetry::KeyValue::new("deployment.environment", env.clone()));
     }
 
-    let resource = Resource::new(resource_attrs);
+    let resource = Resource::builder_empty()
+        .with_attributes(resource_attrs)
+        .build();
 
     // Configure sampler
     let sampler = if config.trace_sample_ratio >= 1.0 {
@@ -124,24 +134,24 @@ where
         Sampler::TraceIdRatioBased(config.trace_sample_ratio)
     };
 
-    let trace_config = TraceConfig::default()
-        .with_sampler(sampler)
-        .with_resource(resource);
-
     // Build OTLP exporter
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(endpoint);
-
-    // Build and install tracer - install_batch returns a Tracer directly
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .with_trace_config(trace_config)
-        .install_batch(runtime::Tokio)
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .build()
         .map_err(|e| TelemetryError::OpenTelemetry(e.to_string()))?;
 
-    Ok(tracing_opentelemetry::layer().with_tracer(tracer))
+    // Build tracer provider
+    let tracer_provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_sampler(sampler)
+        .with_resource(resource)
+        .build();
+
+    opentelemetry::global::set_tracer_provider(tracer_provider.clone());
+    let tracer = tracer_provider.tracer(config.service_name.clone());
+
+    Ok((tracing_opentelemetry::layer().with_tracer(tracer), tracer_provider))
 }
 
 /// Initialize telemetry from environment variables.

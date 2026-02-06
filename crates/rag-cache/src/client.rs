@@ -280,7 +280,7 @@ impl CacheClient {
             pipe.set_ex(&full_key, &serialized, ttl_secs);
         }
 
-        pipe.query_async::<_, ()>(&mut conn).await?;
+        pipe.query_async::<()>(&mut conn).await?;
 
         debug!(count = pairs.len(), "Set multiple cache values");
         Ok(())

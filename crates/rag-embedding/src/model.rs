@@ -1,6 +1,6 @@
 //! Embedding model wrapper using fastembed.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use tracing::{info, instrument};
@@ -11,7 +11,7 @@ use crate::error::{EmbeddingError, Result};
 /// Thread-safe wrapper around the fastembed model.
 #[derive(Clone)]
 pub struct EmbeddingModelWrapper {
-    inner: Arc<TextEmbedding>,
+    inner: Arc<Mutex<TextEmbedding>>,
     model_id: String,
     dimensions: usize,
 }
@@ -46,7 +46,7 @@ impl EmbeddingModelWrapper {
         );
 
         Ok(Self {
-            inner: Arc::new(model),
+            inner: Arc::new(Mutex::new(model)),
             model_id: config.model.model_id().to_string(),
             dimensions: config.model.dimensions(),
         })
@@ -68,6 +68,8 @@ impl EmbeddingModelWrapper {
         let text_refs: Vec<&str> = texts.iter().map(String::as_str).collect();
 
         self.inner
+            .lock()
+            .map_err(|e| EmbeddingError::inference(format!("mutex poisoned: {e}")))?
             .embed(text_refs, None)
             .map_err(|e| EmbeddingError::inference(e.to_string()))
     }

@@ -92,7 +92,7 @@ impl DocxParser {
         xml: &str,
     ) -> Result<(Vec<String>, Vec<ContentBlock>, Vec<TableContent>), DocxError> {
         let mut reader = Reader::from_str(xml);
-        reader.trim_text(true);
+        reader.config_mut().trim_text(true);
 
         let mut paragraphs = Vec::new();
         let mut blocks = Vec::new();
@@ -139,7 +139,7 @@ impl DocxParser {
                     _ => {}
                 },
                 Ok(Event::Text(ref e)) => {
-                    let text = e.unescape().unwrap_or_default();
+                    let text = e.decode().unwrap_or_default();
                     if in_table {
                         current_cell.push_str(&text);
                     } else if in_paragraph {
@@ -265,7 +265,7 @@ impl DocxParser {
             core_file.read_to_string(&mut core_xml)?;
 
             let mut reader = Reader::from_str(&core_xml);
-            reader.trim_text(true);
+            reader.config_mut().trim_text(true);
 
             let mut buf = Vec::new();
             let mut current_tag: Option<String> = None;
@@ -278,7 +278,7 @@ impl DocxParser {
                     }
                     Ok(Event::Text(ref e)) => {
                         if let Some(ref tag) = current_tag {
-                            let text = e.unescape().unwrap_or_default().to_string();
+                            let text = e.decode().unwrap_or_default().to_string();
                             if !text.is_empty() {
                                 props.insert(tag.clone(), text);
                             }

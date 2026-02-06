@@ -189,7 +189,8 @@ pub fn init_tracing(config: &TracingConfig) -> Result<TelemetryGuard, TelemetryE
 /// Note: This is typically handled automatically by dropping the `TelemetryGuard`,
 /// but can be called explicitly if needed.
 pub fn shutdown_tracing() {
-    opentelemetry::global::shutdown_tracer_provider();
+    // In OpenTelemetry 0.31+, shutdown is handled by dropping the TracerProvider
+    // or calling provider.shutdown() directly. The global shutdown function was removed.
 }
 
 /// Span names for pipeline stages.

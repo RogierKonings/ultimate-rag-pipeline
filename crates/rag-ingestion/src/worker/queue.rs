@@ -114,7 +114,7 @@ impl JobQueue {
                 if let Some((job_id_str, _score)) = items.into_iter().next() {
                     let job_id = Uuid::parse_str(&job_id_str).map_err(|e| {
                         QueueError::Redis(redis::RedisError::from((
-                            redis::ErrorKind::TypeError,
+                            redis::ErrorKind::UnexpectedReturnType,
                             "Invalid UUID",
                             e.to_string(),
                         )))

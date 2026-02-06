@@ -144,6 +144,7 @@ impl FilterBuilder {
             must: self.must,
             should: self.should,
             must_not: self.must_not,
+            min_should: None,
         }
     }
 
