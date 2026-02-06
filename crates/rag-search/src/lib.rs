@@ -15,7 +15,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let config = SearchConfig::new("http://localhost:9200");
-//!     let client = SearchClient::connect(&config).await?;
+//!     let client = SearchClient::new(config)?;
 //!
 //!     // Index a document
 //!     let doc = serde_json::json!({
@@ -28,7 +28,7 @@
 //!     let request = BM25Request::new("hello")
 //!         .with_field("content")
 //!         .with_limit(10);
-//!     let results = client.search("documents", request).await?;
+//!     let results = client.search("documents", &request).await?;
 //!
 //!     Ok(())
 //! }

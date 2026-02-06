@@ -18,13 +18,13 @@
 //!     let client = StorageClient::new(&config).await?;
 //!
 //!     // Upload a file
-//!     client.put_object("my-bucket", "file.txt", b"Hello, world!".to_vec()).await?;
+//!     client.put_object(Some("my-bucket"), "file.txt", b"Hello, world!".to_vec()).await?;
 //!
 //!     // Download the file
-//!     let data = client.get_object("my-bucket", "file.txt").await?;
+//!     let data = client.get_object(Some("my-bucket"), "file.txt").await?;
 //!
 //!     // Generate presigned URL
-//!     let url = client.presigned_get_url("my-bucket", "file.txt", 3600).await?;
+//!     let url = client.presigned_get_url(Some("my-bucket"), "file.txt", 3600).await?;
 //!
 //!     Ok(())
 //! }

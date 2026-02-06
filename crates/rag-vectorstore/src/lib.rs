@@ -23,12 +23,12 @@
 //!     let vectors = vec![vec![0.1; 384]];
 //!     let ids = vec!["doc-1".to_string()];
 //!     let payloads = vec![serde_json::json!({"tenant_id": "tenant-1"})];
-//!     client.upsert("documents", ids, vectors, payloads).await?;
+//!     client.upsert(Some("documents"), ids, vectors, payloads).await?;
 //!
 //!     // Search
 //!     let request = SearchRequest::new(vec![0.1; 384])
 //!         .with_limit(10);
-//!     let results = client.search("documents", request).await?;
+//!     let results = client.search(Some("documents"), request).await?;
 //!
 //!     Ok(())
 //! }
