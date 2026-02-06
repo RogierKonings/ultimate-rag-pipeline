@@ -4,12 +4,10 @@
 //! pipeline, including search modes, query types, visibility controls,
 //! user context, and result structures.
 
+use rag_types::SearchMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-
-// Re-export SearchMode from rag-types (canonical definition).
-pub use rag_types::SearchMode;
 
 /// Query type for intent classification and query preprocessing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]

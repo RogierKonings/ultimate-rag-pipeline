@@ -12,7 +12,8 @@ use rag_retrieval::acl::{FilterCondition, UnifiedFilter};
 use rag_retrieval::cache::CacheKeyBuilder;
 use rag_retrieval::hybrid::{HybridSearchConfig, PipelineConfig, SearchOptions};
 use rag_retrieval::query::{QueryPreprocessor, QueryPreprocessorConfig};
-use rag_retrieval::types::{SearchMode, UserContext, Visibility};
+use rag_retrieval::types::{UserContext, Visibility};
+use rag_types::SearchMode;
 
 /// Sample queries for benchmarking.
 const SAMPLE_QUERIES: &[&str] = &[
@@ -350,31 +351,6 @@ fn bench_uuid_operations(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark search mode properties.
-fn bench_search_mode_properties(c: &mut Criterion) {
-    let mut group = c.benchmark_group("SearchMode Properties");
-
-    // Check uses_semantic
-    group.bench_function("uses_semantic", |b| {
-        b.iter(|| {
-            black_box(SearchMode::Hybrid).uses_semantic();
-            black_box(SearchMode::Semantic).uses_semantic();
-            black_box(SearchMode::Keyword).uses_semantic();
-        });
-    });
-
-    // Check uses_keyword
-    group.bench_function("uses_keyword", |b| {
-        b.iter(|| {
-            black_box(SearchMode::Hybrid).uses_keyword();
-            black_box(SearchMode::Semantic).uses_keyword();
-            black_box(SearchMode::Keyword).uses_keyword();
-        });
-    });
-
-    group.finish();
-}
-
 criterion_group!(
     benches,
     bench_query_preprocessing,
@@ -387,7 +363,6 @@ criterion_group!(
     bench_config_construction,
     bench_config_serialization,
     bench_uuid_operations,
-    bench_search_mode_properties,
 );
 
 criterion_main!(benches);

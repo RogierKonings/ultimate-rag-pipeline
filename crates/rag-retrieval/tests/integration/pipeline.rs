@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 use rag_retrieval::hybrid::{PipelineConfig, SearchOptions, SearchPipelineResponse};
 use rag_retrieval::types::{
-    QueryType, RetrievalDebug, RetrievalMetrics, RetrievalResult, SearchMode, UserContext,
-    Visibility,
+    QueryType, RetrievalDebug, RetrievalMetrics, RetrievalResult, UserContext, Visibility,
 };
+use rag_types::SearchMode;
 
 /// Test PipelineConfig defaults.
 #[test]
@@ -114,13 +114,6 @@ fn test_search_mode_options() {
     assert_eq!(semantic.search_mode, SearchMode::Semantic);
     assert_eq!(keyword.search_mode, SearchMode::Keyword);
 
-    // Verify search mode properties
-    assert!(SearchMode::Hybrid.uses_semantic());
-    assert!(SearchMode::Hybrid.uses_keyword());
-    assert!(SearchMode::Semantic.uses_semantic());
-    assert!(!SearchMode::Semantic.uses_keyword());
-    assert!(!SearchMode::Keyword.uses_semantic());
-    assert!(SearchMode::Keyword.uses_keyword());
 }
 
 /// Test SearchPipelineResponse construction.
@@ -390,20 +383,10 @@ fn test_pipeline_config_validation_patterns() {
     assert_eq!(config.final_top_k, 10);
 }
 
-/// Test search mode properties.
+/// Test search mode properties (methods tested in rag-types and rag-retrieval lib tests).
 #[test]
 fn test_search_mode_properties() {
-    // Hybrid uses both
-    assert!(SearchMode::Hybrid.uses_semantic());
-    assert!(SearchMode::Hybrid.uses_keyword());
-
-    // Semantic only uses semantic
-    assert!(SearchMode::Semantic.uses_semantic());
-    assert!(!SearchMode::Semantic.uses_keyword());
-
-    // Keyword only uses keyword
-    assert!(!SearchMode::Keyword.uses_semantic());
-    assert!(SearchMode::Keyword.uses_keyword());
+    assert_eq!(SearchMode::default(), SearchMode::Hybrid);
 }
 
 /// Test default search mode is Hybrid.

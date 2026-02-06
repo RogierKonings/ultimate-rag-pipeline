@@ -6,7 +6,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::acl::UnifiedFilter;
-use crate::types::{RetrievalDebug, RetrievalMetrics, RetrievalResult, SearchMode};
+use crate::types::{RetrievalDebug, RetrievalMetrics, RetrievalResult};
+use rag_types::SearchMode;
 
 /// Configuration for the search pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]

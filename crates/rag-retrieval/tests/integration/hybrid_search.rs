@@ -9,7 +9,7 @@ use rag_retrieval::fusion::{fuse, FusedResult, FusionConfig, FusionMethod, Score
 use rag_retrieval::hybrid::{HybridSearchConfig, HybridSearchResponse, HybridSearchResult};
 use rag_retrieval::types::Visibility;
 
-use super::mocks::{generate_overlapping_results, to_scored_items, MockSearchResult};
+use super::mocks::{generate_overlapping_results, to_scored_items};
 
 /// Test that RRF fusion correctly combines results from both search methods.
 #[test]

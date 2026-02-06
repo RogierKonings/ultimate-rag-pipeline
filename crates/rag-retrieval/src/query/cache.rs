@@ -50,7 +50,8 @@
 //! ```
 
 use crate::error::{RetrievalError, Result};
-use crate::types::{RetrievalResult, SearchMode};
+use crate::types::RetrievalResult;
+use rag_types::SearchMode;
 use rag_cache::CacheClient;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

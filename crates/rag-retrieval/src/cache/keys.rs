@@ -5,7 +5,7 @@
 
 use crate::acl::UnifiedFilter;
 use crate::query::QueryCacheKey;
-use crate::SearchMode;
+use rag_types::SearchMode;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 

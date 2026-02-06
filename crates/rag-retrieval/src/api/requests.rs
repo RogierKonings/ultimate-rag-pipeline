@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::SearchMode;
+use rag_types::SearchMode;
 
 use super::validation::ValidationError;
 

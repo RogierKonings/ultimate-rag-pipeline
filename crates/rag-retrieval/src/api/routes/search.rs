@@ -21,7 +21,8 @@ use crate::api::types::{
     DebugInfo, RetrieveRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
 };
 use crate::hybrid::HybridSearchConfig;
-use crate::types::{RetrievalResult, SearchMode, UserContext};
+use crate::types::{RetrievalResult, UserContext};
+use rag_types::SearchMode;
 
 /// Handle the POST /api/v1/retrieve endpoint.
 ///

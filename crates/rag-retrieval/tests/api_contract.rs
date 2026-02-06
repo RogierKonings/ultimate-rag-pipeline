@@ -9,7 +9,7 @@ use uuid::Uuid;
 use rag_retrieval::api::{
     ApiError, RetrieveRequest, RetrieveResponse,
 };
-use rag_retrieval::types::SearchMode;
+use rag_types::SearchMode;
 
 // Import integration test mocks
 mod integration;

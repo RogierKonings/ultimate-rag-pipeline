@@ -21,7 +21,8 @@ use crate::embedding::EmbeddingClient;
 use crate::error::{RetrievalError, Result};
 use crate::query::{HydeGenerator, QueryCache, QueryExpander, QueryPreprocessor};
 use crate::reranking::RerankerService;
-use crate::types::{RetrievalDebug, RetrievalMetrics, RetrievalResult, SearchMode, UserContext};
+use crate::types::{RetrievalDebug, RetrievalMetrics, RetrievalResult, UserContext};
+use rag_types::SearchMode;
 
 use super::pipeline_config::{PipelineConfig, SearchOptions, SearchPipelineResponse};
 use super::response::HybridSearchResult;

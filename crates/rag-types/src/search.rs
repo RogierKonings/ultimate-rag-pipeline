@@ -27,13 +27,19 @@ impl SearchMode {
     /// Check if this mode includes semantic search.
     #[must_use]
     pub const fn uses_semantic(&self) -> bool {
-        matches!(self, Self::Semantic | Self::Hybrid)
+        match self {
+            Self::Semantic | Self::Hybrid => true,
+            Self::Keyword => false,
+        }
     }
 
     /// Check if this mode includes keyword search.
     #[must_use]
     pub const fn uses_keyword(&self) -> bool {
-        matches!(self, Self::Keyword | Self::Hybrid)
+        match self {
+            Self::Keyword | Self::Hybrid => true,
+            Self::Semantic => false,
+        }
     }
 }
 

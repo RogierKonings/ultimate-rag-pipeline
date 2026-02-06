@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::SearchMode;
+use rag_types::SearchMode;
 
 // Health types re-exported from rag-types for a canonical format across services.
 pub use rag_types::{

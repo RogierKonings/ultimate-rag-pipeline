@@ -19,7 +19,8 @@ use crate::api::types::{
     MultiQueryRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
 };
 use crate::hybrid::HybridSearchResult;
-use crate::types::{SearchMode, UserContext};
+use crate::types::UserContext;
+use rag_types::SearchMode;
 
 /// Handle the POST /api/v1/retrieve/multi endpoint.
 ///

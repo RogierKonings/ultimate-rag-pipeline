@@ -7,5 +7,3 @@
 pub mod hybrid_search;
 pub mod mocks;
 pub mod pipeline;
-
-pub use mocks::*;
