@@ -5,14 +5,14 @@ This module provides SSL context configuration for TLS 1.3 enforcement,
 mTLS support, and integration with various services.
 """
 
-import logging
 import ssl
 from enum import Enum
 
+import structlog
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TLSMode(str, Enum):

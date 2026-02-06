@@ -7,11 +7,11 @@ This module provides the application factory with:
 - Router registration
 """
 
-import logging
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -21,7 +21,7 @@ from orchestrator.audit import AuditMiddleware
 from orchestrator.config import validate_on_startup
 from orchestrator.observability.correlation import CorrelationMiddleware
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager

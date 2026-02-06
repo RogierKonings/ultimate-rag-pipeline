@@ -6,13 +6,14 @@ Kubernetes Secrets as a secrets backend.
 """
 
 import base64
-import logging
 from pathlib import Path
 from typing import Any
 
+import structlog
+
 from .config import KubernetesSecretsSettings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class K8sSecretsError(Exception):

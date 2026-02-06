@@ -9,17 +9,17 @@ Provides utilities for propagating trace context across:
 Uses W3C Trace Context format by default for maximum compatibility.
 """
 
-import logging
 from collections.abc import Callable, Mapping
 from typing import Any
 
+import structlog
 from opentelemetry import trace
 from opentelemetry.context import Context, attach, detach, get_current
 from opentelemetry.propagate import extract, inject
 from opentelemetry.propagators.textmap import Getter, Setter
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Default propagator (W3C Trace Context)
 _propagator = TraceContextTextMapPropagator()

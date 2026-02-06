@@ -5,17 +5,17 @@ End-to-end smoke tests for the observability stack.
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 import httpx
+import structlog
 
 from .trace_log import TraceLogValidator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

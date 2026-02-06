@@ -4,7 +4,6 @@ Phoenix Tracer.
 Provides LLM call tracing with Phoenix integration.
 """
 
-import logging
 import random
 import threading
 import time
@@ -14,9 +13,11 @@ from datetime import UTC, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
+import structlog
+
 from .config import PhoenixConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

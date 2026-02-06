@@ -9,12 +9,13 @@ Fallbacks are designed to maintain service availability when
 primary services are unavailable or failing.
 """
 
-import logging
 from typing import Any
+
+import structlog
 
 from .config import FallbackConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class FallbackError(Exception):

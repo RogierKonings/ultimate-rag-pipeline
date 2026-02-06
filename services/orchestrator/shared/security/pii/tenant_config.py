@@ -5,11 +5,11 @@ stored in the Tenant.settings JSONB column.
 """
 
 import asyncio
-import logging
 import time
 from typing import Any
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,7 @@ from .config import PIIEntityConfig, PIIHandlingMode, PIISettings
 from .detector import PIIDetector
 from .response_filter import PIIQueryFilter, PIIResponseFilter
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # Default PII settings when tenant has no configuration

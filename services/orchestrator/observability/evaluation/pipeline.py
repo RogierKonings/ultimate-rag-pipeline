@@ -12,13 +12,13 @@ OpenTelemetry instrumentation is included for distributed tracing.
 """
 
 import asyncio
-import logging
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+import structlog
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
@@ -26,7 +26,7 @@ from .config import EvaluationConfig
 from .datasets import EvaluationDataset, EvaluationSample
 from .ragas_evaluator import AggregatedResults, EvaluationResult, RagasEvaluator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__, "1.0.0")
 
 

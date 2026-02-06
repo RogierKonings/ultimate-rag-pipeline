@@ -6,7 +6,6 @@ Provides classes for loading, saving, and managing evaluation datasets.
 
 import hashlib
 import json
-import logging
 import random
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -15,9 +14,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import structlog
+
 from .config import SamplingStrategy
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

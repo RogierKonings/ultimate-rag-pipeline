@@ -4,10 +4,10 @@ Implements US-10.5.3: Check answer cache before expensive retrieval/generation.
 On cache hit, returns stored response and citations, skipping retrieval and LLM.
 """
 
-import logging
 import time
 from typing import TYPE_CHECKING
 
+import structlog
 from opentelemetry import trace
 
 from orchestrator.observability.otel.span_names import SpanNames
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from cache.answer_cache import AnswerCache
     from workflow.state import RAGState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 

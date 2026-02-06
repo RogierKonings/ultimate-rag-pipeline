@@ -42,14 +42,12 @@ async fn root(State(state): State<Arc<AppState>>) -> Json<ServiceInfo> {
 }
 
 /// Health check endpoint.
-async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
-    Json(HealthResponse {
-        status: "healthy".into(),
-        model: state.model_id().to_string(),
-        dimension: Some(state.dimensions()),
-        max_batch_size: Some(state.max_batch_size()),
-        message: None,
-    })
+async fn health(State(_state): State<Arc<AppState>>) -> Json<HealthResponse> {
+    let resp = HealthResponse::healthy(env!("CARGO_PKG_VERSION"))
+        .with_component("model", true)
+        .with_capability("embeddings", true);
+
+    Json(resp)
 }
 
 /// Create embeddings endpoint (OpenAI-compatible).

@@ -8,7 +8,7 @@ description = "Document parsing, chunking, embedding, and indexing for RAG pipel
 
 [dependencies]
 # Internal crates
-rag-types = { path = "../rag-types" }
+rag-types = { path = "../rag-types", features = ["axum"] }
 rag-config = { path = "../rag-config" }
 rag-vectorstore = { path = "../rag-vectorstore" }
 rag-search = { path = "../rag-search" }

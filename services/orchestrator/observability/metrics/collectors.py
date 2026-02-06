@@ -7,13 +7,13 @@ Provides collectors for external systems:
 - RedisCollector: Redis connection statistics
 """
 
-import logging
 from collections.abc import Callable
 from typing import Any
 
+import structlog
 from prometheus_client import REGISTRY, Gauge
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class VectorDatabaseCollector:

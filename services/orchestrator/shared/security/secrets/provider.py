@@ -5,7 +5,6 @@ This module provides an abstract interface for secret providers with
 support for caching, expiration metadata, and lease management.
 """
 
-import logging
 import os
 import time
 from abc import ABC, abstractmethod
@@ -13,10 +12,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import structlog
+
 from .config import SecretsBackend
 from .vault import VaultClient, VaultError
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

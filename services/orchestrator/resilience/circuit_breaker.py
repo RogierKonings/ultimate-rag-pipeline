@@ -13,15 +13,16 @@ States:
 """
 
 import asyncio
-import logging
 import time
 from collections.abc import Callable
 from enum import Enum
 from typing import Any, TypeVar
 
+import structlog
+
 from .config import CircuitBreakerConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CircuitState(str, Enum):

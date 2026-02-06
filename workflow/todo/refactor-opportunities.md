@@ -16,7 +16,7 @@ After scanning the entire codebase across Rust crates, Python orchestrator, infr
 
 ---
 
-## ~~HIGH - Rust Crate Duplication~~ PARTIALLY RESOLVED (#3-#5 done, #6 remaining)
+## ~~HIGH - Rust Crate Duplication~~ RESOLVED
 
 ### ~~3. Duplicated HTTP client setup (8+ locations)~~ DONE
 
@@ -30,26 +30,17 @@ After scanning the entire codebase across Rust crates, Python orchestrator, infr
 
 - **Fixed:** Added `reqwest = { version = "0.12", ... }` to `[workspace.dependencies]` in workspace Cargo.toml. All 6 crates (rag-ingestion, rag-retrieval, rag-video, rag-auth, rag-llm-gateway, rag-secrets) now use `reqwest = { workspace = true }`.
 
-### 6. Inconsistent API error types across services
-Each service defines its own `ApiError` with different fields:
-- **rag-retrieval**: `ErrorResponse` with `code` + `message` + `details`
-- **rag-embedding**: `ErrorDetail` with `type` + `message` (OpenAI-style)
-- **rag-ingestion**: Similar to retrieval but missing `unauthorized()`, `timeout()` methods
+### ~~6. Inconsistent API error types across services~~ DONE
 
-The wire formats are incompatible, making cross-service error handling fragile.
-
-**Fix:** Shared `ApiError` in `rag-types` with a single serialization format.
+- **Fixed:** Created shared `ApiError`, `ErrorResponse`, `ErrorBody` in `rag-types` with `axum` feature flag. Updated rag-ingestion and rag-retrieval to re-export from rag-types. Embedding and LLM gateway intentionally keep OpenAI-compatible error format.
 
 ---
 
-## HIGH - Python Orchestrator Issues
+## HIGH - Python Orchestrator Issues — PARTIALLY RESOLVED (#7 done, #8-#9 remaining)
 
-### 7. Mixed logging: `logging` vs `structlog` (20+ files affected)
-- 20 files use `import logging` (standard library)
-- 15+ files use `import structlog`
-- `services/orchestrator/api/app.py` line 24 uses `logging.getLogger(__name__)` which produces no output during startup because structlog is configured separately
+### ~~7. Mixed logging: `logging` vs `structlog`~~ DONE
 
-**Fix:** Standardize on structlog everywhere; create a shared logger factory.
+- **Fixed:** Converted 62 Python files from `import logging` / `logging.getLogger(__name__)` to `import structlog` / `structlog.get_logger(__name__)`. 5 logging infrastructure files (`observability/logging/` and `audit/logger.py`) intentionally kept with stdlib `logging` as they extend `logging.Handler`/`logging.Filter` classes.
 
 ### 8. URL configuration duplication in `services/orchestrator/config/urls.py` (566 lines)
 ~25 getter functions follow the identical pattern:
@@ -73,15 +64,9 @@ def get_service_url() -> str:
 
 ## MEDIUM - Cross-Cutting Concerns
 
-### 10. Health check response formats differ across all services
-| Service | Format | Component Details | Capabilities |
-|---------|--------|-------------------|--------------|
-| Retrieval | Structured `HealthResponse` | Yes (component array) | Yes |
-| Ingestion | Ad-hoc `serde_json::Value` | Partial | No |
-| Embedding | Inline JSON | No | No |
-| Orchestrator | Pydantic `HealthResponse` | Yes (different fields) | No |
+### ~~10. Health check response formats differ across all services~~ DONE
 
-**Fix:** Define canonical health response in `rag-types`; mirror in Python Pydantic models.
+- **Fixed:** Created shared `HealthResponse`, `ComponentHealth`, `LivenessResponse`, `ReadinessResponse` in `rag-types`. Updated rag-ingestion, rag-retrieval, and rag-embedding to use the shared types with builder pattern (`healthy()`, `degraded()`, `with_component()`, `with_capability()`). Python orchestrator retains its own Pydantic model but follows the same field structure.
 
 ### 11. Dual auth systems never integrated
 - **Rust**: `rag-auth` crate with full JWT/RBAC implementation
@@ -151,8 +136,8 @@ Identical `normalize_query()` (trim + lowercase) exists in both:
 
 1. ~~**Config consistency** (#1, #2) - prevents runtime failures~~ DONE
 2. ~~**Shared Rust utilities** (#3, #4, #5) - reduces duplication before new features~~ DONE
-3. **API error standardization** (#6, #10) - improves cross-service debugging
-4. **Python logging** (#7) - fixes silent failures in orchestrator
+3. ~~**API error standardization** (#6, #10) - improves cross-service debugging~~ DONE
+4. ~~**Python logging** (#7) - fixes silent failures in orchestrator~~ DONE
 5. **URL config cleanup** (#8) and **symlink** (#9) - quick wins
 6. **Auth integration** (#11) and **type dedup** (#12) - architectural alignment
 7. **K8s and docs** (#14-#17) - when preparing for production deployment

@@ -9,13 +9,14 @@ Degradation Levels:
 - MINIMAL: Critical services failing, minimal functionality
 """
 
-import logging
 from enum import Enum
+
+import structlog
 
 from .circuit_breaker import CircuitBreaker, CircuitState
 from .config import CircuitBreakerConfig, ResilienceConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DegradationLevel(str, Enum):

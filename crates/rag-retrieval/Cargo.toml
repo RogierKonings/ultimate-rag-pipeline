@@ -9,7 +9,7 @@ repository.workspace = true
 
 [dependencies]
 # Internal crates
-rag-types = { path = "../rag-types" }
+rag-types = { path = "../rag-types", features = ["axum"] }
 rag-vectorstore = { path = "../rag-vectorstore" }
 rag-search = { path = "../rag-search" }
 rag-cache = { path = "../rag-cache" }

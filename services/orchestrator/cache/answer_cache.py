@@ -13,12 +13,12 @@ Features:
 
 import hashlib
 import json
-import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+import structlog
 from pydantic import BaseModel, Field
 
 try:
@@ -29,7 +29,7 @@ except ImportError:
     HAS_REDIS = False
     redis = None  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CachedAnswer(BaseModel):

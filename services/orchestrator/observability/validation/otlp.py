@@ -4,14 +4,14 @@ OTLP Exporter Validation.
 Validates that all services export traces to the OTEL Collector.
 """
 
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

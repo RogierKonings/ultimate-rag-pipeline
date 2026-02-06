@@ -6,14 +6,15 @@ Provides comprehensive persistence for evaluation datasets, runs, and results.
 # ruff: noqa: S608  # SQL queries use table_prefix from config, not user input
 
 import json
-import logging
 from typing import Any
 from uuid import uuid4
+
+import structlog
 
 from .datasets import EvaluationDataset, EvaluationSample
 from .ragas_evaluator import AggregatedResults
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class EvaluationRepository:

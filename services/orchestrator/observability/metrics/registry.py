@@ -5,10 +5,10 @@ Centralized Prometheus metrics for all RAG pipeline operations.
 Follows naming convention: rag_<subsystem>_<metric>_<unit>
 """
 
-import logging
 import os
 from typing import Optional
 
+import structlog
 from prometheus_client import (
     REGISTRY,
     CollectorRegistry,
@@ -19,7 +19,7 @@ from prometheus_client import (
     multiprocess,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Global metrics instance
 _metrics: Optional["RAGMetrics"] = None

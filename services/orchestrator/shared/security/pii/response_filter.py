@@ -5,14 +5,15 @@ This module provides filtering capabilities to remove or mask PII
 from search results and LLM responses before returning to users.
 """
 
-import logging
 from typing import Any
+
+import structlog
 
 from .config import PIIHandlingMode, PIISettings
 from .detector import PIIDetector
 from .models import PIIResult
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PIIResponseFilter:

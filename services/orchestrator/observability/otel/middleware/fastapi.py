@@ -9,10 +9,10 @@ Provides automatic tracing for FastAPI applications with:
 - Configurable path exclusions
 """
 
-import logging
 import time
 from collections.abc import Callable
 
+import structlog
 from fastapi import FastAPI, Request, Response
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -24,7 +24,7 @@ from ..attributes import RAGAttributes
 from ..context import extract_trace_context, get_current_span_id, get_current_trace_id
 from ..tracer import get_tracer
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Default paths to exclude from tracing
 DEFAULT_EXCLUDED_PATHS: set[str] = {

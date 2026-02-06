@@ -7,11 +7,11 @@ based on tenant tier and query complexity.
 Reference: US-10.5.2 - LLM Model Tiering
 """
 
-import logging
 import time
 from typing import TYPE_CHECKING
 
 import httpx
+import structlog
 from model_router import ModelRouter
 from observability.llm_metrics import (
     record_llm_duration,
@@ -26,7 +26,7 @@ from orchestrator.observability.otel.span_names import SpanNames
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 # Module-level router instance

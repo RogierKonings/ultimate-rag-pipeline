@@ -6,7 +6,7 @@ use axum::{extract::State, Json};
 
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
-use crate::api::types::{LivenessResponse, ReadinessResponse};
+use crate::api::types::{HealthResponse, LivenessResponse, ReadinessResponse};
 
 /// Handle the GET /health/live endpoint (Kubernetes liveness probe).
 pub async fn liveness() -> Json<LivenessResponse> {
@@ -46,21 +46,30 @@ pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<Rea
 }
 
 /// Handle the GET /health endpoint (full health check).
-pub async fn health(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let active_jobs = state.job_tracker.active_count();
+pub async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> {
+    let has_coordinator = state.has_index_coordinator();
+    let has_embedding = state.has_embedding_client();
 
-    Json(serde_json::json!({
-        "status": "healthy",
-        "version": state.version(),
-        "components": {
-            "job_tracker": true,
-            "index_coordinator": state.has_index_coordinator(),
-            "embedding_client": state.has_embedding_client()
-        },
-        "metrics": {
-            "active_jobs": active_jobs
+    let status = if has_coordinator && has_embedding {
+        "healthy"
+    } else {
+        "degraded"
+    };
+
+    let resp = HealthResponse {
+        status: status.to_string(),
+        version: state.version().to_string(),
+        ..if status == "healthy" {
+            HealthResponse::healthy(state.version())
+        } else {
+            HealthResponse::degraded(state.version())
         }
-    }))
+    }
+    .with_component("job_tracker", true)
+    .with_component("index_coordinator", has_coordinator)
+    .with_component("embedding_client", has_embedding);
+
+    Json(resp)
 }
 
 #[cfg(test)]
@@ -99,7 +108,8 @@ mod tests {
         let state = test_state();
         let response = health(State(state)).await;
 
-        assert_eq!(response["status"], "healthy");
-        assert!(response["components"]["job_tracker"].as_bool().unwrap());
+        assert_eq!(response.status, "degraded");
+        assert!(response.components.contains_key("job_tracker"));
+        assert!(response.components["job_tracker"]);
     }
 }

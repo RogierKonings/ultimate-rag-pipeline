@@ -4,15 +4,16 @@ Trace-Log Correlation Validation.
 Validates that traces and logs are properly correlated.
 """
 
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+import structlog
+
 from .loki import LokiValidator
 from .otlp import OTLPValidator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

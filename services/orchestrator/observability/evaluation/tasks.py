@@ -9,11 +9,11 @@ Provides background tasks for running RAG evaluations:
 OpenTelemetry instrumentation is included for distributed tracing.
 """
 
-import logging
 import time
 from datetime import UTC
 from typing import Any
 
+import structlog
 from celery import shared_task
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
@@ -29,7 +29,7 @@ from .reporters import (
     SlackReporter,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__, "1.0.0")
 
 

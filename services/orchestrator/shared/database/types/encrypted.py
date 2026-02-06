@@ -6,11 +6,11 @@ encrypt/decrypt data when storing/retrieving from the database.
 """
 
 import json
-import logging
 
+import structlog
 from sqlalchemy import Text, TypeDecorator
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Module-level encryption instance
 _field_encryption = None

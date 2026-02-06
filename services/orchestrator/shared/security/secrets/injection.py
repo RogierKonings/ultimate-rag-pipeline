@@ -5,15 +5,15 @@ This module provides FastAPI dependencies for injecting
 secrets into request handlers.
 """
 
-import logging
 from collections.abc import Callable
 
+import structlog
 from fastapi import HTTPException
 
 from .config import SecretsSettings
 from .service import SecretsService, get_secrets_service
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SecretsInjector:

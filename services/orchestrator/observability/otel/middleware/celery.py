@@ -8,10 +8,10 @@ Provides tracing for Celery tasks with:
 - Error tracking and recording
 """
 
-import logging
 from collections.abc import Callable
 from typing import Any
 
+import structlog
 from celery import Celery, Task
 from celery.signals import (
     after_task_publish,
@@ -31,7 +31,7 @@ from ..context import (
 )
 from ..tracer import get_tracer
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CeleryTraceMiddleware:

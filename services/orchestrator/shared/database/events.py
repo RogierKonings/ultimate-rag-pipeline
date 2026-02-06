@@ -4,9 +4,9 @@ This module contains event listeners that trigger side effects when
 model state changes, such as propagating soft-deletes to external stores.
 """
 
-import logging
 from typing import TYPE_CHECKING
 
+import structlog
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import get_history
@@ -14,7 +14,7 @@ from sqlalchemy.orm.attributes import get_history
 if TYPE_CHECKING:
     from .models.document import Document
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _on_document_soft_delete(session: Session, document: "Document") -> None:

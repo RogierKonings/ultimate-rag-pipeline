@@ -386,39 +386,12 @@ pub struct SyncStatusResponse {
 }
 
 // ============================================================================
-// Health Types
+// Health Types (re-exported from rag-types)
 // ============================================================================
 
-/// Liveness probe response.
-#[derive(Debug, Clone, Serialize)]
-pub struct LivenessResponse {
-    pub status: String,
-}
-
-impl Default for LivenessResponse {
-    fn default() -> Self {
-        Self {
-            status: "alive".into(),
-        }
-    }
-}
-
-/// Readiness probe response.
-#[derive(Debug, Clone, Serialize)]
-pub struct ReadinessResponse {
-    pub status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub degradation_mode: Option<String>,
-}
-
-impl Default for ReadinessResponse {
-    fn default() -> Self {
-        Self {
-            status: "ready".into(),
-            degradation_mode: None,
-        }
-    }
-}
+pub use rag_types::{
+    ComponentHealth, HealthResponse, LivenessResponse, ReadinessResponse,
+};
 
 #[cfg(test)]
 mod tests {

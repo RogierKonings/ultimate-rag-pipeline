@@ -5,15 +5,16 @@ Provides experiment tracking for LLM/RAG pipeline changes.
 """
 
 import json
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+import structlog
+
 from .config import PhoenixConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

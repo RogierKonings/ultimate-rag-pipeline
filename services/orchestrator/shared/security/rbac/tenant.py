@@ -5,14 +5,15 @@ This module provides context management for tenant isolation,
 ensuring all operations are scoped to the correct tenant.
 """
 
-import logging
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Optional
 from uuid import UUID
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 # Context variable for tenant context
 _current_tenant: ContextVar[Optional["TenantContext"]] = ContextVar(

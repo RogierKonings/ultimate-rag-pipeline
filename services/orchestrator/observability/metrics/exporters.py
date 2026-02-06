@@ -7,9 +7,9 @@ Provides the /metrics endpoint for Prometheus scraping with:
 - FastAPI route setup helpers
 """
 
-import logging
 import os
 
+import structlog
 from fastapi import APIRouter, FastAPI, Response
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
@@ -19,7 +19,7 @@ from prometheus_client import (
     multiprocess,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Router for metrics endpoint
 metrics_router = APIRouter(tags=["monitoring"])

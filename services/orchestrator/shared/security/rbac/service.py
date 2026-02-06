@@ -5,9 +5,10 @@ This module provides the core authorization service that checks
 permissions and enforces access control policies.
 """
 
-import logging
 from typing import Protocol
 from uuid import UUID
+
+import structlog
 
 from .permissions import (
     Permission,
@@ -17,7 +18,7 @@ from .permissions import (
 )
 from .roles import Role, RoleHierarchy, get_effective_roles, has_role_or_higher
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class AuthorizationError(Exception):

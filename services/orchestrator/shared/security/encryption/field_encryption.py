@@ -7,13 +7,13 @@ with authenticated encryption ensuring both confidentiality and integrity.
 
 import base64
 import json
-import logging
 import secrets
 from typing import Any
 
+import structlog
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Constants
 KEY_SIZE = 32  # 256 bits for AES-256

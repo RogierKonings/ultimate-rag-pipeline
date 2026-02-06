@@ -4,13 +4,14 @@ Ragas Evaluator.
 Wrapper around Ragas library for RAG evaluation.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
+
 from .config import EvaluationConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

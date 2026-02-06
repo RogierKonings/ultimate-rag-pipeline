@@ -7,14 +7,15 @@ scheduling, and notifies connection pools of credential changes.
 """
 
 import asyncio
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
+
 from .vault import VaultClient, VaultError
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

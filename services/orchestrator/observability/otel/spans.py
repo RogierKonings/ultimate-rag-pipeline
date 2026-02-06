@@ -6,20 +6,20 @@ OpenTelemetry spans with RAG-specific attributes.
 """
 
 import asyncio
-import logging
 import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
+import structlog
 from opentelemetry import trace
 from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 
 from .attributes import RAGAttributes, RAGOperation
 from .tracer import get_tracer
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")

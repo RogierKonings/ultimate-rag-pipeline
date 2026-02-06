@@ -5,10 +5,10 @@ This module provides PII detection and processing capabilities
 using the Presidio analyzer and anonymizer engines.
 """
 
-import logging
 import time
 from pathlib import Path
 
+import structlog
 import yaml
 
 from .config import (
@@ -22,7 +22,7 @@ from .models import (
     PIIResult,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PIIDetectionError(Exception):

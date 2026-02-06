@@ -6,13 +6,14 @@ rotation, and integration with HashiCorp Vault.
 """
 
 import base64
-import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 # Key size for AES-256
 KEY_SIZE = 32

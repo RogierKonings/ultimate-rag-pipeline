@@ -4,9 +4,9 @@ Evaluation API Endpoints.
 Provides REST API for managing evaluation datasets and runs.
 """
 
-import logging
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,7 @@ from .config import EvaluationConfig
 from .datasets import EvaluationSample
 from .persistence import EvaluationRepository
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/eval", tags=["evaluation"])
 

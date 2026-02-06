@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+# Internal crates
+rag-types = { path = "../rag-types", features = ["axum"] }
+
 # ML inference (ONNX-based embeddings)
 fastembed = "4"
 

@@ -16,14 +16,14 @@ Usage:
     results = await traced.query_points(query=[0.1, 0.2, ...], limit=10)
 """
 
-import logging
 from typing import Any
 
+import structlog
 from observability.otel.span_names import SpanNames
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Get tracer for this module
 tracer = trace.get_tracer(__name__)

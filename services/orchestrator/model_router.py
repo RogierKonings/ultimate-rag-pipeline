@@ -6,13 +6,13 @@ to reduce inference costs while maintaining quality.
 Reference: US-10.5.2 - LLM Model Tiering
 """
 
-import logging
 import os
 from enum import Enum
 
+import structlog
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _get_model_name(tier: str, default: str) -> str:

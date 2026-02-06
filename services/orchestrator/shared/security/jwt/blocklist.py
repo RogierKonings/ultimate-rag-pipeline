@@ -5,11 +5,11 @@ This module provides a Redis-backed implementation of the token blocklist
 for supporting logout and token revocation.
 """
 
-import logging
+import structlog
 
 from .handler import TokenBlocklist
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RedisTokenBlocklist(TokenBlocklist):

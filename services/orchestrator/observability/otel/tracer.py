@@ -8,10 +8,10 @@ Provides configuration and setup for distributed tracing with:
 - BatchSpanProcessor for efficient export
 """
 
-import logging
 import os
 from dataclasses import dataclass, field
 
+import structlog
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -25,7 +25,7 @@ from opentelemetry.sdk.trace.sampling import (
 )
 from opentelemetry.semconv.resource import ResourceAttributes
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Global state
 _tracer_provider: TracerProvider | None = None

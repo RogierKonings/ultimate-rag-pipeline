@@ -5,11 +5,11 @@ This module provides FastAPI dependency functions for enforcing
 permissions and roles in route handlers.
 """
 
-import logging
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
+import structlog
 from fastapi import HTTPException, Request
 
 from .permissions import Permission
@@ -21,7 +21,7 @@ from .service import (
     get_authorization_service,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _get_user_from_request(request: Request) -> Any:

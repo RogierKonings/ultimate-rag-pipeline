@@ -5,13 +5,14 @@ This module provides a client for interacting with HashiCorp Vault
 for secrets management, dynamic credentials, and encryption.
 """
 
-import logging
 from pathlib import Path
 from typing import Any
 
+import structlog
+
 from .config import VaultAuthMethod, VaultSettings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class VaultError(Exception):

@@ -8,16 +8,16 @@ Provides automatic HTTP request metrics collection with:
 - Active request gauge
 """
 
-import logging
 import time
 from collections.abc import Callable
 
+import structlog
 from fastapi import FastAPI, Request, Response
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Default paths to exclude from metrics
 DEFAULT_EXCLUDED_PATHS: set[str] = {

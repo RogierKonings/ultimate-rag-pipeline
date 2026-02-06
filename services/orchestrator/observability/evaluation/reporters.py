@@ -10,17 +10,17 @@ Provides various reporters for evaluation results:
 # ruff: noqa: S608  # SQL queries use table_prefix from config, not user input
 
 import json
-import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
+import structlog
 
 if TYPE_CHECKING:
     from .pipeline import EvaluationRun
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class BaseReporter(ABC):

@@ -4,11 +4,11 @@ This node fetches relevant documents from the retrieval service
 based on the query and routing strategy.
 """
 
-import logging
 import time
 from typing import TYPE_CHECKING
 
 import httpx
+import structlog
 from opentelemetry import trace
 
 from config import get_config
@@ -17,7 +17,7 @@ from orchestrator.observability.otel.span_names import SpanNames
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 

@@ -5,10 +5,11 @@ This module provides the main ACL service for managing document
 access permissions across the RAG pipeline.
 """
 
-import logging
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
+
+import structlog
 
 from .models import (
     ACLUpdateRequest,
@@ -18,7 +19,7 @@ from .models import (
     Visibility,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ACLError(Exception):

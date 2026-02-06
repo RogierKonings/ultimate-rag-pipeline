@@ -8,12 +8,12 @@ Provides Prometheus metrics for evaluation runs, including:
 - Sample counts
 """
 
-import logging
 from typing import Any
 
+import structlog
 from prometheus_client import Counter, Gauge, Histogram, Info
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

@@ -3,8 +3,6 @@
 //! This module provides Pydantic-equivalent Rust types for the HTTP API,
 //! including request validation, response serialization, and OpenAPI annotations.
 
-use std::collections::HashMap;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -580,138 +578,10 @@ impl RetrieveResponse {
     }
 }
 
-/// Full health check response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct HealthResponse {
-    /// Overall health status: "healthy", "degraded", or "unhealthy".
-    pub status: String,
-
-    /// Service version.
-    pub version: String,
-
-    /// Component health status (component name -> healthy).
-    pub components: HashMap<String, bool>,
-
-    /// Detailed component health information.
-    #[serde(default)]
-    pub component_details: Vec<ComponentHealth>,
-
-    /// Current degradation level.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub degradation_level: Option<String>,
-
-    /// Service capabilities based on component health.
-    #[serde(default)]
-    pub capabilities: HashMap<String, bool>,
-
-    /// When this health check was performed.
-    pub timestamp: DateTime<Utc>,
-}
-
-/// Detailed health information for a single component.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct ComponentHealth {
-    /// Component name.
-    pub name: String,
-
-    /// Whether the component is healthy.
-    pub healthy: bool,
-
-    /// Response latency in milliseconds.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub latency_ms: Option<f64>,
-
-    /// Error message if unhealthy.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-
-    /// Circuit breaker state.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub circuit_state: Option<String>,
-}
-
-impl HealthResponse {
-    /// Create a healthy response.
-    #[must_use]
-    pub fn healthy(version: impl Into<String>) -> Self {
-        Self {
-            status: "healthy".to_string(),
-            version: version.into(),
-            components: HashMap::new(),
-            component_details: Vec::new(),
-            degradation_level: None,
-            capabilities: HashMap::new(),
-            timestamp: Utc::now(),
-        }
-    }
-
-    /// Create a degraded response.
-    #[must_use]
-    pub fn degraded(version: impl Into<String>) -> Self {
-        Self {
-            status: "degraded".to_string(),
-            version: version.into(),
-            components: HashMap::new(),
-            component_details: Vec::new(),
-            degradation_level: None,
-            capabilities: HashMap::new(),
-            timestamp: Utc::now(),
-        }
-    }
-
-    /// Create an unhealthy response.
-    #[must_use]
-    pub fn unhealthy(version: impl Into<String>) -> Self {
-        Self {
-            status: "unhealthy".to_string(),
-            version: version.into(),
-            components: HashMap::new(),
-            component_details: Vec::new(),
-            degradation_level: None,
-            capabilities: HashMap::new(),
-            timestamp: Utc::now(),
-        }
-    }
-}
-
-/// Kubernetes liveness probe response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct LivenessResponse {
-    /// Status: "alive".
-    pub status: String,
-}
-
-impl Default for LivenessResponse {
-    fn default() -> Self {
-        Self {
-            status: "alive".to_string(),
-        }
-    }
-}
-
-/// Kubernetes readiness probe response.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct ReadinessResponse {
-    /// Status: "ready".
-    pub status: String,
-
-    /// Current degradation mode if service is degraded.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub degradation_mode: Option<String>,
-}
-
-impl Default for ReadinessResponse {
-    fn default() -> Self {
-        Self {
-            status: "ready".to_string(),
-            degradation_mode: None,
-        }
-    }
-}
+// Health types re-exported from rag-types for a canonical format across services.
+pub use rag_types::{
+    ComponentHealth, HealthResponse, LivenessResponse, ReadinessResponse,
+};
 
 /// Validation error for request parameters.
 #[derive(Debug, Clone, Serialize, Deserialize)]

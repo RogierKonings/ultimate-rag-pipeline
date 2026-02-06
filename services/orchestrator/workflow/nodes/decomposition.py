@@ -6,11 +6,11 @@ queries to enable parallel retrieval across sub-questions.
 """
 
 import json
-import logging
 import time
 from typing import TYPE_CHECKING
 
 import httpx
+import structlog
 from observability.business_metrics import record_decomposition, record_multi_hop_query
 from opentelemetry import trace
 
@@ -20,7 +20,7 @@ from orchestrator.observability.otel.span_names import SpanNames
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 

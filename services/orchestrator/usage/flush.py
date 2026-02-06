@@ -6,16 +6,16 @@ accumulated usage data from Redis to PostgreSQL for durable storage.
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-import logging
 from datetime import date
 from uuid import uuid4
 
 import redis.asyncio as redis
+import structlog
 from database.models.usage import TokenUsage
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class UsageFlusherConfig:

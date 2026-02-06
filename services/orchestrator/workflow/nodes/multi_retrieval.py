@@ -5,12 +5,12 @@ then aggregates and deduplicates the results.
 """
 
 import asyncio
-import logging
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import httpx
+import structlog
 from opentelemetry import trace
 
 from config import get_config
@@ -19,7 +19,7 @@ from orchestrator.observability.otel.span_names import SpanNames
 if TYPE_CHECKING:
     from workflow.state import RAGState
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 

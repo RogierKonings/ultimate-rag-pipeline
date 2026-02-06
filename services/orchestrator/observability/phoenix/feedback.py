@@ -4,16 +4,17 @@ Feedback Collection.
 Provides feedback collection and storage for LLM traces.
 """
 
-import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
 
+import structlog
+
 from .config import PhoenixConfig
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class FeedbackType(Enum):

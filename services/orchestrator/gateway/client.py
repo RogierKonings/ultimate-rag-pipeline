@@ -5,13 +5,13 @@ supporting multiple providers with retry logic, streaming, and health checks.
 """
 
 import asyncio
-import logging
 import random
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
+import structlog
 
 from config import OrchestratorConfig
 from orchestrator.observability.correlation import get_correlation_context
@@ -40,7 +40,7 @@ from .models import (
 )
 from .streaming import parse_sse_stream
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ModelGateway:

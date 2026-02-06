@@ -4,14 +4,15 @@ LLM Framework Callbacks.
 Provides callbacks for LangChain and LlamaIndex to integrate with Phoenix tracing.
 """
 
-import logging
 import time
 from typing import Any
 from uuid import uuid4
 
+import structlog
+
 from .tracer import LLMSpan, PhoenixTracer
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class LangChainCallback:

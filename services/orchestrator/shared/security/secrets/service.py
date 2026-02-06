@@ -5,17 +5,18 @@ This module provides a unified interface for secrets management
 across different backends (Environment, Vault, Kubernetes, File).
 """
 
-import logging
 import os
 import time
 from pathlib import Path
 from typing import Any
 
+import structlog
+
 from .config import SecretsBackend, SecretsSettings
 from .k8s_secrets import K8sSecretsClient
 from .vault import VaultClient, VaultError
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SecretsError(Exception):

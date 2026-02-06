@@ -6,17 +6,17 @@ to Redis counters and checking tenant quotas.
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
-import logging
 from datetime import UTC, date, datetime
 
 import redis.asyncio as redis
+import structlog
 from database.models.usage import TenantQuota, TokenUsage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from usage.metrics import llm_tokens_total, quota_checks_total
 from usage.quota import QuotaExceededError
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class UsageTrackerConfig:

@@ -147,22 +147,8 @@ impl EmbeddingResponse {
     }
 }
 
-/// Health check response.
-#[derive(Debug, Clone, Serialize)]
-pub struct HealthResponse {
-    /// Service status.
-    pub status: String,
-    /// Model identifier.
-    pub model: String,
-    /// Embedding dimensions (None if still loading).
-    pub dimension: Option<usize>,
-    /// Maximum batch size.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_batch_size: Option<usize>,
-    /// Additional message.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
-}
+// Health types re-exported from rag-types.
+pub use rag_types::{HealthResponse, LivenessResponse, ReadinessResponse};
 
 /// Model information for /v1/models endpoint.
 #[derive(Debug, Clone, Serialize)]

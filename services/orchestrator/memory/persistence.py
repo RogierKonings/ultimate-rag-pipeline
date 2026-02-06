@@ -1,15 +1,15 @@
 """PostgreSQL-backed conversation persistence for durable storage."""
 
 import json
-import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
 import asyncpg
+import structlog
 
 from .models import ConversationSession, Message, MessageRole
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PostgresConversationStore:

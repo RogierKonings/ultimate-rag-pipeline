@@ -1,6 +1,5 @@
 """OpenSearch backend for high-volume audit log storage."""
 
-import logging
 import os
 import ssl
 from datetime import UTC, datetime
@@ -8,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+import structlog
 from opensearchpy import OpenSearch
 
 from orchestrator.audit.backends.base import AuditBackend
@@ -20,7 +20,7 @@ from orchestrator.audit.models import (
     AuditStats,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class OpenSearchAuditBackend(AuditBackend):
