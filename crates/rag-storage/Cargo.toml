@@ -16,10 +16,10 @@ tokio.workspace = true
 tracing.workspace = true
 
 # AWS SDK for S3 (pinned for Rust 1.87 compatibility)
-aws-config = { version = "1.8", features = ["behavior-version-latest"] }
-aws-sdk-s3 = "1.122"
-aws-smithy-runtime-api = "1.11"
-aws-smithy-types = "1.4"
+aws-config = { version = "=1.8.8", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "=1.109.0"
+aws-smithy-runtime-api = "=1.9.1"
+aws-smithy-types = "=1.3.3"
 
 # Async streams
 futures = "0.3"

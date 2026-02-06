@@ -23,7 +23,7 @@ serde_yaml = "0.9"
 pdf-extract = "0.10"
 # DOCX parsing (Office Open XML)
 quick-xml = "0.39"
-zip = "2.6"
+zip = "2.4"
 
 # Tokenization
 tiktoken-rs = "0.9"
@@ -47,8 +47,8 @@ tokio = { workspace = true, features = ["fs"] }
 reqwest = { workspace = true }
 
 # AWS S3
-aws-sdk-s3 = "1.122"
-aws-config = { version = "1.8", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "=1.109.0"
+aws-config = { version = "=1.8.8", features = ["behavior-version-latest"] }
 
 # Utilities
 uuid = { workspace = true }
