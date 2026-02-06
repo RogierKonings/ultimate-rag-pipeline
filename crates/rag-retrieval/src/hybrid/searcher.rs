@@ -45,7 +45,7 @@ use super::response::{HybridSearchResponse, HybridSearchResult};
 ///
 ///     // Execute search
 ///     let embedding = vec![0.1; 384];
-///     let response = hybrid.search("my query", &embedding, Some(10), None).await?;
+///     let response = hybrid.search("my query", &embedding, Some(10), None, None).await?;
 ///
 ///     Ok(())
 /// }
@@ -99,6 +99,7 @@ impl HybridSearcher {
         query_embedding: &[f32],
         top_k: Option<usize>,
         filters: Option<&UnifiedFilter>,
+        user_context: Option<&crate::types::UserContext>,
     ) -> Result<HybridSearchResponse> {
         let start_time = Instant::now();
         let final_top_k = top_k.unwrap_or(self.config.top_k);
@@ -107,8 +108,9 @@ impl HybridSearcher {
         let semantic_filters = filters.map(|f| convert_to_semantic_filters(f));
         let keyword_filters = filters.map(|f| convert_to_keyword_filters(f));
 
-        // Create admin user contexts for searching (real ACL is handled by filters)
-        let admin_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        // Use provided user context, or fall back to admin context
+        let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        let ctx = user_context.unwrap_or(&default_ctx);
 
         // Run both searches in parallel
         let semantic_start = Instant::now();
@@ -117,13 +119,13 @@ impl HybridSearcher {
         let (semantic_result, keyword_result) = tokio::join!(
             self.semantic.search(
                 query_embedding,
-                &admin_ctx,
+                ctx,
                 semantic_filters,
                 Some(self.config.semantic_top_k),
             ),
             self.keyword.search(
                 query,
-                &admin_ctx,
+                ctx,
                 keyword_filters,
                 Some(self.config.keyword_top_k),
             ),
@@ -302,16 +304,18 @@ impl HybridSearcher {
         query_embedding: &[f32],
         top_k: usize,
         filters: Option<&UnifiedFilter>,
+        user_context: Option<&crate::types::UserContext>,
     ) -> Result<HybridSearchResponse> {
         let start_time = Instant::now();
 
         let semantic_filters = filters.map(|f| convert_to_semantic_filters(f));
-        let admin_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        let ctx = user_context.unwrap_or(&default_ctx);
 
         let results = self.semantic
             .search(
                 query_embedding,
-                &admin_ctx,
+                ctx,
                 semantic_filters,
                 Some(top_k),
             )
@@ -374,16 +378,18 @@ impl HybridSearcher {
         query: &str,
         top_k: usize,
         filters: Option<&UnifiedFilter>,
+        user_context: Option<&crate::types::UserContext>,
     ) -> Result<HybridSearchResponse> {
         let start_time = Instant::now();
 
         let keyword_filters = filters.map(|f| convert_to_keyword_filters(f));
-        let admin_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
+        let ctx = user_context.unwrap_or(&default_ctx);
 
         let results = self.keyword
             .search(
                 query,
-                &admin_ctx,
+                ctx,
                 keyword_filters,
                 Some(top_k),
             )

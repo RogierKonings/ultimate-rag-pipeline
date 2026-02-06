@@ -161,12 +161,22 @@ impl IndexCoordinator {
         let payloads: Vec<Value> = chunks
             .iter()
             .map(|c| {
+                // Extract visibility and allowed_groups from metadata, default to public/empty
+                let visibility = c.metadata.get("visibility")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("public");
+                let allowed_groups = c.metadata.get("allowed_groups")
+                    .cloned()
+                    .unwrap_or_else(|| json!([]));
+
                 let mut payload = json!({
                     "chunk_id": c.chunk_id.to_string(),
                     "document_id": c.document_id.to_string(),
                     "tenant_id": c.tenant_id.to_string(),
                     "chunk_index": c.chunk_index,
                     "content": c.content,
+                    "visibility": visibility,
+                    "allowed_groups": allowed_groups,
                 });
 
                 // Merge additional metadata

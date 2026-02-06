@@ -168,19 +168,21 @@ impl QueryBuilder {
     }
 
     /// Add tenant filter.
+    /// Uses `.keyword` subfield for exact matching on dynamically-mapped text fields.
     #[must_use]
     pub fn with_tenant(self, tenant_id: &str) -> Self {
-        self.term_filter("tenant_id", tenant_id)
+        self.term_filter("tenant_id.keyword", tenant_id)
     }
 
     /// Add ACL filter for allowed groups.
+    /// Uses `.keyword` subfield for exact matching on dynamically-mapped text fields.
     #[must_use]
     pub fn with_acl(self, groups: Vec<String>) -> Self {
         if groups.is_empty() {
             self
         } else {
             let values: Vec<Value> = groups.into_iter().map(Value::String).collect();
-            self.terms_filter("allowed_groups", values)
+            self.terms_filter("allowed_groups.keyword", values)
         }
     }
 

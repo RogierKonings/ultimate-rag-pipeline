@@ -632,6 +632,7 @@ impl SearchPipeline {
                         &embedding,
                         Some(search_top_k),
                         options.additional_filters.as_ref(),
+                        None,
                     )
                     .await?
             }
@@ -641,6 +642,7 @@ impl SearchPipeline {
                         &embedding,
                         search_top_k,
                         options.additional_filters.as_ref(),
+                        None,
                     )
                     .await?
             }
@@ -650,6 +652,7 @@ impl SearchPipeline {
                         &processed_query,
                         search_top_k,
                         options.additional_filters.as_ref(),
+                        None,
                     )
                     .await?
             }

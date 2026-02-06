@@ -74,9 +74,10 @@ impl BM25Request {
     }
 
     /// Add a tenant filter.
+    /// Uses `.keyword` subfield for exact matching on dynamically-mapped text fields.
     #[must_use]
     pub fn with_tenant(self, tenant_id: impl Into<String>) -> Self {
-        self.with_filter("tenant_id", tenant_id.into())
+        self.with_filter("tenant_id.keyword", tenant_id.into())
     }
 
     /// Enable highlighting.
@@ -211,7 +212,7 @@ mod tests {
         assert_eq!(request.fields.len(), 2);
         assert_eq!(request.limit, 20);
         assert!(request.highlight);
-        assert!(request.filters.contains_key("tenant_id"));
+        assert!(request.filters.contains_key("tenant_id.keyword"));
     }
 
     #[test]

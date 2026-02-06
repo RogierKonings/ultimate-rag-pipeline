@@ -38,7 +38,7 @@
 //!     let embedding = vec![0.1; 384];
 //!
 //!     let response = hybrid
-//!         .search("my query", &embedding, Some(10), None)
+//!         .search("my query", &embedding, Some(10), None, None)
 //!         .await?;
 //!
 //!     println!("Found {} results in {}ms",

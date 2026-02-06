@@ -140,7 +140,7 @@ services:
     environment:
       - RUST_LOG=info,rag_ingestion=debug
       - DATABASE_URL=postgres://raguser:ragpass@postgres:5432/ragpipeline
-      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_URL=http://qdrant:6334
       - OPENSEARCH_URL=http://opensearch:9200
       - REDIS_URL=redis://:ragredis@redis:6379
       - EMBEDDING_SERVICE_URL=http://embedding-service:8080

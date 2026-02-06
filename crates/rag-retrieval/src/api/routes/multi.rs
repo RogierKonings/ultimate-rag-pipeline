@@ -160,7 +160,7 @@ async fn execute_single_query(
     // Execute hybrid search
     let result = state
         .hybrid
-        .search(query, &embedding, Some(top_k), None)
+        .search(query, &embedding, Some(top_k), None, None)
         .await
         .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
 

@@ -513,6 +513,6 @@ mod tests {
         assert_eq!(request.query, "test query");
         assert_eq!(request.limit, 20);
         assert!(request.highlight);
-        assert!(request.filters.contains_key("tenant_id"));
+        assert!(request.filters.contains_key("tenant_id.keyword"));
     }
 }

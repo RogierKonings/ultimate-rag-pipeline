@@ -6,7 +6,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::{extract::State, Json};
+use axum::{
+    extract::State,
+    http::HeaderMap,
+    Json,
+};
 use chrono::Utc;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
@@ -38,9 +42,10 @@ use crate::types::{RetrievalResult, SearchMode, UserContext};
 /// - `results`: List of retrieved documents with scores
 /// - `metrics`: Timing and count metrics
 /// - `query_id`: Unique identifier for this query
-#[instrument(skip(state, request), fields(query_len = request.query.len()))]
+#[instrument(skip(state, headers, request), fields(query_len = request.query.len()))]
 pub async fn retrieve(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(request): Json<RetrieveRequest>,
 ) -> ApiResult<Json<RetrieveResponse>> {
     let start_time = Instant::now();
@@ -57,9 +62,20 @@ pub async fn retrieve(
         "Processing retrieve request"
     );
 
-    // Create a default user context for now
-    // In production, this would be extracted from JWT/session
-    let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4());
+    // Extract tenant_id from X-Tenant-Id header or filters.tenant_id
+    let tenant_id = headers
+        .get("X-Tenant-Id")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .or_else(|| {
+            request.filters.as_ref()
+                .and_then(|f| f.get("tenant_id"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok())
+        })
+        .unwrap_or_else(Uuid::nil);
+
+    let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
 
     // Execute the search
     let (results, metrics, debug_info) = execute_search(&state, &request, &user_context).await?;
@@ -138,7 +154,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search(&request.query, &embedding, Some(search_top_k), None)
+                .search(&request.query, &embedding, Some(search_top_k), None, Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
 
@@ -173,7 +189,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_semantic_only(&embedding, search_top_k, None)
+                .search_semantic_only(&embedding, search_top_k, None, Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Semantic search error: {e}")))?;
 
@@ -188,7 +204,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_keyword_only(&request.query, search_top_k, None)
+                .search_keyword_only(&request.query, search_top_k, None, Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Keyword search error: {e}")))?;
 
