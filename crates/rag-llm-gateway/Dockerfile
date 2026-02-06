@@ -2,7 +2,7 @@
 # Multi-stage build for minimal production image
 
 # ============ Build Stage ============
-FROM rust:1.75-bookworm AS builder
+FROM rust:1.93-bookworm AS builder
 
 WORKDIR /app
 
@@ -16,8 +16,20 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY rag-types ./rag-types
 COPY rag-config ./rag-config
-COPY rag-embedding ./rag-embedding
+COPY rag-cache ./rag-cache
+COPY rag-auth ./rag-auth
 COPY rag-telemetry ./rag-telemetry
+COPY rag-search ./rag-search
+COPY rag-vectorstore ./rag-vectorstore
+COPY rag-database ./rag-database
+COPY rag-storage ./rag-storage
+COPY rag-retrieval ./rag-retrieval
+COPY rag-ingestion ./rag-ingestion
+COPY rag-video ./rag-video
+COPY rag-embedding ./rag-embedding
+COPY rag-tenant ./rag-tenant
+COPY rag-secrets ./rag-secrets
+COPY rag-encryption ./rag-encryption
 COPY rag-llm-gateway ./rag-llm-gateway
 
 # Build release binary

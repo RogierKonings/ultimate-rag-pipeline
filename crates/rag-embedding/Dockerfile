@@ -2,7 +2,7 @@
 # Build context: ./crates (the Rust workspace root)
 
 # ============ Builder Stage ============
-FROM rust:1.87-slim-bookworm AS builder
+FROM rust:1.93-slim-bookworm AS builder
 
 WORKDIR /app
 
