@@ -26,6 +26,7 @@
 
 use std::time::{Duration, Instant};
 
+use rag_config::build_http_client_with_timeout;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, warn};
@@ -401,10 +402,8 @@ impl HydeGenerator {
     pub fn new(config: HydeConfig) -> Result<Self> {
         config.validate()?;
 
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()
-            .map_err(|e| RetrievalError::config(format!("Failed to create HTTP client: {e}")))?;
+        let client = build_http_client_with_timeout(config.timeout())
+            .map_err(|e| RetrievalError::config(e))?;
 
         Ok(Self { client, config })
     }

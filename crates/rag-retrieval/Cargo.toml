@@ -35,7 +35,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { workspace = true }
 
 # HTTP client for embedding service
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+reqwest = { workspace = true }
 
 # API framework
 axum = "0.7"

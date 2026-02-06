@@ -1,6 +1,7 @@
 //! vLLM service client.
 
 use futures_util::StreamExt;
+use rag_config::build_http_client_with_timeout;
 use reqwest::{Client, StatusCode};
 use tracing::{debug, error, instrument};
 
@@ -20,10 +21,8 @@ pub struct VllmClient {
 impl VllmClient {
     /// Create a new vLLM client.
     pub fn new(config: VllmConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()
-            .map_err(|e| GatewayError::Internal(format!("Failed to create HTTP client: {e}")))?;
+        let client = build_http_client_with_timeout(config.timeout())
+            .map_err(GatewayError::Internal)?;
 
         Ok(Self { client, config })
     }

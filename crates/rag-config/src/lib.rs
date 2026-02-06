@@ -13,13 +13,17 @@
 //! ```
 
 mod common;
+pub mod http;
 mod ingestion;
 mod retrieval;
+pub mod retry;
 mod timeouts;
 
 pub use common::{DatabaseConfig, LogLevel, ServiceConfig};
+pub use http::{build_http_client, build_http_client_with_timeout, HttpClientConfig};
 pub use ingestion::IngestionConfig;
 pub use retrieval::RetrievalConfig;
+pub use retry::RetryPolicy;
 pub use timeouts::TimeoutConfig;
 
 use config::{Config, ConfigError, Environment};

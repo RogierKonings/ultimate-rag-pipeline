@@ -9,6 +9,7 @@ description = "Document parsing, chunking, embedding, and indexing for RAG pipel
 [dependencies]
 # Internal crates
 rag-types = { path = "../rag-types" }
+rag-config = { path = "../rag-config" }
 rag-vectorstore = { path = "../rag-vectorstore" }
 rag-search = { path = "../rag-search" }
 rag-database = { path = "../rag-database" }
@@ -43,7 +44,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["fs"] }
 
 # HTTP client
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true }
 
 # AWS S3
 aws-sdk-s3 = "1.65"

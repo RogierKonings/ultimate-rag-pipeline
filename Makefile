@@ -153,7 +153,7 @@ status:
 health:
 	@echo "Checking service health..."
 	@echo ""
-	@echo "Qdrant:     $$(curl -s http://localhost:6333/healthz 2>/dev/null || echo 'not running')"
+	@echo "Qdrant:     $$(curl -s http://localhost:6333/healthz 2>/dev/null || echo 'not running')"  # REST API on 6333; Rust services use gRPC on 6334
 	@echo "OpenSearch: $$(curl -s http://localhost:9200/_cluster/health 2>/dev/null | grep -o '"status":"[^"]*"' || echo 'not running')"
 	@echo "MinIO:      $$(curl -s http://localhost:9000/minio/health/live 2>/dev/null || echo 'not running')"
 	@echo "Redis:      $$(redis-cli -a ragredis ping 2>/dev/null || echo 'not running')"

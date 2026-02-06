@@ -16,6 +16,10 @@ dotenvy = { workspace = true }
 validator = { workspace = true }
 tracing = { workspace = true }
 
+# HTTP client (shared builder)
+reqwest = { workspace = true }
+tokio = { workspace = true }
+
 # URL parsing
 url = { version = "2.5", features = ["serde"] }
 

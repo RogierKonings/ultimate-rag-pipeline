@@ -3,11 +3,12 @@
 //! This module provides an async HTTP client that communicates with
 //! the LLM Gateway's rerank endpoint to perform cross-encoder reranking.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
+use rag_config::build_http_client_with_timeout;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use super::RerankerConfig;
@@ -123,10 +124,8 @@ impl RerankerClient {
     ///
     /// Returns an error if the HTTP client cannot be created.
     pub fn new(config: RerankerConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()
-            .map_err(|e| RetrievalError::config(format!("Failed to create HTTP client: {e}")))?;
+        let client = build_http_client_with_timeout(config.timeout())
+            .map_err(|e| RetrievalError::config(e))?;
 
         Ok(Self { client, config })
     }
@@ -308,35 +307,26 @@ impl RerankerClient {
         documents: &[String],
         return_documents: bool,
     ) -> Result<Vec<f32>> {
-        let mut last_error = None;
-        let mut attempt = 0;
+        let retry_policy = rag_config::RetryPolicy::new(
+            self.config.max_retries,
+            self.config.retry_min_wait_ms,
+            self.config.retry_max_wait_ms,
+        );
+        let doc_count = documents.len();
 
-        while attempt <= self.config.max_retries {
-            match self.make_request(query, documents, return_documents).await {
-                Ok(response) => {
-                    return self.process_response(response, documents.len());
-                }
-                Err(e) => {
-                    last_error = Some(e);
-                    attempt += 1;
-
-                    if attempt <= self.config.max_retries {
-                        let backoff = self.calculate_backoff(attempt);
-                        warn!(
-                            attempt,
-                            max_retries = self.config.max_retries,
-                            backoff_ms = backoff.as_millis(),
-                            "Rerank request failed, retrying"
-                        );
-                        tokio::time::sleep(backoff).await;
-                    }
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| {
-            RetrievalError::reranking("Rerank request failed with no error")
-        }))
+        retry_policy
+            .execute(
+                || async {
+                    let response = self.make_request(query, documents, return_documents).await?;
+                    self.process_response(response, doc_count)
+                },
+                |e: &RetrievalError| {
+                    let msg = e.to_string();
+                    msg.contains("timed out") || msg.contains("connect") || msg.contains("500")
+                        || msg.contains("502") || msg.contains("503") || msg.contains("504")
+                },
+            )
+            .await
     }
 
     /// Make a single rerank request.
@@ -418,36 +408,6 @@ impl RerankerClient {
         }
 
         Ok(scores)
-    }
-
-    /// Calculate exponential backoff with jitter.
-    ///
-    /// Uses the formula: `min(base_ms * 2^attempt, max_ms)` with +/- 25% jitter
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_possible_wrap
-    )]
-    fn calculate_backoff(&self, attempt: u32) -> Duration {
-        let base_backoff =
-            self.config.retry_min_wait_ms.saturating_mul(1 << attempt.min(10));
-        let capped_backoff = base_backoff.min(self.config.retry_max_wait_ms);
-
-        // Add +/- 25% jitter
-        let jitter_range = capped_backoff / 4;
-        let jitter = if jitter_range > 0 {
-            // Simple pseudo-random jitter based on attempt and time
-            let seed = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map_or(0, |d| d.as_nanos() as u64);
-            (seed % (jitter_range * 2)) as i64 - jitter_range as i64
-        } else {
-            0
-        };
-
-        let final_ms =
-            (capped_backoff as i64 + jitter).max(self.config.retry_min_wait_ms as i64) as u64;
-        Duration::from_millis(final_ms)
     }
 
     /// Check if the reranker service is healthy.
@@ -560,25 +520,22 @@ mod tests {
     }
 
     #[test]
-    fn test_backoff_calculation() {
-        let config = RerankerConfig::new()
-            .with_retry_min_wait_ms(100)
-            .with_retry_max_wait_ms(5000);
-        let client = RerankerClient::new(config).unwrap();
+    fn test_backoff_from_retry_policy() {
+        let policy = rag_config::RetryPolicy::new(5, 100, 5000);
 
-        // First retry: ~200ms (100 * 2^1)
-        let backoff1 = client.calculate_backoff(1);
-        assert!(backoff1.as_millis() >= 100);
-        assert!(backoff1.as_millis() <= 300);
+        // First retry: ~100ms base
+        let b0 = policy.backoff_duration(0);
+        assert!(b0.as_millis() >= 75);
+        assert!(b0.as_millis() <= 125);
 
-        // Second retry: ~400ms (100 * 2^2)
-        let backoff2 = client.calculate_backoff(2);
-        assert!(backoff2.as_millis() >= 200);
-        assert!(backoff2.as_millis() <= 600);
+        // Second retry: ~200ms (100 * 2^1)
+        let b1 = policy.backoff_duration(1);
+        assert!(b1.as_millis() >= 150);
+        assert!(b1.as_millis() <= 250);
 
         // Should cap at max_wait_ms
-        let backoff_high = client.calculate_backoff(20);
-        assert!(backoff_high.as_millis() <= 6250); // MAX_MS + 25% jitter
+        let b_high = policy.backoff_duration(20);
+        assert!(b_high.as_millis() <= 6250); // max_ms + 25% jitter
     }
 
     #[test]

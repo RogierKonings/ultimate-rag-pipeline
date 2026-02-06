@@ -16,7 +16,7 @@ rag-ingestion = { path = "../rag-ingestion" }
 tokio = { workspace = true, features = ["fs", "process"] }
 
 # HTTP client
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true }
 
 # Qdrant (pinned to match rag-vectorstore for API compatibility)
 qdrant-client = "=1.7.0"

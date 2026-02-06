@@ -5,10 +5,10 @@
 
 use super::config::EmbeddingClientConfig;
 use crate::error::{Error, Result};
+use rag_config::{build_http_client_with_timeout, RetryPolicy};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tracing::{debug, instrument, warn};
+use tracing::instrument;
 
 /// Response from the embedding service.
 #[derive(Debug, Deserialize)]
@@ -53,10 +53,8 @@ impl EmbeddingClient {
     ///
     /// Returns an error if the HTTP client fails to build.
     pub fn new(config: EmbeddingClientConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()
-            .map_err(|e| Error::Embedding(format!("Failed to build HTTP client: {e}")))?;
+        let client = build_http_client_with_timeout(config.timeout())
+            .map_err(Error::Embedding)?;
 
         Ok(Self { client, config })
     }
@@ -78,48 +76,18 @@ impl EmbeddingClient {
             return Ok((vec![], 0));
         }
 
-        let mut last_error = None;
-        let mut delay = self.config.retry_delay();
+        let retry_policy = RetryPolicy::new(
+            self.config.max_retries,
+            self.config.retry_delay().as_millis() as u64,
+            30_000,
+        );
 
-        for attempt in 0..=self.config.max_retries {
-            if attempt > 0 {
-                debug!(attempt, "Retrying embedding request");
-                tokio::time::sleep(delay).await;
-
-                // Exponential backoff with jitter
-                delay = std::cmp::min(delay * 2, Duration::from_secs(30));
-
-                // Add jitter (+-25%) using system time nanoseconds as pseudo-random source
-                let nanos = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .subsec_nanos();
-                // Map nanos to range -0.25 to 0.25
-                let jitter = (f64::from(nanos % 1000) / 1000.0 - 0.5) * 0.5;
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    clippy::cast_precision_loss
-                )]
-                let new_millis = (delay.as_millis() as f64 * (1.0 + jitter)) as u64;
-                delay = Duration::from_millis(new_millis);
-            }
-
-            match self.send_request(texts).await {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    // Only retry on 5xx or connection errors
-                    if Self::is_retryable(&e) && attempt < self.config.max_retries {
-                        warn!(attempt, error = %e, "Embedding request failed, will retry");
-                        last_error = Some(e);
-                    } else {
-                        return Err(e);
-                    }
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| Error::Embedding("Unknown error".to_string())))
+        retry_policy
+            .execute(
+                || self.send_request(texts),
+                |e: &Error| Self::is_retryable(e),
+            )
+            .await
     }
 
     /// Send the actual HTTP request to the embedding service.

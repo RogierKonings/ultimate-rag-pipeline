@@ -23,6 +23,7 @@
 ### Task 1: Install Moon and Initialize Workspace
 
 **Files:**
+
 - Create: `.moon/workspace.yml`
 - Create: `.moon/toolchain.yml`
 - Create: `.prototools`
@@ -30,6 +31,7 @@
 **Step 1: Install proto (Moon's toolchain manager)**
 
 Run:
+
 ```bash
 curl -fsSL https://moonrepo.dev/install/proto.sh | bash
 ```
@@ -39,6 +41,7 @@ Expected: proto installed to `~/.proto/bin`
 **Step 2: Add proto to shell and verify**
 
 Run:
+
 ```bash
 export PATH="$HOME/.proto/bin:$PATH"
 proto --version
@@ -49,6 +52,7 @@ Expected: Version output like `proto 0.x.x`
 **Step 3: Install Moon via proto**
 
 Run:
+
 ```bash
 proto install moon
 moon --version
@@ -72,57 +76,57 @@ python = "3.11.11"
 # Moon workspace configuration
 # https://moonrepo.dev/docs/config/workspace
 
-$schema: 'https://moonrepo.dev/schemas/workspace.json'
+$schema: "https://moonrepo.dev/schemas/workspace.json"
 
 # Projects are auto-discovered via globs
 projects:
   # Rust crates - core libraries
-  rag-types: 'crates/rag-types'
-  rag-config: 'crates/rag-config'
-  rag-cache: 'crates/rag-cache'
-  rag-auth: 'crates/rag-auth'
-  rag-telemetry: 'crates/rag-telemetry'
-  rag-search: 'crates/rag-search'
-  rag-database: 'crates/rag-database'
-  rag-storage: 'crates/rag-storage'
-  rag-vectorstore: 'crates/rag-vectorstore'
+  rag-types: "crates/rag-types"
+  rag-config: "crates/rag-config"
+  rag-cache: "crates/rag-cache"
+  rag-auth: "crates/rag-auth"
+  rag-telemetry: "crates/rag-telemetry"
+  rag-search: "crates/rag-search"
+  rag-database: "crates/rag-database"
+  rag-storage: "crates/rag-storage"
+  rag-vectorstore: "crates/rag-vectorstore"
 
   # Rust crates - services
-  rag-retrieval: 'crates/rag-retrieval'
-  rag-ingestion: 'crates/rag-ingestion'
-  rag-video: 'crates/rag-video'
-  rag-embedding: 'crates/rag-embedding'
-  rag-llm-gateway: 'crates/rag-llm-gateway'
+  rag-retrieval: "crates/rag-retrieval"
+  rag-ingestion: "crates/rag-ingestion"
+  rag-video: "crates/rag-video"
+  rag-embedding: "crates/rag-embedding"
+  rag-llm-gateway: "crates/rag-llm-gateway"
 
   # Rust crates - security/tenant
-  rag-encryption: 'crates/rag-encryption'
-  rag-tenant: 'crates/rag-tenant'
-  rag-secrets: 'crates/rag-secrets'
+  rag-encryption: "crates/rag-encryption"
+  rag-tenant: "crates/rag-tenant"
+  rag-secrets: "crates/rag-secrets"
 
   # Python services (orchestrator only - ingestion/embedding are now Rust)
-  orchestrator-service: 'services/orchestrator'
+  orchestrator-service: "services/orchestrator"
 
   # Frontend
-  frontend: 'frontend'
+  frontend: "frontend"
 
   # Shared schemas (for type generation)
-  schemas: 'schemas'
+  schemas: "schemas"
 
 # Version control settings
 vcs:
-  manager: 'git'
-  defaultBranch: 'main'
+  manager: "git"
+  defaultBranch: "main"
 
 # Caching configuration
 hasher:
-  optimization: 'performance'
+  optimization: "performance"
 
 # Telemetry (optional, can disable)
 telemetry: false
 
 # Extensions for additional functionality
 extensions:
-  rust: 'https://moonrepo.dev/extensions/rust'
+  rust: "https://moonrepo.dev/extensions/rust"
 ```
 
 **Step 6: Create `.moon/toolchain.yml`**
@@ -131,30 +135,31 @@ extensions:
 # Moon toolchain configuration
 # https://moonrepo.dev/docs/config/toolchain
 
-$schema: 'https://moonrepo.dev/schemas/toolchain.json'
+$schema: "https://moonrepo.dev/schemas/toolchain.json"
 
 # Node.js for frontend
 node:
-  version: '22.11.0'
-  packageManager: 'pnpm'
+  version: "22.11.0"
+  packageManager: "pnpm"
   pnpm:
-    version: '9.15.0'
+    version: "9.15.0"
 
 # Python for services (using system python, managed by uv)
 # Moon doesn't have native Python support yet, we use system tasks
 
 # Rust configuration
 rust:
-  version: '1.75.0'
+  version: "1.75.0"
   syncToolchainConfig: true
   components:
-    - 'clippy'
-    - 'rustfmt'
+    - "clippy"
+    - "rustfmt"
 ```
 
 **Step 7: Run moon setup to verify configuration**
 
 Run:
+
 ```bash
 moon setup
 ```
@@ -164,6 +169,7 @@ Expected: Moon downloads/verifies toolchain versions, no errors
 **Step 8: Commit initial Moon configuration**
 
 Run:
+
 ```bash
 git add .moon/ .prototools
 git commit -m "chore: initialize Moon monorepo workspace
@@ -180,6 +186,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 2: Configure Rust Projects
 
 **Files:**
+
 - Create: `crates/rag-types/moon.yml`
 - Create: `crates/rag-config/moon.yml`
 - Create: `crates/rag-cache/moon.yml`
@@ -201,65 +208,66 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 **Step 1: Create base Rust project template**
 
 Create `crates/rag-types/moon.yml`:
+
 ```yaml
 # Moon project configuration for rag-types
 # https://moonrepo.dev/docs/config/project
 
-$schema: 'https://moonrepo.dev/schemas/project.json'
+$schema: "https://moonrepo.dev/schemas/project.json"
 
-language: 'rust'
-type: 'library'
+language: "rust"
+type: "library"
 
 # Project metadata
 project:
-  name: 'rag-types'
-  description: 'Core type definitions for RAG pipeline'
+  name: "rag-types"
+  description: "Core type definitions for RAG pipeline"
 
 # File groups for dependency tracking
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 # Tasks
 tasks:
   build:
-    command: 'cargo build -p rag-types'
+    command: "cargo build -p rag-types"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     outputs:
-      - '../target/debug/librag_types.rlib'
+      - "../target/debug/librag_types.rlib"
 
   check:
-    command: 'cargo check -p rag-types'
+    command: "cargo check -p rag-types"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-types'
+    command: "cargo test -p rag-types"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-types -- -D warnings'
+    command: "cargo clippy -p rag-types -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-types'
+    command: "cargo fmt -p rag-types"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-types -- --check'
+    command: "cargo fmt -p rag-types -- --check"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 ```
 
 **Step 2: Create moon.yml for each Rust crate**
@@ -267,871 +275,889 @@ tasks:
 Create the following files with similar structure, adjusting `name`, `description`, and `deps` as needed:
 
 `crates/rag-config/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-config'
-  description: 'Configuration management for RAG pipeline'
+  name: "rag-config"
+  description: "Configuration management for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-config'
+    command: "cargo build -p rag-config"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
+      - "rag-types:build"
 
   check:
-    command: 'cargo check -p rag-config'
+    command: "cargo check -p rag-config"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-config'
+    command: "cargo test -p rag-config"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-config -- -D warnings'
+    command: "cargo clippy -p rag-config -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-config'
+    command: "cargo fmt -p rag-config"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-config -- --check'
+    command: "cargo fmt -p rag-config -- --check"
 ```
 
 `crates/rag-cache/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-cache'
-  description: 'Caching layer for RAG pipeline'
+  name: "rag-cache"
+  description: "Caching layer for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-cache'
+    command: "cargo build -p rag-cache"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
+      - "rag-types:build"
+      - "rag-config:build"
 
   check:
-    command: 'cargo check -p rag-cache'
+    command: "cargo check -p rag-cache"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-cache'
+    command: "cargo test -p rag-cache"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-cache -- -D warnings'
+    command: "cargo clippy -p rag-cache -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-cache'
+    command: "cargo fmt -p rag-cache"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-cache -- --check'
+    command: "cargo fmt -p rag-cache -- --check"
 ```
 
 `crates/rag-auth/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-auth'
-  description: 'Authentication and authorization for RAG pipeline'
+  name: "rag-auth"
+  description: "Authentication and authorization for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-auth'
+    command: "cargo build -p rag-auth"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
+      - "rag-types:build"
+      - "rag-config:build"
 
   check:
-    command: 'cargo check -p rag-auth'
+    command: "cargo check -p rag-auth"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-auth'
+    command: "cargo test -p rag-auth"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-auth -- -D warnings'
+    command: "cargo clippy -p rag-auth -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-auth'
+    command: "cargo fmt -p rag-auth"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-auth -- --check'
+    command: "cargo fmt -p rag-auth -- --check"
 ```
 
 `crates/rag-telemetry/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-telemetry'
-  description: 'Observability and telemetry for RAG pipeline'
+  name: "rag-telemetry"
+  description: "Observability and telemetry for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-telemetry'
+    command: "cargo build -p rag-telemetry"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
+      - "rag-types:build"
+      - "rag-config:build"
 
   check:
-    command: 'cargo check -p rag-telemetry'
+    command: "cargo check -p rag-telemetry"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-telemetry'
+    command: "cargo test -p rag-telemetry"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-telemetry -- -D warnings'
+    command: "cargo clippy -p rag-telemetry -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-telemetry'
+    command: "cargo fmt -p rag-telemetry"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-telemetry -- --check'
+    command: "cargo fmt -p rag-telemetry -- --check"
 ```
 
 `crates/rag-search/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-search'
-  description: 'OpenSearch integration for RAG pipeline'
+  name: "rag-search"
+  description: "OpenSearch integration for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-search'
+    command: "cargo build -p rag-search"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
 
   check:
-    command: 'cargo check -p rag-search'
+    command: "cargo check -p rag-search"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-search'
+    command: "cargo test -p rag-search"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-search -- -D warnings'
+    command: "cargo clippy -p rag-search -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-search'
+    command: "cargo fmt -p rag-search"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-search -- --check'
+    command: "cargo fmt -p rag-search -- --check"
 ```
 
 `crates/rag-database/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-database'
-  description: 'PostgreSQL database layer for RAG pipeline'
+  name: "rag-database"
+  description: "PostgreSQL database layer for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-database'
+    command: "cargo build -p rag-database"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
 
   check:
-    command: 'cargo check -p rag-database'
+    command: "cargo check -p rag-database"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-database'
+    command: "cargo test -p rag-database"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-database -- -D warnings'
+    command: "cargo clippy -p rag-database -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-database'
+    command: "cargo fmt -p rag-database"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-database -- --check'
+    command: "cargo fmt -p rag-database -- --check"
 ```
 
 `crates/rag-storage/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-storage'
-  description: 'MinIO/S3 storage layer for RAG pipeline'
+  name: "rag-storage"
+  description: "MinIO/S3 storage layer for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-storage'
+    command: "cargo build -p rag-storage"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
 
   check:
-    command: 'cargo check -p rag-storage'
+    command: "cargo check -p rag-storage"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-storage'
+    command: "cargo test -p rag-storage"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-storage -- -D warnings'
+    command: "cargo clippy -p rag-storage -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-storage'
+    command: "cargo fmt -p rag-storage"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-storage -- --check'
+    command: "cargo fmt -p rag-storage -- --check"
 ```
 
 `crates/rag-vectorstore/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-vectorstore'
-  description: 'Qdrant vector store integration for RAG pipeline'
+  name: "rag-vectorstore"
+  description: "Qdrant vector store integration for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-vectorstore'
+    command: "cargo build -p rag-vectorstore"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
 
   check:
-    command: 'cargo check -p rag-vectorstore'
+    command: "cargo check -p rag-vectorstore"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-vectorstore'
+    command: "cargo test -p rag-vectorstore"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-vectorstore -- -D warnings'
+    command: "cargo clippy -p rag-vectorstore -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-vectorstore'
+    command: "cargo fmt -p rag-vectorstore"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-vectorstore -- --check'
+    command: "cargo fmt -p rag-vectorstore -- --check"
 ```
 
 `crates/rag-retrieval/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-retrieval'
-  description: 'Hybrid retrieval service for RAG pipeline'
+  name: "rag-retrieval"
+  description: "Hybrid retrieval service for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-retrieval'
+    command: "cargo build -p rag-retrieval"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
-      - 'rag-vectorstore:build'
-      - 'rag-search:build'
-      - 'rag-cache:build'
-      - 'rag-auth:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
+      - "rag-vectorstore:build"
+      - "rag-search:build"
+      - "rag-cache:build"
+      - "rag-auth:build"
 
   check:
-    command: 'cargo check -p rag-retrieval'
+    command: "cargo check -p rag-retrieval"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-retrieval'
+    command: "cargo test -p rag-retrieval"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-retrieval -- -D warnings'
+    command: "cargo clippy -p rag-retrieval -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-retrieval'
+    command: "cargo fmt -p rag-retrieval"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-retrieval -- --check'
+    command: "cargo fmt -p rag-retrieval -- --check"
 ```
 
 `crates/rag-ingestion/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-ingestion-rust'
-  description: 'Document ingestion service (Rust implementation)'
+  name: "rag-ingestion-rust"
+  description: "Document ingestion service (Rust implementation)"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-ingestion'
+    command: "cargo build -p rag-ingestion"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
-      - 'rag-vectorstore:build'
-      - 'rag-search:build'
-      - 'rag-storage:build'
-      - 'rag-database:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
+      - "rag-vectorstore:build"
+      - "rag-search:build"
+      - "rag-storage:build"
+      - "rag-database:build"
 
   check:
-    command: 'cargo check -p rag-ingestion'
+    command: "cargo check -p rag-ingestion"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-ingestion'
+    command: "cargo test -p rag-ingestion"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-ingestion -- -D warnings'
+    command: "cargo clippy -p rag-ingestion -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-ingestion'
+    command: "cargo fmt -p rag-ingestion"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-ingestion -- --check'
+    command: "cargo fmt -p rag-ingestion -- --check"
 ```
 
 `crates/rag-video/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-video'
-  description: 'Video processing pipeline for RAG'
+  name: "rag-video"
+  description: "Video processing pipeline for RAG"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-video'
+    command: "cargo build -p rag-video"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
-      - 'rag-vectorstore:build'
-      - 'rag-search:build'
-      - 'rag-storage:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
+      - "rag-vectorstore:build"
+      - "rag-search:build"
+      - "rag-storage:build"
 
   check:
-    command: 'cargo check -p rag-video'
+    command: "cargo check -p rag-video"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-video'
+    command: "cargo test -p rag-video"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-video -- -D warnings'
+    command: "cargo clippy -p rag-video -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-video'
+    command: "cargo fmt -p rag-video"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-video -- --check'
+    command: "cargo fmt -p rag-video -- --check"
 ```
 
 `crates/rag-embedding/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'application'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "application"
 
 project:
-  name: 'rag-embedding'
-  description: 'Embedding service with ONNX-based inference (Rust)'
+  name: "rag-embedding"
+  description: "Embedding service with ONNX-based inference (Rust)"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-embedding'
+    command: "cargo build -p rag-embedding"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
 
   check:
-    command: 'cargo check -p rag-embedding'
+    command: "cargo check -p rag-embedding"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-embedding'
+    command: "cargo test -p rag-embedding"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-embedding -- -D warnings'
+    command: "cargo clippy -p rag-embedding -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-embedding'
+    command: "cargo fmt -p rag-embedding"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-embedding -- --check'
+    command: "cargo fmt -p rag-embedding -- --check"
 ```
 
 `crates/rag-llm-gateway/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'application'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "application"
 
 project:
-  name: 'rag-llm-gateway'
-  description: 'Unified LLM Gateway with OpenAI-compatible API (Rust)'
+  name: "rag-llm-gateway"
+  description: "Unified LLM Gateway with OpenAI-compatible API (Rust)"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-llm-gateway'
+    command: "cargo build -p rag-llm-gateway"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-telemetry:build'
-      - 'rag-auth:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-telemetry:build"
+      - "rag-auth:build"
 
   check:
-    command: 'cargo check -p rag-llm-gateway'
+    command: "cargo check -p rag-llm-gateway"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-llm-gateway'
+    command: "cargo test -p rag-llm-gateway"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-llm-gateway -- -D warnings'
+    command: "cargo clippy -p rag-llm-gateway -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-llm-gateway'
+    command: "cargo fmt -p rag-llm-gateway"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-llm-gateway -- --check'
+    command: "cargo fmt -p rag-llm-gateway -- --check"
 ```
 
 `crates/rag-encryption/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-encryption'
-  description: 'Encryption utilities for RAG pipeline'
+  name: "rag-encryption"
+  description: "Encryption utilities for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-encryption'
+    command: "cargo build -p rag-encryption"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
+      - "rag-types:build"
+      - "rag-config:build"
 
   check:
-    command: 'cargo check -p rag-encryption'
+    command: "cargo check -p rag-encryption"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-encryption'
+    command: "cargo test -p rag-encryption"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-encryption -- -D warnings'
+    command: "cargo clippy -p rag-encryption -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-encryption'
+    command: "cargo fmt -p rag-encryption"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-encryption -- --check'
+    command: "cargo fmt -p rag-encryption -- --check"
 ```
 
 `crates/rag-tenant/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-tenant'
-  description: 'Multi-tenant management for RAG pipeline'
+  name: "rag-tenant"
+  description: "Multi-tenant management for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-tenant'
+    command: "cargo build -p rag-tenant"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-database:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-database:build"
 
   check:
-    command: 'cargo check -p rag-tenant'
+    command: "cargo check -p rag-tenant"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-tenant'
+    command: "cargo test -p rag-tenant"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-tenant -- -D warnings'
+    command: "cargo clippy -p rag-tenant -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-tenant'
+    command: "cargo fmt -p rag-tenant"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-tenant -- --check'
+    command: "cargo fmt -p rag-tenant -- --check"
 ```
 
 `crates/rag-secrets/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'rust'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "rust"
+type: "library"
 
 project:
-  name: 'rag-secrets'
-  description: 'Secrets management for RAG pipeline'
+  name: "rag-secrets"
+  description: "Secrets management for RAG pipeline"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'Cargo.toml'
+    - "src/**/*"
+    - "Cargo.toml"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
 
 tasks:
   build:
-    command: 'cargo build -p rag-secrets'
+    command: "cargo build -p rag-secrets"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - 'rag-types:build'
-      - 'rag-config:build'
-      - 'rag-encryption:build'
+      - "rag-types:build"
+      - "rag-config:build"
+      - "rag-encryption:build"
 
   check:
-    command: 'cargo check -p rag-secrets'
+    command: "cargo check -p rag-secrets"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   test:
-    command: 'cargo test -p rag-secrets'
+    command: "cargo test -p rag-secrets"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:build'
+      - "~:build"
 
   lint:
-    command: 'cargo clippy -p rag-secrets -- -D warnings'
+    command: "cargo clippy -p rag-secrets -- -D warnings"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'cargo fmt -p rag-secrets'
+    command: "cargo fmt -p rag-secrets"
     local: true
 
   format-check:
-    command: 'cargo fmt -p rag-secrets -- --check'
+    command: "cargo fmt -p rag-secrets -- --check"
 ```
 
 **Step 3: Verify Rust projects are recognized**
 
 Run:
+
 ```bash
 moon project-graph
 ```
 
-Expected: Graph showing all rag-* projects with their dependencies
+Expected: Graph showing all rag-\* projects with their dependencies
 
 **Step 4: Test running a Rust task**
 
 Run:
+
 ```bash
 moon run rag-types:check
 ```
@@ -1141,6 +1167,7 @@ Expected: Cargo check runs successfully for rag-types
 **Step 5: Commit Rust project configurations**
 
 Run:
+
 ```bash
 git add crates/*/moon.yml
 git commit -m "chore: add Moon project configs for all Rust crates
@@ -1167,72 +1194,74 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 **Step 1: Create orchestrator service Moon config**
 
 Create `services/orchestrator/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'python'
-type: 'application'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "python"
+type: "application"
 
 project:
-  name: 'orchestrator-service'
-  description: 'RAG orchestration microservice with LangGraph'
+  name: "orchestrator-service"
+  description: "RAG orchestration microservice with LangGraph"
 
 fileGroups:
   sources:
-    - '**/*.py'
-    - 'requirements.txt'
-    - '!tests/**/*'
+    - "**/*.py"
+    - "requirements.txt"
+    - "!tests/**/*"
   tests:
-    - 'tests/**/*.py'
-    - 'pytest.ini'
+    - "tests/**/*.py"
+    - "pytest.ini"
   configs:
-    - 'Dockerfile'
-    - 'config.py'
+    - "Dockerfile"
+    - "config.py"
   shared:
-    - 'shared/**/*.py'
+    - "shared/**/*.py"
 
 tasks:
   install:
-    command: 'uv pip install -r requirements.txt'
+    command: "uv pip install -r requirements.txt"
     inputs:
-      - 'requirements.txt'
+      - "requirements.txt"
 
   dev:
-    command: 'uvicorn run:app --reload --host 0.0.0.0 --port 8003'
+    command: "uvicorn run:app --reload --host 0.0.0.0 --port 8003"
     local: true
     deps:
-      - '~:install'
+      - "~:install"
 
   test:
-    command: 'pytest tests/ -v'
+    command: "pytest tests/ -v"
     inputs:
-      - '@group(sources)'
-      - '@group(tests)'
+      - "@group(sources)"
+      - "@group(tests)"
     deps:
-      - '~:install'
+      - "~:install"
 
   lint:
-    command: 'ruff check .'
+    command: "ruff check ."
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
 
   format:
-    command: 'ruff format .'
+    command: "ruff format ."
     local: true
 
   format-check:
-    command: 'ruff format --check .'
+    command: "ruff format --check ."
 
   typecheck:
-    command: 'mypy . --ignore-missing-imports'
+    command: "mypy . --ignore-missing-imports"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - '~:install'
+      - "~:install"
 ```
 
 **Step 2: Verify Python project**
 
 Run:
+
 ```bash
 moon project-graph
 ```
@@ -1242,6 +1271,7 @@ Expected: Graph shows orchestrator-service project
 **Step 3: Test running a Python task**
 
 Run:
+
 ```bash
 moon run orchestrator-service:lint
 ```
@@ -1251,6 +1281,7 @@ Expected: Ruff runs on orchestrator service
 **Step 4: Commit Python project configuration**
 
 Run:
+
 ```bash
 git add services/orchestrator/moon.yml
 git commit -m "chore: add Moon project config for Python orchestrator service
@@ -1267,92 +1298,95 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 4: Configure Frontend Project
 
 **Files:**
+
 - Create: `frontend/moon.yml`
 
 **Step 1: Create frontend Moon config**
 
 Create `frontend/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'typescript'
-type: 'application'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "typescript"
+type: "application"
 
 project:
-  name: 'frontend'
-  description: 'SvelteKit frontend application'
+  name: "frontend"
+  description: "SvelteKit frontend application"
 
 fileGroups:
   sources:
-    - 'src/**/*'
-    - 'static/**/*'
-    - 'package.json'
-    - 'svelte.config.js'
-    - 'vite.config.ts'
-    - 'tsconfig.json'
+    - "src/**/*"
+    - "static/**/*"
+    - "package.json"
+    - "svelte.config.js"
+    - "vite.config.ts"
+    - "tsconfig.json"
   tests:
-    - 'tests/**/*'
+    - "tests/**/*"
   configs:
-    - 'tailwind.config.js'
-    - 'postcss.config.js'
+    - "tailwind.config.js"
+    - "postcss.config.js"
 
 tasks:
   install:
-    command: 'pnpm install'
+    command: "pnpm install"
     inputs:
-      - 'package.json'
-      - 'pnpm-lock.yaml'
+      - "package.json"
+      - "pnpm-lock.yaml"
 
   dev:
-    command: 'pnpm run dev'
+    command: "pnpm run dev"
     local: true
     deps:
-      - '~:install'
+      - "~:install"
 
   build:
-    command: 'pnpm run build'
+    command: "pnpm run build"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     outputs:
-      - '.svelte-kit'
-      - 'build'
+      - ".svelte-kit"
+      - "build"
     deps:
-      - '~:install'
+      - "~:install"
 
   preview:
-    command: 'pnpm run preview'
+    command: "pnpm run preview"
     local: true
     deps:
-      - '~:build'
+      - "~:build"
 
   check:
-    command: 'pnpm run check'
+    command: "pnpm run check"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - '~:install'
+      - "~:install"
 
   lint:
-    command: 'pnpm eslint src/'
+    command: "pnpm eslint src/"
     inputs:
-      - '@group(sources)'
+      - "@group(sources)"
     deps:
-      - '~:install'
+      - "~:install"
 
   format:
-    command: 'pnpm prettier --write src/'
+    command: "pnpm prettier --write src/"
     local: true
     deps:
-      - '~:install'
+      - "~:install"
 
   format-check:
-    command: 'pnpm prettier --check src/'
+    command: "pnpm prettier --check src/"
     deps:
-      - '~:install'
+      - "~:install"
 ```
 
 **Step 2: Verify frontend project**
 
 Run:
+
 ```bash
 moon project frontend
 ```
@@ -1362,6 +1396,7 @@ Expected: Shows frontend project details and available tasks
 **Step 3: Commit frontend configuration**
 
 Run:
+
 ```bash
 git add frontend/moon.yml
 git commit -m "chore: add Moon project config for SvelteKit frontend
@@ -1380,16 +1415,18 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 5: Create Global Tasks
 
 **Files:**
+
 - Create: `.moon/tasks.yml`
 
 **Step 1: Create workspace-level tasks**
 
 Create `.moon/tasks.yml`:
+
 ```yaml
 # Global tasks available across the workspace
 # https://moonrepo.dev/docs/config/tasks
 
-$schema: 'https://moonrepo.dev/schemas/tasks.json'
+$schema: "https://moonrepo.dev/schemas/tasks.json"
 
 tasks:
   # Development
@@ -1399,36 +1436,37 @@ tasks:
 
   # Testing
   test-all:
-    command: 'moon run :test'
+    command: "moon run :test"
 
   # Linting
   lint-all:
-    command: 'moon run :lint'
+    command: "moon run :lint"
 
   # Formatting
   format-all:
-    command: 'moon run :format'
+    command: "moon run :format"
     local: true
 
   format-check-all:
-    command: 'moon run :format-check'
+    command: "moon run :format-check"
 
   # Type checking
   check-all:
-    command: 'moon run :check'
+    command: "moon run :check"
 
   # CI pipeline
   ci:
-    command: 'moon ci'
+    command: "moon ci"
 
   # Build everything
   build-all:
-    command: 'moon run :build'
+    command: "moon run :build"
 ```
 
 **Step 2: Verify global tasks**
 
 Run:
+
 ```bash
 moon task --list
 ```
@@ -1438,6 +1476,7 @@ Expected: Shows global tasks like `test-all`, `lint-all`, etc.
 **Step 3: Commit global tasks**
 
 Run:
+
 ```bash
 git add .moon/tasks.yml
 git commit -m "chore: add global Moon tasks for workspace operations
@@ -1454,6 +1493,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 6: Update Makefile to Use Moon
 
 **Files:**
+
 - Modify: `Makefile`
 
 **Step 1: Update Makefile with Moon commands**
@@ -1537,6 +1577,7 @@ Add to the help section in Makefile:
 **Step 3: Test the new Makefile commands**
 
 Run:
+
 ```bash
 make moon-lint
 ```
@@ -1546,6 +1587,7 @@ Expected: Moon runs lint task across all projects
 **Step 4: Commit Makefile updates**
 
 Run:
+
 ```bash
 git add Makefile
 git commit -m "chore: add Moon commands to Makefile
@@ -1563,11 +1605,13 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 7: Configure CI Integration
 
 **Files:**
+
 - Create: `.github/workflows/moon-ci.yml`
 
 **Step 1: Create Moon CI workflow**
 
 Create `.github/workflows/moon-ci.yml`:
+
 ```yaml
 name: Moon CI
 
@@ -1589,7 +1633,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for affected detection
+          fetch-depth: 0 # Needed for affected detection
 
       - name: Setup proto
         uses: moonrepo/setup-toolchain@v0
@@ -1605,7 +1649,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -1642,7 +1686,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -1660,6 +1704,7 @@ jobs:
 **Step 2: Commit CI workflow**
 
 Run:
+
 ```bash
 git add .github/workflows/moon-ci.yml
 git commit -m "ci: add Moon CI workflow
@@ -1679,6 +1724,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 8: Set Up Shared Schema Directory
 
 **Files:**
+
 - Create: `schemas/README.md`
 - Create: `schemas/moon.yml`
 - Create: `schemas/document.schema.json`
@@ -1686,6 +1732,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 **Step 1: Create schemas directory and README**
 
 Create `schemas/README.md`:
+
 ```markdown
 # Shared Schemas
 
@@ -1716,59 +1763,61 @@ This directory contains JSON Schema definitions that are the single source of tr
 **Step 2: Create schemas Moon config**
 
 Create `schemas/moon.yml`:
+
 ```yaml
-$schema: 'https://moonrepo.dev/schemas/project.json'
-language: 'other'
-type: 'library'
+$schema: "https://moonrepo.dev/schemas/project.json"
+language: "other"
+type: "library"
 
 project:
-  name: 'schemas'
-  description: 'Shared JSON Schema definitions'
+  name: "schemas"
+  description: "Shared JSON Schema definitions"
 
 fileGroups:
   schemas:
-    - '**/*.schema.json'
+    - "**/*.schema.json"
   scripts:
-    - 'scripts/**/*'
+    - "scripts/**/*"
 
 tasks:
   validate:
     command: 'npx ajv validate -s "*.schema.json"'
     inputs:
-      - '@group(schemas)'
+      - "@group(schemas)"
 
   generate-rust:
-    command: 'npx quicktype --src-lang schema --lang rust --out ../crates/rag-types/src/generated/mod.rs *.schema.json'
+    command: "npx quicktype --src-lang schema --lang rust --out ../crates/rag-types/src/generated/mod.rs *.schema.json"
     inputs:
-      - '@group(schemas)'
+      - "@group(schemas)"
     outputs:
-      - '../crates/rag-types/src/generated/mod.rs'
+      - "../crates/rag-types/src/generated/mod.rs"
 
   generate-python:
-    command: 'npx quicktype --src-lang schema --lang python --out ../services/orchestrator/shared/generated/types.py *.schema.json'
+    command: "npx quicktype --src-lang schema --lang python --out ../services/orchestrator/shared/generated/types.py *.schema.json"
     inputs:
-      - '@group(schemas)'
+      - "@group(schemas)"
     outputs:
-      - '../services/orchestrator/shared/generated/types.py'
+      - "../services/orchestrator/shared/generated/types.py"
 
   generate-typescript:
-    command: 'npx quicktype --src-lang schema --lang typescript --out ../frontend/src/lib/generated/types.ts *.schema.json'
+    command: "npx quicktype --src-lang schema --lang typescript --out ../frontend/src/lib/generated/types.ts *.schema.json"
     inputs:
-      - '@group(schemas)'
+      - "@group(schemas)"
     outputs:
-      - '../frontend/src/lib/generated/types.ts'
+      - "../frontend/src/lib/generated/types.ts"
 
   generate:
     command: 'echo "Generating types for all languages..."'
     deps:
-      - '~:generate-rust'
-      - '~:generate-python'
-      - '~:generate-typescript'
+      - "~:generate-rust"
+      - "~:generate-python"
+      - "~:generate-typescript"
 ```
 
 **Step 3: Create example schema**
 
 Create `schemas/document.schema.json`:
+
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1835,13 +1884,15 @@ Create `schemas/document.schema.json`:
 **Step 4: Install quicktype for schema generation**
 
 Run:
+
 ```bash
-cd schemas && npm init -y && npm install --save-dev quicktype ajv-cli
+cd schemas && pnpm init && pnpm install --save-dev quicktype ajv-cli
 ```
 
 **Step 5: Create generated directories**
 
 Run:
+
 ```bash
 mkdir -p crates/rag-types/src/generated
 mkdir -p services/orchestrator/shared/generated
@@ -1854,6 +1905,7 @@ touch frontend/src/lib/generated/.gitkeep
 **Step 6: Commit schema setup**
 
 Run:
+
 ```bash
 git add schemas/ crates/rag-types/src/generated/.gitkeep services/orchestrator/shared/generated/.gitkeep frontend/src/lib/generated/.gitkeep
 git commit -m "chore: add shared schema infrastructure
@@ -1871,12 +1923,14 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 ### Task 9: Update .gitignore and Documentation
 
 **Files:**
+
 - Modify: `.gitignore`
 - Modify: `CLAUDE.md`
 
 **Step 1: Update .gitignore for Moon**
 
 Add to `.gitignore`:
+
 ```gitignore
 # Moon
 .moon/cache/
@@ -1894,7 +1948,8 @@ frontend/src/lib/generated/*.ts
 **Step 2: Update CLAUDE.md with Moon commands**
 
 Add a new section to CLAUDE.md after "Essential Commands":
-```markdown
+
+````markdown
 ### Moon Monorepo Commands
 
 ```bash
@@ -1920,7 +1975,9 @@ moon ci
 # Generate types from shared schemas
 moon run schemas:generate
 ```
-```
+````
+
+````
 
 **Step 3: Commit documentation updates**
 
@@ -1934,7 +1991,7 @@ git commit -m "docs: update gitignore and CLAUDE.md for Moon
 - Document Moon commands in CLAUDE.md
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-```
+````
 
 ---
 
@@ -1945,6 +2002,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
 **Step 1: Clean and reinitialize**
 
 Run:
+
 ```bash
 rm -rf .moon/cache
 moon setup
@@ -1955,6 +2013,7 @@ Expected: Moon reinitializes cleanly
 **Step 2: Run full project graph**
 
 Run:
+
 ```bash
 moon project-graph --dot > project-graph.dot
 ```
@@ -1964,6 +2023,7 @@ Expected: Generates DOT file showing all project dependencies
 **Step 3: Run lint on all projects**
 
 Run:
+
 ```bash
 moon run :lint
 ```
@@ -1973,6 +2033,7 @@ Expected: Linting runs on all Rust, Python, and TypeScript projects
 **Step 4: Run tests on all projects**
 
 Run:
+
 ```bash
 moon run :test
 ```
@@ -1982,6 +2043,7 @@ Expected: Tests run on all projects with proper dependency ordering
 **Step 5: Generate types from schemas**
 
 Run:
+
 ```bash
 moon run schemas:generate
 ```
@@ -1991,6 +2053,7 @@ Expected: Types generated in all three language directories
 **Step 6: Verify caching works**
 
 Run:
+
 ```bash
 moon run :lint
 ```
@@ -2000,6 +2063,7 @@ Expected: Second run shows "cached" for unchanged projects
 **Step 7: Final commit**
 
 Run:
+
 ```bash
 git add -A
 git commit -m "feat: complete Moon monorepo migration

@@ -3,12 +3,11 @@
 //! This module provides an async HTTP client that communicates with
 //! an OpenAI-compatible embedding service to generate vector embeddings.
 
-use std::time::Duration;
-
 use futures::future::join_all;
+use rag_config::{build_http_client_with_timeout, RetryPolicy};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, instrument};
 
 use super::EmbeddingConfig;
 use crate::error::{RetrievalError, Result};
@@ -95,10 +94,8 @@ impl EmbeddingClient {
     ///
     /// Returns an error if the HTTP client cannot be created.
     pub fn new(config: EmbeddingConfig) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()
-            .map_err(|e| RetrievalError::config(format!("Failed to create HTTP client: {e}")))?;
+        let client = build_http_client_with_timeout(config.timeout())
+            .map_err(|e| RetrievalError::config(e))?;
 
         Ok(Self { client, config })
     }
@@ -210,35 +207,23 @@ impl EmbeddingClient {
 
     /// Embed a batch of texts (internal method).
     async fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>> {
-        let mut last_error = None;
-        let mut attempt = 0;
+        let retry_policy = RetryPolicy::new(self.config.max_retries, 100, 5000);
+        let expected_count = texts.len();
 
-        while attempt <= self.config.max_retries {
-            match self.make_request(texts).await {
-                Ok(response) => {
-                    return self.process_response(response, texts.len());
-                }
-                Err(e) => {
-                    last_error = Some(e);
-                    attempt += 1;
-
-                    if attempt <= self.config.max_retries {
-                        let backoff = calculate_backoff(attempt);
-                        warn!(
-                            attempt,
-                            max_retries = self.config.max_retries,
-                            backoff_ms = backoff.as_millis(),
-                            "Embedding request failed, retrying"
-                        );
-                        tokio::time::sleep(backoff).await;
-                    }
-                }
-            }
-        }
-
-        Err(last_error.unwrap_or_else(|| {
-            RetrievalError::embedding("Embedding request failed with no error")
-        }))
+        retry_policy
+            .execute(
+                || async {
+                    let response = self.make_request(texts).await?;
+                    self.process_response(response, expected_count)
+                },
+                |e: &RetrievalError| {
+                    // Retry on timeout and connection errors
+                    let msg = e.to_string();
+                    msg.contains("timed out") || msg.contains("connect") || msg.contains("500")
+                        || msg.contains("502") || msg.contains("503") || msg.contains("504")
+                },
+            )
+            .await
     }
 
     /// Make a single embedding request.
@@ -316,37 +301,6 @@ impl EmbeddingClient {
     }
 }
 
-/// Calculate exponential backoff with jitter.
-///
-/// Uses the formula: `min(base_ms * 2^attempt, max_ms)` with +/- 25% jitter
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap
-)]
-fn calculate_backoff(attempt: u32) -> Duration {
-    const BASE_MS: u64 = 100;
-    const MAX_MS: u64 = 5000;
-
-    let base_backoff = BASE_MS.saturating_mul(1 << attempt.min(10));
-    let capped_backoff = base_backoff.min(MAX_MS);
-
-    // Add +/- 25% jitter
-    let jitter_range = capped_backoff / 4;
-    let jitter = if jitter_range > 0 {
-        // Simple pseudo-random jitter based on attempt and time
-        let seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0, |d| d.as_nanos() as u64);
-        (seed % (jitter_range * 2)) as i64 - jitter_range as i64
-    } else {
-        0
-    };
-
-    let final_ms = (capped_backoff as i64 + jitter).max(BASE_MS as i64) as u64;
-    Duration::from_millis(final_ms)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -370,20 +324,18 @@ mod tests {
     }
 
     #[test]
-    fn test_backoff_calculation() {
-        // First retry: ~200ms (100 * 2^1)
-        let backoff1 = calculate_backoff(1);
-        assert!(backoff1.as_millis() >= 100);
-        assert!(backoff1.as_millis() <= 300);
+    fn test_backoff_from_retry_policy() {
+        let policy = RetryPolicy::new(5, 100, 5000);
 
-        // Second retry: ~400ms (100 * 2^2)
-        let backoff2 = calculate_backoff(2);
-        assert!(backoff2.as_millis() >= 200);
-        assert!(backoff2.as_millis() <= 600);
+        // First retry: ~100ms base
+        let b1 = policy.backoff_duration(0);
+        assert!(b1.as_millis() >= 75);
+        assert!(b1.as_millis() <= 125);
 
-        // Should cap at MAX_MS
-        let backoff_high = calculate_backoff(20);
-        assert!(backoff_high.as_millis() <= 6250); // MAX_MS + 25% jitter
+        // Third retry: ~400ms base (100 * 2^2)
+        let b3 = policy.backoff_duration(2);
+        assert!(b3.as_millis() >= 300);
+        assert!(b3.as_millis() <= 500);
     }
 
     #[test]

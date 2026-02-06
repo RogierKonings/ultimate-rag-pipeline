@@ -34,7 +34,7 @@ anyhow = { workspace = true }
 jsonwebtoken = "9"
 
 # HTTP client (for vLLM proxy)
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { workspace = true }
 futures-util = "0.3"
 
 # Metrics
