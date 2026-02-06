@@ -8,32 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-/// Search mode determines which search methods to use.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum SearchMode {
-    /// Only use semantic (vector) search.
-    Semantic,
-    /// Only use keyword (BM25) search.
-    Keyword,
-    /// Use both semantic and keyword search with RRF fusion.
-    #[default]
-    Hybrid,
-}
-
-impl SearchMode {
-    /// Check if this mode includes semantic search.
-    #[must_use]
-    pub const fn uses_semantic(&self) -> bool {
-        matches!(self, Self::Semantic | Self::Hybrid)
-    }
-
-    /// Check if this mode includes keyword search.
-    #[must_use]
-    pub const fn uses_keyword(&self) -> bool {
-        matches!(self, Self::Keyword | Self::Hybrid)
-    }
-}
+// Re-export SearchMode from rag-types (canonical definition).
+pub use rag_types::SearchMode;
 
 /// Query type for intent classification and query preprocessing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]

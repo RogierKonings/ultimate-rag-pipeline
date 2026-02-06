@@ -186,6 +186,21 @@ def _get_port(port_name: str) -> int:
 
 
 # =============================================================================
+# Standard URL Factory
+# =============================================================================
+
+
+def _make_service_url(env_var: str, host_key: str, port_key: str) -> str:
+    """Build a standard http service URL, checking for an explicit env var override first."""
+    explicit = os.getenv(env_var)
+    if explicit:
+        return explicit
+    host = _get_host(host_key)
+    port = _get_port(port_key)
+    return f"http://{host}:{port}"
+
+
+# =============================================================================
 # Database URLs
 # =============================================================================
 
@@ -273,17 +288,11 @@ def get_celery_result_backend() -> str:
 
 def get_qdrant_url() -> str:
     """Get Qdrant HTTP API URL."""
-    explicit = os.getenv("QDRANT_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("qdrant")
-    port = _get_port("qdrant_http")
-    return f"http://{host}:{port}"
+    return _make_service_url("QDRANT_URL", "qdrant", "qdrant_http")
 
 
 def get_qdrant_grpc_url() -> str:
-    """Get Qdrant gRPC URL."""
+    """Get Qdrant gRPC URL (host:port without protocol)."""
     explicit = os.getenv("QDRANT_GRPC_URL")
     if explicit:
         return explicit
@@ -295,13 +304,7 @@ def get_qdrant_grpc_url() -> str:
 
 def get_opensearch_url() -> str:
     """Get OpenSearch URL."""
-    explicit = os.getenv("OPENSEARCH_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("opensearch")
-    port = _get_port("opensearch")
-    return f"http://{host}:{port}"
+    return _make_service_url("OPENSEARCH_URL", "opensearch", "opensearch")
 
 
 # =============================================================================
@@ -346,24 +349,12 @@ def get_minio_endpoint() -> str:
 
 def get_embedding_service_url() -> str:
     """Get embedding service URL."""
-    explicit = os.getenv("EMBEDDING_SERVICE_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("embedding_service")
-    port = _get_port("embedding_service")
-    return f"http://{host}:{port}"
+    return _make_service_url("EMBEDDING_SERVICE_URL", "embedding_service", "embedding_service")
 
 
 def get_reranker_service_url() -> str:
     """Get reranker service URL."""
-    explicit = os.getenv("RERANKER_SERVICE_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("reranker_service")
-    port = _get_port("reranker_service")
-    return f"http://{host}:{port}"
+    return _make_service_url("RERANKER_SERVICE_URL", "reranker_service", "reranker_service")
 
 
 def get_llm_gateway_url() -> str:
@@ -388,13 +379,7 @@ def get_llm_gateway_url() -> str:
 
 def get_ollama_url() -> str:
     """Get Ollama URL (alias for LLM gateway in most cases)."""
-    explicit = os.getenv("OLLAMA_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("ollama")
-    port = _get_port("ollama")
-    return f"http://{host}:{port}"
+    return _make_service_url("OLLAMA_URL", "ollama", "ollama")
 
 
 # =============================================================================
@@ -404,35 +389,19 @@ def get_ollama_url() -> str:
 
 def get_ingestion_service_url() -> str:
     """Get ingestion service URL."""
-    explicit = os.getenv("INGESTION_SERVICE_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("ingestion_service")
-    port = _get_port("ingestion_service")
-    return f"http://{host}:{port}"
+    return _make_service_url("INGESTION_SERVICE_URL", "ingestion_service", "ingestion_service")
 
 
 def get_retrieval_service_url() -> str:
     """Get retrieval service URL."""
-    explicit = os.getenv("RETRIEVAL_SERVICE_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("retrieval_service")
-    port = _get_port("retrieval_service")
-    return f"http://{host}:{port}"
+    return _make_service_url("RETRIEVAL_SERVICE_URL", "retrieval_service", "retrieval_service")
 
 
 def get_orchestrator_service_url() -> str:
     """Get orchestrator service URL."""
-    explicit = os.getenv("ORCHESTRATOR_SERVICE_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("orchestrator_service")
-    port = _get_port("orchestrator_service")
-    return f"http://{host}:{port}"
+    return _make_service_url(
+        "ORCHESTRATOR_SERVICE_URL", "orchestrator_service", "orchestrator_service"
+    )
 
 
 # =============================================================================
@@ -442,68 +411,32 @@ def get_orchestrator_service_url() -> str:
 
 def get_otel_endpoint() -> str:
     """Get OpenTelemetry collector endpoint."""
-    explicit = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if explicit:
-        return explicit
-
-    host = _get_host("otel_collector")
-    port = _get_port("otel_collector")
-    return f"http://{host}:{port}"
+    return _make_service_url("OTEL_EXPORTER_OTLP_ENDPOINT", "otel_collector", "otel_collector")
 
 
 def get_jaeger_url() -> str:
     """Get Jaeger UI URL."""
-    explicit = os.getenv("JAEGER_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("jaeger")
-    port = _get_port("jaeger")
-    return f"http://{host}:{port}"
+    return _make_service_url("JAEGER_URL", "jaeger", "jaeger")
 
 
 def get_prometheus_url() -> str:
     """Get Prometheus URL."""
-    explicit = os.getenv("PROMETHEUS_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("prometheus")
-    port = _get_port("prometheus")
-    return f"http://{host}:{port}"
+    return _make_service_url("PROMETHEUS_URL", "prometheus", "prometheus")
 
 
 def get_grafana_url() -> str:
     """Get Grafana URL."""
-    explicit = os.getenv("GRAFANA_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("grafana")
-    port = _get_port("grafana")
-    return f"http://{host}:{port}"
+    return _make_service_url("GRAFANA_URL", "grafana", "grafana")
 
 
 def get_loki_url() -> str:
     """Get Loki URL."""
-    explicit = os.getenv("LOKI_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("loki")
-    port = _get_port("loki")
-    return f"http://{host}:{port}"
+    return _make_service_url("LOKI_URL", "loki", "loki")
 
 
 def get_phoenix_url() -> str:
     """Get Phoenix (Arize) URL."""
-    explicit = os.getenv("PHOENIX_URL")
-    if explicit:
-        return explicit
-
-    host = _get_host("phoenix")
-    port = _get_port("phoenix")
-    return f"http://{host}:{port}"
+    return _make_service_url("PHOENIX_URL", "phoenix", "phoenix")
 
 
 # =============================================================================
@@ -513,13 +446,7 @@ def get_phoenix_url() -> str:
 
 def get_vault_url() -> str:
     """Get HashiCorp Vault URL."""
-    explicit = os.getenv("VAULT_ADDR")
-    if explicit:
-        return explicit
-
-    host = _get_host("vault")
-    port = _get_port("vault")
-    return f"http://{host}:{port}"
+    return _make_service_url("VAULT_ADDR", "vault", "vault")
 
 
 # =============================================================================

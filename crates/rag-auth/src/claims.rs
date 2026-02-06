@@ -149,10 +149,10 @@ impl TokenClaims {
         self.permissions.iter().any(|p| p == permission)
     }
 
-    /// Check if the token has admin role.
+    /// Check if the token has admin-level role (admin, super_admin, or tenant_admin).
     #[must_use]
     pub fn is_admin(&self) -> bool {
-        self.has_role("admin") || self.has_role("super_admin")
+        self.has_role("admin") || self.has_role("super_admin") || self.has_role("tenant_admin")
     }
 
     /// Check if the token holder is a member of a group.

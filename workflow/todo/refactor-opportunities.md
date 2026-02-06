@@ -36,29 +36,19 @@ After scanning the entire codebase across Rust crates, Python orchestrator, infr
 
 ---
 
-## HIGH - Python Orchestrator Issues — PARTIALLY RESOLVED (#7 done, #8-#9 remaining)
+## ~~HIGH - Python Orchestrator Issues~~ RESOLVED
 
 ### ~~7. Mixed logging: `logging` vs `structlog`~~ DONE
 
 - **Fixed:** Converted 62 Python files from `import logging` / `logging.getLogger(__name__)` to `import structlog` / `structlog.get_logger(__name__)`. 5 logging infrastructure files (`observability/logging/` and `audit/logger.py`) intentionally kept with stdlib `logging` as they extend `logging.Handler`/`logging.Filter` classes.
 
-### 8. URL configuration duplication in `services/orchestrator/config/urls.py` (566 lines)
-~25 getter functions follow the identical pattern:
-```python
-def get_service_url() -> str:
-    explicit = os.getenv("SERVICE_URL")
-    if explicit: return explicit
-    host = _get_host("service")
-    port = _get_port("service")
-    return f"http://{host}:{port}"
-```
+### ~~8. URL configuration duplication in `services/orchestrator/config/urls.py`~~ DONE
 
-**Fix:** Single `_get_service_url(service_key, explicit_env)` factory function.
+- **Fixed:** Created `_make_service_url(env_var, host_key, port_key)` factory function. 15 standard getter functions now delegate to it, reducing the file from 566 to ~390 lines. Special cases (postgres, redis, celery, qdrant_grpc, minio, llm_gateway) retain custom logic. All function signatures and return values unchanged.
 
-### 9. Broken symlink causing tooling failures
-`services/orchestrator/orchestrator` is a symlink pointing to `.` (itself), causing `OSError: Too many levels of symbolic links` during directory traversal.
+### ~~9. Broken symlink causing tooling failures~~ DONE
 
-**Fix:** Remove the symlink.
+- **Fixed:** Removed the `services/orchestrator/orchestrator` symlink that pointed to `.` (itself).
 
 ---
 
@@ -68,18 +58,13 @@ def get_service_url() -> str:
 
 - **Fixed:** Created shared `HealthResponse`, `ComponentHealth`, `LivenessResponse`, `ReadinessResponse` in `rag-types`. Updated rag-ingestion, rag-retrieval, and rag-embedding to use the shared types with builder pattern (`healthy()`, `degraded()`, `with_component()`, `with_capability()`). Python orchestrator retains its own Pydantic model but follows the same field structure.
 
-### 11. Dual auth systems never integrated
-- **Rust**: `rag-auth` crate with full JWT/RBAC implementation
-- **Python**: `shared/security/` with 12 subdirectories (acl, jwt, rbac, pii, encryption, secrets, tls...)
-- These implement the same concepts independently without a shared contract
+### ~~11. Dual auth systems never integrated~~ DONE
 
-**Fix:** Define auth token format once; have Python validate Rust-issued JWTs (or vice versa).
+- **Fixed:** Aligned Rust `rag-auth` Role enum with Python's 8-role hierarchy (anonymous, user, analyst, engineer, tenant_admin, admin, super_admin, service). Added backward-compatible `FromStr` mapping for legacy role names (reader→user, writer→engineer). Updated `is_admin()` to recognize `tenant_admin`. Token claims structure (sub, tenant_id, roles, groups, permissions, token_type) was already wire-compatible between Rust and Python — both serialize as the same JWT payload. Both sides use RS256 with matching issuer/audience defaults.
 
-### 12. Search type duplication between shared and service crates
-- `rag-types` defines `SearchRequest`, `SearchMode`, `SearchResult`
-- `rag-retrieval` API layer redefines `RetrieveRequest`, `RetrieveResponse`, `RetrievedDocument` with nearly identical structure
+### ~~12. Search type duplication between shared and service crates~~ DONE
 
-**Fix:** Use `rag-types::SearchRequest` directly in the retrieval API layer.
+- **Fixed:** Removed duplicate `SearchMode` enum from `rag-retrieval/src/types.rs`. It now re-exports `rag_types::SearchMode` as the single canonical definition. Added `uses_semantic()` and `uses_keyword()` helper methods to the rag-types version. API-layer request/response types (`RetrieveRequest`, `RetrieveResponse`) intentionally kept separate since they have HTTP-specific validation and slightly different field types.
 
 ### 13. Large files in retrieval crate
 | File | Lines | Issue |
@@ -138,6 +123,6 @@ Identical `normalize_query()` (trim + lowercase) exists in both:
 2. ~~**Shared Rust utilities** (#3, #4, #5) - reduces duplication before new features~~ DONE
 3. ~~**API error standardization** (#6, #10) - improves cross-service debugging~~ DONE
 4. ~~**Python logging** (#7) - fixes silent failures in orchestrator~~ DONE
-5. **URL config cleanup** (#8) and **symlink** (#9) - quick wins
-6. **Auth integration** (#11) and **type dedup** (#12) - architectural alignment
+5. ~~**URL config cleanup** (#8) and **symlink** (#9) - quick wins~~ DONE
+6. ~~**Auth integration** (#11) and **type dedup** (#12) - architectural alignment~~ DONE
 7. **K8s and docs** (#14-#17) - when preparing for production deployment

@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn test_check_permission_role_based() {
         let svc = AuthorizationService::new();
-        let claims = test_claims().with_roles(vec!["writer".into()]);
+        let claims = test_claims().with_roles(vec!["engineer".into()]);
 
         assert!(svc.check_permission(&claims, Permission::DocumentRead).is_ok());
         assert!(svc.check_permission(&claims, Permission::DocumentWrite).is_ok());
@@ -242,8 +242,8 @@ mod tests {
         let svc = AuthorizationService::new();
         let claims = test_claims().with_roles(vec!["admin".into()]);
 
-        assert!(svc.check_role(&claims, Role::Reader).is_ok());
-        assert!(svc.check_role(&claims, Role::Writer).is_ok());
+        assert!(svc.check_role(&claims, Role::User).is_ok());
+        assert!(svc.check_role(&claims, Role::Engineer).is_ok());
         assert!(svc.check_role(&claims, Role::Admin).is_ok());
         assert!(svc.check_role(&claims, Role::SuperAdmin).is_err());
     }

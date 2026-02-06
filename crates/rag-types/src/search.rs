@@ -9,16 +9,32 @@ use std::collections::HashMap;
 use validator::Validate;
 
 /// Search mode for retrieval.
+///
+/// This is the canonical definition used by both rag-types and rag-retrieval.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum SearchMode {
-    /// Combine semantic and keyword search with RRF fusion
+    /// Combine semantic and keyword search with RRF fusion.
     #[default]
     Hybrid,
-    /// Semantic (vector) search only
+    /// Semantic (vector) search only.
     Semantic,
-    /// Keyword (BM25) search only
+    /// Keyword (BM25) search only.
     Keyword,
+}
+
+impl SearchMode {
+    /// Check if this mode includes semantic search.
+    #[must_use]
+    pub const fn uses_semantic(&self) -> bool {
+        matches!(self, Self::Semantic | Self::Hybrid)
+    }
+
+    /// Check if this mode includes keyword search.
+    #[must_use]
+    pub const fn uses_keyword(&self) -> bool {
+        matches!(self, Self::Keyword | Self::Hybrid)
+    }
 }
 
 impl std::fmt::Display for SearchMode {
