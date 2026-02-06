@@ -90,18 +90,7 @@ pub struct ChunkingConfig {
     pub separators: Vec<String>,
 }
 
-/// Chunking strategy enum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum ChunkingStrategy {
-    /// Recursive character-based splitting
-    #[default]
-    Recursive,
-    /// Semantic sentence-based splitting
-    Semantic,
-    /// Document structure-aware splitting
-    Hierarchical,
-}
+pub use rag_types::ChunkingStrategy;
 
 const fn default_target_tokens() -> u32 {
     300

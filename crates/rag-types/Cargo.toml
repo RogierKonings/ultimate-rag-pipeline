@@ -10,6 +10,7 @@ repository.workspace = true
 [features]
 default = []
 axum = ["dep:axum"]
+sqlx = ["dep:sqlx"]
 
 [dependencies]
 serde = { workspace = true }
@@ -20,6 +21,7 @@ chrono = { workspace = true }
 validator = { workspace = true }
 http = "1"
 axum = { version = "0.7", optional = true }
+sqlx = { version = "0.8", features = ["postgres", "macros"], optional = true, default-features = false }
 
 [dev-dependencies]
 tokio-test = { workspace = true }

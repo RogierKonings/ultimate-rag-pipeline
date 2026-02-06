@@ -76,7 +76,7 @@ pub use error::{Error, Result};
 // Connectors
 pub use connectors::{
     Connector, DocumentMetadata, FilesystemConfig, FilesystemConnector, RawDocument, S3Config,
-    S3Connector, SourceType,
+    S3Connector, StorageBackend,
 };
 
 // Embedding

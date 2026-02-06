@@ -8,35 +8,7 @@ use uuid::Uuid;
 // Enums
 // ============================================================================
 
-/// Supported source types for document ingestion.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SourceType {
-    Filesystem,
-    Database,
-    Web,
-    Api,
-}
-
-/// Available chunking strategies.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum ChunkingStrategy {
-    #[default]
-    Recursive,
-    Semantic,
-    Hierarchical,
-}
-
-/// Document visibility levels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum Visibility {
-    Public,
-    #[default]
-    Private,
-    Group,
-}
+pub use rag_types::{ChunkingStrategy, SourceType, Visibility};
 
 /// Job status values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

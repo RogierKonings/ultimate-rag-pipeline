@@ -36,6 +36,8 @@ impl std::fmt::Display for SourceType {
 
 /// Visibility level for documents and chunks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+#[cfg_attr(feature = "sqlx", sqlx(type_name = "VARCHAR", rename_all = "lowercase"))]
 #[serde(rename_all = "lowercase")]
 pub enum Visibility {
     /// Accessible to all users in the tenant
@@ -45,8 +47,16 @@ pub enum Visibility {
     Private,
     /// Accessible to specific groups
     Group,
-    /// Accessible to all users in the tenant (alias for public)
+    /// Accessible to all users in the tenant
     Tenant,
+}
+
+impl Visibility {
+    /// Check if this visibility level requires ACL filtering.
+    #[must_use]
+    pub const fn requires_acl_check(&self) -> bool {
+        !matches!(self, Self::Public)
+    }
 }
 
 impl std::fmt::Display for Visibility {
@@ -56,6 +66,20 @@ impl std::fmt::Display for Visibility {
             Self::Private => write!(f, "private"),
             Self::Group => write!(f, "group"),
             Self::Tenant => write!(f, "tenant"),
+        }
+    }
+}
+
+impl TryFrom<String> for Visibility {
+    type Error = String;
+
+    fn try_from(s: String) -> std::result::Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "public" => Ok(Self::Public),
+            "private" => Ok(Self::Private),
+            "group" => Ok(Self::Group),
+            "tenant" | "internal" => Ok(Self::Tenant),
+            _ => Err(format!("Unknown visibility: {s}")),
         }
     }
 }

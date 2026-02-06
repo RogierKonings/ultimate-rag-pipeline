@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    NewSourceDocument, SourceDocument, Visibility,
+    NewSourceDocument, SourceDocument,
     DatabaseError, Result,
 };
 
@@ -27,11 +27,7 @@ impl DocumentRepository {
     ///
     /// Returns an error if the insert fails.
     pub async fn create(&self, doc: &NewSourceDocument) -> Result<SourceDocument> {
-        let visibility_str = match doc.visibility {
-            Visibility::Public => "public",
-            Visibility::Private => "private",
-            Visibility::Internal => "internal",
-        };
+        let visibility_str = doc.visibility.to_string();
 
         sqlx::query_as::<_, SourceDocument>(
             r#"

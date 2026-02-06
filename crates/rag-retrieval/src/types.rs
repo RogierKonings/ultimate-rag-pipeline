@@ -4,6 +4,7 @@
 //! pipeline, including search modes, query types, visibility controls,
 //! user context, and result structures.
 
+pub use rag_types::Visibility;
 use rag_types::SearchMode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,29 +34,6 @@ impl QueryType {
             Self::Question | Self::Hybrid => SearchMode::Hybrid,
             Self::Semantic => SearchMode::Semantic,
         }
-    }
-}
-
-/// Document visibility level for ACL enforcement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum Visibility {
-    /// Publicly accessible to all users.
-    #[default]
-    Public,
-    /// Only accessible to the document owner.
-    Private,
-    /// Accessible to specific groups.
-    Group,
-    /// Accessible to all users within a tenant.
-    Tenant,
-}
-
-impl Visibility {
-    /// Check if this visibility level requires ACL filtering.
-    #[must_use]
-    pub const fn requires_acl_check(&self) -> bool {
-        !matches!(self, Self::Public)
     }
 }
 
@@ -436,7 +414,7 @@ mod tests {
     #[test]
     fn test_visibility_default() {
         let vis = Visibility::default();
-        assert_eq!(vis, Visibility::Public);
+        assert_eq!(vis, Visibility::Private);
     }
 
     #[test]

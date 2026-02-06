@@ -25,7 +25,7 @@ use tracing::{debug, instrument};
 /// use rag_cache::{CacheClient, CacheConfig};
 /// use rag_retrieval::cache::{RetrievalCache, CacheStats};
 /// use rag_retrieval::query::{QueryCacheConfig, QueryCacheKey};
-/// use rag_retrieval::SearchMode;
+/// use rag_types::SearchMode;
 /// use std::sync::Arc;
 /// use uuid::Uuid;
 ///

@@ -401,8 +401,8 @@ fn test_default_query_type() {
     assert_eq!(QueryType::default(), QueryType::Question);
 }
 
-/// Test default visibility is Public.
+/// Test default visibility is Private (safer default).
 #[test]
 fn test_default_visibility() {
-    assert_eq!(Visibility::default(), Visibility::Public);
+    assert_eq!(Visibility::default(), Visibility::Private);
 }

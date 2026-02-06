@@ -1,29 +1,10 @@
 //! Source document model.
 
 use chrono::{DateTime, Utc};
+pub use rag_types::Visibility;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-
-/// Visibility level for documents.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "VARCHAR")]
-#[sqlx(rename_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-pub enum Visibility {
-    /// Public to all users.
-    Public,
-    /// Visible only to specific groups.
-    Private,
-    /// Visible only within the tenant.
-    Internal,
-}
-
-impl Default for Visibility {
-    fn default() -> Self {
-        Self::Private
-    }
-}
 
 /// Source document metadata stored in PostgreSQL.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -83,7 +64,7 @@ impl SourceDocument {
     pub fn is_accessible_by(&self, groups: &[String]) -> bool {
         match self.visibility {
             Visibility::Public => true,
-            Visibility::Private | Visibility::Internal => {
+            Visibility::Private | Visibility::Tenant | Visibility::Group => {
                 self.allowed_groups.iter().any(|g| groups.contains(g))
             }
         }
@@ -222,18 +203,4 @@ pub struct NewSourceDocument {
     pub allowed_groups: Vec<String>,
     /// Metadata.
     pub metadata: serde_json::Value,
-}
-
-// Custom TryFrom for Visibility from String (needed for sqlx)
-impl TryFrom<String> for Visibility {
-    type Error = String;
-
-    fn try_from(s: String) -> std::result::Result<Self, Self::Error> {
-        match s.to_lowercase().as_str() {
-            "public" => Ok(Self::Public),
-            "private" => Ok(Self::Private),
-            "internal" => Ok(Self::Internal),
-            _ => Err(format!("Unknown visibility: {s}")),
-        }
-    }
 }

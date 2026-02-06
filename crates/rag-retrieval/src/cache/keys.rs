@@ -31,7 +31,7 @@ use uuid::Uuid;
 ///
 /// ```
 /// use rag_retrieval::cache::CacheKeyBuilder;
-/// use rag_retrieval::SearchMode;
+/// use rag_types::SearchMode;
 /// use uuid::Uuid;
 ///
 /// let tenant_id = Uuid::new_v4();
@@ -170,7 +170,7 @@ impl CacheKeyBuilder {
     ///
     /// ```
     /// use rag_retrieval::cache::CacheKeyBuilder;
-    /// use rag_retrieval::SearchMode;
+    /// use rag_types::SearchMode;
     /// use uuid::Uuid;
     ///
     /// let key = CacheKeyBuilder::new(Uuid::new_v4(), "query")
@@ -221,7 +221,7 @@ impl CacheKeyBuilder {
     /// ```
     /// use rag_retrieval::cache::CacheKeyBuilder;
     /// use rag_retrieval::query::QueryCacheKey;
-    /// use rag_retrieval::SearchMode;
+    /// use rag_types::SearchMode;
     /// use uuid::Uuid;
     ///
     /// let query_key = QueryCacheKey::new("test", Uuid::new_v4(), SearchMode::Hybrid, 10);

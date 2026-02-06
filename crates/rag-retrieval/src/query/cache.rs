@@ -21,7 +21,7 @@
 //! ```no_run
 //! use rag_cache::{CacheClient, CacheConfig};
 //! use rag_retrieval::query::{QueryCache, QueryCacheConfig, QueryCacheKey};
-//! use rag_retrieval::SearchMode;
+//! use rag_types::SearchMode;
 //! use std::sync::Arc;
 //! use uuid::Uuid;
 //!

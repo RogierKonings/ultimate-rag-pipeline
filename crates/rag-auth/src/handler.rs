@@ -370,6 +370,7 @@ impl JwtHandler {
         let mut validation = Validation::new(self.config.algorithm.to_jsonwebtoken());
         validation.insecure_disable_signature_validation();
         validation.validate_exp = false;
+        validation.validate_aud = false;
 
         let token_data = decode::<TokenClaims>(token, decoding_key, &validation)?;
 

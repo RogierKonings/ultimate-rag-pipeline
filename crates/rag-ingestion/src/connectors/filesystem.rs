@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tracing::{debug, instrument};
 
-use super::base::{Connector, DocumentMetadata, RawDocument, SourceType};
+use super::base::{Connector, DocumentMetadata, RawDocument, StorageBackend};
 use crate::error::{Error, Result};
 
 /// Configuration for the filesystem connector.
@@ -147,7 +147,7 @@ impl FilesystemConnector {
         let created_at = metadata.created().ok().map(DateTime::<Utc>::from);
 
         Ok(
-            DocumentMetadata::new(source_id, SourceType::Local, filename)
+            DocumentMetadata::new(source_id, StorageBackend::Local, filename)
                 .with_size(size_bytes)
                 .with_timestamps(created_at, modified_at)
                 .with_mime_type(
@@ -332,7 +332,7 @@ mod tests {
         let doc = connector.fetch_document("test.txt").await.unwrap();
         assert_eq!(doc.content_as_str().unwrap(), "Hello, World!");
         assert_eq!(doc.metadata.filename, "test.txt");
-        assert_eq!(doc.metadata.source_type, SourceType::Local);
+        assert_eq!(doc.metadata.source_type, StorageBackend::Local);
     }
 
     #[tokio::test]

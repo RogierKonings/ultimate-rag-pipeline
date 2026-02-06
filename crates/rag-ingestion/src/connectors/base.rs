@@ -12,14 +12,14 @@ use crate::error::Result;
 /// Type of document source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum SourceType {
+pub enum StorageBackend {
     /// Local filesystem.
     Local,
     /// S3-compatible object storage.
     S3,
 }
 
-impl std::fmt::Display for SourceType {
+impl std::fmt::Display for StorageBackend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Local => write!(f, "local"),
@@ -34,7 +34,7 @@ pub struct DocumentMetadata {
     /// Identifier within the source (relative path or S3 key).
     pub source_id: String,
     /// Type of source.
-    pub source_type: SourceType,
+    pub source_type: StorageBackend,
     /// Original filename.
     pub filename: String,
     /// MIME type if detected.
@@ -54,7 +54,7 @@ impl DocumentMetadata {
     /// Create new document metadata.
     pub fn new(
         source_id: impl Into<String>,
-        source_type: SourceType,
+        source_type: StorageBackend,
         filename: impl Into<String>,
     ) -> Self {
         Self {
@@ -156,23 +156,23 @@ mod tests {
 
     #[test]
     fn test_source_type_display() {
-        assert_eq!(SourceType::Local.to_string(), "local");
-        assert_eq!(SourceType::S3.to_string(), "s3");
+        assert_eq!(StorageBackend::Local.to_string(), "local");
+        assert_eq!(StorageBackend::S3.to_string(), "s3");
     }
 
     #[test]
     fn test_source_type_serde() {
-        let st = SourceType::S3;
+        let st = StorageBackend::S3;
         let json = serde_json::to_string(&st).unwrap();
         assert_eq!(json, "\"s3\"");
 
-        let parsed: SourceType = serde_json::from_str("\"local\"").unwrap();
-        assert_eq!(parsed, SourceType::Local);
+        let parsed: StorageBackend = serde_json::from_str("\"local\"").unwrap();
+        assert_eq!(parsed, StorageBackend::Local);
     }
 
     #[test]
     fn test_document_metadata_builder() {
-        let meta = DocumentMetadata::new("path/to/file.pdf", SourceType::Local, "file.pdf")
+        let meta = DocumentMetadata::new("path/to/file.pdf", StorageBackend::Local, "file.pdf")
             .with_mime_type("application/pdf")
             .with_size(1024)
             .with_extra("author", Value::String("Test".to_string()));
@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn test_raw_document_content_as_str() {
-        let meta = DocumentMetadata::new("test.txt", SourceType::Local, "test.txt");
+        let meta = DocumentMetadata::new("test.txt", StorageBackend::Local, "test.txt");
         let doc = RawDocument::new("Hello, World!", meta);
 
         assert_eq!(doc.content_as_str().unwrap(), "Hello, World!");
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_raw_document_invalid_utf8() {
-        let meta = DocumentMetadata::new("test.bin", SourceType::Local, "test.bin");
+        let meta = DocumentMetadata::new("test.bin", StorageBackend::Local, "test.bin");
         let doc = RawDocument::new(vec![0xFF, 0xFE], meta);
 
         assert!(doc.content_as_str().is_err());

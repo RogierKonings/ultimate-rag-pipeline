@@ -8,7 +8,7 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
-use super::base::{Connector, DocumentMetadata, RawDocument, SourceType};
+use super::base::{Connector, DocumentMetadata, RawDocument, StorageBackend};
 use crate::error::{Error, Result};
 
 /// Configuration for the S3 connector.
@@ -213,7 +213,7 @@ impl Connector for S3Connector {
                         .last_modified
                         .and_then(|t| DateTime::from_timestamp(t.secs(), t.subsec_nanos()));
 
-                    let mut meta = DocumentMetadata::new(&key, SourceType::S3, filename)
+                    let mut meta = DocumentMetadata::new(&key, StorageBackend::S3, filename)
                         .with_size(object.size.unwrap_or(0) as u64);
 
                     if let Some(mime) = mime_type {
@@ -273,7 +273,7 @@ impl Connector for S3Connector {
             .last_modified
             .and_then(|t| DateTime::from_timestamp(t.secs(), t.subsec_nanos()));
 
-        let mut metadata = DocumentMetadata::new(source_id, SourceType::S3, filename)
+        let mut metadata = DocumentMetadata::new(source_id, StorageBackend::S3, filename)
             .with_size(content.len() as u64);
 
         if let Some(mime) = mime_type {

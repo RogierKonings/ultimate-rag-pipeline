@@ -6,8 +6,7 @@
 
 mod coordinator;
 mod models;
-mod status;
 
 pub use coordinator::{IndexCoordinator, IndexCoordinatorConfig};
 pub use models::{DocumentRecord, IndexedChunk, WriteResult};
-pub use status::IndexStatus;
+pub use rag_types::IndexStatus;
