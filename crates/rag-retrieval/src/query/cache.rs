@@ -393,24 +393,10 @@ impl QueryCache {
 
     /// Compute SHA-256 hash of the normalized query string.
     fn hash_query(query: &str) -> String {
-        let normalized = Self::normalize_query(query);
+        let normalized = crate::utils::normalize_query(query);
         let mut hasher = Sha256::new();
         hasher.update(normalized.as_bytes());
         hex::encode(hasher.finalize())
-    }
-
-    /// Normalize a query for consistent hashing.
-    ///
-    /// - Trims whitespace
-    /// - Converts to lowercase
-    /// - Collapses multiple spaces
-    fn normalize_query(query: &str) -> String {
-        query
-            .trim()
-            .to_lowercase()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
     }
 }
 
@@ -473,39 +459,44 @@ mod tests {
 
     #[test]
     fn test_normalize_query() {
+        use crate::utils::normalize_query;
+
         assert_eq!(
-            QueryCache::normalize_query("  Hello   WORLD  "),
+            normalize_query("  Hello   WORLD  "),
             "hello world"
         );
         assert_eq!(
-            QueryCache::normalize_query("MULTIPLE    spaces"),
+            normalize_query("MULTIPLE    spaces"),
             "multiple spaces"
         );
-        assert_eq!(QueryCache::normalize_query("  trim  "), "trim");
+        assert_eq!(normalize_query("  trim  "), "trim");
     }
 
     #[test]
     fn test_query_hash_consistency() {
+        use crate::utils::normalize_query;
+
         // Same query should produce same hash
         let query1 = "what is machine learning";
         let query2 = "what is machine learning";
 
-        let config = QueryCacheConfig::default();
         // We can't create QueryCache without a CacheClient, so test normalize_query directly
-        let normalized1 = QueryCache::normalize_query(query1);
-        let normalized2 = QueryCache::normalize_query(query2);
+        let normalized1 = normalize_query(query1);
+        let normalized2 = normalize_query(query2);
 
         assert_eq!(normalized1, normalized2);
     }
 
     #[test]
     fn test_query_hash_normalization() {
+        use crate::utils::normalize_query;
+
         // Queries that should normalize to the same thing
         let query1 = "What is machine learning";
         let query2 = "  what   is  machine   learning  ";
 
-        let normalized1 = QueryCache::normalize_query(query1);
-        let normalized2 = QueryCache::normalize_query(query2);
+        let normalized1 = normalize_query(query1);
+        let normalized2 = normalize_query(query2);
 
         assert_eq!(normalized1, normalized2);
     }

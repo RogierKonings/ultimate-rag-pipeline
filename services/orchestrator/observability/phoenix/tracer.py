@@ -4,13 +4,15 @@ Phoenix Tracer.
 Provides LLM call tracing with Phoenix integration.
 """
 
+from __future__ import annotations
+
 import random
 import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import structlog
@@ -106,7 +108,7 @@ class PhoenixTracer:
     Collects and exports LLM call traces to Phoenix for analysis.
     """
 
-    _instance: Optional["PhoenixTracer"] = None
+    _instance: PhoenixTracer | None = None
 
     def __init__(self, config: PhoenixConfig | None = None):
         """

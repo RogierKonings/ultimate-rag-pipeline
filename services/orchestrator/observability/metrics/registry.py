@@ -5,8 +5,9 @@ Centralized Prometheus metrics for all RAG pipeline operations.
 Follows naming convention: rag_<subsystem>_<metric>_<unit>
 """
 
+from __future__ import annotations
+
 import os
-from typing import Optional
 
 import structlog
 from prometheus_client import (
@@ -22,7 +23,7 @@ from prometheus_client import (
 logger = structlog.get_logger(__name__)
 
 # Global metrics instance
-_metrics: Optional["RAGMetrics"] = None
+_metrics: RAGMetrics | None = None
 _initialized: bool = False
 
 # Histogram buckets for different latency ranges

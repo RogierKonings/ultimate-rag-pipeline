@@ -5,10 +5,11 @@ This module provides the main JWTHandler class for creating and validating
 JWT tokens with support for RS256 (RSA) and HS256 (HMAC) algorithms.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import jwt
 from jwt.exceptions import (
@@ -76,7 +77,7 @@ class JWTHandler:
     def __init__(
         self,
         settings: JWTSettings | None = None,
-        blocklist: Optional["TokenBlocklist"] = None,
+        blocklist: TokenBlocklist | None = None,
     ):
         """
         Initialize JWT handler.

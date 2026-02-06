@@ -5,8 +5,9 @@ This module defines all system permissions organized by resource type,
 along with role-to-permission mappings.
 """
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Optional
 
 
 class PermissionScope(str, Enum):
@@ -170,7 +171,7 @@ class Permission(str, Enum):
         return self.value.split(":")[1]
 
     @classmethod
-    def from_string(cls, permission_str: str) -> Optional["Permission"]:
+    def from_string(cls, permission_str: str) -> Permission | None:
         """
         Convert a permission string to Permission enum.
 

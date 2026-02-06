@@ -98,24 +98,26 @@ After scanning the entire codebase across Rust crates, Python orchestrator, infr
 
 ---
 
-## LOW - Cleanup Opportunities
+## ~~LOW - Cleanup Opportunities~~ RESOLVED
 
-### 18. Dead code warnings in `crates/rag-cache/src/cache.rs`
-`DEFAULT_TTL` constant, `new()`, `with_ttl()` methods flagged as unused.
+### ~~18. Dead code warnings in `crates/rag-cache/src/cache.rs`~~ DONE
 
-### 19. Mixed type hint styles in Python (187 `Optional/Union` vs 1,126 `| None`)
-Standardize on PEP 604 (`| None`) syntax.
+- **Fixed:** The crate was restructured — `cache.rs` no longer exists. `DEFAULT_TTL` was replaced by `CacheConfig::default_ttl_secs` with proper serde defaults. `new()` and `with_ttl()` are now part of `CacheConfig`. No dead code warnings remain.
 
-### 20. TODOs in production code
-`services/orchestrator/api/routes/query.py`:
-- Line 195: `tenant_tier="standard",  # TODO: Get from tenant config`
-- Line 197: `component_timings={},  # TODO: Collect from workflow state`
-- Line 199: `context_relevance_score=None,  # TODO: Get from reranker scores`
+### ~~19. Mixed type hint styles in Python (187 `Optional/Union` vs 1,126 `| None`)~~ DONE
 
-### 21. Duplicate query normalization
-Identical `normalize_query()` (trim + lowercase) exists in both:
-- `crates/rag-retrieval/src/cache/keys.rs`
-- `crates/rag-retrieval/src/query/cache.rs`
+- **Fixed:** Converted all 7 non-migration Python files from `Optional[X]` to PEP 604 `X | None` syntax. Added `from __future__ import annotations` to enable forward-reference support. Files updated: `observability/metrics/registry.py`, `observability/phoenix/tracer.py`, `shared/security/rbac/tenant.py`, `shared/security/jwt/handler.py`, `shared/security/rbac/permissions.py`, `shared/security/rbac/roles.py`, `shared/database/models/user.py`. Alembic migrations intentionally left unchanged.
+
+### ~~20. TODOs in production code~~ DONE
+
+- **Fixed:** Resolved all 3 TODOs in `services/orchestrator/api/routes/query.py`:
+  - `tenant_tier`: Now extracted from `query_request.options.get("tenant_tier", "standard")`, defaulting to "standard"
+  - `component_timings`: Now populated from workflow `result.get("timing", {})` (per-stage latency dict)
+  - `context_relevance_score`: Now computed from top document score `documents[0].get("score")`
+
+### ~~21. Duplicate query normalization~~ DONE
+
+- **Fixed:** Extracted shared `normalize_query()` into `crates/rag-retrieval/src/utils.rs`. Both `cache/keys.rs` (`CacheKeyBuilder::hash_query`) and `query/cache.rs` (`QueryCache::hash_query`) now call `crate::utils::normalize_query()`. All 383 tests pass.
 
 ---
 
@@ -128,3 +130,4 @@ Identical `normalize_query()` (trim + lowercase) exists in both:
 5. ~~**URL config cleanup** (#8) and **symlink** (#9) - quick wins~~ DONE
 6. ~~**Auth integration** (#11) and **type dedup** (#12) - architectural alignment~~ DONE
 7. ~~**K8s and docs** (#14-#17) - when preparing for production deployment~~ DONE
+8. ~~**Cleanup** (#18-#21) - dead code, type hints, TODOs, deduplication~~ DONE

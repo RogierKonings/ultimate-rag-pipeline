@@ -5,9 +5,10 @@ This module defines the database models for user management,
 role-based access control, and group membership.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -330,7 +331,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
         comment="Null for system-defined roles",
     )
-    tenant: Mapped[Optional["Tenant"]] = relationship(
+    tenant: Mapped["Tenant | None"] = relationship(
         "Tenant",
         back_populates="roles",
     )

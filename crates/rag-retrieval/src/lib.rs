@@ -196,6 +196,7 @@ pub mod query;
 pub mod reranking;
 pub mod search;
 pub mod types;
+pub mod utils;
 
 // Re-export fusion module as `rrf` for backward compatibility
 pub use fusion as rrf;

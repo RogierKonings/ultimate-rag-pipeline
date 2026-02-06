@@ -4,8 +4,9 @@ Role definitions and hierarchy for RBAC.
 This module defines roles, their hierarchy, and inheritance rules.
 """
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Optional
 
 
 class Role(str, Enum):
@@ -41,7 +42,7 @@ class Role(str, Enum):
     SERVICE = "service"
 
     @classmethod
-    def from_string(cls, role_str: str) -> Optional["Role"]:
+    def from_string(cls, role_str: str) -> Role | None:
         """
         Convert a role string to Role enum.
 

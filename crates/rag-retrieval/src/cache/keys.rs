@@ -252,22 +252,8 @@ impl CacheKeyBuilder {
 
     /// Normalize and hash a query string.
     fn hash_query(query: &str) -> String {
-        let normalized = Self::normalize_query(query);
+        let normalized = crate::utils::normalize_query(query);
         Self::hash_string(&normalized)
-    }
-
-    /// Normalize a query for consistent hashing.
-    ///
-    /// - Trims whitespace
-    /// - Converts to lowercase
-    /// - Collapses multiple spaces
-    fn normalize_query(query: &str) -> String {
-        query
-            .trim()
-            .to_lowercase()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
     }
 
     /// Compute SHA-256 hash of a string.

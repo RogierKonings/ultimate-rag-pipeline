@@ -176,6 +176,8 @@ async def query(
             retrieval_quality = result.get("retrieval_quality", {})
             context_quality = result.get("context_quality", "full")
             fallbacks_used = result.get("fallbacks_used", [])
+            component_timings = result.get("timing", {})
+            context_relevance_score = documents[0].get("score") if documents else None
 
         except Exception as e:
             raise HTTPException(
@@ -211,6 +213,8 @@ async def query(
             retrieval_quality = {}
             context_quality = "full"  # No retrieval = no degradation
             fallbacks_used = []
+            component_timings = {}
+            context_relevance_score = None
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -274,15 +278,15 @@ async def query(
         QueryMetrics(
             request_id=request_id,
             tenant_id=tenant_id,
-            tenant_tier="standard",  # TODO: Get from tenant config
+            tenant_tier=query_request.options.get("tenant_tier", "standard") if query_request.options else "standard",
             strategy=strategy_used or "direct",
             rag_used=strategy_used != "direct",
             degraded=is_degraded,
             degradation_mode=retrieval_quality.get("mode") if is_degraded else None,
             fallbacks_used=fallbacks_used,
             e2e_latency_ms=latency_ms,
-            component_timings={},  # TODO: Collect from workflow state
-            context_relevance_score=None,  # TODO: Get from reranker scores
+            component_timings=component_timings,
+            context_relevance_score=context_relevance_score,
             citation_count=len(documents),
             status="success",
         )
