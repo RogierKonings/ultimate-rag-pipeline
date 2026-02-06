@@ -128,7 +128,7 @@ class PhoenixTracer:
             self._start_flush_thread()
 
     @classmethod
-    def get_instance(cls, config: PhoenixConfig | None = None) -> "PhoenixTracer":
+    def get_instance(cls, config: PhoenixConfig | None = None) -> PhoenixTracer:
         """Get or create singleton instance."""
         if cls._instance is None:
             cls._instance = cls(config)

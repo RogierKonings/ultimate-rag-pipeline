@@ -138,17 +138,17 @@ class Tenant(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    users: Mapped[list["User"]] = relationship(
+    users: Mapped[list[User]] = relationship(
         "User",
         back_populates="tenant",
         cascade="all, delete-orphan",
     )
-    groups: Mapped[list["Group"]] = relationship(
+    groups: Mapped[list[Group]] = relationship(
         "Group",
         back_populates="tenant",
         cascade="all, delete-orphan",
     )
-    roles: Mapped[list["RoleModel"]] = relationship(
+    roles: Mapped[list[RoleModel]] = relationship(
         "RoleModel",
         back_populates="tenant",
         cascade="all, delete-orphan",
@@ -201,7 +201,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    tenant: Mapped["Tenant"] = relationship(
+    tenant: Mapped[Tenant] = relationship(
         "Tenant",
         back_populates="users",
     )
@@ -276,17 +276,17 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    role_assignments: Mapped[list["UserRole"]] = relationship(
+    role_assignments: Mapped[list[UserRole]] = relationship(
         "UserRole",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    group_memberships: Mapped[list["UserGroup"]] = relationship(
+    group_memberships: Mapped[list[UserGroup]] = relationship(
         "UserGroup",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    api_keys: Mapped[list["ApiKey"]] = relationship(
+    api_keys: Mapped[list[ApiKey]] = relationship(
         "ApiKey",
         back_populates="user",
         cascade="all, delete-orphan",
@@ -331,7 +331,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
         comment="Null for system-defined roles",
     )
-    tenant: Mapped["Tenant | None"] = relationship(
+    tenant: Mapped[Tenant | None] = relationship(
         "Tenant",
         back_populates="roles",
     )
@@ -377,7 +377,7 @@ class RoleModel(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    user_assignments: Mapped[list["UserRole"]] = relationship(
+    user_assignments: Mapped[list[UserRole]] = relationship(
         "UserRole",
         back_populates="role",
         cascade="all, delete-orphan",
@@ -415,7 +415,7 @@ class Group(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    tenant: Mapped["Tenant"] = relationship(
+    tenant: Mapped[Tenant] = relationship(
         "Tenant",
         back_populates="groups",
     )
@@ -446,7 +446,7 @@ class Group(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # Relationships
-    user_memberships: Mapped[list["UserGroup"]] = relationship(
+    user_memberships: Mapped[list[UserGroup]] = relationship(
         "UserGroup",
         back_populates="group",
         cascade="all, delete-orphan",
@@ -483,7 +483,7 @@ class UserRole(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User",
         back_populates="role_assignments",
     )
@@ -494,7 +494,7 @@ class UserRole(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    role: Mapped["RoleModel"] = relationship(
+    role: Mapped[RoleModel] = relationship(
         "RoleModel",
         back_populates="user_assignments",
     )
@@ -542,7 +542,7 @@ class UserGroup(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User",
         back_populates="group_memberships",
     )
@@ -553,7 +553,7 @@ class UserGroup(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    group: Mapped["Group"] = relationship(
+    group: Mapped[Group] = relationship(
         "Group",
         back_populates="user_memberships",
     )
@@ -601,7 +601,7 @@ class ApiKey(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,
         index=True,
     )
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User",
         back_populates="api_keys",
     )

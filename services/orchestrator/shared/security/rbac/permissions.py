@@ -187,7 +187,7 @@ class Permission(str, Enum):
         return None
 
     @classmethod
-    def get_scope_permissions(cls, scope: PermissionScope) -> list["Permission"]:
+    def get_scope_permissions(cls, scope: PermissionScope) -> list[Permission]:
         """
         Get all permissions for a given scope.
 
