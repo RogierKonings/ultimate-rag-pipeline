@@ -36,12 +36,8 @@ impl Default for PdfParserConfig {
 pub enum PdfError {
     #[error("Failed to parse PDF: {0}")]
     ParseError(String),
-    #[error("PDF file is encrypted")]
-    Encrypted,
     #[error("No text content found in PDF")]
     NoContent,
-    #[error("Fallback service error: {0}")]
-    FallbackError(String),
 }
 
 /// PDF document parser.
