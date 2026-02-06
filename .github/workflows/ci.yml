@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  MOON_TOOLCHAIN_FORCE_GLOBALS: true
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: Build, Lint & Test
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Toolchain
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Run affected checks (PR)
+        if: github.event_name == 'pull_request'
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: |
+          moon run :format-check --affected
+          moon run :lint --affected
+          moon run :test --affected
+
+      - name: Run full CI (main)
+        if: github.event_name == 'push'
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: moon ci
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Toolchain
+        uses: ./.github/actions/setup-toolchain
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Add llvm-tools-preview
+        shell: bash
+        run: rustup component add llvm-tools-preview
+
+      - name: Generate Rust coverage
+        working-directory: ./crates
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+      - name: Install Python dependencies
+        working-directory: ./services/orchestrator
+        run: uv pip install --system -r requirements.txt pytest-cov
+
+      - name: Generate Python coverage
+        working-directory: ./services/orchestrator
+        run: |
+          pytest tests/ -v \
+            -m "not integration and not slow" \
+            --cov=. \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing
+
+      - name: Upload Rust coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./crates/lcov.info
+          flags: rust
+          fail_ci_if_error: false
+
+      - name: Upload Python coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/orchestrator/coverage.xml
+          flags: python
+          fail_ci_if_error: false
