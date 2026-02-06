@@ -16,6 +16,18 @@ metadata:
   name: orchestrator-service
   namespace: rag-pipeline
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: embedding-service
+  namespace: rag-pipeline
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llm-gateway
+  namespace: rag-pipeline
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -41,6 +53,10 @@ subjects:
   name: retrieval-service
 - kind: ServiceAccount
   name: orchestrator-service
+- kind: ServiceAccount
+  name: embedding-service
+- kind: ServiceAccount
+  name: llm-gateway
 roleRef:
   kind: Role
   name: rag-pipeline-role

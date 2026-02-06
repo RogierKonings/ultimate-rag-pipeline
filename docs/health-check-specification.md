@@ -12,12 +12,14 @@ This document defines standardized health check endpoints and monitoring pattern
 
 All services MUST implement the following endpoints:
 
-| Endpoint | Purpose | Response Time |
-|----------|---------|---------------|
-| `GET /health` | Basic liveness check | < 100ms |
-| `GET /health/ready` | Readiness check with dependencies | < 500ms |
-| `GET /health/live` | Kubernetes liveness probe | < 50ms |
-| `GET /health/startup` | Startup probe for slow-starting services | < 1s |
+| Endpoint | Purpose | Response Time | Required |
+| -------- | ------- | ------------- | -------- |
+| `GET /health` | Basic liveness check | < 100ms | Yes |
+| `GET /health/ready` | Readiness check with dependencies | < 500ms | Yes |
+| `GET /health/live` | Kubernetes liveness probe | < 50ms | Yes |
+| `GET /health/startup` | Startup probe for slow-starting services | < 1s | Recommended |
+
+> **Note:** `/health/startup` is recommended for services with slow initialization (e.g., ML model loading). Services without it should use `/health` for Kubernetes startup probes.
 
 ## Response Schemas
 

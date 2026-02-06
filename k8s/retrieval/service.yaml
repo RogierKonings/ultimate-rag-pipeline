@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: retrieval-service
+  namespace: rag-pipeline
+  labels:
+    app: retrieval-service
+    component: retrieval
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8002
+      targetPort: 8002
+      protocol: TCP
+      name: http
+  selector:
+    app: retrieval-service

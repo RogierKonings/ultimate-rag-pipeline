@@ -31,7 +31,7 @@ use rag_vectorstore::qdrant_client::qdrant::{
 };
 use serde_json::{json, Value};
 
-use super::filter::{FilterCondition, MatchType, UnifiedFilter};
+use super::types::{FilterCondition, MatchType, UnifiedFilter};
 
 /// Builder for converting [`UnifiedFilter`] to Qdrant [`Filter`].
 ///

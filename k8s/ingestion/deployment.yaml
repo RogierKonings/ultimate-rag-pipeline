@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-service
+  namespace: rag-pipeline
+  labels:
+    app: ingestion-service
+    component: ingestion
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingestion-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: ingestion-service
+        component: ingestion
+    spec:
+      serviceAccountName: ingestion-service
+      containers:
+        - name: ingestion-service
+          image: rag-ingestion:latest
+          ports:
+            - containerPort: 8001
+              name: http
+          env:
+            - name: RUST_LOG
+              value: "info,rag_ingestion=debug"
+            - name: INGESTION_HOST
+              value: "0.0.0.0"
+            - name: INGESTION_PORT
+              value: "8001"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: database-url
+            - name: QDRANT_URL
+              value: "http://qdrant:6334"
+            - name: OPENSEARCH_URL
+              value: "http://opensearch:9200"
+            - name: REDIS_URL
+              value: "redis://:$(REDIS_PASSWORD)@redis:6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: redis-password
+            - name: EMBEDDING_SERVICE_URL
+              value: "http://embedding-service:8080"
+            - name: MINIO_ENDPOINT
+              value: "http://minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: minio-access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: minio-secret-key
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: minio-access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rag-secrets
+                  key: minio-secret-key
+            - name: AWS_REGION
+              value: "us-east-1"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3

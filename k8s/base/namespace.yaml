@@ -5,32 +5,4 @@ metadata:
   labels:
     name: rag-pipeline
     environment: production
----
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: rag-pipeline-quota
-  namespace: rag-pipeline
-spec:
-  hard:
-    requests.cpu: "20"
-    requests.memory: "64Gi"
-    limits.cpu: "40"
-    limits.memory: "128Gi"
-    persistentvolumeclaims: "20"
-    pods: "50"
----
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: rag-pipeline-limits
-  namespace: rag-pipeline
-spec:
-  limits:
-  - default:
-      cpu: "500m"
-      memory: "512Mi"
-    defaultRequest:
-      cpu: "100m"
-      memory: "128Mi"
-    type: Container
+# ResourceQuota and LimitRange are defined in resource-quota.yaml

@@ -68,7 +68,9 @@
 mod builders;
 mod config;
 mod filter;
+mod types;
 
 pub use builders::{OpenSearchFilterBuilder, QdrantFilterBuilder};
 pub use config::ACLFilterConfig;
-pub use filter::{ACLFilter, FilterCondition, HasACLFields, MatchType, UnifiedFilter};
+pub use filter::ACLFilter;
+pub use types::{FilterCondition, HasACLFields, MatchType, UnifiedFilter};

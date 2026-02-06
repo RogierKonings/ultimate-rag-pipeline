@@ -11,6 +11,12 @@ resources:
   - resource-quota.yaml
   - pod-disruption-budgets.yaml
   - gpu-nodepool.yaml
+  # Application services
+  - ../ingestion/
+  - ../retrieval/
+  - ../orchestrator/
+  - ../embedding/
+  - ../llm-gateway/
   # TLS and Ingress (US-1.9)
   # Note: cert-manager ClusterIssuers are cluster-scoped,
   # apply them separately: kubectl apply -f ../cert-manager/cluster-issuers.yaml

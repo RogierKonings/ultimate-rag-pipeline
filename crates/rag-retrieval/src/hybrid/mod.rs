@@ -52,10 +52,12 @@
 
 mod config;
 mod pipeline;
+mod pipeline_config;
 mod response;
 mod searcher;
 
 pub use config::HybridSearchConfig;
-pub use pipeline::{PipelineConfig, SearchOptions, SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse};
+pub use pipeline::{SearchPipeline, SearchPipelineBuilder};
+pub use pipeline_config::{PipelineConfig, SearchOptions, SearchPipelineResponse};
 pub use response::{HybridSearchResponse, HybridSearchResult};
 pub use searcher::HybridSearcher;

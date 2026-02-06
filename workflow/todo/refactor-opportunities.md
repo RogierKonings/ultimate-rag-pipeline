@@ -66,33 +66,35 @@ After scanning the entire codebase across Rust crates, Python orchestrator, infr
 
 - **Fixed:** Removed duplicate `SearchMode` enum from `rag-retrieval/src/types.rs`. It now re-exports `rag_types::SearchMode` as the single canonical definition. Added `uses_semantic()` and `uses_keyword()` helper methods to the rag-types version. API-layer request/response types (`RetrieveRequest`, `RetrieveResponse`) intentionally kept separate since they have HTTP-specific validation and slightly different field types.
 
-### 13. Large files in retrieval crate
-| File | Lines | Issue |
-|------|-------|-------|
-| `crates/rag-retrieval/src/acl/filter.rs` | 1,204 | Filter building + Qdrant/OpenSearch conversion |
-| `crates/rag-retrieval/src/hybrid/pipeline.rs` | 955 | Pipeline orchestration + response building |
-| `crates/rag-retrieval/src/api/types.rs` | 912 | Types + validation mixed |
+### ~~13. Large files in retrieval crate~~ DONE
 
-**Fix:** Split into focused sub-modules.
+- **Fixed:** Split three large files into focused sub-modules:
+  - `acl/filter.rs` (1,204 lines) → `acl/types.rs` (filter primitives: `MatchType`, `FilterCondition`, `UnifiedFilter`, `HasACLFields`) + `acl/filter.rs` (ACL logic + tests)
+  - `hybrid/pipeline.rs` (955 lines) → `hybrid/pipeline_config.rs` (`PipelineConfig`, `SearchOptions`, `SearchPipelineResponse`) + `hybrid/pipeline.rs` (`SearchPipeline`, `SearchPipelineBuilder`, helpers)
+  - `api/types.rs` (783 lines) → `api/requests.rs` (`RetrieveRequest`, `MultiQueryRequest`), `api/responses.rs` (`RetrievedDocument`, `RetrieveResponse`, `SearchMetrics`, `DebugInfo`), `api/validation.rs` (`ValidationError`). Thin `api/types.rs` re-exports all types for backward compatibility.
 
 ---
 
-## MEDIUM - Infrastructure
+## ~~MEDIUM - Infrastructure~~ RESOLVED
 
-### 14. Missing K8s application service manifests
-`k8s/base/` only has infrastructure (postgres, qdrant, opensearch, redis, minio). No Deployment manifests for the 5 application services (ingestion, retrieval, orchestrator, embedding, llm-gateway).
+### ~~14. Missing K8s application service manifests~~ DONE
 
-### 15. Duplicate ResourceQuota definitions
-- `k8s/base/namespace.yaml`: 40Gi memory limit
-- `k8s/base/resource-quota.yaml`: 80Gi memory limit
+- **Fixed:** Created Deployment + Service manifests for all 5 application services (ingestion, retrieval, orchestrator, embedding, llm-gateway) under `k8s/`. Added ServiceAccounts for embedding-service and llm-gateway to `rbac.yaml`. Updated `kustomization.yaml` to include all app service directories.
 
-### 16. Missing resource limits for app services in docker-compose
-Only ingestion and retrieval have `deploy.resources` defined. Embedding, orchestrator, and frontend have none.
+### ~~15. Duplicate ResourceQuota definitions~~ DONE
 
-### 17. Documentation drift
-- `docs/moon-monorepo.md` lists crates that don't exist (rag-video, rag-encryption, rag-tenant, rag-secrets in docs but not all actually present)
+- **Fixed:** Removed duplicate ResourceQuota and LimitRange from `k8s/base/namespace.yaml`. The canonical definitions in `k8s/base/resource-quota.yaml` are now the single source of truth.
+
+### ~~16. Missing resource limits for app services in docker-compose~~ DONE
+
+- **Fixed:** Added `deploy.resources` (limits + reservations) for orchestrator-service (1G/256M), embedding-service (2G/512M), and frontend (256M/64M) in `docker-compose.yml`.
+
+### ~~17. Documentation drift~~ DONE
+
+- `docs/moon-monorepo.md` — verified all 17 listed crates actually exist in `crates/` (not a real issue)
 - ~~CLAUDE.md says default embedding model is `all-MiniLM-L6-v2` but `.env.base` says `BAAI/bge-large-en-v1.5`~~ FIXED (`.env.base` now matches)
-- Health check spec defines `/health/startup` endpoint that no service implements
+- **Fixed:** CLAUDE.md referenced wrong env var `MODEL_NAME`, corrected to `EMBEDDING_MODEL`
+- **Fixed:** Health check spec updated to mark `/health/startup` as recommended (not required) with a note to use `/health` for startup probes when not implemented
 
 ---
 
@@ -125,4 +127,4 @@ Identical `normalize_query()` (trim + lowercase) exists in both:
 4. ~~**Python logging** (#7) - fixes silent failures in orchestrator~~ DONE
 5. ~~**URL config cleanup** (#8) and **symlink** (#9) - quick wins~~ DONE
 6. ~~**Auth integration** (#11) and **type dedup** (#12) - architectural alignment~~ DONE
-7. **K8s and docs** (#14-#17) - when preparing for production deployment
+7. ~~**K8s and docs** (#14-#17) - when preparing for production deployment~~ DONE

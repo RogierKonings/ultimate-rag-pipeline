@@ -66,10 +66,13 @@
 //! - `503 SERVICE_UNAVAILABLE` - Service not ready
 
 pub mod error;
+pub mod requests;
+pub mod responses;
 pub mod routes;
 pub mod server;
 pub mod state;
 pub mod types;
+pub mod validation;
 
 // Re-export main types for convenient imports
 pub use error::{ApiError, ApiResult, ErrorBody, ErrorResponse};
