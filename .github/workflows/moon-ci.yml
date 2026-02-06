@@ -40,7 +40,9 @@ jobs:
         uses: astral-sh/setup-uv@v4
 
       - name: Cache Moon
-        uses: moonrepo/cache@v0
+        uses: moonrepo/setup-toolchain@v0
+        with:
+          cache: true
 
       - name: Run CI
         run: moon ci
