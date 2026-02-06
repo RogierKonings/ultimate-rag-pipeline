@@ -23,7 +23,6 @@ node_modules/
 
 # Rust
 target/
-Cargo.lock
 
 .fastembed_cache/
 
