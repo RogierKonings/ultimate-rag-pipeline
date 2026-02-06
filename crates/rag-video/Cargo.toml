@@ -19,10 +19,10 @@ tokio = { workspace = true, features = ["fs", "process"] }
 reqwest = { workspace = true }
 
 # Qdrant (pinned to match rag-vectorstore for API compatibility)
-qdrant-client = "=1.7.0"
+qdrant-client = "1.16"
 
 # Parallelism
-rayon = "1.10"
+rayon = "1.11"
 
 # Serialization
 serde = { workspace = true }
@@ -35,10 +35,10 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 tracing = { workspace = true }
-tempfile = "3.14"
+tempfile = "3.24"
 
 [dev-dependencies]
-wiremock = "0.5"
+wiremock = "0.6"
 tokio-test = { workspace = true }
 pretty_assertions = "1.4"
 

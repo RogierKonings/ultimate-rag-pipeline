@@ -39,8 +39,8 @@ reqwest = { workspace = true }
 
 # API framework
 axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["trace", "cors", "timeout"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "timeout"] }
 
 # Date/time
 chrono = { version = "0.4", features = ["serde"] }
@@ -49,7 +49,7 @@ chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 
 # Parallel processing
-rayon = "1.8"
+rayon = "1.11"
 
 # Unicode normalization
 unicode-normalization = "0.1"
@@ -59,12 +59,12 @@ sha2 = "0.10"
 hex = "0.4"
 
 # Observability
-prometheus = "0.13"
+prometheus = "0.14"
 once_cell = "1.19"
-opentelemetry = { version = "0.22", features = ["trace"] }
+opentelemetry = { version = "0.31", features = ["trace"] }
 
 # OpenAPI schema generation (optional)
-utoipa = { version = "4", optional = true }
+utoipa = { version = "5", optional = true }
 
 # Memory profiling (optional)
 dhat = { version = "0.3", optional = true }

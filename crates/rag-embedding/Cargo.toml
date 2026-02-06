@@ -12,12 +12,12 @@ repository.workspace = true
 rag-types = { path = "../rag-types", features = ["axum"] }
 
 # ML inference (ONNX-based embeddings)
-fastembed = "4"
+fastembed = "5"
 
 # HTTP server
 axum = "0.7"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["trace", "cors", "timeout"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "timeout"] }
 
 # Async runtime
 tokio = { workspace = true }

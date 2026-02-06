@@ -25,7 +25,7 @@ tokio = { workspace = true }
 url = { version = "2.5", features = ["serde"] }
 
 # Secrets redaction
-secrecy = { version = "0.8", features = ["serde"] }
+secrecy = { version = "0.10", features = ["serde"] }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
