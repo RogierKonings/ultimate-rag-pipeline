@@ -9,6 +9,7 @@ on:
 env:
   MOON_TOOLCHAIN_FORCE_GLOBALS: true
   CARGO_TERM_COLOR: always
+  UV_SYSTEM_PYTHON: 'true'
 
 jobs:
   ci:
