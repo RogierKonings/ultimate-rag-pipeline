@@ -117,7 +117,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"Failed to initialize RAG workflow: {e}")
         app.state.workflow = None
 
-    app.state.retrieval_client = None
+    # Initialize retrieval client (depends on shared HTTP clients above)
+    try:
+        from retrieval import RetrievalClient
+
+        app.state.retrieval_client = RetrievalClient()
+        logger.info("Retrieval client initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize retrieval client: {e}")
+        app.state.retrieval_client = None
 
     # Initialize usage tracker and flusher (US-10.5.4)
     app.state.usage_tracker = None

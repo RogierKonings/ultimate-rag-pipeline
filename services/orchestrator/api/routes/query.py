@@ -434,9 +434,16 @@ async def query_stream(
                 else:
                     # Old format: just a list of documents
                     documents = retrieval_result
-            except Exception:  # noqa: S110
-                # Continue without documents on retrieval failure
-                pass
+            except Exception as exc:
+                # Continue without documents on retrieval failure, but log
+                # the specific reason so operators can diagnose issues.
+                logger.warning(
+                    "stream_retrieval_failed",
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                    request_id=request_id,
+                    query_length=len(query_request.query),
+                )
 
         # Build messages for LLM
         messages = [{"role": "user", "content": query_request.query}]

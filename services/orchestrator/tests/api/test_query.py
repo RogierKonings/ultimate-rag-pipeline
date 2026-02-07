@@ -440,6 +440,86 @@ class TestStreamingQuery:
         assert response.status_code == 200
         assert "event: start" in response.text
 
+    def test_stream_query_with_retrieval_client(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+        mock_stream_manager,
+    ):
+        """Test streaming query uses retrieval client when available."""
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.stream_manager = mock_stream_manager
+
+        retrieval_client = AsyncMock()
+        retrieval_client.search = AsyncMock(
+            return_value={
+                "documents": [
+                    {"content": "Python is great.", "score": 0.9, "id": "doc-1"},
+                ],
+                "degradation_mode": "hybrid_full",
+                "components_used": ["qdrant", "opensearch"],
+                "components_skipped": [],
+            },
+        )
+        app.state.retrieval_client = retrieval_client
+
+        response = client.post(
+            "/api/v1/query/stream",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        assert "event: start" in response.text
+        # Verify retrieval was actually called
+        retrieval_client.search.assert_called_once_with("What is Python?")
+
+    def test_stream_query_graceful_fallback_on_retrieval_failure(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+        mock_stream_manager,
+    ):
+        """Test streaming still works when retrieval client raises an error."""
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.stream_manager = mock_stream_manager
+
+        retrieval_client = AsyncMock()
+        retrieval_client.search = AsyncMock(
+            side_effect=Exception("Retrieval service unavailable"),
+        )
+        app.state.retrieval_client = retrieval_client
+
+        response = client.post(
+            "/api/v1/query/stream",
+            json={"query": "What is Python?"},
+        )
+
+        # Should succeed (200) despite retrieval failure
+        assert response.status_code == 200
+        assert "event: start" in response.text
+
+    def test_stream_query_without_retrieval_client(self, client, configured_app):
+        """Test streaming works when retrieval_client is None."""
+        configured_app.state.retrieval_client = None
+
+        response = client.post(
+            "/api/v1/query/stream",
+            json={"query": "What is Python?"},
+        )
+
+        assert response.status_code == 200
+        assert "event: start" in response.text
+
     def test_stream_query_service_unavailable(self, client, app):
         """Test streaming query returns 503 when services unavailable."""
         response = client.post(
