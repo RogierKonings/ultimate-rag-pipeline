@@ -186,7 +186,7 @@ pub struct CancelJobResponse {
 // ============================================================================
 
 /// Configuration for incremental sync source.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncSourceConfig {
     pub connection_string: Option<String>,
     pub table: Option<String>,

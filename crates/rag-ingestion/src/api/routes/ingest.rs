@@ -253,6 +253,10 @@ pub async fn list_active_jobs(
 }
 
 /// POST /api/v1/ingest/sync - Start incremental sync.
+///
+/// Creates a tracked job and enqueues a `sync` task to Redis for background
+/// processing. The worker will compare the source against the current index
+/// and only re-ingest changed or new documents.
 pub async fn start_sync(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SyncRequest>,
@@ -266,7 +270,38 @@ pub async fn start_sync(
         "Started sync job"
     );
 
-    // TODO: Spawn actual sync task
+    // Enqueue sync job to Redis for async processing
+    if let Some(job_queue) = &state.job_queue {
+        let worker_job = Job::new(
+            "sync",
+            &request.tenant_id,
+            json!({
+                "tracker_job_id": job_id.to_string(),
+                "tenant_id": request.tenant_id,
+                "source_type": request.source_type,
+                "source_config": request.source_config,
+            }),
+        )
+        .with_priority(JobPriority::Normal)
+        .with_metadata("tracker_job_id", json!(job_id.to_string()));
+
+        let mut queue = job_queue.lock().await;
+        if let Err(e) = queue.enqueue(&worker_job).await {
+            tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue sync job to Redis");
+            state
+                .job_tracker
+                .fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            return Err(ApiError::internal(format!("Failed to queue sync job: {e}")));
+        }
+
+        tracing::info!(
+            job_id = %job_id,
+            worker_job_id = %worker_job.id,
+            "Sync job enqueued to Redis"
+        );
+    } else {
+        tracing::warn!(job_id = %job_id, "No job queue configured - sync job will remain pending");
+    }
 
     Ok((
         StatusCode::ACCEPTED,
@@ -280,6 +315,11 @@ pub async fn start_sync(
 }
 
 /// POST /api/v1/ingest/reembed - Start re-embedding job.
+///
+/// Creates a tracked job and enqueues a `reembed` task to Redis for background
+/// processing. The worker will re-generate embeddings for chunks matching the
+/// target scope using the specified embedding model, then upsert the new
+/// vectors into Qdrant.
 pub async fn start_reembed(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ReembedRequest>,
@@ -301,7 +341,50 @@ pub async fn start_reembed(
         "Started re-embedding job"
     );
 
-    // TODO: Spawn actual reembed task
+    // Enqueue reembed job to Redis for async processing
+    if let Some(job_queue) = &state.job_queue {
+        let worker_job = Job::new(
+            "reembed",
+            &tenant_id,
+            json!({
+                "tracker_job_id": job_id.to_string(),
+                "embedding_job_id": embedding_job_id.to_string(),
+                "embedding_model": request.embedding_model,
+                "batch_size": request.batch_size,
+                "target_scope": {
+                    "tenant_id": request.target_scope.tenant_id,
+                    "source_types": request.target_scope.source_types,
+                    "document_ids": request.target_scope.document_ids,
+                }
+            }),
+        )
+        .with_priority(JobPriority::Normal)
+        .with_metadata("tracker_job_id", json!(job_id.to_string()))
+        .with_metadata("embedding_job_id", json!(embedding_job_id.to_string()));
+
+        let mut queue = job_queue.lock().await;
+        if let Err(e) = queue.enqueue(&worker_job).await {
+            tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue reembed job to Redis");
+            state
+                .job_tracker
+                .fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            return Err(ApiError::internal(format!(
+                "Failed to queue reembed job: {e}"
+            )));
+        }
+
+        tracing::info!(
+            job_id = %job_id,
+            worker_job_id = %worker_job.id,
+            embedding_job_id = %embedding_job_id,
+            "Reembed job enqueued to Redis"
+        );
+    } else {
+        tracing::warn!(
+            job_id = %job_id,
+            "No job queue configured - reembed job will remain pending"
+        );
+    }
 
     Ok((
         StatusCode::ACCEPTED,
