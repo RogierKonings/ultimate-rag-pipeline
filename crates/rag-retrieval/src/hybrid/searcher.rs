@@ -10,7 +10,7 @@ use std::time::Instant;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
-use crate::acl::UnifiedFilter;
+use crate::acl::{MatchType, UnifiedFilter};
 use crate::error::{RetrievalError, Result};
 use crate::fusion::{fuse, FusionConfig, ScoredItem};
 use crate::search::{KeywordResult, KeywordSearchFilters, KeywordSearcher, SearchFilters, SemanticResult, SemanticSearcher};
@@ -540,21 +540,156 @@ fn build_keyword_content_map(results: &[KeywordResult]) -> HashMap<Uuid, &Keywor
 }
 
 /// Convert unified filter to semantic search filters.
-#[allow(clippy::unnecessary_wraps)]
-fn convert_to_semantic_filters(_filter: &UnifiedFilter) -> SearchFilters {
-    // For now, return empty filters - real implementation would convert
-    // UnifiedFilter conditions to SearchFilters
-    // This is a placeholder for when full ACL integration is complete
-    SearchFilters::new()
+///
+/// Maps `UnifiedFilter` conditions to `SearchFilters` fields:
+/// - `source_type` key -> `SearchFilters.source_type`
+/// - `document_id` key -> `SearchFilters.document_id` (parsed as UUID)
+/// - `allowed_groups` key -> `SearchFilters.groups`
+/// - Any other key -> `SearchFilters.custom` (for exact Value matches)
+///
+/// Only `must` conditions are processed since `SearchFilters` uses AND logic.
+/// `should` and `must_not` conditions are logged as warnings and skipped,
+/// as they require more complex filter logic not yet supported by the
+/// `SearchFilters` struct.
+fn convert_to_semantic_filters(filter: &UnifiedFilter) -> SearchFilters {
+    let mut search_filters = SearchFilters::new();
+
+    for condition in &filter.must {
+        match condition.key.as_str() {
+            "source_type" => {
+                if let MatchType::Value(ref v) = condition.match_type {
+                    search_filters = search_filters.with_source_type(v.clone());
+                }
+            }
+            "document_id" => {
+                if let MatchType::Value(ref v) = condition.match_type {
+                    if let Ok(uuid) = Uuid::parse_str(v) {
+                        search_filters = search_filters.with_document_id(uuid);
+                    } else {
+                        warn!(
+                            value = %v,
+                            "Ignoring invalid UUID in document_id filter"
+                        );
+                    }
+                }
+            }
+            "allowed_groups" => match &condition.match_type {
+                MatchType::Any(ref values) => {
+                    search_filters = search_filters.with_groups(values.clone());
+                }
+                MatchType::Value(ref v) => {
+                    search_filters = search_filters.with_groups(vec![v.clone()]);
+                }
+            },
+            key => {
+                // Map other conditions to custom filters
+                if let MatchType::Value(ref v) = condition.match_type {
+                    search_filters = search_filters.with_custom(key.to_string(), v.clone());
+                } else if let MatchType::Any(ref values) = condition.match_type {
+                    // Custom filters only support single values, use first match
+                    // for best-effort compatibility
+                    if let Some(first) = values.first() {
+                        debug!(
+                            key = key,
+                            "Converting Any filter to single-value custom filter for semantic search"
+                        );
+                        search_filters =
+                            search_filters.with_custom(key.to_string(), first.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    if !filter.should.is_empty() {
+        debug!(
+            count = filter.should.len(),
+            "Semantic search: should conditions mapped to custom filters where possible"
+        );
+    }
+
+    if !filter.must_not.is_empty() {
+        debug!(
+            count = filter.must_not.len(),
+            "Semantic search: must_not conditions are not directly supported by SearchFilters"
+        );
+    }
+
+    search_filters
 }
 
 /// Convert unified filter to keyword search filters.
-#[allow(clippy::unnecessary_wraps)]
-fn convert_to_keyword_filters(_filter: &UnifiedFilter) -> KeywordSearchFilters {
-    // For now, return empty filters - real implementation would convert
-    // UnifiedFilter conditions to KeywordSearchFilters
-    // This is a placeholder for when full ACL integration is complete
-    KeywordSearchFilters::new()
+///
+/// Maps `UnifiedFilter` conditions to `KeywordSearchFilters` fields:
+/// - `source_type` key -> `KeywordSearchFilters.source_type`
+/// - `document_id` key -> `KeywordSearchFilters.document_id` (parsed as UUID)
+/// - `allowed_groups` key -> `KeywordSearchFilters.groups`
+/// - Any other key -> `KeywordSearchFilters.custom` (for exact Value matches)
+///
+/// Only `must` conditions are processed since `KeywordSearchFilters` uses AND logic.
+/// `should` and `must_not` conditions are logged as warnings and skipped.
+fn convert_to_keyword_filters(filter: &UnifiedFilter) -> KeywordSearchFilters {
+    let mut keyword_filters = KeywordSearchFilters::new();
+
+    for condition in &filter.must {
+        match condition.key.as_str() {
+            "source_type" => {
+                if let MatchType::Value(ref v) = condition.match_type {
+                    keyword_filters = keyword_filters.with_source_type(v.clone());
+                }
+            }
+            "document_id" => {
+                if let MatchType::Value(ref v) = condition.match_type {
+                    if let Ok(uuid) = Uuid::parse_str(v) {
+                        keyword_filters = keyword_filters.with_document_id(uuid);
+                    } else {
+                        warn!(
+                            value = %v,
+                            "Ignoring invalid UUID in document_id filter"
+                        );
+                    }
+                }
+            }
+            "allowed_groups" => match &condition.match_type {
+                MatchType::Any(ref values) => {
+                    keyword_filters = keyword_filters.with_groups(values.clone());
+                }
+                MatchType::Value(ref v) => {
+                    keyword_filters = keyword_filters.with_groups(vec![v.clone()]);
+                }
+            },
+            key => {
+                if let MatchType::Value(ref v) = condition.match_type {
+                    keyword_filters = keyword_filters.with_custom(key.to_string(), v.clone());
+                } else if let MatchType::Any(ref values) = condition.match_type {
+                    if let Some(first) = values.first() {
+                        debug!(
+                            key = key,
+                            "Converting Any filter to single-value custom filter for keyword search"
+                        );
+                        keyword_filters =
+                            keyword_filters.with_custom(key.to_string(), first.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    if !filter.should.is_empty() {
+        debug!(
+            count = filter.should.len(),
+            "Keyword search: should conditions mapped to custom filters where possible"
+        );
+    }
+
+    if !filter.must_not.is_empty() {
+        debug!(
+            count = filter.must_not.len(),
+            "Keyword search: must_not conditions are not directly supported by KeywordSearchFilters"
+        );
+    }
+
+    keyword_filters
 }
 
 #[cfg(test)]
@@ -661,5 +796,165 @@ mod tests {
         assert!(keyword_map.contains_key(&chunk_id));
         assert_eq!(semantic_map.get(&chunk_id).unwrap().content, "Test content");
         assert_eq!(keyword_map.get(&chunk_id).unwrap().content, "Test content");
+    }
+
+    // --- Filter conversion tests ---
+
+    use crate::acl::FilterCondition;
+
+    #[test]
+    fn test_convert_to_semantic_filters_source_type() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("source_type", "pdf"));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(result.source_type, Some("pdf".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_document_id() {
+        let doc_id = Uuid::new_v4();
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("document_id", doc_id.to_string()));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(result.document_id, Some(doc_id));
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_groups_any() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::any_of(
+                "allowed_groups",
+                vec!["engineering".to_string(), "product".to_string()],
+            ));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(
+            result.groups,
+            Some(vec!["engineering".to_string(), "product".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_groups_single_value() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("allowed_groups", "engineering"));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(result.groups, Some(vec!["engineering".to_string()]));
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_custom_field() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("category", "docs"));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(result.custom.get("category"), Some(&"docs".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_multiple_conditions() {
+        let doc_id = Uuid::new_v4();
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("source_type", "pdf"))
+            .must(FilterCondition::value("document_id", doc_id.to_string()))
+            .must(FilterCondition::value("category", "docs"));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert_eq!(result.source_type, Some("pdf".to_string()));
+        assert_eq!(result.document_id, Some(doc_id));
+        assert_eq!(result.custom.get("category"), Some(&"docs".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_invalid_uuid_ignored() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("document_id", "not-a-uuid"));
+
+        let result = convert_to_semantic_filters(&filter);
+        assert!(result.document_id.is_none());
+    }
+
+    #[test]
+    fn test_convert_to_semantic_filters_empty_filter() {
+        let filter = UnifiedFilter::new();
+        let result = convert_to_semantic_filters(&filter);
+        assert!(result.source_type.is_none());
+        assert!(result.document_id.is_none());
+        assert!(result.groups.is_none());
+        assert!(result.custom.is_empty());
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_source_type() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("source_type", "pdf"));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert_eq!(result.source_type, Some("pdf".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_document_id() {
+        let doc_id = Uuid::new_v4();
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("document_id", doc_id.to_string()));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert_eq!(result.document_id, Some(doc_id));
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_groups() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::any_of(
+                "allowed_groups",
+                vec!["engineering".to_string()],
+            ));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert_eq!(result.groups, Some(vec!["engineering".to_string()]));
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_custom_field() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("category", "docs"));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert_eq!(result.custom.get("category"), Some(&"docs".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_multiple_conditions() {
+        let doc_id = Uuid::new_v4();
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("source_type", "html"))
+            .must(FilterCondition::value("document_id", doc_id.to_string()))
+            .must(FilterCondition::any_of(
+                "allowed_groups",
+                vec!["engineering".to_string(), "product".to_string()],
+            ))
+            .must(FilterCondition::value("region", "eu-west"));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert_eq!(result.source_type, Some("html".to_string()));
+        assert_eq!(result.document_id, Some(doc_id));
+        assert_eq!(
+            result.groups,
+            Some(vec!["engineering".to_string(), "product".to_string()])
+        );
+        assert_eq!(result.custom.get("region"), Some(&"eu-west".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_keyword_filters_invalid_uuid_ignored() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("document_id", "invalid-uuid"));
+
+        let result = convert_to_keyword_filters(&filter);
+        assert!(result.document_id.is_none());
     }
 }

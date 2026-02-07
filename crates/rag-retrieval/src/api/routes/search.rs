@@ -15,6 +15,7 @@ use chrono::Utc;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
+use crate::acl::{FilterCondition, MatchType, UnifiedFilter};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
 use crate::api::types::{
@@ -117,6 +118,120 @@ pub async fn retrieve(
     Ok(Json(response))
 }
 
+/// Parse raw JSON filters into a `UnifiedFilter`.
+///
+/// Supports two formats:
+///
+/// 1. **Simple key-value object** (convenience format):
+///    ```json
+///    {
+///      "source_type": "pdf",
+///      "document_id": "550e8400-e29b-41d4-a716-446655440000",
+///      "category": "docs"
+///    }
+///    ```
+///    Each key-value pair becomes a `must` condition with exact match.
+///
+/// 2. **Full UnifiedFilter structure** (advanced format):
+///    ```json
+///    {
+///      "must": [{"key": "source_type", "match_type": {"value": "pdf"}}],
+///      "should": [{"key": "visibility", "match_type": {"value": "public"}}],
+///      "must_not": [{"key": "status", "match_type": {"value": "archived"}}]
+///    }
+///    ```
+///
+/// The `tenant_id` key is always excluded from filter parsing since it is
+/// handled separately via the `X-Tenant-Id` header.
+///
+/// # Errors
+///
+/// Returns `ApiError::bad_request` if filter values are not strings, arrays
+/// of strings, or if the structured format fails to deserialize.
+fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter, ApiError> {
+    // Check if this is the structured UnifiedFilter format
+    if filters.get("must").is_some()
+        || filters.get("should").is_some()
+        || filters.get("must_not").is_some()
+    {
+        // Attempt to deserialize as UnifiedFilter directly
+        let unified: UnifiedFilter = serde_json::from_value(filters.clone()).map_err(|e| {
+            ApiError::bad_request(format!(
+                "Invalid structured filter format: {e}. Expected {{\"must\": [...], \"should\": [...], \"must_not\": [...]}}"
+            ))
+        })?;
+
+        // Validate that all conditions have non-empty keys
+        for cond in unified
+            .must
+            .iter()
+            .chain(unified.should.iter())
+            .chain(unified.must_not.iter())
+        {
+            if cond.key.is_empty() {
+                return Err(ApiError::bad_request(
+                    "Filter condition key cannot be empty",
+                ));
+            }
+        }
+
+        return Ok(unified);
+    }
+
+    // Simple key-value format: convert to must conditions
+    let obj = filters.as_object().ok_or_else(|| {
+        ApiError::bad_request(
+            "filters must be a JSON object with key-value pairs or a structured filter with must/should/must_not",
+        )
+    })?;
+
+    let mut unified = UnifiedFilter::new();
+
+    for (key, value) in obj {
+        // Skip tenant_id as it's handled separately via X-Tenant-Id header
+        if key == "tenant_id" {
+            continue;
+        }
+
+        let match_type = match value {
+            serde_json::Value::String(s) => MatchType::Value(s.clone()),
+            serde_json::Value::Array(arr) => {
+                let strings: Result<Vec<String>, _> = arr
+                    .iter()
+                    .map(|v| {
+                        v.as_str()
+                            .map(String::from)
+                            .ok_or_else(|| {
+                                ApiError::bad_request(format!(
+                                    "Filter array values for key '{}' must be strings, got: {}",
+                                    key, v
+                                ))
+                            })
+                    })
+                    .collect();
+                MatchType::Any(strings?)
+            }
+            _ => {
+                return Err(ApiError::bad_request(format!(
+                    "Filter value for key '{}' must be a string or array of strings, got: {}",
+                    key,
+                    match value {
+                        serde_json::Value::Null => "null",
+                        serde_json::Value::Bool(_) => "boolean",
+                        serde_json::Value::Number(_) => "number",
+                        serde_json::Value::Object(_) => "object",
+                        _ => "unknown",
+                    }
+                )));
+            }
+        };
+
+        unified = unified.must(FilterCondition::new(key.clone(), match_type));
+    }
+
+    Ok(unified)
+}
+
 /// Execute the hybrid search based on the request parameters.
 async fn execute_search(
     state: &AppState,
@@ -138,14 +253,33 @@ async fn execute_search(
     metrics.embedding_ms = Some(embed_start.elapsed().as_secs_f64() * 1000.0);
     debug_info.embedding_latency_ms = metrics.embedding_ms.unwrap_or(0.0);
 
-    // Step 2: Configure search
+    // Step 2: Parse filters from request
+    let unified_filter = match &request.filters {
+        Some(filters) => {
+            let parsed = parse_filters(filters)?;
+            if parsed.is_empty() {
+                None
+            } else {
+                debug!(
+                    must_count = parsed.must.len(),
+                    should_count = parsed.should.len(),
+                    must_not_count = parsed.must_not.len(),
+                    "Parsed request filters"
+                );
+                Some(parsed)
+            }
+        }
+        None => None,
+    };
+
+    // Step 3: Configure search
     let search_top_k = if request.rerank {
         request.rerank_top_k
     } else {
         request.top_k
     };
 
-    // Step 3: Execute search based on mode
+    // Step 4: Execute search based on mode
     let search_result = match request.mode {
         SearchMode::Hybrid => {
             let _config = HybridSearchConfig::default()
@@ -155,7 +289,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search(&request.query, &embedding, Some(search_top_k), None, Some(user_context))
+                .search(&request.query, &embedding, Some(search_top_k), unified_filter.as_ref(), Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
 
@@ -190,7 +324,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_semantic_only(&embedding, search_top_k, None, Some(user_context))
+                .search_semantic_only(&embedding, search_top_k, unified_filter.as_ref(), Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Semantic search error: {e}")))?;
 
@@ -205,7 +339,7 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_keyword_only(&request.query, search_top_k, None, Some(user_context))
+                .search_keyword_only(&request.query, search_top_k, unified_filter.as_ref(), Some(user_context))
                 .await
                 .map_err(|e| ApiError::internal(format!("Keyword search error: {e}")))?;
 
@@ -242,7 +376,7 @@ async fn execute_search(
         })
         .collect();
 
-    // Step 4: Rerank if enabled and reranker is available
+    // Step 5: Rerank if enabled and reranker is available
     if request.rerank && state.has_reranker() {
         let rerank_start = Instant::now();
 
@@ -279,7 +413,7 @@ async fn execute_search(
         debug_info.rerank_latency_ms = metrics.rerank_ms.unwrap_or(0.0);
     }
 
-    // Step 5: Apply ACL filter
+    // Step 6: Apply ACL filter
     let acl_start = Instant::now();
     let before_acl = results.len();
 
@@ -299,12 +433,12 @@ async fn execute_search(
         );
     }
 
-    // Step 6: Apply score threshold
+    // Step 7: Apply score threshold
     if request.min_score > 0.0 {
         results.retain(|r| r.score >= request.min_score);
     }
 
-    // Step 7: Apply top_k limit
+    // Step 8: Apply top_k limit
     results.truncate(request.top_k);
     metrics.final_results_count = results.len();
 
@@ -425,5 +559,134 @@ mod tests {
 
         assert!(response[0].highlights.is_some());
         assert_eq!(response[0].highlights.as_ref().unwrap().len(), 1);
+    }
+
+    // --- Filter parsing tests ---
+
+    #[test]
+    fn test_parse_filters_simple_key_value() {
+        let filters = serde_json::json!({
+            "source_type": "pdf",
+            "category": "docs"
+        });
+
+        let result = parse_filters(&filters).unwrap();
+        assert_eq!(result.must.len(), 2);
+        assert!(result.should.is_empty());
+        assert!(result.must_not.is_empty());
+
+        // Check that both conditions are present (order may vary)
+        let keys: Vec<&str> = result.must.iter().map(|c| c.key.as_str()).collect();
+        assert!(keys.contains(&"source_type"));
+        assert!(keys.contains(&"category"));
+    }
+
+    #[test]
+    fn test_parse_filters_simple_array_value() {
+        let filters = serde_json::json!({
+            "allowed_groups": ["engineering", "product"]
+        });
+
+        let result = parse_filters(&filters).unwrap();
+        assert_eq!(result.must.len(), 1);
+
+        let cond = &result.must[0];
+        assert_eq!(cond.key, "allowed_groups");
+        match &cond.match_type {
+            MatchType::Any(values) => {
+                assert_eq!(values, &vec!["engineering".to_string(), "product".to_string()]);
+            }
+            _ => panic!("Expected MatchType::Any"),
+        }
+    }
+
+    #[test]
+    fn test_parse_filters_skips_tenant_id() {
+        let filters = serde_json::json!({
+            "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+            "source_type": "pdf"
+        });
+
+        let result = parse_filters(&filters).unwrap();
+        assert_eq!(result.must.len(), 1);
+        assert_eq!(result.must[0].key, "source_type");
+    }
+
+    #[test]
+    fn test_parse_filters_structured_format() {
+        let filters = serde_json::json!({
+            "must": [
+                {"key": "source_type", "match_type": {"value": "pdf"}}
+            ],
+            "should": [
+                {"key": "visibility", "match_type": {"value": "public"}}
+            ],
+            "must_not": []
+        });
+
+        let result = parse_filters(&filters).unwrap();
+        assert_eq!(result.must.len(), 1);
+        assert_eq!(result.should.len(), 1);
+        assert!(result.must_not.is_empty());
+    }
+
+    #[test]
+    fn test_parse_filters_rejects_non_object() {
+        let filters = serde_json::json!("not an object");
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_filters_rejects_number_value() {
+        let filters = serde_json::json!({
+            "count": 42
+        });
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_filters_rejects_non_string_array_items() {
+        let filters = serde_json::json!({
+            "groups": ["valid", 123]
+        });
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_filters_empty_object_returns_empty_filter() {
+        let filters = serde_json::json!({});
+        let result = parse_filters(&filters).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_filters_document_id_filter() {
+        let doc_id = Uuid::new_v4();
+        let filters = serde_json::json!({
+            "document_id": doc_id.to_string()
+        });
+
+        let result = parse_filters(&filters).unwrap();
+        assert_eq!(result.must.len(), 1);
+        assert_eq!(result.must[0].key, "document_id");
+        match &result.must[0].match_type {
+            MatchType::Value(v) => assert_eq!(v, &doc_id.to_string()),
+            _ => panic!("Expected MatchType::Value"),
+        }
+    }
+
+    #[test]
+    fn test_parse_filters_structured_rejects_empty_key() {
+        let filters = serde_json::json!({
+            "must": [
+                {"key": "", "match_type": {"value": "pdf"}}
+            ]
+        });
+
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
     }
 }

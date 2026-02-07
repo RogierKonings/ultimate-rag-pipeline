@@ -169,7 +169,99 @@ impl RetrieveRequest {
             ));
         }
 
+        // Validate filters format
+        if let Some(ref filters) = self.filters {
+            Self::validate_filters(filters)?;
+        }
+
         Ok(())
+    }
+
+    /// Validate that filter values have acceptable types and structure.
+    ///
+    /// Accepted formats:
+    /// 1. Simple key-value object: `{"key": "value"}` or `{"key": ["v1", "v2"]}`
+    /// 2. Structured filter: `{"must": [...], "should": [...], "must_not": [...]}`
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ValidationError` if filters are not a JSON object or contain
+    /// invalid value types.
+    fn validate_filters(filters: &serde_json::Value) -> Result<(), ValidationError> {
+        let obj = match filters.as_object() {
+            Some(obj) => obj,
+            None => {
+                return Err(ValidationError::new(
+                    "filters",
+                    "filters must be a JSON object",
+                ));
+            }
+        };
+
+        // Check for structured format
+        let is_structured = obj.contains_key("must")
+            || obj.contains_key("should")
+            || obj.contains_key("must_not");
+
+        if is_structured {
+            // Validate structured filter arrays
+            for key in &["must", "should", "must_not"] {
+                if let Some(arr) = obj.get(*key) {
+                    if !arr.is_array() {
+                        return Err(ValidationError::new(
+                            "filters",
+                            &format!("filters.{} must be an array", key),
+                        ));
+                    }
+                }
+            }
+        } else {
+            // Validate simple key-value format
+            for (key, value) in obj {
+                match value {
+                    serde_json::Value::String(_) => {} // OK
+                    serde_json::Value::Array(arr) => {
+                        for (i, item) in arr.iter().enumerate() {
+                            if !item.is_string() {
+                                return Err(ValidationError::new(
+                                    "filters",
+                                    &format!(
+                                        "filters.{}[{}] must be a string, got {}",
+                                        key,
+                                        i,
+                                        value_type_name(item)
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                    _ => {
+                        return Err(ValidationError::new(
+                            "filters",
+                            &format!(
+                                "filters.{} must be a string or array of strings, got {}",
+                                key,
+                                value_type_name(value)
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Get the JSON type name for error messages.
+fn value_type_name(value: &serde_json::Value) -> &'static str {
+    match value {
+        serde_json::Value::Null => "null",
+        serde_json::Value::Bool(_) => "boolean",
+        serde_json::Value::Number(_) => "number",
+        serde_json::Value::String(_) => "string",
+        serde_json::Value::Array(_) => "array",
+        serde_json::Value::Object(_) => "object",
     }
 }
 
@@ -379,5 +471,103 @@ mod tests {
         request.aggregation = "invalid".to_string();
         let err = request.validate().unwrap_err();
         assert_eq!(err.field, "aggregation");
+    }
+
+    // --- Filter validation tests ---
+
+    #[test]
+    fn test_validate_filters_none_is_valid() {
+        let request = RetrieveRequest::new("test query");
+        assert!(request.validate().is_ok());
+        assert!(request.filters.is_none());
+    }
+
+    #[test]
+    fn test_validate_filters_simple_string_values() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "source_type": "pdf",
+            "category": "docs"
+        }));
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_filters_simple_array_values() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "allowed_groups": ["engineering", "product"]
+        }));
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_filters_rejects_non_object() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!("not an object"));
+        let err = request.validate().unwrap_err();
+        assert_eq!(err.field, "filters");
+        assert!(err.message.contains("JSON object"));
+    }
+
+    #[test]
+    fn test_validate_filters_rejects_number_values() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "count": 42
+        }));
+        let err = request.validate().unwrap_err();
+        assert_eq!(err.field, "filters");
+        assert!(err.message.contains("number"));
+    }
+
+    #[test]
+    fn test_validate_filters_rejects_boolean_values() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "active": true
+        }));
+        let err = request.validate().unwrap_err();
+        assert_eq!(err.field, "filters");
+        assert!(err.message.contains("boolean"));
+    }
+
+    #[test]
+    fn test_validate_filters_rejects_mixed_array() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "groups": ["valid", 123]
+        }));
+        let err = request.validate().unwrap_err();
+        assert_eq!(err.field, "filters");
+    }
+
+    #[test]
+    fn test_validate_filters_structured_format() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "must": [{"key": "source_type", "match_type": {"value": "pdf"}}],
+            "should": [],
+            "must_not": []
+        }));
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_filters_structured_rejects_non_array_must() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({
+            "must": "not an array"
+        }));
+        let err = request.validate().unwrap_err();
+        assert_eq!(err.field, "filters");
+        assert!(err.message.contains("must be an array"));
+    }
+
+    #[test]
+    fn test_validate_filters_empty_object_is_valid() {
+        let mut request = RetrieveRequest::new("test query");
+        request.filters = Some(serde_json::json!({}));
+        assert!(request.validate().is_ok());
     }
 }
