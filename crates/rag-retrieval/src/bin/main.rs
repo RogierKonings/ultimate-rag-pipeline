@@ -24,7 +24,7 @@ use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
-use rag_retrieval::api::{run_server_with_shutdown, AppState, ServerConfig};
+use rag_retrieval::api::{run_server_with_config, AppState, ServerConfig};
 use rag_retrieval::embedding::{EmbeddingClient, EmbeddingConfig};
 use rag_retrieval::hybrid::{HybridSearchConfig, HybridSearcher};
 use rag_retrieval::reranking::{RerankerConfig, RerankerService};
@@ -82,7 +82,7 @@ async fn main() {
         }
     };
 
-    if let Err(e) = run_server_with_shutdown(state, server_config.addr, shutdown_signal).await {
+    if let Err(e) = run_server_with_config(state, &server_config, shutdown_signal).await {
         error!("Server error: {}", e);
         std::process::exit(1);
     }

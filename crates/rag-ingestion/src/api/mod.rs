@@ -39,6 +39,9 @@ pub mod types;
 
 pub use error::{ApiError, ApiResult, ErrorBody, ErrorResponse};
 pub use jobs::{JobState, JobTracker};
-pub use server::{create_router, run_server, run_server_with_shutdown, ServerConfig, ServerError};
+pub use server::{
+    create_router, create_router_with_config, run_server, run_server_with_config,
+    run_server_with_shutdown, ServerConfig, ServerError,
+};
 pub use state::{AppState, AppStateBuilder, AppStateBuilderError};
 pub use types::*;

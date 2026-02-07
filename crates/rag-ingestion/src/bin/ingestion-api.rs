@@ -17,7 +17,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use rag_database::{DatabaseConfig, DatabasePool};
-use rag_ingestion::api::{run_server_with_shutdown, AppState, JobTracker, ServerConfig};
+use rag_ingestion::api::{run_server_with_config, AppState, JobTracker, ServerConfig};
 use rag_ingestion::embedding::{EmbeddingClient, EmbeddingClientConfig};
 use rag_ingestion::indexing::{IndexCoordinator, IndexCoordinatorConfig};
 use rag_ingestion::worker::{IngestionJobHandler, JobQueue, WorkerPool, WorkerPoolConfig};
@@ -44,6 +44,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(
         addr = %config.addr,
         timeout_secs = config.timeout_secs,
+        cors_enabled = config.cors_enabled,
+        environment = %config.environment,
         "Starting ingestion API server"
     );
 
@@ -155,7 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Run server with graceful shutdown
-    run_server_with_shutdown(state, config.addr, shutdown_signal()).await?;
+    run_server_with_config(state, &config, shutdown_signal()).await?;
 
     // Shutdown worker pool gracefully
     if let Some(ref mut pool) = worker_pool {

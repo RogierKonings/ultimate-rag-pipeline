@@ -250,7 +250,8 @@ pub use hybrid::{
 
 // Re-export API types
 pub use api::{
-    create_router, run_server, ApiError, AppState, RetrieveRequest, RetrieveResponse, ServerConfig,
+    create_router, create_router_with_config, run_server, run_server_with_config, ApiError,
+    AppState, RetrieveRequest, RetrieveResponse, ServerConfig,
 };
 
 // Re-export observability types

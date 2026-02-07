@@ -20,6 +20,13 @@ class OrchestratorConfig(BaseSettings):
     service_name: str = "orchestrator-service"
     service_port: int = 8003
     debug: bool = False
+    environment: str = "development"
+
+    # CORS configuration
+    cors_enabled: bool = True
+    cors_allowed_origins: str = ""  # Comma-separated; empty = env-based defaults
+    cors_allowed_methods: str = ""  # Comma-separated; empty = defaults
+    cors_allowed_headers: str = ""  # Comma-separated; empty = defaults
 
     # Retrieval Service (from centralized config)
     retrieval_url: str = Field(default_factory=get_retrieval_service_url)

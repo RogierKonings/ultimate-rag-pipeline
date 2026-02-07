@@ -226,6 +226,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"{config.service_name} shutdown complete")
 
 
+def _parse_cors_list(value: str) -> list[str]:
+    """Parse a comma-separated string into a list of trimmed, non-empty values."""
+    if not value or not value.strip():
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -248,14 +255,58 @@ def create_app(config: OrchestratorConfig | None = None) -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # Configure CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Configure CORS based on environment settings
+    if config.cors_enabled:
+        cors_origins = _parse_cors_list(config.cors_allowed_origins)
+        cors_methods = _parse_cors_list(config.cors_allowed_methods)
+        cors_headers = _parse_cors_list(config.cors_allowed_headers)
+
+        is_production = config.environment == "production"
+
+        if not cors_origins:
+            if is_production:
+                logger.warning(
+                    "CORS enabled in production without ORCHESTRATOR_CORS_ALLOWED_ORIGINS; "
+                    "no cross-origin requests will be allowed. "
+                    "Set ORCHESTRATOR_CORS_ALLOWED_ORIGINS to allow specific origins."
+                )
+                cors_origins = []
+            else:
+                cors_origins = ["*"]
+
+        if not cors_methods:
+            cors_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+
+        if not cors_headers:
+            if is_production:
+                cors_headers = [
+                    "Content-Type",
+                    "Authorization",
+                    "X-Tenant-Id",
+                    "X-Request-Id",
+                ]
+            else:
+                cors_headers = ["*"]
+
+        # allow_credentials is incompatible with wildcard origins
+        allow_credentials = "*" not in cors_origins
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=allow_credentials,
+            allow_methods=cors_methods,
+            allow_headers=cors_headers,
+        )
+
+        logger.info(
+            "cors_configured",
+            cors_enabled=True,
+            environment=config.environment,
+            origins=cors_origins,
+        )
+    else:
+        logger.info("cors_disabled", cors_enabled=False)
 
     # Correlation ID middleware for distributed tracing (US-10.3.1)
     # Replaces inline log_requests with more comprehensive correlation handling
