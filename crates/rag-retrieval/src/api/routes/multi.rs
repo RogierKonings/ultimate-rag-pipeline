@@ -13,6 +13,7 @@ use futures::future::join_all;
 use tracing::{debug, instrument};
 use uuid::Uuid;
 
+use crate::api::degradation::{evaluate, ComponentOutcome};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
 use crate::api::types::{
@@ -69,12 +70,21 @@ pub async fn retrieve_multi(
 
     let query_results = join_all(query_futures).await;
 
-    // Collect all results, logging any errors
+    // Collect all results, logging any errors.
+    // Track component outcomes: embedding is attempted per-query via
+    // embed_query, and each sub-query runs hybrid search (semantic + keyword).
+    let total_queries = request.queries.len();
+    let mut succeeded_queries = 0usize;
+    let mut embedding_ok = false;
+
     let mut all_results: Vec<(String, Vec<HybridSearchResult>)> = Vec::new();
     for (query, result) in request.queries.iter().zip(query_results.into_iter()) {
         match result {
             Ok(results) => {
                 all_results.push((query.clone(), results));
+                succeeded_queries += 1;
+                // If we got results, embedding + both search components worked
+                embedding_ok = true;
             }
             Err(e) => {
                 debug!(query = %query, error = %e, "Query failed, skipping");
@@ -85,6 +95,24 @@ pub async fn retrieve_multi(
     if all_results.is_empty() {
         return Err(ApiError::internal("All queries failed"));
     }
+
+    // Build component outcome based on which sub-queries succeeded.
+    // Each sub-query uses hybrid search (semantic + keyword).
+    // If all succeeded, both components are fully healthy.
+    // If some failed, we still had at least partial success.
+    let mut outcome = ComponentOutcome::new();
+    if embedding_ok {
+        outcome = outcome.with_embedding_ok();
+    }
+    // The sub-queries use hybrid (semantic + keyword). If at least one
+    // succeeded, both search backends were reachable. If some failed we
+    // still mark the search components as ok because the aggregated response
+    // contains valid results from at least one successful sub-query.
+    outcome = outcome.with_semantic(true).with_keyword(true);
+
+    // If not all queries succeeded, record a partial degradation via a
+    // non-None mode to signal the caller.
+    let partial_failure = succeeded_queries < total_queries;
 
     // Aggregate results based on method
     let aggregated = match request.aggregation.as_str() {
@@ -117,6 +145,14 @@ pub async fn retrieve_multi(
 
     let total_ms = start_time.elapsed().as_secs_f64() * 1000.0;
 
+    // Evaluate degradation from component outcomes
+    let mut degradation = evaluate(SearchMode::Hybrid, &outcome);
+
+    // Override mode when some sub-queries failed even though components are ok
+    if partial_failure && degradation.mode.is_none() {
+        degradation.mode = Some("partial_queries_failed".into());
+    }
+
     let response = RetrieveResponse {
         results: response_results,
         total_results: final_results.len(),
@@ -130,9 +166,9 @@ pub async fn retrieve_multi(
         query_id,
         processed_at: Utc::now(),
         debug: None,
-        degradation_mode: None,
-        components_used: vec!["semantic".into(), "keyword".into()],
-        components_skipped: vec![],
+        degradation_mode: degradation.mode,
+        components_used: degradation.components_used,
+        components_skipped: degradation.components_skipped,
     };
 
     debug!(

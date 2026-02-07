@@ -16,6 +16,7 @@ use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
 use crate::acl::{FilterCondition, MatchType, UnifiedFilter};
+use crate::api::degradation::{evaluate, ComponentOutcome};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
 use crate::api::types::{
@@ -80,7 +81,11 @@ pub async fn retrieve(
     let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
 
     // Execute the search
-    let (results, metrics, debug_info) = execute_search(&state, &request, &user_context).await?;
+    let (results, metrics, debug_info, outcome) =
+        execute_search(&state, &request, &user_context).await?;
+
+    // Evaluate degradation from actual component outcomes
+    let degradation = evaluate(request.mode, &outcome);
 
     // Convert results to response format
     let response_results = convert_to_response(
@@ -103,9 +108,9 @@ pub async fn retrieve(
         query_id,
         processed_at: Utc::now(),
         debug: Some(debug_info),
-        degradation_mode: None,
-        components_used: vec!["semantic".into(), "keyword".into()],
-        components_skipped: vec![],
+        degradation_mode: degradation.mode,
+        components_used: degradation.components_used,
+        components_skipped: degradation.components_skipped,
     };
 
     debug!(
@@ -233,14 +238,18 @@ fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter, ApiError>
 }
 
 /// Execute the hybrid search based on the request parameters.
+///
+/// Returns the results, metrics, debug info, and component outcome for
+/// degradation evaluation.
 async fn execute_search(
     state: &AppState,
     request: &RetrieveRequest,
     user_context: &UserContext,
-) -> ApiResult<(Vec<RetrievalResult>, SearchMetrics, DebugInfo)> {
+) -> ApiResult<(Vec<RetrievalResult>, SearchMetrics, DebugInfo, ComponentOutcome)> {
     let start_time = Instant::now();
     let mut metrics = SearchMetrics::default();
     let mut debug_info = DebugInfo::default();
+    let mut outcome = ComponentOutcome::new();
 
     // Step 1: Generate query embedding
     let embed_start = Instant::now();
@@ -249,6 +258,9 @@ async fn execute_search(
         .embed_query(&request.query)
         .await
         .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?;
+
+    // Embedding succeeded
+    outcome = outcome.with_embedding_ok();
 
     metrics.embedding_ms = Some(embed_start.elapsed().as_secs_f64() * 1000.0);
     debug_info.embedding_latency_ms = metrics.embedding_ms.unwrap_or(0.0);
@@ -318,6 +330,9 @@ async fn execute_search(
             debug_info.keyword_candidates = result.total_keyword;
             debug_info.after_fusion = result.results.len();
 
+            // Both components succeeded (search() propagates errors)
+            outcome = outcome.with_semantic(true).with_keyword(true);
+
             result
         }
         SearchMode::Semantic => {
@@ -333,6 +348,9 @@ async fn execute_search(
             debug_info.semantic_candidates = result.total_semantic;
             debug_info.semantic_search_latency_ms = metrics.semantic_search_ms.unwrap_or(0.0);
 
+            // Semantic succeeded
+            outcome = outcome.with_semantic(true);
+
             result
         }
         SearchMode::Keyword => {
@@ -347,6 +365,9 @@ async fn execute_search(
             metrics.keyword_results_count = result.total_keyword;
             debug_info.keyword_candidates = result.total_keyword;
             debug_info.keyword_search_latency_ms = metrics.keyword_search_ms.unwrap_or(0.0);
+
+            // Keyword succeeded
+            outcome = outcome.with_keyword(true);
 
             result
         }
@@ -377,7 +398,10 @@ async fn execute_search(
         .collect();
 
     // Step 5: Rerank if enabled and reranker is available
-    if request.rerank && state.has_reranker() {
+    let rerank_requested = request.rerank && state.has_reranker();
+    let mut rerank_ok = false;
+
+    if rerank_requested {
         let rerank_start = Instant::now();
 
         if let Some(ref reranker) = state.reranker {
@@ -402,6 +426,7 @@ async fn execute_search(
                         .collect();
 
                     debug_info.after_rerank = results.len();
+                    rerank_ok = true;
                 }
                 Err(e) => {
                     warn!("Reranking failed, using fusion scores: {e}");
@@ -412,6 +437,8 @@ async fn execute_search(
         metrics.rerank_ms = Some(rerank_start.elapsed().as_secs_f64() * 1000.0);
         debug_info.rerank_latency_ms = metrics.rerank_ms.unwrap_or(0.0);
     }
+
+    outcome = outcome.with_rerank(rerank_requested, rerank_ok);
 
     // Step 6: Apply ACL filter
     let acl_start = Instant::now();
@@ -444,7 +471,7 @@ async fn execute_search(
 
     debug_info.total_latency_ms = start_time.elapsed().as_secs_f64() * 1000.0;
 
-    Ok((results, metrics, debug_info))
+    Ok((results, metrics, debug_info, outcome))
 }
 
 /// Convert retrieval results to response format.

@@ -65,6 +65,7 @@
 //! - `500 INTERNAL_ERROR` - Server error
 //! - `503 SERVICE_UNAVAILABLE` - Service not ready
 
+pub mod degradation;
 pub mod error;
 pub mod requests;
 pub mod responses;
