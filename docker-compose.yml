@@ -131,6 +131,7 @@ services:
   # NOTE: Run 'make env-docker' before 'docker-compose --profile app up' to generate .env
 
   ingestion-service:
+    image: rag-ingestion:latest
     build:
       context: ./crates
       dockerfile: rag-ingestion/Dockerfile
@@ -183,6 +184,7 @@ services:
       - app
 
   retrieval-service:
+    image: rag-retrieval:latest
     build:
       context: ./crates
       dockerfile: rag-retrieval/Dockerfile
@@ -235,6 +237,7 @@ services:
       - app
 
   orchestrator-service:
+    image: rag-orchestrator:latest
     build:
       context: ./services/orchestrator
       dockerfile: Dockerfile
@@ -270,6 +273,7 @@ services:
 
   # ============ ML SERVICES ============
   embedding-service:
+    image: rag-embedding:latest
     build:
       context: ./crates
       dockerfile: rag-embedding/Dockerfile
@@ -289,7 +293,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 15s
     restart: unless-stopped
     deploy:
       resources:
@@ -326,6 +330,7 @@ services:
 
   # ============ FRONTEND ============
   frontend:
+    image: rag-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile

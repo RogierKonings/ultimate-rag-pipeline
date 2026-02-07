@@ -26,6 +26,8 @@ jobs:
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
 
       - name: Create .env file
         run: |
@@ -42,6 +44,51 @@ jobs:
       - name: Start infrastructure
         run: docker compose up -d
 
+      # Build application images with GHA cache (parallel with infra startup)
+      - name: Build embedding service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./crates
+          file: ./crates/rag-embedding/Dockerfile
+          push: false
+          load: true
+          tags: rag-embedding:latest
+          cache-from: type=gha,scope=embedding
+          cache-to: type=gha,scope=embedding,mode=max
+
+      - name: Build ingestion service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./crates
+          file: ./crates/rag-ingestion/Dockerfile
+          push: false
+          load: true
+          tags: rag-ingestion:latest
+          cache-from: type=gha,scope=ingestion
+          cache-to: type=gha,scope=ingestion,mode=max
+
+      - name: Build retrieval service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./crates
+          file: ./crates/rag-retrieval/Dockerfile
+          push: false
+          load: true
+          tags: rag-retrieval:latest
+          cache-from: type=gha,scope=retrieval
+          cache-to: type=gha,scope=retrieval,mode=max
+
+      - name: Build orchestrator service
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/orchestrator
+          file: ./services/orchestrator/Dockerfile
+          push: false
+          load: true
+          tags: rag-orchestrator:latest
+          cache-from: type=gha,scope=orchestrator
+          cache-to: type=gha,scope=orchestrator,mode=max
+
       - name: Wait for infrastructure
         run: |
           echo "Waiting for infrastructure services..."
@@ -55,23 +102,41 @@ jobs:
           done
 
       - name: Start application services
-        run: docker compose --profile app up -d
+        run: docker compose --profile app up -d --no-build
 
       - name: Wait for application services
         run: |
           echo "Waiting for application services..."
-          for i in $(seq 1 60); do
-            HEALTHY=true
+          MAX_WAIT=180
+          INTERVAL=2
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            ALL_HEALTHY=true
             for port in 8001 8002 8003; do
-              curl -sf http://localhost:$port/health > /dev/null 2>&1 || HEALTHY=false
+              if ! curl -sf --max-time 2 http://localhost:$port/health > /dev/null 2>&1; then
+                ALL_HEALTHY=false
+                break
+              fi
             done
-            if [ "$HEALTHY" = true ]; then
-              echo "All services healthy"
+
+            if [ "$ALL_HEALTHY" = true ]; then
+              echo "All services healthy after ${ELAPSED}s"
               break
             fi
-            echo "Waiting... ($i/60)"
-            sleep 5
+
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+            echo "Waiting for services... (${ELAPSED}s/${MAX_WAIT}s)"
           done
+
+          if [ "$ALL_HEALTHY" != true ]; then
+            echo "ERROR: Services did not become healthy within ${MAX_WAIT}s"
+            for port in 8001 8002 8003; do
+              echo "Port $port: $(curl -sf --max-time 2 http://localhost:$port/health 2>&1 || echo 'UNREACHABLE')"
+            done
+            exit 1
+          fi
 
       - name: Run E2E tests
         run: docker compose --profile app --profile e2e run --rm e2e-tests
@@ -79,7 +144,7 @@ jobs:
       - name: Collect logs on failure
         if: failure()
         run: |
-          for svc in ingestion-service retrieval-service orchestrator-service; do
+          for svc in ingestion-service retrieval-service orchestrator-service embedding-service; do
             echo "=== $svc ==="
             docker compose logs $svc --tail=100
           done

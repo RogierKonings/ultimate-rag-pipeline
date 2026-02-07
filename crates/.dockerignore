@@ -1,0 +1,18 @@
+# Rust build artifacts
+target/
+
+# Serena IDE state
+.serena/
+
+# Git
+.git/
+.gitignore
+
+# Fastembed model cache (local dev only)
+.fastembed_cache/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
