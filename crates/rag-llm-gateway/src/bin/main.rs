@@ -4,9 +4,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use rag_embedding::{EmbeddingConfig, EmbeddingModelWrapper};
-use rag_llm_gateway::{api, GatewayConfig};
+use rag_llm_gateway::{api, GatewayConfig, RerankerModel};
 use tower_http::trace::TraceLayer;
-use tracing::info;
+use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -37,10 +37,24 @@ async fn main() -> anyhow::Result<()> {
         state = state.with_embedding_model(model);
     }
 
-    // Note: Reranker model loading is stubbed for now
-    // Would be loaded similarly when ONNX support is complete
+    // Load reranker model if enabled
     if config.reranker.enabled {
-        info!("Reranker enabled but ONNX loading not yet implemented - skipping");
+        info!("Loading reranker model: {}...", config.reranker.model);
+        let reranker_config = config.reranker.clone();
+        match tokio::task::spawn_blocking(move || RerankerModel::load(&reranker_config)).await? {
+            Ok(model) => {
+                info!("Reranker model loaded: {}", model.model_id());
+                state = state.with_reranker_model(model);
+            }
+            Err(e) => {
+                warn!(
+                    "Reranker model failed to load: {e}. \
+                     The /v1/rerank endpoint will return 503 Service Unavailable."
+                );
+            }
+        }
+    } else {
+        info!("Reranker disabled by configuration (RERANKER_ENABLED=false)");
     }
 
     // Check vLLM connection
