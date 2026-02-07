@@ -1,8 +1,5 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { createProxyHandlers } from '$lib/server/proxy';
 import { INGESTION_URL } from '$env/static/private';
-
-const INGESTION_API = INGESTION_URL || 'http://localhost:8001';
 
 /**
  * Extract a clean filename from a source_uri like:
@@ -18,108 +15,40 @@ function extractFilename(sourceUri: string): string | null {
 	return lastSegment;
 }
 
-export const GET: RequestHandler = async ({ params, url }) => {
-	const path = params.path;
-	const queryString = url.search;
-	const targetUrl = `${INGESTION_API}/${path}${queryString}`;
-
-	try {
-		const response = await fetch(targetUrl, {
-			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json'
-			}
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
-			throw error(response.status, errorData);
-		}
-
-		const data = await response.json();
-
-		// Fix document filenames: extract clean name from source_id path
-		if (data.documents && Array.isArray(data.documents)) {
-			for (const doc of data.documents) {
-				if (doc.source_id) {
-					const cleanName = extractFilename(doc.source_id);
-					if (cleanName) {
-						doc.filename = cleanName;
-					}
-					if (doc.title === doc.source_id) {
-						doc.title = null;
-					}
+/**
+ * Post-process ingestion responses to normalise document filenames.
+ * When the upstream returns a `documents` array, each item's `source_id`
+ * is parsed to produce a human-readable `filename` and the `title` is
+ * cleared if it duplicates `source_id`.
+ */
+function normaliseDocumentFilenames(data: unknown): unknown {
+	if (
+		data !== null &&
+		typeof data === 'object' &&
+		'documents' in data &&
+		Array.isArray((data as Record<string, unknown>).documents)
+	) {
+		const docs = (data as Record<string, unknown>).documents as Record<string, unknown>[];
+		for (const doc of docs) {
+			if (doc.source_id && typeof doc.source_id === 'string') {
+				const cleanName = extractFilename(doc.source_id);
+				if (cleanName) {
+					doc.filename = cleanName;
+				}
+				if (doc.title === doc.source_id) {
+					doc.title = null;
 				}
 			}
 		}
-
-		return json(data);
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		console.error('Proxy error:', err);
-		throw error(502, { message: 'Failed to reach ingestion service' });
 	}
+	return data;
+}
+
+const config = {
+	baseUrl: INGESTION_URL || 'http://localhost:8001',
+	pathPrefix: '',
+	serviceName: 'ingestion',
+	transformResponse: normaliseDocumentFilenames
 };
 
-export const POST: RequestHandler = async ({ params, url, request }) => {
-	const path = params.path;
-	const queryString = url.search;
-	const targetUrl = `${INGESTION_API}/${path}${queryString}`;
-
-	try {
-		const body = await request.json();
-
-		const response = await fetch(targetUrl, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify(body)
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
-			throw error(response.status, errorData);
-		}
-
-		const data = await response.json();
-		return json(data);
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		console.error('Proxy error:', err);
-		throw error(502, { message: 'Failed to reach ingestion service' });
-	}
-};
-
-export const DELETE: RequestHandler = async ({ params, url }) => {
-	const path = params.path;
-	const queryString = url.search;
-	const targetUrl = `${INGESTION_API}/${path}${queryString}`;
-
-	try {
-		const response = await fetch(targetUrl, {
-			method: 'DELETE',
-			headers: {
-				'Content-Type': 'application/json'
-			}
-		});
-
-		if (!response.ok) {
-			const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
-			throw error(response.status, errorData);
-		}
-
-		const data = await response.json();
-		return json(data);
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
-		}
-		console.error('Proxy error:', err);
-		throw error(502, { message: 'Failed to reach ingestion service' });
-	}
-};
+export const { GET, POST, DELETE } = createProxyHandlers(config);
