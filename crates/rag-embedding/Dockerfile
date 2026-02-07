@@ -91,11 +91,20 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN useradd -r -s /bin/false embedding
+
 # Copy binary
 COPY --from=builder /app/target/release/embedding-service /app/embedding-service
 
 # Copy pre-downloaded model (avoids runtime download from HuggingFace)
 COPY --from=model-downloader /model-cache /app/.fastembed_cache
+
+# Set ownership
+RUN chown -R embedding:embedding /app
+
+# Switch to non-root user
+USER embedding
 
 # Set environment variables
 ENV EMBEDDING_HOST=0.0.0.0
