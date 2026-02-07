@@ -74,7 +74,7 @@ jobs:
           done
 
       - name: Run E2E tests
-        run: docker compose --profile e2e run --rm e2e-tests
+        run: docker compose --profile app --profile e2e run --rm e2e-tests
 
       - name: Collect logs on failure
         if: failure()

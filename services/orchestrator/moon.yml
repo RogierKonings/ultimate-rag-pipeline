@@ -22,7 +22,7 @@ fileGroups:
 
 tasks:
   install:
-    command: 'uv pip install -r requirements.txt'
+    command: 'uv pip install --system -r requirements.txt'
     inputs:
       - 'requirements.txt'
 
