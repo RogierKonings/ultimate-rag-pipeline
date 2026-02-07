@@ -171,12 +171,10 @@ class TestRetrievalNode:
         )
 
         # Mock the httpx client to simulate connection error
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.side_effect = httpx.ConnectError("Connection refused")
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -195,15 +193,13 @@ class TestRetrievalNode:
         )
 
         # Mock the httpx client
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = AsyncMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -221,15 +217,13 @@ class TestRetrievalNode:
         state["timing"] = {"routing": 2.0}
 
         # Mock the httpx client
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = AsyncMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -363,12 +357,10 @@ class TestGenerationNode:
         ]
 
         # Mock the httpx client to simulate connection error
-        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.generation.get_llm_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.side_effect = httpx.ConnectError("Connection refused")
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await generation_node(state)
 
@@ -403,10 +395,8 @@ class TestGenerationNode:
         state["messages"] = [{"role": "user", "content": "test"}]
 
         # Mock the httpx client
-        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.generation.get_llm_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = AsyncMock()
             mock_response.json.return_value = {
                 "choices": [{"message": {"content": "Test response"}}],
@@ -415,7 +405,7 @@ class TestGenerationNode:
             }
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await generation_node(state)
 

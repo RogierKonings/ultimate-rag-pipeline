@@ -65,12 +65,10 @@ class TestRetrievalNodeTracing:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
             mock_instance.post = AsyncMock(return_value=mock_response)
-            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
-            mock_instance.__aexit__ = AsyncMock(return_value=None)
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await retrieval_node(state)
 
@@ -113,12 +111,10 @@ class TestRetrievalNodeTracing:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
             mock_instance.post = AsyncMock(return_value=mock_response)
-            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
-            mock_instance.__aexit__ = AsyncMock(return_value=None)
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await retrieval_node(state)
 
@@ -226,12 +222,10 @@ class TestGenerationNodeTracing:
         mock_response.json.return_value = mock_llm_response
         mock_response.raise_for_status = MagicMock()
 
-        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.generation.get_llm_client") as mock_get_client:
             mock_instance = AsyncMock()
             mock_instance.post = AsyncMock(return_value=mock_response)
-            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
-            mock_instance.__aexit__ = AsyncMock(return_value=None)
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await generation_node(state)
 
@@ -262,12 +256,10 @@ class TestGenerationNodeTracing:
         mock_response.json.return_value = mock_llm_response
         mock_response.raise_for_status = MagicMock()
 
-        with patch("workflow.nodes.generation.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.generation.get_llm_client") as mock_get_client:
             mock_instance = AsyncMock()
             mock_instance.post = AsyncMock(return_value=mock_response)
-            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
-            mock_instance.__aexit__ = AsyncMock(return_value=None)
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await generation_node(state)
 

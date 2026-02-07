@@ -98,6 +98,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"Failed to initialize stream manager: {e}")
         app.state.stream_manager = None
 
+    # Initialize shared HTTP clients for workflow nodes
+    try:
+        from shared.http_clients import init_http_clients
+
+        await init_http_clients()
+        logger.info("Shared HTTP clients initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize shared HTTP clients: {e}")
+
     # Initialize RAG workflow
     try:
         from workflow import build_rag_workflow
@@ -163,6 +172,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Shutdown
     logger.info(f"Shutting down {config.service_name}...")
+
+    # Close shared HTTP clients
+    try:
+        from shared.http_clients import close_http_clients
+
+        await close_http_clients()
+        logger.info("Shared HTTP clients closed")
+    except Exception as e:
+        logger.warning(f"Error closing shared HTTP clients: {e}")
 
     # Close model gateway
     if app.state.model_gateway is not None:

@@ -19,11 +19,13 @@ def create_mock_httpx_response(data: dict) -> MagicMock:
     return response
 
 
-def create_mock_httpx_client(response: MagicMock) -> MagicMock:
-    """Create a mock httpx AsyncClient."""
+def create_mock_httpx_client(response: MagicMock) -> AsyncMock:
+    """Create a mock for the shared HTTP client.
+
+    Returns a mock that behaves like an httpx.AsyncClient (without
+    context-manager wrappers, since shared clients are used directly).
+    """
     mock_instance = AsyncMock()
-    mock_instance.__aenter__.return_value = mock_instance
-    mock_instance.__aexit__.return_value = None
     mock_instance.post.return_value = response
     return mock_instance
 
@@ -69,7 +71,7 @@ class TestDegradationFlowIntegration:
         }
 
         # Step 1: Run retrieval node
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         # Verify retrieval_quality is set
@@ -126,7 +128,7 @@ class TestDegradationFlowIntegration:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         assert retrieval_result["retrieval_quality"]["mode"] == "keyword_only"
@@ -174,7 +176,7 @@ class TestDegradationFlowIntegration:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         assert retrieval_result["retrieval_quality"]["mode"] == "minimal"
@@ -227,7 +229,7 @@ class TestDegradationFlowIntegration:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         assert retrieval_result["retrieval_quality"]["mode"] == "hybrid_full"
@@ -274,7 +276,7 @@ class TestDegradationFlowIntegration:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         assert retrieval_result["retrieval_quality"]["mode"] == "hybrid_no_rerank"
@@ -363,7 +365,7 @@ class TestDegradationStatePreservation:
             "fallbacks_used": ["initial_fallback"],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             result = await retrieval_node(state)
 
         # Should have accumulated fallbacks
@@ -397,7 +399,7 @@ class TestDegradationEdgeCases:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             result = await retrieval_node(state)
 
         # Should default to hybrid_full / normal
@@ -426,7 +428,7 @@ class TestDegradationEdgeCases:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             result = await retrieval_node(state)
 
         # Should handle empty components_used
@@ -466,7 +468,7 @@ class TestEndToEndDegradationMetadata:
             "fallbacks_used": [],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+        with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
             retrieval_result = await retrieval_node(state)
 
         prompt_state = {
@@ -520,7 +522,7 @@ class TestEndToEndDegradationMetadata:
                 "fallbacks_used": [],
             }
 
-            with patch("workflow.nodes.retrieval.httpx.AsyncClient", return_value=mock_client):
+            with patch("workflow.nodes.retrieval.get_retrieval_client", return_value=mock_client):
                 result = await retrieval_node(state)
 
             assert result["retrieval_quality"]["mode"] == mode, f"Mode mismatch for {mode}"

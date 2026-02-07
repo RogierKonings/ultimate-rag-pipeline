@@ -13,6 +13,7 @@ from opentelemetry import trace
 
 from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
+from shared.http_clients import get_retrieval_client
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
@@ -102,79 +103,80 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
         context_quality: str | None = None
 
         try:
-            async with httpx.AsyncClient(timeout=config.retrieval_timeout) as client:
-                # Build request payload
-                payload = {
-                    "query": query,
-                    "mode": "hybrid",
-                    "top_k": config.retrieval_top_k,
-                    "rerank": False,  # Disable reranking for faster results
-                    "include_metadata": True,
-                    "include_highlights": True,
+            client = get_retrieval_client()
+
+            # Build request payload
+            payload = {
+                "query": query,
+                "mode": "hybrid",
+                "top_k": config.retrieval_top_k,
+                "rerank": False,  # Disable reranking for faster results
+                "include_metadata": True,
+                "include_highlights": True,
+            }
+
+            # Add tenant filter and header if available
+            headers = {}
+            if tenant_id:
+                payload["filters"] = {"tenant_id": tenant_id}
+                headers["X-Tenant-Id"] = tenant_id
+
+            response = await client.post(
+                "/api/v1/retrieve",
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            raw_results = result.get("results", [])
+
+            # Transform results to document format
+            for item in raw_results:
+                doc = {
+                    "content": item.get("content", ""),
+                    "score": item.get("score", 0.0),
+                    "chunk_id": item.get("chunk_id"),
+                    "document_id": item.get("document_id"),
+                    "metadata": item.get("metadata", {}),
+                    "source": item.get("metadata", {}).get("source_uri", "unknown"),
                 }
+                documents.append(doc)
 
-                # Add tenant filter and header if available
-                headers = {}
-                if tenant_id:
-                    payload["filters"] = {"tenant_id": tenant_id}
-                    headers["X-Tenant-Id"] = tenant_id
+            # Parse degradation info (US-10.2.2)
+            degradation_mode = result.get("degradation_mode", "hybrid_full")
+            components_used = result.get("components_used", [])
+            components_skipped = result.get("components_skipped", [])
 
-                response = await client.post(
-                    f"{config.retrieval_url}/api/v1/retrieve",
-                    json=payload,
-                    headers=headers,
-                )
-                response.raise_for_status()
+            # Determine degradation level from mode
+            if degradation_mode == "hybrid_full":
+                degradation_level = "normal"
+            elif degradation_mode == "minimal":
+                degradation_level = "minimal"
+            else:
+                degradation_level = "degraded"
 
-                result = response.json()
-                raw_results = result.get("results", [])
+            # Build retrieval quality info
+            retrieval_quality = {
+                "degradation_level": degradation_level,
+                "mode": degradation_mode,
+                "components_used": components_used,
+                "components_skipped": components_skipped,
+            }
 
-                # Transform results to document format
-                for item in raw_results:
-                    doc = {
-                        "content": item.get("content", ""),
-                        "score": item.get("score", 0.0),
-                        "chunk_id": item.get("chunk_id"),
-                        "document_id": item.get("document_id"),
-                        "metadata": item.get("metadata", {}),
-                        "source": item.get("metadata", {}).get("source_uri", "unknown"),
-                    }
-                    documents.append(doc)
+            # Set context quality based on degradation
+            if degradation_level == "minimal":
+                context_quality = "minimal"
+            elif degradation_level == "degraded":
+                context_quality = "partial"
+            else:
+                context_quality = "full"
 
-                # Parse degradation info (US-10.2.2)
-                degradation_mode = result.get("degradation_mode", "hybrid_full")
-                components_used = result.get("components_used", [])
-                components_skipped = result.get("components_skipped", [])
+            # Track degradation as fallback if not normal
+            if degradation_level != "normal":
+                fallbacks_used.append(f"retrieval:{degradation_mode}")
 
-                # Determine degradation level from mode
-                if degradation_mode == "hybrid_full":
-                    degradation_level = "normal"
-                elif degradation_mode == "minimal":
-                    degradation_level = "minimal"
-                else:
-                    degradation_level = "degraded"
-
-                # Build retrieval quality info
-                retrieval_quality = {
-                    "degradation_level": degradation_level,
-                    "mode": degradation_mode,
-                    "components_used": components_used,
-                    "components_skipped": components_skipped,
-                }
-
-                # Set context quality based on degradation
-                if degradation_level == "minimal":
-                    context_quality = "minimal"
-                elif degradation_level == "degraded":
-                    context_quality = "partial"
-                else:
-                    context_quality = "full"
-
-                # Track degradation as fallback if not normal
-                if degradation_level != "normal":
-                    fallbacks_used.append(f"retrieval:{degradation_mode}")
-
-                logger.info(f"Retrieved {len(documents)} documents for query: {query[:50]}...")
+            logger.info(f"Retrieved {len(documents)} documents for query: {query[:50]}...")
 
         except httpx.HTTPStatusError as e:
             logger.warning(f"Retrieval service returned error: {e.response.status_code}")

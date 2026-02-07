@@ -217,10 +217,8 @@ class TestMultiRetrievalNode:
             query="What is Python?",
         )
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             # Use MagicMock for response (not async) - only post() is async
             mock_response = MagicMock()
             mock_response.json.return_value = {
@@ -228,7 +226,7 @@ class TestMultiRetrievalNode:
             }
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -246,17 +244,15 @@ class TestMultiRetrievalNode:
         )
         state["sub_questions"] = ["What is Python?", "What is Java?"]
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "results": [{"chunk_id": "a", "content": "content", "score": 0.9}]
             }
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -282,12 +278,10 @@ class TestMultiRetrievalNode:
             mock_resp.raise_for_status.return_value = None
             return mock_resp
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.side_effect = slow_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             start = time.time()
             await multi_retrieval_node(state)
@@ -320,12 +314,10 @@ class TestMultiRetrievalNode:
             mock_resp.raise_for_status.return_value = None
             return mock_resp
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.side_effect = mixed_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -342,10 +334,8 @@ class TestMultiRetrievalNode:
         )
         state["sub_questions"] = ["q1", "q2"]
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             # Both sub-questions return the same document
             mock_response.json.return_value = {
@@ -353,7 +343,7 @@ class TestMultiRetrievalNode:
             }
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -372,15 +362,13 @@ class TestMultiRetrievalNode:
             query="Test query",
         )
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -398,15 +386,13 @@ class TestMultiRetrievalNode:
         state["strategy"] = "complex"
         state["timing"] = {"routing": 5.0}
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await multi_retrieval_node(state)
 
@@ -424,15 +410,13 @@ class TestMultiRetrievalNode:
             tenant_id=tenant_id,
         )
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await multi_retrieval_node(state)
 
@@ -450,15 +434,13 @@ class TestMultiRetrievalNode:
             options={"sub_question_top_k": 5, "max_total_documents": 10},
         )
 
-        with patch("workflow.nodes.multi_retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_response = MagicMock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
             mock_instance.post.return_value = mock_response
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             await multi_retrieval_node(state)
 

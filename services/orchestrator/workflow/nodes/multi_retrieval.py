@@ -15,6 +15,7 @@ from opentelemetry import trace
 
 from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
+from shared.http_clients import get_retrieval_client
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
@@ -46,17 +47,15 @@ async def _retrieve_for_sub_question(
     client: httpx.AsyncClient,
     sub_question: str,
     tenant_id: str | None,
-    retrieval_url: str,
     top_k: int,
 ) -> SubQueryResult:
     """
     Retrieve documents for a single sub-question.
 
     Args:
-        client: HTTP client for retrieval service
+        client: Shared HTTP client for retrieval service (has base_url configured)
         sub_question: The sub-question to retrieve for
         tenant_id: Optional tenant filter
-        retrieval_url: Base URL of retrieval service
         top_k: Number of results to retrieve per sub-question
 
     Returns:
@@ -78,7 +77,7 @@ async def _retrieve_for_sub_question(
 
     try:
         response = await client.post(
-            f"{retrieval_url}/api/v1/retrieve",
+            "/api/v1/retrieve",
             json=payload,
         )
         response.raise_for_status()
@@ -219,19 +218,18 @@ async def multi_retrieval_node(state: "RAGState") -> "RAGState":
         max_total_documents = options.get("max_total_documents", 20)
 
         # Perform parallel retrieval for all sub-questions
-        async with httpx.AsyncClient(timeout=config.retrieval_timeout) as client:
-            tasks = [
-                _retrieve_for_sub_question(
-                    client=client,
-                    sub_question=sq,
-                    tenant_id=tenant_id,
-                    retrieval_url=config.retrieval_url,
-                    top_k=sub_question_top_k,
-                )
-                for sq in sub_questions
-            ]
+        client = get_retrieval_client()
+        tasks = [
+            _retrieve_for_sub_question(
+                client=client,
+                sub_question=sq,
+                tenant_id=tenant_id,
+                top_k=sub_question_top_k,
+            )
+            for sq in sub_questions
+        ]
 
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions and collect valid results
         sub_query_results: list[SubQueryResult] = []

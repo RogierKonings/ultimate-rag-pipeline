@@ -22,6 +22,7 @@ from opentelemetry import trace
 
 from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
+from shared.http_clients import get_llm_client
 
 if TYPE_CHECKING:
     from workflow.state import RAGState
@@ -145,21 +146,21 @@ async def generation_node(state: "RAGState") -> "RAGState":
 
         async def _call_llm(model: str, max_tok: int) -> dict | None:
             """Make LLM call with given model."""
-            async with httpx.AsyncClient(timeout=config.stream_timeout) as client:
-                payload = {
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": max_tok,
-                    "temperature": temperature,
-                    "stream": False,
-                }
+            client = get_llm_client()
+            payload = {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tok,
+                "temperature": temperature,
+                "stream": False,
+            }
 
-                llm_response = await client.post(
-                    f"{config.llm_gateway_url}/v1/chat/completions",
-                    json=payload,
-                )
-                llm_response.raise_for_status()
-                return llm_response.json()
+            llm_response = await client.post(
+                "/v1/chat/completions",
+                json=payload,
+            )
+            llm_response.raise_for_status()
+            return llm_response.json()
 
         try:
             result = await _call_llm(model_to_use, max_tokens)

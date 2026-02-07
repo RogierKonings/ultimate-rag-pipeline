@@ -97,12 +97,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should parse normal degradation info."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_normal
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -121,12 +119,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should parse degraded mode and track fallback."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_degraded
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -142,12 +138,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should parse minimal mode."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_minimal
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -161,12 +155,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should parse keyword_only as degraded."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_keyword_only
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -182,12 +174,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should parse hybrid_no_rerank as degraded."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_hybrid_no_rerank
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -204,12 +194,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should handle missing degradation fields gracefully."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_no_degradation_fields
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -225,12 +213,10 @@ class TestRetrievalNodeDegradation:
         """Retrieval node should set sensible defaults when retrieval fails."""
         state: RAGState = {"request_id": "test-123", "query": "test query", "timing": {}}
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.side_effect = httpx.ConnectError("Connection refused")
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
@@ -250,12 +236,10 @@ class TestRetrievalNodeDegradation:
             "fallbacks_used": ["previous_fallback"],
         }
 
-        with patch("workflow.nodes.retrieval.httpx.AsyncClient") as mock_client:
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
             mock_instance = AsyncMock()
-            mock_instance.__aenter__.return_value = mock_instance
-            mock_instance.__aexit__.return_value = None
             mock_instance.post.return_value = mock_httpx_response_degraded
-            mock_client.return_value = mock_instance
+            mock_get_client.return_value = mock_instance
 
             result = await retrieval_node(state)
 
