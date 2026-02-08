@@ -4,6 +4,8 @@ This module provides endpoints for RAG queries:
 - POST /api/v1/query - Synchronous RAG query
 - POST /api/v1/query/stream - Streaming RAG query (SSE)
 - POST /api/v1/feedback - Submit user feedback
+
+Route handlers are kept thin; orchestration logic lives in query_service.
 """
 
 import time
@@ -37,6 +39,8 @@ from observability.business_metrics import rag_feedback_total
 from observability.metrics_collector import QueryMetrics, metrics_collector
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from . import query_service
+
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Query"])
@@ -45,6 +49,7 @@ router = APIRouter(prefix="/api/v1", tags=["Query"])
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
+# Re-export for backward compatibility (used by tests)
 def _transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument]:
     """Transform raw documents to SourceDocument models.
 
@@ -54,18 +59,7 @@ def _transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument
     Returns:
         List of SourceDocument models.
     """
-    sources = []
-    for doc in documents:
-        sources.append(
-            SourceDocument(
-                id=doc.get("id", doc.get("chunk_id", "")),
-                title=doc.get("metadata", {}).get("title") or doc.get("title"),
-                uri=doc.get("source") or doc.get("uri"),
-                score=doc.get("score"),
-                snippet=doc.get("content", "")[:200] if doc.get("content") else None,
-            ),
-        )
-    return sources
+    return query_service.transform_documents(documents)
 
 
 @router.post(
@@ -147,38 +141,20 @@ async def query(
             },
         )
 
-    # Get workflow from app state
+    # Execute query via workflow or direct LLM
     workflow = getattr(request.app.state, "workflow", None)
 
     if workflow is not None:
-        # Use the workflow for full RAG pipeline
         try:
-            result = await workflow.ainvoke(
-                {
-                    "request_id": request_id,
-                    "query": query_request.query,
-                    "session_id": str(query_request.session_id)
-                    if query_request.session_id
-                    else None,
-                    "user_id": str(query_request.user_id) if query_request.user_id else None,
-                    "tenant_id": str(query_request.tenant_id) if query_request.tenant_id else None,
-                    "options": query_request.options or {},
-                },
+            result = await query_service.execute_workflow(
+                workflow=workflow,
+                request_id=request_id,
+                query=query_request.query,
+                session_id=str(query_request.session_id) if query_request.session_id else None,
+                user_id=str(query_request.user_id) if query_request.user_id else None,
+                tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
+                options=query_request.options,
             )
-
-            response_text = result.get("response") or ""
-            documents = result.get("documents", [])
-            model_used = result.get("model_used", "unknown")
-            usage = result.get("usage", {})
-            strategy_used = result.get("strategy_used")
-            verification_result = result.get("verification_result")
-            # Quality metadata (US-10.2.2)
-            retrieval_quality = result.get("retrieval_quality", {})
-            context_quality = result.get("context_quality", "full")
-            fallbacks_used = result.get("fallbacks_used", [])
-            component_timings = result.get("timing", {})
-            context_relevance_score = documents[0].get("score") if documents else None
-
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -189,32 +165,11 @@ async def query(
                 },
             ) from e
     else:
-        # Fallback: Direct LLM call without retrieval
-        from gateway import ChatCompletionRequest, ChatMessage
-
         try:
-            # Use the gateway's default model from config
-            chat_request = ChatCompletionRequest(
-                model=model_gateway.default_model,
-                messages=[ChatMessage(role="user", content=query_request.query)],
+            result = await query_service.execute_direct_llm(
+                model_gateway=model_gateway,
+                query=query_request.query,
             )
-            llm_response = await model_gateway.chat_completion(chat_request)
-            response_text = llm_response.choices[0].message.content
-            documents = []
-            model_used = llm_response.model
-            usage = {
-                "prompt_tokens": llm_response.usage.prompt_tokens,
-                "completion_tokens": llm_response.usage.completion_tokens,
-                "total_tokens": llm_response.usage.total_tokens,
-            }
-            strategy_used = "direct"
-            verification_result = None  # No verification in direct mode
-            # Quality metadata defaults for direct mode (US-10.2.2)
-            retrieval_quality = {}
-            context_quality = "full"  # No retrieval = no degradation
-            fallbacks_used = []
-            component_timings = {}
-            context_relevance_score = None
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -225,98 +180,70 @@ async def query(
                 },
             ) from e
 
+    response_text = result["response_text"]
+    documents = result["documents"]
+    model_used = result["model_used"]
+    usage = result["usage"]
+    strategy_used = result["strategy_used"]
+    verification_result = result["verification_result"]
+    retrieval_quality = result["retrieval_quality"]
+    context_quality = result["context_quality"]
+    fallbacks_used = result["fallbacks_used"]
+    component_timings = result["component_timings"]
+    context_relevance_score = result["context_relevance_score"]
+
     # Check output guardrails
     output_result = await guardrail_pipeline.check_output(response_text)
     if not output_result.passed:
-        # Sanitize the response instead of failing
         response_text = guardrail_pipeline.sanitize_output(response_text)
 
     latency_ms = (time.perf_counter() - start_time) * 1000
 
-    # Build verification info if available
-    verification_info = None
-    if verification_result:
-        verification_info = VerificationInfo(
-            score=verification_result.get("score", 1.0),
-            label=verification_result.get("label", "skipped"),
-            claims_total=verification_result.get("claims_total", 0),
-            claims_supported=verification_result.get("claims_supported", 0),
-            claims_partial=verification_result.get("claims_partial", 0),
-            claims_unsupported=verification_result.get("claims_unsupported", 0),
-            verification_time_ms=verification_result.get("verification_time_ms", 0.0),
-            skipped=verification_result.get("skipped", True),
-            skip_reason=verification_result.get("skip_reason"),
-        )
-
-        # Store verification log for correlation analysis (US-10.4.2)
-        verification_log = VerificationLog(
-            request_id=request_id,
-            tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
-            score=verification_result.get("score", 1.0),
-            label=verification_result.get("label", "skipped"),
-            claims_total=verification_result.get("claims_total", 0),
-            claims_supported=verification_result.get("claims_supported", 0),
-            claims_partial=verification_result.get("claims_partial", 0),
-            claims_unsupported=verification_result.get("claims_unsupported", 0),
-            verification_time_ms=verification_result.get("verification_time_ms", 0.0),
-        )
-        db.add(verification_log)
-        await db.commit()
+    # Build verification info and persist log
+    verification_info = await query_service.build_verification_info(
+        verification_result=verification_result,
+        request_id=request_id,
+        tenant_id=tenant_id,
+        db=db,
+    )
 
     # Build components_available from retrieval_quality (US-10.2.2)
-    components_available = None
-    if retrieval_quality:
-        components_used = retrieval_quality.get("components_used", [])
-        components_skipped = retrieval_quality.get("components_skipped", [])
-        all_components = set(components_used) | set(components_skipped)
-        if all_components:
-            components_available = {comp: comp in components_used for comp in all_components}
+    components_available = query_service.build_components_available(retrieval_quality)
 
     # Record business metrics (US-10.3.3)
-    is_degraded = context_quality != "full"
-    metrics_collector.record_query(
-        QueryMetrics(
-            request_id=request_id,
-            tenant_id=tenant_id,
-            tenant_tier=query_request.options.get("tenant_tier", "standard") if query_request.options else "standard",
-            strategy=strategy_used or "direct",
-            rag_used=strategy_used != "direct",
-            degraded=is_degraded,
-            degradation_mode=retrieval_quality.get("mode") if is_degraded else None,
-            fallbacks_used=fallbacks_used,
-            e2e_latency_ms=latency_ms,
-            component_timings=component_timings,
-            context_relevance_score=context_relevance_score,
-            citation_count=len(documents),
-            status="success",
-        )
+    query_service.record_query_metrics(
+        request_id=request_id,
+        tenant_id=tenant_id,
+        options=query_request.options,
+        strategy_used=strategy_used,
+        retrieval_quality=retrieval_quality,
+        context_quality=context_quality,
+        fallbacks_used=fallbacks_used,
+        component_timings=component_timings,
+        context_relevance_score=context_relevance_score,
+        documents=documents,
+        latency_ms=latency_ms,
     )
 
     # Record token usage (US-10.5.4)
-    if usage_tracker and tenant_id:
-        await usage_tracker.record_llm_usage(
-            tenant_id=tenant_id,
-            model=model_used,
-            prompt_tokens=usage.get("prompt_tokens", 0),
-            completion_tokens=usage.get("completion_tokens", 0),
-        )
+    await query_service.record_token_usage(
+        usage_tracker=usage_tracker,
+        tenant_id=tenant_id,
+        model_used=model_used,
+        usage=usage,
+    )
 
-    return QueryResponse(
+    return query_service.build_query_response(
         request_id=request_id,
-        response=response_text,
-        sources=_transform_documents(documents),
+        response_text=response_text,
+        documents=documents,
         session_id=query_request.session_id,
-        model=model_used,
-        usage=UsageInfo(
-            prompt_tokens=usage.get("prompt_tokens", 0),
-            completion_tokens=usage.get("completion_tokens", 0),
-            total_tokens=usage.get("total_tokens", 0),
-        ),
-        latency_ms=round(latency_ms, 2),
+        model_used=model_used,
+        usage=usage,
+        latency_ms=latency_ms,
         strategy_used=strategy_used,
-        verification=verification_info,
-        # Quality metadata (US-10.2.2)
-        retrieval_mode=retrieval_quality.get("mode") if retrieval_quality else None,
+        verification_info=verification_info,
+        retrieval_quality=retrieval_quality,
         context_quality=context_quality,
         components_available=components_available,
         fallbacks_used=fallbacks_used,
