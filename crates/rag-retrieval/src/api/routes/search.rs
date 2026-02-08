@@ -66,17 +66,7 @@ pub async fn retrieve(
     );
 
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id
-    let tenant_id = headers
-        .get("X-Tenant-Id")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .or_else(|| {
-            request.filters.as_ref()
-                .and_then(|f| f.get("tenant_id"))
-                .and_then(|v| v.as_str())
-                .and_then(|s| Uuid::parse_str(s).ok())
-        })
-        .unwrap_or_else(Uuid::nil);
+    let tenant_id = extract_tenant_id(&headers, &request.filters);
 
     let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
 
@@ -123,6 +113,27 @@ pub async fn retrieve(
     Ok(Json(response))
 }
 
+/// Extract `tenant_id` from the `X-Tenant-Id` header or the `filters.tenant_id` field.
+///
+/// Falls back to `Uuid::nil()` if neither is present.
+pub(super) fn extract_tenant_id(
+    headers: &HeaderMap,
+    filters: &Option<serde_json::Value>,
+) -> Uuid {
+    headers
+        .get("X-Tenant-Id")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .or_else(|| {
+            filters
+                .as_ref()
+                .and_then(|f| f.get("tenant_id"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok())
+        })
+        .unwrap_or_else(Uuid::nil)
+}
+
 /// Parse raw JSON filters into a `UnifiedFilter`.
 ///
 /// Supports two formats:
@@ -153,7 +164,7 @@ pub async fn retrieve(
 ///
 /// Returns `ApiError::bad_request` if filter values are not strings, arrays
 /// of strings, or if the structured format fails to deserialize.
-fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter, ApiError> {
+pub(super) fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter, ApiError> {
     // Check if this is the structured UnifiedFilter format
     if filters.get("must").is_some()
         || filters.get("should").is_some()

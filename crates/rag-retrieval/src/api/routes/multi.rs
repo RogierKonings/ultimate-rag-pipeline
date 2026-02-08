@@ -7,12 +7,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::{extract::State, Json};
+use axum::{
+    extract::State,
+    http::HeaderMap,
+    Json,
+};
 use chrono::Utc;
 use futures::future::join_all;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
+use crate::acl::UnifiedFilter;
 use crate::api::degradation::{evaluate, ComponentOutcome};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
@@ -20,8 +25,10 @@ use crate::api::types::{
     MultiQueryRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
 };
 use crate::hybrid::HybridSearchResult;
-use crate::types::UserContext;
+use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
+
+use super::search::{extract_tenant_id, parse_filters};
 
 /// Handle the POST /api/v1/retrieve/multi endpoint.
 ///
@@ -39,9 +46,10 @@ use rag_types::SearchMode;
 /// # Response
 ///
 /// Returns a `RetrieveResponse` containing aggregated results from all queries.
-#[instrument(skip(state, request), fields(num_queries = request.queries.len()))]
+#[instrument(skip(state, headers, request), fields(num_queries = request.queries.len()))]
 pub async fn retrieve_multi(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(request): Json<MultiQueryRequest>,
 ) -> ApiResult<Json<RetrieveResponse>> {
     let start_time = Instant::now();
@@ -58,14 +66,45 @@ pub async fn retrieve_multi(
         "Processing multi-query retrieve request"
     );
 
-    // Create a default user context
-    let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4());
+    // Extract tenant_id from X-Tenant-Id header or filters.tenant_id,
+    // mirroring the single-query route behavior.
+    let tenant_id = extract_tenant_id(&headers, &request.filters);
 
-    // Execute all queries in parallel
+    let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
+
+    // Parse filters from request, mirroring the single-query route behavior.
+    let unified_filter = match &request.filters {
+        Some(filters) => {
+            let parsed = parse_filters(filters)?;
+            if parsed.is_empty() {
+                None
+            } else {
+                debug!(
+                    must_count = parsed.must.len(),
+                    should_count = parsed.should.len(),
+                    must_not_count = parsed.must_not.len(),
+                    "Parsed request filters for multi-query"
+                );
+                Some(parsed)
+            }
+        }
+        None => None,
+    };
+
+    // Execute all queries in parallel, threading filters and user context
+    // into each sub-query.
     let query_futures: Vec<_> = request
         .queries
         .iter()
-        .map(|query| execute_single_query(&state, query, request.top_k * 2))
+        .map(|query| {
+            execute_single_query(
+                &state,
+                query,
+                request.top_k * 2,
+                unified_filter.as_ref(),
+                &user_context,
+            )
+        })
         .collect();
 
     let query_results = join_all(query_futures).await;
@@ -121,8 +160,81 @@ pub async fn retrieve_multi(
         "rrf" | _ => aggregate_rrf(&all_results),
     };
 
+    // Rerank aggregated results if enabled and reranker is available,
+    // mirroring the single-query route behavior.
+    let rerank_requested = request.rerank && state.has_reranker();
+    let mut rerank_ok = false;
+    let mut rerank_ms: Option<f64> = None;
+
+    let mut results_for_acl: Vec<HybridSearchResult> = aggregated;
+
+    if rerank_requested {
+        let rerank_start = Instant::now();
+
+        if let Some(ref reranker) = state.reranker {
+            // Convert HybridSearchResult to RetrievalResult for the reranker
+            let retrieval_results: Vec<RetrievalResult> = results_for_acl
+                .iter()
+                .map(|r| {
+                    let mut result = RetrievalResult::new(
+                        r.chunk_id.to_string(),
+                        r.document_id.to_string(),
+                        r.content.clone(),
+                        r.fused_score,
+                    );
+                    result.semantic_score = r.semantic_score;
+                    result.keyword_score = r.keyword_score;
+                    result.title = r.title.clone();
+                    result.source_uri = r.source_uri.clone();
+                    result.chunk_index = r.chunk_index;
+                    result.highlights = r.highlights.clone();
+                    result.metadata = r.metadata.clone();
+                    result.visibility = r.visibility;
+                    result.allowed_groups = r.allowed_groups.clone();
+                    result
+                })
+                .collect();
+
+            // Use the first query as representative for reranking
+            let rerank_query = &request.queries[0];
+
+            match reranker
+                .rerank_results(rerank_query, retrieval_results, Some(request.top_k))
+                .await
+            {
+                Ok(reranked) => {
+                    // Build a lookup from chunk_id -> original HybridSearchResult
+                    let mut result_map: HashMap<String, HybridSearchResult> = results_for_acl
+                        .into_iter()
+                        .map(|r| (r.chunk_id.to_string(), r))
+                        .collect();
+
+                    // Reorder based on reranker output, updating scores
+                    results_for_acl = reranked
+                        .into_iter()
+                        .filter_map(|rr| {
+                            result_map.remove(&rr.chunk_id).map(|mut r| {
+                                r.fused_score = rr.score;
+                                r
+                            })
+                        })
+                        .collect();
+
+                    rerank_ok = true;
+                }
+                Err(e) => {
+                    warn!("Reranking failed in multi-query, using aggregation scores: {e}");
+                }
+            }
+        }
+
+        rerank_ms = Some(rerank_start.elapsed().as_secs_f64() * 1000.0);
+    }
+
+    outcome = outcome.with_rerank(rerank_requested, rerank_ok);
+
     // Apply ACL filter
-    let filtered: Vec<_> = aggregated
+    let filtered: Vec<_> = results_for_acl
         .into_iter()
         .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
         .collect();
@@ -161,6 +273,7 @@ pub async fn retrieve_multi(
         metrics: SearchMetrics {
             total_ms,
             final_results_count: final_results.len(),
+            rerank_ms,
             ..Default::default()
         },
         query_id,
@@ -181,11 +294,13 @@ pub async fn retrieve_multi(
     Ok(Json(response))
 }
 
-/// Execute a single query against the hybrid searcher.
+/// Execute a single query against the hybrid searcher with filters and user context.
 async fn execute_single_query(
     state: &AppState,
     query: &str,
     top_k: usize,
+    filters: Option<&UnifiedFilter>,
+    user_context: &UserContext,
 ) -> Result<Vec<HybridSearchResult>, ApiError> {
     // Generate embedding
     let embedding = state
@@ -194,10 +309,10 @@ async fn execute_single_query(
         .await
         .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?;
 
-    // Execute hybrid search
+    // Execute hybrid search with filters and user context
     let result = state
         .hybrid
-        .search(query, &embedding, Some(top_k), None, None)
+        .search(query, &embedding, Some(top_k), filters, Some(user_context))
         .await
         .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
 
@@ -288,6 +403,7 @@ fn aggregate_rrf(results: &[(String, Vec<HybridSearchResult>)]) -> Vec<HybridSea
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Visibility;
 
     fn create_test_result(chunk_id: Uuid, score: f32) -> HybridSearchResult {
         HybridSearchResult::new(chunk_id, Uuid::new_v4(), "content".into(), score)
@@ -409,5 +525,109 @@ mod tests {
 
         // chunk1 appears first in all 3 queries, so it should have highest RRF score
         assert_eq!(aggregated[0].chunk_id, chunk1);
+    }
+
+    // --- Parity tests: multi-query should respect tenant and ACL like single-query ---
+
+    #[test]
+    fn test_acl_filter_respects_tenant_context() {
+        // Verify that the ACL filter on aggregated results works correctly
+        // with a tenant-scoped user context
+        let tenant_id = Uuid::new_v4();
+        let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
+
+        let chunk1 = Uuid::new_v4();
+        let chunk2 = Uuid::new_v4();
+        let chunk3 = Uuid::new_v4();
+
+        // chunk1: public (accessible)
+        let mut r1 = HybridSearchResult::new(chunk1, Uuid::new_v4(), "public doc".into(), 0.9);
+        r1.visibility = Visibility::Public;
+
+        // chunk2: group-restricted, user NOT in the group (not accessible)
+        let mut r2 = HybridSearchResult::new(chunk2, Uuid::new_v4(), "group doc".into(), 0.85);
+        r2.visibility = Visibility::Group;
+        r2.allowed_groups = vec!["secret-group".into()];
+
+        // chunk3: tenant-scoped (accessible since tenant filtering is at query level)
+        let mut r3 = HybridSearchResult::new(chunk3, Uuid::new_v4(), "tenant doc".into(), 0.8);
+        r3.visibility = Visibility::Tenant;
+
+        let aggregated = vec![r1, r2, r3];
+
+        let filtered: Vec<_> = aggregated
+            .into_iter()
+            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+            .collect();
+
+        // chunk2 should be filtered out (group restriction, user not in group)
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].chunk_id, chunk1);
+        assert_eq!(filtered[1].chunk_id, chunk3);
+    }
+
+    #[test]
+    fn test_acl_filter_admin_bypasses() {
+        // Admin users should see all documents regardless of visibility
+        let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
+            .with_admin(true);
+
+        let chunk1 = Uuid::new_v4();
+        let chunk2 = Uuid::new_v4();
+
+        let mut r1 = HybridSearchResult::new(chunk1, Uuid::new_v4(), "private doc".into(), 0.9);
+        r1.visibility = Visibility::Private;
+
+        let mut r2 = HybridSearchResult::new(chunk2, Uuid::new_v4(), "group doc".into(), 0.8);
+        r2.visibility = Visibility::Group;
+        r2.allowed_groups = vec!["secret-group".into()];
+
+        let aggregated = vec![r1, r2];
+
+        let filtered: Vec<_> = aggregated
+            .into_iter()
+            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+            .collect();
+
+        // Admin should see both
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_acl_filter_group_membership() {
+        // User in the correct group should see group-restricted documents
+        let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
+            .with_groups(vec!["engineering".into()]);
+
+        let chunk1 = Uuid::new_v4();
+        let chunk2 = Uuid::new_v4();
+
+        let mut r1 = HybridSearchResult::new(chunk1, Uuid::new_v4(), "eng doc".into(), 0.9);
+        r1.visibility = Visibility::Group;
+        r1.allowed_groups = vec!["engineering".into()];
+
+        let mut r2 = HybridSearchResult::new(chunk2, Uuid::new_v4(), "sales doc".into(), 0.8);
+        r2.visibility = Visibility::Group;
+        r2.allowed_groups = vec!["sales".into()];
+
+        let aggregated = vec![r1, r2];
+
+        let filtered: Vec<_> = aggregated
+            .into_iter()
+            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+            .collect();
+
+        // Only engineering doc should pass
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].chunk_id, chunk1);
+    }
+
+    #[test]
+    fn test_multi_query_request_defaults() {
+        let request = MultiQueryRequest::new(vec!["query1".into(), "query2".into()]);
+        assert_eq!(request.top_k, 10);
+        assert_eq!(request.aggregation, "rrf");
+        assert!(!request.rerank);
+        assert!(request.filters.is_none());
     }
 }
