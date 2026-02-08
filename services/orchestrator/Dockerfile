@@ -15,8 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Add shared modules to path
-ENV PYTHONPATH=/app:/app/shared
+# Create symlink so "from orchestrator.xxx" imports resolve to /app/xxx
+RUN mkdir -p /packages && ln -s /app /packages/orchestrator
+
+# Add shared modules and orchestrator namespace to path
+ENV PYTHONPATH=/app:/app/shared:/packages
 
 EXPOSE 8003
 

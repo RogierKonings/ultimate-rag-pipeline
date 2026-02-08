@@ -255,8 +255,10 @@ services:
       - ORCHESTRATOR_MEDIUM_MODEL=llama3.1:8b
       - ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
       - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app:/app/shared:/packages
     volumes:
       - ./services/orchestrator:/app
+      - ./services/orchestrator:/packages/orchestrator
     depends_on:
       - retrieval-service
       - redis
