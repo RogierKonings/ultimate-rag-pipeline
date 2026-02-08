@@ -685,9 +685,6 @@ mod tests {
 
     #[test]
     fn test_deduplicate() {
-        // Create a dummy config for testing
-        let config = HybridSearchConfig::default();
-
         // We can't create a HybridSearcher without real backends,
         // so we test the deduplication logic directly
         let doc_id_1 = Uuid::new_v4();

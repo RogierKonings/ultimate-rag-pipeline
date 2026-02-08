@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mock SvelteKit env modules
@@ -185,7 +185,39 @@ describe('video API with VIDEO_ENABLED=true', () => {
 		expect(result).toEqual(mockResponse);
 		expect(globalThis.fetch).toHaveBeenCalled();
 	});
-});
 
-// Need afterEach in vitest without explicit import
-import { afterEach } from 'vitest';
+	it.each([404, 405, 501])(
+		'throws VideoBackendUnavailableError for backend unavailable status %s',
+		async (status) => {
+			globalThis.fetch = vi.fn().mockResolvedValue({
+				ok: false,
+				status,
+				json: async () => ({
+					error: 'not_available',
+					message: 'Not available'
+				})
+			} as unknown as Response);
+
+			await expect(videoApi.listVideos()).rejects.toThrow(videoApi.VideoBackendUnavailableError);
+		}
+	);
+
+	it('preserves original API errors for non-capability statuses', async () => {
+		globalThis.fetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 500,
+			json: async () => ({
+				error: 'internal',
+				message: 'Internal error'
+			})
+		} as unknown as Response);
+
+		try {
+			await videoApi.listVideos();
+			expect.fail('Should have thrown');
+		} catch (err) {
+			expect(err).not.toBeInstanceOf(videoApi.VideoBackendUnavailableError);
+			expect(err).toHaveProperty('status', 500);
+		}
+	});
+});

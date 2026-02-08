@@ -3,11 +3,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use qdrant_client::prelude::*;
+use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{
-    point_id::PointIdOptions, vectors_config::Config as VectorsConfigEnum, CreateCollection,
-    Distance, FieldCondition, Filter, Match, PointId, PointStruct, ScrollPoints, SearchPoints,
-    VectorParams, VectorsConfig, WithPayloadSelector, with_payload_selector::SelectorOptions,
+    point_id::PointIdOptions, CreateCollectionBuilder, DeletePointsBuilder,
+    Distance, FieldCondition, Filter, Match, PointId, PointStruct,
+    ScrollPointsBuilder, SearchPointsBuilder, UpsertPointsBuilder,
+    VectorParamsBuilder,
 };
 use uuid::Uuid;
 
@@ -21,7 +22,7 @@ pub type ProgressCallback = Box<dyn Fn(usize, usize, &str) + Send + Sync>;
 
 /// Service for indexing video chunks in Qdrant.
 pub struct VideoQdrantIndexer {
-    client: Arc<QdrantClient>,
+    client: Arc<Qdrant>,
     config: VideoIndexerConfig,
 }
 
@@ -32,10 +33,9 @@ impl VideoQdrantIndexer {
     ///
     /// Returns an error if the Qdrant client fails to connect.
     pub async fn new(config: VideoIndexerConfig) -> Result<Self> {
-        let mut client_config = QdrantClientConfig::from_url(&config.qdrant_url);
-        client_config.timeout = std::time::Duration::from_secs(config.timeout_seconds);
-
-        let client = QdrantClient::new(Some(client_config))
+        let client = Qdrant::from_url(&config.qdrant_url)
+            .timeout(std::time::Duration::from_secs(config.timeout_seconds))
+            .build()
             .map_err(|e| VideoError::Qdrant(format!("Failed to create client: {e}")))?;
 
         Ok(Self {
@@ -60,43 +60,29 @@ impl VideoQdrantIndexer {
     ///
     /// Returns an error if the collection check or creation fails.
     pub async fn ensure_collection(&self) -> Result<bool> {
-        // Check if collection exists by trying to get info
-        let exists = match self.client.collection_info(&self.config.collection_name).await {
-            Ok(_) => true,
-            Err(e) => {
-                let err_str = e.to_string().to_lowercase();
-                if err_str.contains("not found") || err_str.contains("doesn't exist") {
-                    false
-                } else {
-                    return Err(VideoError::Qdrant(format!(
-                        "Failed to check collection: {e}"
-                    )));
-                }
-            }
-        };
+        let exists = self
+            .client
+            .collection_exists(&self.config.collection_name)
+            .await
+            .map_err(|e| VideoError::Qdrant(format!("Failed to check collection: {e}")))?;
 
         if exists {
             return Ok(false);
         }
 
         // Create collection with vector params
-        self.client
-            .create_collection(&CreateCollection {
-                collection_name: self.config.collection_name.clone(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(VectorsConfigEnum::Params(VectorParams {
-                        size: self.config.vector_size as u64,
-                        distance: Distance::Cosine.into(),
-                        hnsw_config: Some(qdrant_client::qdrant::HnswConfigDiff {
-                            m: Some(self.config.hnsw_m),
-                            ef_construct: Some(self.config.hnsw_ef_construct),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    })),
-                }),
+        let vectors_config = VectorParamsBuilder::new(self.config.vector_size as u64, Distance::Cosine)
+            .hnsw_config(qdrant_client::qdrant::HnswConfigDiff {
+                m: Some(self.config.hnsw_m),
+                ef_construct: Some(self.config.hnsw_ef_construct),
                 ..Default::default()
-            })
+            });
+
+        self.client
+            .create_collection(
+                CreateCollectionBuilder::new(&self.config.collection_name)
+                    .vectors_config(vectors_config),
+            )
             .await
             .map_err(|e| VideoError::Qdrant(format!("Failed to create collection: {e}")))?;
 
@@ -181,7 +167,10 @@ impl VideoQdrantIndexer {
 
             if !points.is_empty() {
                 self.client
-                    .upsert_points_blocking(&self.config.collection_name, None, points, None)
+                    .upsert_points(
+                        UpsertPointsBuilder::new(&self.config.collection_name, points)
+                            .wait(true),
+                    )
                     .await
                     .map_err(|e| VideoError::Qdrant(format!("Failed to upsert points: {e}")))?;
 
@@ -243,15 +232,12 @@ impl VideoQdrantIndexer {
         // Count before deletion using scroll
         let scroll_result = self
             .client
-            .scroll(&ScrollPoints {
-                collection_name: self.config.collection_name.clone(),
-                filter: Some(filter.clone()),
-                limit: Some(10000),
-                with_payload: Some(WithPayloadSelector {
-                    selector_options: Some(SelectorOptions::Enable(false)),
-                }),
-                ..Default::default()
-            })
+            .scroll(
+                ScrollPointsBuilder::new(&self.config.collection_name)
+                    .filter(filter.clone())
+                    .limit(10000)
+                    .with_payload(false),
+            )
             .await
             .map_err(|e| VideoError::Qdrant(format!("Failed to scroll points: {e}")))?;
 
@@ -259,15 +245,10 @@ impl VideoQdrantIndexer {
 
         // Delete points by filter
         self.client
-            .delete_points_blocking(
-                &self.config.collection_name,
-                None,
-                &qdrant_client::qdrant::PointsSelector {
-                    points_selector_one_of: Some(
-                        qdrant_client::qdrant::points_selector::PointsSelectorOneOf::Filter(filter),
-                    ),
-                },
-                None,
+            .delete_points(
+                DeletePointsBuilder::new(&self.config.collection_name)
+                    .points(filter)
+                    .wait(true),
             )
             .await
             .map_err(|e| VideoError::Qdrant(format!("Failed to delete points: {e}")))?;
@@ -352,21 +333,21 @@ impl VideoQdrantIndexer {
             ..Default::default()
         };
 
-        let search_points = SearchPoints {
-            collection_name: self.config.collection_name.clone(),
-            vector: query_vector.to_vec(),
-            limit: top_k as u64,
-            filter: Some(filter),
-            with_payload: Some(WithPayloadSelector {
-                selector_options: Some(SelectorOptions::Enable(true)),
-            }),
-            score_threshold: filters.score_threshold,
-            ..Default::default()
-        };
+        let mut search_builder = SearchPointsBuilder::new(
+            &self.config.collection_name,
+            query_vector.to_vec(),
+            top_k as u64,
+        )
+        .filter(filter)
+        .with_payload(true);
+
+        if let Some(threshold) = filters.score_threshold {
+            search_builder = search_builder.score_threshold(threshold);
+        }
 
         let response = self
             .client
-            .search_points(&search_points)
+            .search_points(search_builder)
             .await
             .map_err(|e| VideoError::Qdrant(format!("Search failed: {e}")))?;
 
@@ -406,28 +387,33 @@ impl VideoQdrantIndexer {
     ///
     /// Returns an error if the collection info cannot be retrieved.
     pub async fn get_collection_info(&self) -> Result<Option<CollectionInfo>> {
-        // Check if collection exists
+        let exists = self
+            .client
+            .collection_exists(&self.config.collection_name)
+            .await
+            .map_err(|e| VideoError::Qdrant(format!("Failed to check collection: {e}")))?;
+
+        if !exists {
+            return Ok(None);
+        }
+
         match self.client.collection_info(&self.config.collection_name).await {
-            Ok(info) => {
-                let result = info.result.map(|r| {
-                    CollectionInfo::new(
-                        &self.config.collection_name,
-                        r.indexed_vectors_count.unwrap_or(0),
-                        r.points_count.unwrap_or(0),
-                        format!("{:?}", r.status),
-                    )
-                });
-                Ok(result)
+            Ok(response) => {
+                let r = response.result.ok_or_else(|| {
+                    VideoError::Qdrant("Collection info result was empty".into())
+                })?;
+                let info = CollectionInfo::new(
+                    &self.config.collection_name,
+                    r.indexed_vectors_count.unwrap_or(0),
+                    r.points_count.unwrap_or(0),
+                    format!("{:?}", r.status),
+                );
+                Ok(Some(info))
             }
             Err(e) => {
-                let err_str = e.to_string().to_lowercase();
-                if err_str.contains("not found") || err_str.contains("doesn't exist") {
-                    Ok(None)
-                } else {
-                    Err(VideoError::Qdrant(format!(
-                        "Failed to get collection info: {e}"
-                    )))
-                }
+                Err(VideoError::Qdrant(format!(
+                    "Failed to get collection info: {e}"
+                )))
             }
         }
     }

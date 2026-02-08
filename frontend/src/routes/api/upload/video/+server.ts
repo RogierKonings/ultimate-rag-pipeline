@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
 	MINIO_ENDPOINT,
 	MINIO_ACCESS_KEY,
@@ -34,6 +34,21 @@ const ALLOWED_MIME_TYPES = [
 	'video/webm'
 ];
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
+const BACKEND_UNAVAILABLE_STATUSES = new Set([404, 405, 501]);
+
+async function cleanupUploadedVideoObject(s3Key: string): Promise<void> {
+	try {
+		await s3Client.send(
+			new DeleteObjectCommand({
+				Bucket: BUCKET,
+				Key: s3Key
+			})
+		);
+	} catch (cleanupError) {
+		// Best-effort cleanup to avoid orphaned uploads.
+		console.warn('Failed to cleanup uploaded video object:', cleanupError);
+	}
+}
 
 export const POST: RequestHandler = async ({ request }) => {
 	if (!VIDEO_ENABLED) {
@@ -41,6 +56,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			message: 'Video features are not enabled. Set PUBLIC_VIDEO_ENABLED=true to enable.'
 		});
 	}
+
+	let uploadedS3Key: string | null = null;
 
 	try {
 		const formData = await request.formData();
@@ -55,6 +72,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!ALLOWED_EXTENSIONS.includes(extension)) {
 			throw error(400, {
 				message: `Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`
+			});
+		}
+		if (file.type && !ALLOWED_MIME_TYPES.includes(file.type)) {
+			throw error(400, {
+				message: `Invalid MIME type. Allowed: ${ALLOWED_MIME_TYPES.join(', ')}`
 			});
 		}
 
@@ -85,6 +107,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			})
 		);
+		uploadedS3Key = s3Key;
 
 		// Trigger video processing via the ingestion API
 		const ingestionResponse = await fetch(
@@ -110,9 +133,19 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (!ingestionResponse.ok) {
 			const errorData = await ingestionResponse.json().catch(() => ({}));
-			throw error(500, {
-				message: errorData.detail || 'Failed to start video processing'
-			});
+			if (uploadedS3Key) {
+				await cleanupUploadedVideoObject(uploadedS3Key);
+				uploadedS3Key = null;
+			}
+
+			if (BACKEND_UNAVAILABLE_STATUSES.has(ingestionResponse.status)) {
+				throw error(503, {
+					message:
+						'Video backend routes are unavailable in this environment. Disable video features or deploy the ingestion video API.'
+				});
+			}
+
+			throw error(500, { message: errorData.detail || 'Failed to start video processing' });
 		}
 
 		const ingestionResult = await ingestionResponse.json();
@@ -130,6 +163,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
+		}
+
+		if (uploadedS3Key) {
+			await cleanupUploadedVideoObject(uploadedS3Key);
 		}
 
 		throw error(500, {

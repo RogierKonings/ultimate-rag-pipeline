@@ -421,7 +421,7 @@ mod tests {
         let families = registry.gather();
         let health_family = families
             .iter()
-            .find(|f| f.get_name() == "retrieval_component_healthy");
+            .find(|f| f.name() == "retrieval_component_healthy");
         assert!(health_family.is_some());
     }
 

@@ -24,6 +24,30 @@ use rag_types::SearchMode;
 
 use super::search::{extract_tenant_id, extract_user_context, parse_filters};
 
+struct QueryExecution {
+    results: Vec<HybridSearchResult>,
+    outcome: ComponentOutcome,
+}
+
+fn merge_component_outcomes(outcomes: &[ComponentOutcome]) -> ComponentOutcome {
+    let mut merged = ComponentOutcome::new();
+    for subquery in outcomes {
+        merged.embedding_ok |= subquery.embedding_ok;
+        merged.semantic_attempted |= subquery.semantic_attempted;
+        merged.semantic_ok |= subquery.semantic_ok;
+        merged.keyword_attempted |= subquery.keyword_attempted;
+        merged.keyword_ok |= subquery.keyword_ok;
+    }
+    merged
+}
+
+fn has_partial_component_degradation(outcomes: &[ComponentOutcome]) -> bool {
+    outcomes.iter().any(|subquery| {
+        (subquery.semantic_attempted && !subquery.semantic_ok)
+            || (subquery.keyword_attempted && !subquery.keyword_ok)
+    })
+}
+
 /// Handle the POST /api/v1/retrieve/multi endpoint.
 ///
 /// Executes multiple queries in parallel and aggregates results using
@@ -108,16 +132,15 @@ pub async fn retrieve_multi(
     // embed_query, and each sub-query runs hybrid search (semantic + keyword).
     let total_queries = request.queries.len();
     let mut succeeded_queries = 0usize;
-    let mut embedding_ok = false;
+    let mut query_outcomes: Vec<ComponentOutcome> = Vec::new();
 
     let mut all_results: Vec<(String, Vec<HybridSearchResult>)> = Vec::new();
     for (query, result) in request.queries.iter().zip(query_results.into_iter()) {
         match result {
-            Ok(results) => {
-                all_results.push((query.clone(), results));
+            Ok(execution) => {
+                all_results.push((query.clone(), execution.results));
+                query_outcomes.push(execution.outcome);
                 succeeded_queries += 1;
-                // If we got results, embedding + both search components worked
-                embedding_ok = true;
             }
             Err(e) => {
                 debug!(query = %query, error = %e, "Query failed, skipping");
@@ -133,19 +156,12 @@ pub async fn retrieve_multi(
     // Each sub-query uses hybrid search (semantic + keyword).
     // If all succeeded, both components are fully healthy.
     // If some failed, we still had at least partial success.
-    let mut outcome = ComponentOutcome::new();
-    if embedding_ok {
-        outcome = outcome.with_embedding_ok();
-    }
-    // The sub-queries use hybrid (semantic + keyword). If at least one
-    // succeeded, both search backends were reachable. If some failed we
-    // still mark the search components as ok because the aggregated response
-    // contains valid results from at least one successful sub-query.
-    outcome = outcome.with_semantic(true).with_keyword(true);
+    let mut outcome = merge_component_outcomes(&query_outcomes);
 
     // If not all queries succeeded, record a partial degradation via a
     // non-None mode to signal the caller.
     let partial_failure = succeeded_queries < total_queries;
+    let partial_component_degradation = has_partial_component_degradation(&query_outcomes);
 
     // Aggregate results based on method
     let aggregated = match request.aggregation.as_str() {
@@ -249,9 +265,12 @@ pub async fn retrieve_multi(
     // Evaluate degradation from component outcomes
     let mut degradation = evaluate(SearchMode::Hybrid, &outcome);
 
-    // Override mode when some sub-queries failed even though components are ok
+    // Override mode when some sub-queries failed/degraded even though the
+    // aggregate component matrix resolves to a healthy mode.
     if partial_failure && degradation.mode.is_none() {
         degradation.mode = Some("partial_queries_failed".into());
+    } else if partial_component_degradation && degradation.mode.is_none() {
+        degradation.mode = Some("partial_queries_degraded".into());
     }
 
     let response = RetrieveResponse {
@@ -290,22 +309,119 @@ async fn execute_single_query(
     top_k: usize,
     filters: Option<&UnifiedFilter>,
     user_context: &UserContext,
-) -> Result<Vec<HybridSearchResult>, ApiError> {
-    // Generate embedding
-    let embedding = state
-        .embedding
-        .embed_query(query)
-        .await
-        .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?;
+) -> Result<QueryExecution, ApiError> {
+    let mut outcome = ComponentOutcome::new();
 
-    // Execute hybrid search with filters and user context
-    let result = state
+    // Generate embedding. If this fails, degrade to keyword-only for the
+    // current sub-query instead of failing the whole multi-query request.
+    let embedding = match state.embedding.embed_query(query).await {
+        Ok(embedding) => {
+            outcome = outcome.with_embedding_ok();
+            embedding
+        }
+        Err(embed_err) => {
+            warn!(
+                query = %query,
+                error = %embed_err,
+                "Embedding failed in multi-query sub-request, attempting keyword-only fallback"
+            );
+
+            let keyword_only = state
+                .hybrid
+                .search_keyword_only(query, top_k, filters, Some(user_context))
+                .await
+                .map_err(|keyword_err| {
+                    ApiError::internal(format!(
+                        "Embedding error: {embed_err}; keyword fallback error: {keyword_err}"
+                    ))
+                })?;
+
+            outcome = outcome.with_semantic(false).with_keyword(true);
+
+            return Ok(QueryExecution {
+                results: keyword_only.results,
+                outcome,
+            });
+        }
+    };
+
+    // Execute hybrid search with filters and user context.
+    match state
         .hybrid
         .search(query, &embedding, Some(top_k), filters, Some(user_context))
         .await
-        .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
+    {
+        Ok(result) => {
+            outcome = outcome.with_semantic(true).with_keyword(true);
+            Ok(QueryExecution {
+                results: result.results,
+                outcome,
+            })
+        }
+        Err(primary_err) => {
+            warn!(
+                query = %query,
+                error = %primary_err,
+                "Hybrid search failed in multi-query sub-request, attempting component fallback"
+            );
 
-    Ok(result.results)
+            let (semantic_result, keyword_result) = tokio::join!(
+                state
+                    .hybrid
+                    .search_semantic_only(&embedding, top_k, filters, Some(user_context)),
+                state
+                    .hybrid
+                    .search_keyword_only(query, top_k, filters, Some(user_context)),
+            );
+
+            match (semantic_result, keyword_result) {
+                (Ok(semantic_only), Err(keyword_err)) => {
+                    warn!(
+                        query = %query,
+                        error = %keyword_err,
+                        "Keyword fallback failed in multi-query sub-request, serving semantic-only results"
+                    );
+                    outcome = outcome.with_semantic(true).with_keyword(false);
+                    Ok(QueryExecution {
+                        results: semantic_only.results,
+                        outcome,
+                    })
+                }
+                (Err(semantic_err), Ok(keyword_only)) => {
+                    warn!(
+                        query = %query,
+                        error = %semantic_err,
+                        "Semantic fallback failed in multi-query sub-request, serving keyword-only results"
+                    );
+                    outcome = outcome.with_semantic(false).with_keyword(true);
+                    Ok(QueryExecution {
+                        results: keyword_only.results,
+                        outcome,
+                    })
+                }
+                (Ok(semantic_only), Ok(keyword_only)) => {
+                    // If both component fallbacks succeeded but hybrid fusion failed,
+                    // serve whichever side produced more candidates.
+                    if semantic_only.results.len() >= keyword_only.results.len() {
+                        outcome = outcome.with_semantic(true).with_keyword(false);
+                        Ok(QueryExecution {
+                            results: semantic_only.results,
+                            outcome,
+                        })
+                    } else {
+                        outcome = outcome.with_semantic(false).with_keyword(true);
+                        Ok(QueryExecution {
+                            results: keyword_only.results,
+                            outcome,
+                        })
+                    }
+                }
+                (Err(semantic_err), Err(keyword_err)) => Err(ApiError::internal(format!(
+                    "Search error: {primary_err}; semantic fallback failed: {semantic_err}; keyword fallback failed: {keyword_err}",
+                ))),
+            }
+        }
+    }
 }
 
 /// Aggregate results using maximum score across all queries.
@@ -620,6 +736,43 @@ mod tests {
         // Only engineering doc should pass
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].chunk_id, chunk1);
+    }
+
+    #[test]
+    fn test_merge_component_outcomes_or_semantics() {
+        let outcomes = vec![
+            ComponentOutcome::new()
+                .with_embedding_ok()
+                .with_semantic(true),
+            ComponentOutcome::new().with_keyword(true),
+            ComponentOutcome::new().with_semantic(false),
+        ];
+
+        let merged = merge_component_outcomes(&outcomes);
+
+        assert!(merged.embedding_ok);
+        assert!(merged.semantic_attempted);
+        assert!(merged.semantic_ok);
+        assert!(merged.keyword_attempted);
+        assert!(merged.keyword_ok);
+    }
+
+    #[test]
+    fn test_has_partial_component_degradation() {
+        let healthy = vec![ComponentOutcome::new()
+            .with_semantic(true)
+            .with_keyword(true)];
+        assert!(!has_partial_component_degradation(&healthy));
+
+        let degraded = vec![
+            ComponentOutcome::new()
+                .with_semantic(true)
+                .with_keyword(true),
+            ComponentOutcome::new()
+                .with_semantic(false)
+                .with_keyword(true),
+        ];
+        assert!(has_partial_component_degradation(&degraded));
     }
 
     #[test]

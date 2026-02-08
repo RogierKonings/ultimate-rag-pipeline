@@ -1,6 +1,5 @@
 //! Content fusion service for combining multiple modalities into video chunks.
 
-use std::path::PathBuf;
 use uuid::Uuid;
 
 use super::config::FusionConfig;

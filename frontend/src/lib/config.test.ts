@@ -6,8 +6,10 @@ describe('VIDEO_ENABLED config', () => {
 	});
 
 	it('defaults to false when PUBLIC_VIDEO_ENABLED is not set', async () => {
-		vi.doMock('$env/static/public', () => ({
-			PUBLIC_VIDEO_ENABLED: ''
+		vi.doMock('$env/dynamic/public', () => ({
+			env: {
+				PUBLIC_VIDEO_ENABLED: ''
+			}
 		}));
 
 		const config = await import('./config');
@@ -15,8 +17,10 @@ describe('VIDEO_ENABLED config', () => {
 	});
 
 	it('is false when PUBLIC_VIDEO_ENABLED is "false"', async () => {
-		vi.doMock('$env/static/public', () => ({
-			PUBLIC_VIDEO_ENABLED: 'false'
+		vi.doMock('$env/dynamic/public', () => ({
+			env: {
+				PUBLIC_VIDEO_ENABLED: 'false'
+			}
 		}));
 
 		const config = await import('./config');
@@ -24,8 +28,10 @@ describe('VIDEO_ENABLED config', () => {
 	});
 
 	it('is true only when PUBLIC_VIDEO_ENABLED is exactly "true"', async () => {
-		vi.doMock('$env/static/public', () => ({
-			PUBLIC_VIDEO_ENABLED: 'true'
+		vi.doMock('$env/dynamic/public', () => ({
+			env: {
+				PUBLIC_VIDEO_ENABLED: 'true'
+			}
 		}));
 
 		const config = await import('./config');
@@ -33,8 +39,10 @@ describe('VIDEO_ENABLED config', () => {
 	});
 
 	it('is false for truthy-but-not-"true" values like "1" or "yes"', async () => {
-		vi.doMock('$env/static/public', () => ({
-			PUBLIC_VIDEO_ENABLED: '1'
+		vi.doMock('$env/dynamic/public', () => ({
+			env: {
+				PUBLIC_VIDEO_ENABLED: '1'
+			}
 		}));
 
 		const config = await import('./config');
@@ -42,8 +50,10 @@ describe('VIDEO_ENABLED config', () => {
 	});
 
 	it('is false for undefined', async () => {
-		vi.doMock('$env/static/public', () => ({
-			PUBLIC_VIDEO_ENABLED: undefined
+		vi.doMock('$env/dynamic/public', () => ({
+			env: {
+				PUBLIC_VIDEO_ENABLED: undefined
+			}
 		}));
 
 		const config = await import('./config');

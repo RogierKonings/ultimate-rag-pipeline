@@ -428,6 +428,7 @@ mod tests {
         denied_users: Vec<Uuid>,
     }
 
+    #[allow(dead_code)]
     impl TestDocument {
         fn new(id: &str, tenant_id: Uuid, visibility: Visibility) -> Self {
             Self {

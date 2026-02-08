@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { ApiClient, isApiError } from './client';
 import type {
 	Video,
 	VideoBatchDeleteResponse,
@@ -19,6 +19,24 @@ export class VideoFeatureDisabledError extends Error {
 		super('Video features are not enabled. Set PUBLIC_VIDEO_ENABLED=true to enable.');
 		this.name = 'VideoFeatureDisabledError';
 	}
+}
+
+/**
+ * Error thrown when video features are enabled in the UI but
+ * backend video endpoints are unavailable in the current environment.
+ */
+export class VideoBackendUnavailableError extends Error {
+	constructor(operation: string) {
+		super(`Video backend is unavailable for ${operation}. Video routes are not deployed.`);
+		this.name = 'VideoBackendUnavailableError';
+	}
+}
+
+function mapVideoApiError(error: unknown, operation: string): never {
+	if (isApiError(error) && (error.status === 404 || error.status === 405 || error.status === 501)) {
+		throw new VideoBackendUnavailableError(operation);
+	}
+	throw error;
 }
 
 /**
@@ -64,12 +82,16 @@ export async function listVideos(
 	}
 ): Promise<VideoListResponse> {
 	assertVideoEnabled();
-	return getIngestionClient().get<VideoListResponse>('/api/v1/videos', {
-		tenant_id: TENANT_ID,
-		page,
-		page_size: pageSize,
-		...filters
-	});
+	try {
+		return await getIngestionClient().get<VideoListResponse>('/api/v1/videos', {
+			tenant_id: TENANT_ID,
+			page,
+			page_size: pageSize,
+			...filters
+		});
+	} catch (error) {
+		mapVideoApiError(error, 'listVideos');
+	}
 }
 
 /**
@@ -78,9 +100,13 @@ export async function listVideos(
  */
 export async function getVideo(videoId: string): Promise<Video> {
 	assertVideoEnabled();
-	return getIngestionClient().get<Video>(`/api/v1/videos/${videoId}`, {
-		tenant_id: TENANT_ID
-	});
+	try {
+		return await getIngestionClient().get<Video>(`/api/v1/videos/${videoId}`, {
+			tenant_id: TENANT_ID
+		});
+	} catch (error) {
+		mapVideoApiError(error, 'getVideo');
+	}
 }
 
 /**
@@ -89,9 +115,13 @@ export async function getVideo(videoId: string): Promise<Video> {
  */
 export async function getVideoStatus(videoId: string): Promise<VideoStatusResponse> {
 	assertVideoEnabled();
-	return getIngestionClient().get<VideoStatusResponse>(`/api/v1/videos/${videoId}`, {
-		tenant_id: TENANT_ID
-	});
+	try {
+		return await getIngestionClient().get<VideoStatusResponse>(`/api/v1/videos/${videoId}`, {
+			tenant_id: TENANT_ID
+		});
+	} catch (error) {
+		mapVideoApiError(error, 'getVideoStatus');
+	}
 }
 
 /**
@@ -100,9 +130,13 @@ export async function getVideoStatus(videoId: string): Promise<VideoStatusRespon
  */
 export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; message: string }> {
 	assertVideoEnabled();
-	return getIngestionClient().delete(`/api/v1/videos/${videoId}`, {
-		tenant_id: TENANT_ID
-	});
+	try {
+		return await getIngestionClient().delete(`/api/v1/videos/${videoId}`, {
+			tenant_id: TENANT_ID
+		});
+	} catch (error) {
+		mapVideoApiError(error, 'deleteVideo');
+	}
 }
 
 /**
@@ -111,12 +145,16 @@ export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; 
  */
 export async function batchDeleteVideos(videoIds: string[]): Promise<VideoBatchDeleteResponse> {
 	assertVideoEnabled();
-	return getIngestionClient().post<VideoBatchDeleteResponse>(
-		`/api/v1/videos/batch-delete?tenant_id=${TENANT_ID}`,
-		{
-			video_ids: videoIds
-		}
-	);
+	try {
+		return await getIngestionClient().post<VideoBatchDeleteResponse>(
+			`/api/v1/videos/batch-delete?tenant_id=${TENANT_ID}`,
+			{
+				video_ids: videoIds
+			}
+		);
+	} catch (error) {
+		mapVideoApiError(error, 'batchDeleteVideos');
+	}
 }
 
 /**
@@ -125,16 +163,23 @@ export async function batchDeleteVideos(videoIds: string[]): Promise<VideoBatchD
  */
 export async function searchVideos(request: VideoSearchRequest): Promise<VideoSearchResponse> {
 	assertVideoEnabled();
-	return getRetrievalClient().post<VideoSearchResponse>(`/retrieve/video?tenant_id=${TENANT_ID}`, {
-		query: request.query,
-		mode: request.mode || 'hybrid',
-		top_k: request.top_k || 10,
-		video_id: request.video_id,
-		semantic_weight: request.semantic_weight ?? 0.7,
-		keyword_weight: request.keyword_weight ?? 0.3,
-		rerank: request.rerank ?? true,
-		max_matches_per_video: request.max_matches_per_video || 10
-	});
+	try {
+		return await getRetrievalClient().post<VideoSearchResponse>(
+			`/retrieve/video?tenant_id=${TENANT_ID}`,
+			{
+				query: request.query,
+				mode: request.mode || 'hybrid',
+				top_k: request.top_k || 10,
+				video_id: request.video_id,
+				semantic_weight: request.semantic_weight ?? 0.7,
+				keyword_weight: request.keyword_weight ?? 0.3,
+				rerank: request.rerank ?? true,
+				max_matches_per_video: request.max_matches_per_video || 10
+			}
+		);
+	} catch (error) {
+		mapVideoApiError(error, 'searchVideos');
+	}
 }
 
 /**

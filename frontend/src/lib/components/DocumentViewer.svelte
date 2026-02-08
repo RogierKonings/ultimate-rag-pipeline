@@ -14,21 +14,26 @@
 			onClose();
 		}
 	}
+
+	function handleBackdropKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			onClose();
+		}
+	}
 </script>
 
 <!-- Backdrop -->
 <div
 	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
 	onclick={handleBackdropClick}
+	onkeydown={handleBackdropKeydown}
 	role="dialog"
 	aria-modal="true"
 	aria-labelledby="viewer-title"
+	tabindex="-1"
 >
 	<!-- Modal -->
-	<div
-		class="flex h-[80vh] w-full max-w-3xl flex-col rounded-xl bg-[var(--color-surface)] shadow-xl"
-		onclick={(e) => e.stopPropagation()}
-	>
+	<div class="flex h-[80vh] w-full max-w-3xl flex-col rounded-xl bg-[var(--color-surface)] shadow-xl">
 		<!-- Header -->
 		<div class="flex shrink-0 items-center justify-between border-b border-[var(--color-border)] px-6 py-4">
 			<div class="flex items-center gap-3">

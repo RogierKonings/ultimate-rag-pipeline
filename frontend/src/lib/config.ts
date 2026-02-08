@@ -1,4 +1,4 @@
-import { PUBLIC_VIDEO_ENABLED } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 /**
  * Feature flags for the frontend application.
@@ -7,4 +7,4 @@ import { PUBLIC_VIDEO_ENABLED } from '$env/static/public';
  * It defaults to false because the backend video endpoints
  * (ingestion and retrieval) are not yet implemented.
  */
-export const VIDEO_ENABLED: boolean = PUBLIC_VIDEO_ENABLED === 'true';
+export const VIDEO_ENABLED: boolean = env.PUBLIC_VIDEO_ENABLED === 'true';

@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use qdrant_client::prelude::*;
+use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{
-    CreateCollection, Distance, PointId, PointStruct, SearchPoints,
-    VectorParams, VectorsConfig, WithPayloadSelector, WithVectorsSelector,
-    vectors_config::Config as VectorsConfigEnum,
-    with_payload_selector::SelectorOptions,
+    CreateCollectionBuilder, DeletePointsBuilder, Distance, GetPointsBuilder,
+    PointId, PointStruct, SearchPointsBuilder, UpsertPointsBuilder,
+    VectorParamsBuilder,
     point_id::PointIdOptions,
+    vector_output,
 };
 use serde_json::Value;
 use tracing::instrument;
@@ -20,7 +20,7 @@ use crate::{Result, SearchRequest, SearchResult, ScoredPoint, VectorStoreConfig,
 /// Qdrant vector store client.
 #[derive(Clone)]
 pub struct VectorStoreClient {
-    client: Arc<QdrantClient>,
+    client: Arc<Qdrant>,
     config: VectorStoreConfig,
 }
 
@@ -31,16 +31,16 @@ impl VectorStoreClient {
     ///
     /// Returns an error if connection fails.
     pub async fn connect(config: &VectorStoreConfig) -> Result<Self> {
-        let mut client_config = QdrantClientConfig::from_url(&config.url);
+        let mut builder = Qdrant::from_url(&config.url)
+            .timeout(config.timeout)
+            .connect_timeout(config.connect_timeout);
 
         if let Some(api_key) = &config.api_key {
-            client_config = client_config.with_api_key(api_key.clone());
+            builder = builder.api_key(api_key.clone());
         }
 
-        client_config.timeout = config.timeout;
-        client_config.connect_timeout = config.connect_timeout;
-
-        let client = QdrantClient::new(Some(client_config))
+        let client = builder
+            .build()
             .map_err(|e| VectorStoreError::Connection(e.to_string()))?;
 
         Ok(Self {
@@ -64,23 +64,18 @@ impl VectorStoreClient {
     /// Returns an error if collection creation fails.
     #[instrument(skip(self))]
     pub async fn create_collection(&self, name: &str, vector_size: u64) -> Result<()> {
-        self.client
-            .create_collection(&CreateCollection {
-                collection_name: name.into(),
-                vectors_config: Some(VectorsConfig {
-                    config: Some(VectorsConfigEnum::Params(VectorParams {
-                        size: vector_size,
-                        distance: Distance::Cosine.into(),
-                        hnsw_config: Some(qdrant_client::qdrant::HnswConfigDiff {
-                            m: Some(self.config.hnsw_config.m),
-                            ef_construct: Some(self.config.hnsw_config.ef_construct),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    })),
-                }),
+        let vectors_config = VectorParamsBuilder::new(vector_size, Distance::Cosine)
+            .hnsw_config(qdrant_client::qdrant::HnswConfigDiff {
+                m: Some(self.config.hnsw_config.m),
+                ef_construct: Some(self.config.hnsw_config.ef_construct),
                 ..Default::default()
-            })
+            });
+
+        self.client
+            .create_collection(
+                CreateCollectionBuilder::new(name)
+                    .vectors_config(vectors_config),
+            )
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
 
@@ -110,19 +105,10 @@ impl VectorStoreClient {
     /// Returns an error if the check fails (other than collection not found).
     #[instrument(skip(self))]
     pub async fn collection_exists(&self, name: &str) -> Result<bool> {
-        // In qdrant-client 1.7.0, we use collection_info and check for errors
-        match self.client.collection_info(name).await {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                // Check if the error indicates collection not found
-                let err_str = e.to_string().to_lowercase();
-                if err_str.contains("not found") || err_str.contains("doesn't exist") {
-                    Ok(false)
-                } else {
-                    Err(VectorStoreError::Qdrant(e.to_string()))
-                }
-            }
-        }
+        self.client
+            .collection_exists(name)
+            .await
+            .map_err(|e| VectorStoreError::Qdrant(e.to_string()))
     }
 
     /// Get collection info.
@@ -132,20 +118,20 @@ impl VectorStoreClient {
     /// Returns an error if the collection doesn't exist.
     #[instrument(skip(self))]
     pub async fn collection_info(&self, name: &str) -> Result<CollectionInfo> {
-        let info = self
+        let response = self
             .client
             .collection_info(name)
             .await
             .map_err(|_| VectorStoreError::CollectionNotFound(name.into()))?;
 
-        let result = info.result.ok_or_else(|| {
-            VectorStoreError::CollectionNotFound(name.into())
-        })?;
+        let info = response
+            .result
+            .ok_or_else(|| VectorStoreError::CollectionNotFound(name.into()))?;
 
         Ok(CollectionInfo {
             name: name.into(),
-            points_count: result.points_count.unwrap_or(0),
-            vectors_count: result.points_count.unwrap_or(0), // Use points_count as fallback
+            points_count: info.points_count.unwrap_or(0),
+            vectors_count: info.indexed_vectors_count.unwrap_or(0),
         })
     }
 
@@ -191,7 +177,7 @@ impl VectorStoreClient {
         let count = points.len();
 
         self.client
-            .upsert_points_blocking(collection, None, points, None)
+            .upsert_points(UpsertPointsBuilder::new(collection, points).wait(true))
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
 
@@ -216,43 +202,31 @@ impl VectorStoreClient {
 
         let start = Instant::now();
 
-        let with_payload = if request.with_payload {
-            Some(WithPayloadSelector {
-                selector_options: Some(SelectorOptions::Enable(true)),
-            })
-        } else {
-            Some(WithPayloadSelector {
-                selector_options: Some(SelectorOptions::Enable(false)),
-            })
-        };
+        let mut search_builder = SearchPointsBuilder::new(collection, request.vector, request.limit)
+            .with_payload(request.with_payload);
 
-        let with_vectors = if request.with_vector {
-            Some(WithVectorsSelector {
-                selector_options: Some(
-                    qdrant_client::qdrant::with_vectors_selector::SelectorOptions::Enable(true),
-                ),
-            })
-        } else {
-            None
-        };
+        if request.with_vector {
+            search_builder = search_builder.with_vectors(true);
+        }
 
-        let search_points = SearchPoints {
-            collection_name: collection.into(),
-            vector: request.vector,
-            limit: request.limit,
-            filter: request.filter,
-            with_payload,
-            with_vectors,
-            score_threshold: request.score_threshold,
-            params: request.params.map(|p| qdrant_client::qdrant::SearchParams {
-                hnsw_ef: p.ef,
-                exact: Some(p.exact),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+        if let Some(filter) = request.filter {
+            search_builder = search_builder.filter(filter);
+        }
 
-        let response = self.client.search_points(&search_points)
+        if let Some(threshold) = request.score_threshold {
+            search_builder = search_builder.score_threshold(threshold);
+        }
+
+        if let Some(p) = request.params {
+            let mut params = qdrant_client::qdrant::SearchParams::default();
+            if let Some(ef) = p.ef {
+                params.hnsw_ef = Some(ef);
+            }
+            params.exact = Some(p.exact);
+            search_builder = search_builder.params(params);
+        }
+
+        let response = self.client.search_points(search_builder)
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
 
@@ -268,12 +242,15 @@ impl VectorStoreClient {
 
                 let payload = qdrant_to_payload(&p.payload);
                 let vector = p.vectors.and_then(|v| {
-                    match v.vectors_options {
-                        Some(qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec)) => {
-                            Some(vec.data)
+                    v.vectors_options.and_then(|opts| match opts {
+                        qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec) => {
+                            match vec.into_vector() {
+                                vector_output::Vector::Dense(dense) => Some(dense.data),
+                                _ => None,
+                            }
                         }
                         _ => None,
-                    }
+                    })
                 });
 
                 ScoredPoint {
@@ -319,17 +296,10 @@ impl VectorStoreClient {
             .collect();
 
         self.client
-            .delete_points_blocking(
-                collection,
-                None,
-                &qdrant_client::qdrant::PointsSelector {
-                    points_selector_one_of: Some(
-                        qdrant_client::qdrant::points_selector::PointsSelectorOneOf::Points(
-                            qdrant_client::qdrant::PointsIdsList { ids: point_ids },
-                        ),
-                    ),
-                },
-                None,
+            .delete_points(
+                DeletePointsBuilder::new(collection)
+                    .points(point_ids)
+                    .wait(true),
             )
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
@@ -354,15 +324,10 @@ impl VectorStoreClient {
             .unwrap_or_else(|| self.default_collection())?;
 
         self.client
-            .delete_points_blocking(
-                collection,
-                None,
-                &qdrant_client::qdrant::PointsSelector {
-                    points_selector_one_of: Some(
-                        qdrant_client::qdrant::points_selector::PointsSelectorOneOf::Filter(filter),
-                    ),
-                },
-                None,
+            .delete_points(
+                DeletePointsBuilder::new(collection)
+                    .points(filter)
+                    .wait(true),
             )
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
@@ -396,12 +361,9 @@ impl VectorStoreClient {
         let response = self
             .client
             .get_points(
-                collection,
-                None,
-                &point_ids,
-                Some(true),
-                Some(true),
-                None,
+                GetPointsBuilder::new(collection, point_ids)
+                    .with_payload(true)
+                    .with_vectors(true),
             )
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
@@ -418,12 +380,15 @@ impl VectorStoreClient {
 
                 let payload = qdrant_to_payload(&p.payload);
                 let vector = p.vectors.and_then(|v| {
-                    match v.vectors_options {
-                        Some(qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec)) => {
-                            Some(vec.data)
+                    v.vectors_options.and_then(|opts| match opts {
+                        qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(vec) => {
+                            match vec.into_vector() {
+                                vector_output::Vector::Dense(dense) => Some(dense.data),
+                                _ => None,
+                            }
                         }
                         _ => None,
-                    }
+                    })
                 });
 
                 ScoredPoint {

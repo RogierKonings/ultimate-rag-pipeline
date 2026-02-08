@@ -7,9 +7,11 @@ use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
 /// Cache key prefix for tenant configs.
+#[allow(dead_code)]
 const CACHE_PREFIX: &str = "tenant:config:";
 
 /// Default cache TTL (5 minutes).
+#[allow(dead_code)]
 const DEFAULT_TTL: Duration = Duration::from_secs(300);
 
 /// Trait for tenant config caching.
@@ -26,6 +28,7 @@ pub trait TenantConfigCache: Send + Sync {
 }
 
 /// In-memory cache implementation for testing.
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct InMemoryCache {
     cache: std::sync::RwLock<std::collections::HashMap<Uuid, TenantIndexConfig>>,
@@ -33,6 +36,7 @@ pub struct InMemoryCache {
 
 impl InMemoryCache {
     /// Create a new in-memory cache.
+    #[allow(dead_code)]
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -63,6 +67,7 @@ impl TenantConfigCache for InMemoryCache {
 }
 
 /// Redis-backed cache implementation.
+#[allow(dead_code)]
 pub struct RedisCache {
     client: rag_cache::CacheClient,
     ttl: Duration,
@@ -70,6 +75,7 @@ pub struct RedisCache {
 
 impl RedisCache {
     /// Create a new Redis cache.
+    #[allow(dead_code)]
     #[must_use]
     pub fn new(client: rag_cache::CacheClient) -> Self {
         Self {
@@ -79,12 +85,14 @@ impl RedisCache {
     }
 
     /// Create with custom TTL.
+    #[allow(dead_code)]
     #[must_use]
     pub fn with_ttl(client: rag_cache::CacheClient, ttl: Duration) -> Self {
         Self { client, ttl }
     }
 
     /// Build the cache key for a tenant.
+    #[allow(dead_code)]
     fn cache_key(tenant_id: Uuid) -> String {
         format!("{}{}", CACHE_PREFIX, tenant_id)
     }

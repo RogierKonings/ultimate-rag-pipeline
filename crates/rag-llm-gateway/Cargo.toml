@@ -56,7 +56,7 @@ chrono = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
-axum-test = "18"
+axum-test = "16"
 
 [[bin]]
 name = "llm-gateway"

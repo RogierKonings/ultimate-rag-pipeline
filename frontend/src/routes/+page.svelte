@@ -22,6 +22,7 @@
 	import VideoResultCard from '$lib/components/VideoResultCard.svelte';
 	import VideoPlayerPanel from '$lib/components/VideoPlayerPanel.svelte';
 	import VideoUploadModal from '$lib/components/VideoUploadModal.svelte';
+	import type { VideoMatch, VideoSearchResult } from '$lib/api/types';
 
 	type Tab = 'documents' | 'videos';
 
@@ -54,8 +55,8 @@
 	});
 
 	function handleVideoMatchSelect(
-		video: (typeof $videoSearch.response)['videos'][number],
-		match: (typeof $videoSearch.response)['videos'][number]['matches'][number]
+		video: VideoSearchResult,
+		match: VideoMatch
 	) {
 		videoPlayer.selectMatch(video, match);
 	}
