@@ -34,6 +34,12 @@ jobs:
       - name: Setup Toolchain
         uses: ./.github/actions/setup-toolchain
 
+      - name: Install API contract check dependency
+        run: python3 -m pip install "pydantic>=2,<3"
+
+      - name: Check API contract drift
+        run: ./scripts/check-api-contracts.sh
+
       - name: Run affected checks (PR)
         if: github.event_name == 'pull_request'
         env:

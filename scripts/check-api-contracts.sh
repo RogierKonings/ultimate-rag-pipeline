@@ -25,6 +25,14 @@ trap cleanup EXIT
 
 echo "==> Regenerating TypeScript types from current backend models..."
 
+# Preflight dependency check for local/dev environments.
+if ! python3 -c "import pydantic" >/dev/null 2>&1; then
+    echo ""
+    echo "ERROR: Missing Python dependency: pydantic"
+    echo "Install with: python3 -m pip install \"pydantic>=2,<3\""
+    exit 1
+fi
+
 # Generate fresh schema and types to a temp directory
 python3 "${REPO_ROOT}/scripts/extract-api-schemas.py" --output-dir "${TEMP_DIR}"
 python3 "${REPO_ROOT}/scripts/json-schema-to-ts.py" "${TEMP_DIR}/api-schema.json" --output "${TEMP_DIR}/generated-types.ts"
