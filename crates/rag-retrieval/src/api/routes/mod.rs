@@ -6,12 +6,14 @@
 //! - `health`: Health check endpoints for Kubernetes probes
 //! - `metrics`: Prometheus metrics endpoint
 
+pub mod explain;
 pub mod health;
 pub mod metrics;
 pub mod multi;
 pub mod search;
 
 // Re-export route handlers for convenient imports
+pub use explain::explain;
 pub use health::{health, liveness, readiness};
 pub use metrics::metrics;
 pub use multi::retrieve_multi;

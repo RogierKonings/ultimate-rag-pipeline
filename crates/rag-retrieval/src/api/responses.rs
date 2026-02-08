@@ -253,6 +253,159 @@ pub struct DebugInfo {
     pub rrf_k: i32,
 }
 
+/// A single stage in the retrieval pipeline explain output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub struct ExplainStage {
+    /// Stage name (e.g. "embedding", "semantic_search", "keyword_search", "fusion", "reranking", "acl_filter").
+    pub name: String,
+
+    /// Whether this stage was executed.
+    pub executed: bool,
+
+    /// Latency of this stage in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latency_ms: Option<f64>,
+
+    /// Number of candidates entering this stage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_count: Option<usize>,
+
+    /// Number of candidates leaving this stage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_count: Option<usize>,
+
+    /// Whether this stage was skipped or failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skipped_reason: Option<String>,
+}
+
+impl ExplainStage {
+    /// Create a new executed stage.
+    #[must_use]
+    pub fn executed(name: impl Into<String>, latency_ms: f64) -> Self {
+        Self {
+            name: name.into(),
+            executed: true,
+            latency_ms: Some(latency_ms),
+            input_count: None,
+            output_count: None,
+            skipped_reason: None,
+        }
+    }
+
+    /// Create a new skipped stage.
+    #[must_use]
+    pub fn skipped(name: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            executed: false,
+            latency_ms: None,
+            input_count: None,
+            output_count: None,
+            skipped_reason: Some(reason.into()),
+        }
+    }
+
+    /// Set input/output counts.
+    #[must_use]
+    pub const fn with_counts(mut self, input: usize, output: usize) -> Self {
+        self.input_count = Some(input);
+        self.output_count = Some(output);
+        self
+    }
+}
+
+/// Effective configuration used for the retrieval request.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub struct ExplainEffectiveConfig {
+    /// Search mode used.
+    pub mode: SearchMode,
+
+    /// Final top_k requested.
+    pub top_k: usize,
+
+    /// Semantic weight applied.
+    pub semantic_weight: f32,
+
+    /// Keyword weight applied.
+    pub keyword_weight: f32,
+
+    /// Fusion method used.
+    pub fusion_method: String,
+
+    /// RRF k parameter.
+    pub rrf_k: i32,
+
+    /// Whether reranking was requested.
+    pub rerank_enabled: bool,
+
+    /// Number of candidates sent to reranker.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rerank_top_k: Option<usize>,
+
+    /// Minimum score threshold.
+    pub min_score: f32,
+
+    /// Whether reranker is available in this deployment.
+    pub reranker_available: bool,
+}
+
+/// Summary of the final results (without exposing raw scores or internal IDs).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub struct ExplainResultSummary {
+    /// Number of final results returned.
+    pub count: usize,
+
+    /// Score range of the final results (min, max).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub score_range: Option<(f32, f32)>,
+
+    /// Number of unique documents in the results.
+    pub unique_documents: usize,
+}
+
+/// Response from the explain/debug endpoint.
+///
+/// Provides stage-level diagnostics for triage and tuning.
+/// This endpoint is admin-only.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub struct ExplainResponse {
+    /// Unique identifier for this explain request.
+    pub query_id: Uuid,
+
+    /// The original query.
+    pub query: String,
+
+    /// When this explain was processed.
+    pub processed_at: DateTime<Utc>,
+
+    /// Effective retrieval configuration used.
+    pub effective_config: ExplainEffectiveConfig,
+
+    /// Ordered list of pipeline stages with timing and counts.
+    pub stages: Vec<ExplainStage>,
+
+    /// Components that were used.
+    pub components_used: Vec<String>,
+
+    /// Components that were skipped.
+    pub components_skipped: Vec<String>,
+
+    /// Current degradation mode, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degradation_mode: Option<String>,
+
+    /// Summary of final results.
+    pub result_summary: ExplainResultSummary,
+
+    /// Total pipeline latency in milliseconds.
+    pub total_latency_ms: f64,
+}
+
 /// Response from the retrieve endpoint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]

@@ -4,6 +4,7 @@
 //!
 //! - `POST /api/v1/retrieve` - Single query retrieval with hybrid search
 //! - `POST /api/v1/retrieve/multi` - Multi-query retrieval with result aggregation
+//! - `POST /api/v1/retrieve/explain` - Retrieval pipeline diagnostics (admin-only)
 //! - `GET /health` - Full health check with component status
 //! - `GET /health/live` - Kubernetes liveness probe
 //! - `GET /health/ready` - Kubernetes readiness probe
@@ -83,7 +84,7 @@ pub use server::{
 };
 pub use state::{AppState, AppStateBuilder, AppStateBuilderError};
 pub use types::{
-    ComponentHealth, DebugInfo, HealthResponse, LivenessResponse, MultiQueryRequest,
-    ReadinessResponse, RetrieveRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
-    ValidationError,
+    ComponentHealth, DebugInfo, ExplainEffectiveConfig, ExplainResponse, ExplainResultSummary,
+    ExplainStage, HealthResponse, LivenessResponse, MultiQueryRequest, ReadinessResponse,
+    RetrieveRequest, RetrieveResponse, RetrievedDocument, SearchMetrics, ValidationError,
 };

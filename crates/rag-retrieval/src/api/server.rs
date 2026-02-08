@@ -31,6 +31,7 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 ///
 /// - `POST /api/v1/retrieve` - Single query retrieval
 /// - `POST /api/v1/retrieve/multi` - Multi-query retrieval
+/// - `POST /api/v1/retrieve/explain` - Retrieval pipeline diagnostics (admin-only)
 /// - `GET /health` - Full health check
 /// - `GET /health/live` - Kubernetes liveness probe
 /// - `GET /health/ready` - Kubernetes readiness probe
@@ -75,6 +76,7 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
         // API routes
         .route("/api/v1/retrieve", post(routes::retrieve))
         .route("/api/v1/retrieve/multi", post(routes::retrieve_multi))
+        .route("/api/v1/retrieve/explain", post(routes::explain))
         // Health routes
         .route("/health", get(routes::health))
         .route("/health/live", get(routes::liveness))

@@ -8,7 +8,8 @@
 // Re-export all public types for backward compatibility
 pub use super::requests::{MultiQueryRequest, RetrieveRequest};
 pub use super::responses::{
-    ComponentHealth, DebugInfo, HealthResponse, LivenessResponse, ReadinessResponse,
-    RetrieveResponse, RetrievedDocument, SearchMetrics,
+    ComponentHealth, DebugInfo, ExplainEffectiveConfig, ExplainResponse, ExplainResultSummary,
+    ExplainStage, HealthResponse, LivenessResponse, ReadinessResponse, RetrieveResponse,
+    RetrievedDocument, SearchMetrics,
 };
 pub use super::validation::ValidationError;
