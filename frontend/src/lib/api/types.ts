@@ -1,4 +1,12 @@
 // API Types matching backend schemas
+//
+// Source of truth: services/orchestrator/api/models/ (Pydantic models)
+// Generated reference: frontend/src/lib/api/generated-types.ts
+//
+// To regenerate the reference types from backend models:
+//   ./scripts/generate-api-types.sh
+// To check for contract drift:
+//   ./scripts/check-api-contracts.sh
 
 // Document types
 export interface Document {
@@ -70,6 +78,18 @@ export interface UsageInfo {
 	total_tokens: number;
 }
 
+export interface VerificationInfo {
+	score: number;
+	label: string;
+	claims_total: number;
+	claims_supported: number;
+	claims_partial: number;
+	claims_unsupported: number;
+	verification_time_ms: number;
+	skipped: boolean;
+	skip_reason: string | null;
+}
+
 export interface QueryRequest {
 	query: string;
 	tenant_id?: string;
@@ -92,6 +112,13 @@ export interface QueryResponse {
 	usage: UsageInfo;
 	latency_ms: number;
 	strategy_used: string | null;
+	// Fields added from backend contract (R13)
+	verification?: VerificationInfo | null;
+	retrieval_mode?: string | null;
+	context_quality?: string | null;
+	components_available?: Record<string, boolean> | null;
+	fallbacks_used?: string[];
+	cache_hit?: boolean;
 }
 
 // Upload types (for our frontend upload flow)

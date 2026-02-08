@@ -1,0 +1,1729 @@
+{
+  "QueryResponse": {
+    "$defs": {
+      "SourceDocument": {
+        "description": "Source document included in query response.\n\nAttributes:\n    id: Document/chunk identifier.\n    title: Document title.\n    uri: Source URI or path.\n    score: Relevance score.\n    snippet: Content snippet used in context.",
+        "properties": {
+          "id": {
+            "description": "Document/chunk identifier",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Document title",
+            "title": "Title"
+          },
+          "uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Source URI or path",
+            "title": "Uri"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Relevance score",
+            "title": "Score"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Content snippet",
+            "title": "Snippet"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "SourceDocument",
+        "type": "object"
+      },
+      "UsageInfo": {
+        "description": "Token usage information.\n\nAttributes:\n    prompt_tokens: Number of tokens in the prompt.\n    completion_tokens: Number of tokens in the completion.\n    total_tokens: Total token count.",
+        "properties": {
+          "prompt_tokens": {
+            "default": 0,
+            "description": "Tokens in the prompt",
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "default": 0,
+            "description": "Tokens in the completion",
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Total tokens used",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "title": "UsageInfo",
+        "type": "object"
+      },
+      "VerificationInfo": {
+        "description": "Answer verification result (CRAG-style claim verification).\n\nAttributes:\n    score: Verification score from 0-1 (proportion of supported claims).\n    label: Verification label (supported, partial, unsupported, skipped).\n    claims_total: Total number of claims verified.\n    claims_supported: Number of fully supported claims.\n    claims_partial: Number of partially supported claims.\n    claims_unsupported: Number of unsupported claims.\n    verification_time_ms: Time taken for verification.\n    skipped: Whether verification was skipped.\n    skip_reason: Reason for skipping verification.",
+        "properties": {
+          "score": {
+            "default": 1.0,
+            "description": "Verification score",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "label": {
+            "default": "skipped",
+            "description": "Verification label",
+            "title": "Label",
+            "type": "string"
+          },
+          "claims_total": {
+            "default": 0,
+            "description": "Total claims verified",
+            "title": "Claims Total",
+            "type": "integer"
+          },
+          "claims_supported": {
+            "default": 0,
+            "description": "Supported claims",
+            "title": "Claims Supported",
+            "type": "integer"
+          },
+          "claims_partial": {
+            "default": 0,
+            "description": "Partially supported claims",
+            "title": "Claims Partial",
+            "type": "integer"
+          },
+          "claims_unsupported": {
+            "default": 0,
+            "description": "Unsupported claims",
+            "title": "Claims Unsupported",
+            "type": "integer"
+          },
+          "verification_time_ms": {
+            "default": 0.0,
+            "description": "Verification time",
+            "title": "Verification Time Ms",
+            "type": "number"
+          },
+          "skipped": {
+            "default": true,
+            "description": "Whether verification was skipped",
+            "title": "Skipped",
+            "type": "boolean"
+          },
+          "skip_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reason for skipping",
+            "title": "Skip Reason"
+          }
+        },
+        "title": "VerificationInfo",
+        "type": "object"
+      }
+    },
+    "description": "Response model for synchronous RAG query.\n\nAttributes:\n    request_id: Unique identifier for this request.\n    response: The generated response text.\n    sources: List of source documents used.\n    session_id: Session ID if conversation tracking is enabled.\n    model: The model used for generation.\n    usage: Token usage statistics.\n    latency_ms: Response latency in milliseconds.\n    strategy_used: The retrieval strategy used (simple, rerank, etc.).\n    verification: Answer verification result (if enabled).\n    retrieval_mode: The retrieval mode used (US-10.2.2).\n    context_quality: Quality of retrieved context (US-10.2.2).\n    components_available: Which retrieval components were available (US-10.2.2).\n    fallbacks_used: List of fallback strategies applied (US-10.2.2).",
+    "properties": {
+      "request_id": {
+        "description": "Unique request identifier",
+        "title": "Request Id",
+        "type": "string"
+      },
+      "response": {
+        "description": "Generated response text",
+        "title": "Response",
+        "type": "string"
+      },
+      "sources": {
+        "description": "Source documents used in response",
+        "items": {
+          "$ref": "#/$defs/SourceDocument"
+        },
+        "title": "Sources",
+        "type": "array"
+      },
+      "session_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Session ID for conversation tracking",
+        "title": "Session Id"
+      },
+      "model": {
+        "description": "Model used for generation",
+        "title": "Model",
+        "type": "string"
+      },
+      "usage": {
+        "$ref": "#/$defs/UsageInfo",
+        "description": "Token usage statistics"
+      },
+      "latency_ms": {
+        "default": 0.0,
+        "description": "Response latency in milliseconds",
+        "title": "Latency Ms",
+        "type": "number"
+      },
+      "strategy_used": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Retrieval strategy used",
+        "title": "Strategy Used"
+      },
+      "verification": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/VerificationInfo"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Answer verification result (CRAG-style)"
+      },
+      "retrieval_mode": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Retrieval mode used (hybrid_full, semantic_only, etc)",
+        "title": "Retrieval Mode"
+      },
+      "context_quality": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Quality of retrieved context (full, partial, minimal)",
+        "title": "Context Quality"
+      },
+      "components_available": {
+        "anyOf": [
+          {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Which retrieval components were available",
+        "title": "Components Available"
+      },
+      "fallbacks_used": {
+        "description": "List of fallback strategies applied",
+        "items": {
+          "type": "string"
+        },
+        "title": "Fallbacks Used",
+        "type": "array"
+      },
+      "cache_hit": {
+        "default": false,
+        "description": "Whether response was served from answer cache",
+        "title": "Cache Hit",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "request_id",
+      "response",
+      "model"
+    ],
+    "title": "QueryResponse",
+    "type": "object"
+  },
+  "SourceDocument": {
+    "description": "Source document included in query response.\n\nAttributes:\n    id: Document/chunk identifier.\n    title: Document title.\n    uri: Source URI or path.\n    score: Relevance score.\n    snippet: Content snippet used in context.",
+    "properties": {
+      "id": {
+        "description": "Document/chunk identifier",
+        "title": "Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Document title",
+        "title": "Title"
+      },
+      "uri": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Source URI or path",
+        "title": "Uri"
+      },
+      "score": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Relevance score",
+        "title": "Score"
+      },
+      "snippet": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Content snippet",
+        "title": "Snippet"
+      }
+    },
+    "required": [
+      "id"
+    ],
+    "title": "SourceDocument",
+    "type": "object"
+  },
+  "UsageInfo": {
+    "description": "Token usage information.\n\nAttributes:\n    prompt_tokens: Number of tokens in the prompt.\n    completion_tokens: Number of tokens in the completion.\n    total_tokens: Total token count.",
+    "properties": {
+      "prompt_tokens": {
+        "default": 0,
+        "description": "Tokens in the prompt",
+        "title": "Prompt Tokens",
+        "type": "integer"
+      },
+      "completion_tokens": {
+        "default": 0,
+        "description": "Tokens in the completion",
+        "title": "Completion Tokens",
+        "type": "integer"
+      },
+      "total_tokens": {
+        "default": 0,
+        "description": "Total tokens used",
+        "title": "Total Tokens",
+        "type": "integer"
+      }
+    },
+    "title": "UsageInfo",
+    "type": "object"
+  },
+  "VerificationInfo": {
+    "description": "Answer verification result (CRAG-style claim verification).\n\nAttributes:\n    score: Verification score from 0-1 (proportion of supported claims).\n    label: Verification label (supported, partial, unsupported, skipped).\n    claims_total: Total number of claims verified.\n    claims_supported: Number of fully supported claims.\n    claims_partial: Number of partially supported claims.\n    claims_unsupported: Number of unsupported claims.\n    verification_time_ms: Time taken for verification.\n    skipped: Whether verification was skipped.\n    skip_reason: Reason for skipping verification.",
+    "properties": {
+      "score": {
+        "default": 1.0,
+        "description": "Verification score",
+        "maximum": 1.0,
+        "minimum": 0.0,
+        "title": "Score",
+        "type": "number"
+      },
+      "label": {
+        "default": "skipped",
+        "description": "Verification label",
+        "title": "Label",
+        "type": "string"
+      },
+      "claims_total": {
+        "default": 0,
+        "description": "Total claims verified",
+        "title": "Claims Total",
+        "type": "integer"
+      },
+      "claims_supported": {
+        "default": 0,
+        "description": "Supported claims",
+        "title": "Claims Supported",
+        "type": "integer"
+      },
+      "claims_partial": {
+        "default": 0,
+        "description": "Partially supported claims",
+        "title": "Claims Partial",
+        "type": "integer"
+      },
+      "claims_unsupported": {
+        "default": 0,
+        "description": "Unsupported claims",
+        "title": "Claims Unsupported",
+        "type": "integer"
+      },
+      "verification_time_ms": {
+        "default": 0.0,
+        "description": "Verification time",
+        "title": "Verification Time Ms",
+        "type": "number"
+      },
+      "skipped": {
+        "default": true,
+        "description": "Whether verification was skipped",
+        "title": "Skipped",
+        "type": "boolean"
+      },
+      "skip_reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Reason for skipping",
+        "title": "Skip Reason"
+      }
+    },
+    "title": "VerificationInfo",
+    "type": "object"
+  },
+  "SessionResponse": {
+    "$defs": {
+      "SessionInfo": {
+        "description": "Session information model.\n\nAttributes:\n    id: Session identifier.\n    user_id: Optional user identifier.\n    tenant_id: Optional tenant identifier.\n    created_at: Session creation timestamp.\n    updated_at: Last update timestamp.\n    message_count: Number of messages in session.\n    total_tokens: Total tokens used in session.",
+        "properties": {
+          "id": {
+            "description": "Session identifier",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "User identifier",
+            "title": "User Id"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tenant identifier",
+            "title": "Tenant Id"
+          },
+          "created_at": {
+            "description": "Session creation timestamp",
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "Last update timestamp",
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "message_count": {
+            "default": 0,
+            "description": "Number of messages",
+            "title": "Message Count",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Total tokens used",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SessionInfo",
+        "type": "object"
+      }
+    },
+    "description": "Response model for session operations.\n\nAttributes:\n    session: Session information.\n    message: Optional status message.",
+    "properties": {
+      "session": {
+        "$ref": "#/$defs/SessionInfo",
+        "description": "Session information"
+      },
+      "message": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Status message",
+        "title": "Message"
+      }
+    },
+    "required": [
+      "session"
+    ],
+    "title": "SessionResponse",
+    "type": "object"
+  },
+  "SessionInfo": {
+    "description": "Session information model.\n\nAttributes:\n    id: Session identifier.\n    user_id: Optional user identifier.\n    tenant_id: Optional tenant identifier.\n    created_at: Session creation timestamp.\n    updated_at: Last update timestamp.\n    message_count: Number of messages in session.\n    total_tokens: Total tokens used in session.",
+    "properties": {
+      "id": {
+        "description": "Session identifier",
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "user_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "User identifier",
+        "title": "User Id"
+      },
+      "tenant_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Tenant identifier",
+        "title": "Tenant Id"
+      },
+      "created_at": {
+        "description": "Session creation timestamp",
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "updated_at": {
+        "description": "Last update timestamp",
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "message_count": {
+        "default": 0,
+        "description": "Number of messages",
+        "title": "Message Count",
+        "type": "integer"
+      },
+      "total_tokens": {
+        "default": 0,
+        "description": "Total tokens used",
+        "title": "Total Tokens",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "SessionInfo",
+    "type": "object"
+  },
+  "HistoryResponse": {
+    "$defs": {
+      "MessageInfo": {
+        "description": "Message information model.\n\nAttributes:\n    id: Message identifier.\n    role: Message role (user, assistant, system).\n    content: Message content.\n    timestamp: Message timestamp.\n    sources: Optional source references for assistant messages.",
+        "properties": {
+          "id": {
+            "description": "Message identifier",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "description": "Message role",
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "description": "Message content",
+            "title": "Content",
+            "type": "string"
+          },
+          "timestamp": {
+            "description": "Message timestamp",
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Source references for assistant messages",
+            "title": "Sources"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "timestamp"
+        ],
+        "title": "MessageInfo",
+        "type": "object"
+      }
+    },
+    "description": "Response model for session history.\n\nAttributes:\n    session_id: Session identifier.\n    messages: List of messages in the session.\n    has_summary: Whether the session has been summarized.\n    summary: Optional summary of earlier messages.",
+    "properties": {
+      "session_id": {
+        "description": "Session identifier",
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "messages": {
+        "description": "Messages in the session",
+        "items": {
+          "$ref": "#/$defs/MessageInfo"
+        },
+        "title": "Messages",
+        "type": "array"
+      },
+      "has_summary": {
+        "default": false,
+        "description": "Whether session is summarized",
+        "title": "Has Summary",
+        "type": "boolean"
+      },
+      "summary": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Summary of earlier messages",
+        "title": "Summary"
+      }
+    },
+    "required": [
+      "session_id"
+    ],
+    "title": "HistoryResponse",
+    "type": "object"
+  },
+  "MessageInfo": {
+    "description": "Message information model.\n\nAttributes:\n    id: Message identifier.\n    role: Message role (user, assistant, system).\n    content: Message content.\n    timestamp: Message timestamp.\n    sources: Optional source references for assistant messages.",
+    "properties": {
+      "id": {
+        "description": "Message identifier",
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "role": {
+        "description": "Message role",
+        "title": "Role",
+        "type": "string"
+      },
+      "content": {
+        "description": "Message content",
+        "title": "Content",
+        "type": "string"
+      },
+      "timestamp": {
+        "description": "Message timestamp",
+        "format": "date-time",
+        "title": "Timestamp",
+        "type": "string"
+      },
+      "sources": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Source references for assistant messages",
+        "title": "Sources"
+      }
+    },
+    "required": [
+      "id",
+      "role",
+      "content",
+      "timestamp"
+    ],
+    "title": "MessageInfo",
+    "type": "object"
+  },
+  "HealthResponse": {
+    "$defs": {
+      "ComponentHealth": {
+        "description": "Health status of a single component.\n\nAttributes:\n    name: Component name.\n    status: Health status (healthy, degraded, unhealthy).\n    latency_ms: Optional latency measurement.\n    message: Optional status message.",
+        "properties": {
+          "name": {
+            "description": "Component name",
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "description": "Health status",
+            "title": "Status",
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Latency in ms",
+            "title": "Latency Ms"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Status message",
+            "title": "Message"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "ComponentHealth",
+        "type": "object"
+      }
+    },
+    "description": "Response model for health check endpoints.\n\nAttributes:\n    status: Overall health status.\n    service: Service name.\n    version: Service version.\n    uptime_seconds: Service uptime in seconds.\n    components: Health status of individual components.\n    timestamp: Health check timestamp.",
+    "properties": {
+      "status": {
+        "description": "Overall health status",
+        "title": "Status",
+        "type": "string"
+      },
+      "service": {
+        "default": "orchestrator-service",
+        "description": "Service name",
+        "title": "Service",
+        "type": "string"
+      },
+      "version": {
+        "default": "1.0.0",
+        "description": "Service version",
+        "title": "Version",
+        "type": "string"
+      },
+      "uptime_seconds": {
+        "default": 0.0,
+        "description": "Service uptime",
+        "title": "Uptime Seconds",
+        "type": "number"
+      },
+      "components": {
+        "description": "Component health status",
+        "items": {
+          "$ref": "#/$defs/ComponentHealth"
+        },
+        "title": "Components",
+        "type": "array"
+      },
+      "timestamp": {
+        "description": "Health check timestamp",
+        "format": "date-time",
+        "title": "Timestamp",
+        "type": "string"
+      }
+    },
+    "required": [
+      "status"
+    ],
+    "title": "HealthResponse",
+    "type": "object"
+  },
+  "ComponentHealth": {
+    "description": "Health status of a single component.\n\nAttributes:\n    name: Component name.\n    status: Health status (healthy, degraded, unhealthy).\n    latency_ms: Optional latency measurement.\n    message: Optional status message.",
+    "properties": {
+      "name": {
+        "description": "Component name",
+        "title": "Name",
+        "type": "string"
+      },
+      "status": {
+        "description": "Health status",
+        "title": "Status",
+        "type": "string"
+      },
+      "latency_ms": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Latency in ms",
+        "title": "Latency Ms"
+      },
+      "message": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Status message",
+        "title": "Message"
+      }
+    },
+    "required": [
+      "name",
+      "status"
+    ],
+    "title": "ComponentHealth",
+    "type": "object"
+  },
+  "ErrorResponse": {
+    "$defs": {
+      "ErrorDetail": {
+        "description": "Detailed error information.\n\nAttributes:\n    field: Optional field that caused the error.\n    message: Error message.\n    code: Error code.",
+        "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Field causing error",
+            "title": "Field"
+          },
+          "message": {
+            "description": "Error message",
+            "title": "Message",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Error code",
+            "title": "Code"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      }
+    },
+    "description": "Response model for error responses.\n\nAttributes:\n    error: Error type/name.\n    message: Human-readable error message.\n    request_id: Optional request identifier.\n    details: Optional detailed error information.\n    timestamp: Error timestamp.",
+    "properties": {
+      "error": {
+        "description": "Error type/name",
+        "title": "Error",
+        "type": "string"
+      },
+      "message": {
+        "description": "Human-readable error message",
+        "title": "Message",
+        "type": "string"
+      },
+      "request_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Request identifier",
+        "title": "Request Id"
+      },
+      "details": {
+        "anyOf": [
+          {
+            "items": {
+              "$ref": "#/$defs/ErrorDetail"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Detailed error information",
+        "title": "Details"
+      },
+      "timestamp": {
+        "description": "Error timestamp",
+        "format": "date-time",
+        "title": "Timestamp",
+        "type": "string"
+      }
+    },
+    "required": [
+      "error",
+      "message"
+    ],
+    "title": "ErrorResponse",
+    "type": "object"
+  },
+  "ErrorDetail": {
+    "description": "Detailed error information.\n\nAttributes:\n    field: Optional field that caused the error.\n    message: Error message.\n    code: Error code.",
+    "properties": {
+      "field": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Field causing error",
+        "title": "Field"
+      },
+      "message": {
+        "description": "Error message",
+        "title": "Message",
+        "type": "string"
+      },
+      "code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Error code",
+        "title": "Code"
+      }
+    },
+    "required": [
+      "message"
+    ],
+    "title": "ErrorDetail",
+    "type": "object"
+  },
+  "FeedbackResponse": {
+    "description": "Response model for feedback submission.\n\nAttributes:\n    success: Whether feedback was recorded successfully.\n    message: Status message.\n    feedback_id: Optional identifier for the recorded feedback.",
+    "properties": {
+      "success": {
+        "description": "Whether feedback was recorded",
+        "title": "Success",
+        "type": "boolean"
+      },
+      "message": {
+        "description": "Status message",
+        "title": "Message",
+        "type": "string"
+      },
+      "feedback_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Identifier for recorded feedback",
+        "title": "Feedback Id"
+      }
+    },
+    "required": [
+      "success",
+      "message"
+    ],
+    "title": "FeedbackResponse",
+    "type": "object"
+  },
+  "ClearSessionResponse": {
+    "description": "Response model for clearing a session.\n\nAttributes:\n    success: Whether session was cleared successfully.\n    session_id: Session identifier that was cleared.\n    message: Status message.",
+    "properties": {
+      "success": {
+        "description": "Whether session was cleared",
+        "title": "Success",
+        "type": "boolean"
+      },
+      "session_id": {
+        "description": "Cleared session identifier",
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "message": {
+        "description": "Status message",
+        "title": "Message",
+        "type": "string"
+      }
+    },
+    "required": [
+      "success",
+      "session_id",
+      "message"
+    ],
+    "title": "ClearSessionResponse",
+    "type": "object"
+  },
+  "DeleteSessionResponse": {
+    "description": "Response model for deleting a session.\n\nAttributes:\n    success: Whether session was deleted successfully.\n    session_id: Session identifier that was deleted.\n    message: Status message.",
+    "properties": {
+      "success": {
+        "description": "Whether session was deleted",
+        "title": "Success",
+        "type": "boolean"
+      },
+      "session_id": {
+        "description": "Deleted session identifier",
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "message": {
+        "description": "Status message",
+        "title": "Message",
+        "type": "string"
+      }
+    },
+    "required": [
+      "success",
+      "session_id",
+      "message"
+    ],
+    "title": "DeleteSessionResponse",
+    "type": "object"
+  },
+  "QueryRequest": {
+    "description": "Request model for synchronous RAG query.\n\nAttributes:\n    query: The user's query text.\n    session_id: Optional session ID for conversation continuity.\n    user_id: Optional user identifier for ACL filtering.\n    tenant_id: Optional tenant identifier for multi-tenancy.\n    options: Optional configuration overrides.",
+    "properties": {
+      "query": {
+        "description": "The user's query text",
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Query",
+        "type": "string"
+      },
+      "session_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Session ID for conversation continuity",
+        "title": "Session Id"
+      },
+      "user_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "User identifier for ACL filtering",
+        "title": "User Id"
+      },
+      "tenant_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Tenant identifier for multi-tenancy",
+        "title": "Tenant Id"
+      },
+      "options": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional configuration overrides (model, temperature, etc.)",
+        "title": "Options"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "QueryRequest",
+    "type": "object"
+  },
+  "StreamQueryRequest": {
+    "description": "Request model for streaming RAG query.\n\nAttributes:\n    query: The user's query text.\n    session_id: Optional session ID for conversation continuity.\n    user_id: Optional user identifier for ACL filtering.\n    tenant_id: Optional tenant identifier for multi-tenancy.\n    options: Optional configuration overrides.",
+    "properties": {
+      "query": {
+        "description": "The user's query text",
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Query",
+        "type": "string"
+      },
+      "session_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Session ID for conversation continuity",
+        "title": "Session Id"
+      },
+      "user_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "User identifier for ACL filtering",
+        "title": "User Id"
+      },
+      "tenant_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Tenant identifier for multi-tenancy",
+        "title": "Tenant Id"
+      },
+      "options": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional configuration overrides",
+        "title": "Options"
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "StreamQueryRequest",
+    "type": "object"
+  },
+  "FeedbackRequest": {
+    "description": "Request model for submitting user feedback.\n\nAttributes:\n    request_id: The request ID to provide feedback for.\n    rating: User rating (1-5).\n    feedback_type: Type of feedback (helpful, unhelpful, wrong, etc.).\n    comment: Optional user comment.\n    session_id: Optional session ID for context.",
+    "properties": {
+      "request_id": {
+        "description": "The request ID to provide feedback for",
+        "title": "Request Id",
+        "type": "string"
+      },
+      "rating": {
+        "description": "User rating from 1 (poor) to 5 (excellent)",
+        "maximum": 5,
+        "minimum": 1,
+        "title": "Rating",
+        "type": "integer"
+      },
+      "feedback_type": {
+        "default": "general",
+        "description": "Type of feedback (helpful, unhelpful, wrong, general)",
+        "title": "Feedback Type",
+        "type": "string"
+      },
+      "comment": {
+        "anyOf": [
+          {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional user comment",
+        "title": "Comment"
+      },
+      "session_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Session ID for context",
+        "title": "Session Id"
+      }
+    },
+    "required": [
+      "request_id",
+      "rating"
+    ],
+    "title": "FeedbackRequest",
+    "type": "object"
+  },
+  "CreateSessionRequest": {
+    "description": "Request model for creating a new session.\n\nAttributes:\n    user_id: Optional user identifier.\n    tenant_id: Optional tenant identifier.\n    system_prompt: Optional custom system prompt for this session.\n    metadata: Optional additional metadata for the session.",
+    "properties": {
+      "user_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "User identifier",
+        "title": "User Id"
+      },
+      "tenant_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Tenant identifier",
+        "title": "Tenant Id"
+      },
+      "system_prompt": {
+        "anyOf": [
+          {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Custom system prompt for this session",
+        "title": "System Prompt"
+      },
+      "metadata": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Additional metadata for the session",
+        "title": "Metadata"
+      }
+    },
+    "title": "CreateSessionRequest",
+    "type": "object"
+  },
+  "UsageByModel": {
+    "description": "Token usage breakdown by model.\n\nAttributes:\n    model: The model identifier.\n    prompt_tokens: Total prompt tokens consumed.\n    completion_tokens: Total completion tokens generated.\n    embedding_tokens: Total embedding tokens processed.\n    total_tokens: Sum of all token types.",
+    "properties": {
+      "model": {
+        "description": "Model identifier",
+        "title": "Model",
+        "type": "string"
+      },
+      "prompt_tokens": {
+        "default": 0,
+        "description": "Prompt tokens consumed",
+        "title": "Prompt Tokens",
+        "type": "integer"
+      },
+      "completion_tokens": {
+        "default": 0,
+        "description": "Completion tokens generated",
+        "title": "Completion Tokens",
+        "type": "integer"
+      },
+      "embedding_tokens": {
+        "default": 0,
+        "description": "Embedding tokens processed",
+        "title": "Embedding Tokens",
+        "type": "integer"
+      },
+      "total_tokens": {
+        "default": 0,
+        "description": "Total tokens",
+        "title": "Total Tokens",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "model"
+    ],
+    "title": "UsageByModel",
+    "type": "object"
+  },
+  "UsageStatsResponse": {
+    "$defs": {
+      "UsageByModel": {
+        "description": "Token usage breakdown by model.\n\nAttributes:\n    model: The model identifier.\n    prompt_tokens: Total prompt tokens consumed.\n    completion_tokens: Total completion tokens generated.\n    embedding_tokens: Total embedding tokens processed.\n    total_tokens: Sum of all token types.",
+        "properties": {
+          "model": {
+            "description": "Model identifier",
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt_tokens": {
+            "default": 0,
+            "description": "Prompt tokens consumed",
+            "title": "Prompt Tokens",
+            "type": "integer"
+          },
+          "completion_tokens": {
+            "default": 0,
+            "description": "Completion tokens generated",
+            "title": "Completion Tokens",
+            "type": "integer"
+          },
+          "embedding_tokens": {
+            "default": 0,
+            "description": "Embedding tokens processed",
+            "title": "Embedding Tokens",
+            "type": "integer"
+          },
+          "total_tokens": {
+            "default": 0,
+            "description": "Total tokens",
+            "title": "Total Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "UsageByModel",
+        "type": "object"
+      }
+    },
+    "description": "Response model for usage statistics.\n\nAttributes:\n    tenant_id: The tenant identifier.\n    period: The time period (day, week, month).\n    start_date: Start date of the period.\n    end_date: End date of the period.\n    usage_by_model: Breakdown of usage per model.\n    total_prompt_tokens: Total prompt tokens across all models.\n    total_completion_tokens: Total completion tokens across all models.\n    total_embedding_tokens: Total embedding tokens across all models.\n    total_tokens: Grand total of all tokens.",
+    "properties": {
+      "tenant_id": {
+        "description": "Tenant identifier",
+        "title": "Tenant Id",
+        "type": "string"
+      },
+      "period": {
+        "description": "Time period",
+        "title": "Period",
+        "type": "string"
+      },
+      "start_date": {
+        "description": "Period start date",
+        "format": "date",
+        "title": "Start Date",
+        "type": "string"
+      },
+      "end_date": {
+        "description": "Period end date",
+        "format": "date",
+        "title": "End Date",
+        "type": "string"
+      },
+      "usage_by_model": {
+        "description": "Usage per model",
+        "items": {
+          "$ref": "#/$defs/UsageByModel"
+        },
+        "title": "Usage By Model",
+        "type": "array"
+      },
+      "total_prompt_tokens": {
+        "default": 0,
+        "description": "Total prompt tokens",
+        "title": "Total Prompt Tokens",
+        "type": "integer"
+      },
+      "total_completion_tokens": {
+        "default": 0,
+        "description": "Total completion tokens",
+        "title": "Total Completion Tokens",
+        "type": "integer"
+      },
+      "total_embedding_tokens": {
+        "default": 0,
+        "description": "Total embedding tokens",
+        "title": "Total Embedding Tokens",
+        "type": "integer"
+      },
+      "total_tokens": {
+        "default": 0,
+        "description": "Grand total tokens",
+        "title": "Total Tokens",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "tenant_id",
+      "period",
+      "start_date",
+      "end_date"
+    ],
+    "title": "UsageStatsResponse",
+    "type": "object"
+  },
+  "QuotaStatusResponse": {
+    "description": "Response model for quota status.\n\nAttributes:\n    tenant_id: The tenant identifier.\n    quota_enabled: Whether quota enforcement is enabled.\n    monthly_limit: Monthly token limit (None if unlimited).\n    current_usage: Current month's token usage.\n    remaining: Tokens remaining (None if unlimited).\n    usage_percent: Percentage of quota used (None if unlimited).\n    alert_threshold_percent: Alert threshold percentage.\n    is_over_limit: Whether usage exceeds the limit.",
+    "properties": {
+      "tenant_id": {
+        "description": "Tenant identifier",
+        "title": "Tenant Id",
+        "type": "string"
+      },
+      "quota_enabled": {
+        "default": false,
+        "description": "Quota enforcement enabled",
+        "title": "Quota Enabled",
+        "type": "boolean"
+      },
+      "monthly_limit": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Monthly token limit",
+        "title": "Monthly Limit"
+      },
+      "current_usage": {
+        "default": 0,
+        "description": "Current month usage",
+        "title": "Current Usage",
+        "type": "integer"
+      },
+      "remaining": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Tokens remaining",
+        "title": "Remaining"
+      },
+      "usage_percent": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Usage percentage",
+        "title": "Usage Percent"
+      },
+      "alert_threshold_percent": {
+        "default": 80,
+        "description": "Alert threshold",
+        "title": "Alert Threshold Percent",
+        "type": "integer"
+      },
+      "is_over_limit": {
+        "default": false,
+        "description": "Usage exceeds limit",
+        "title": "Is Over Limit",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "tenant_id"
+    ],
+    "title": "QuotaStatusResponse",
+    "type": "object"
+  },
+  "QuotaUpdateRequest": {
+    "description": "Request model for updating quota configuration.\n\nAttributes:\n    monthly_token_limit: New monthly token limit (None for unlimited).\n    quota_enabled: Whether to enable quota enforcement.\n    alert_threshold_percent: Alert threshold percentage.",
+    "properties": {
+      "monthly_token_limit": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Monthly token limit (null for unlimited)",
+        "title": "Monthly Token Limit"
+      },
+      "quota_enabled": {
+        "default": false,
+        "description": "Enable quota enforcement",
+        "title": "Quota Enabled",
+        "type": "boolean"
+      },
+      "alert_threshold_percent": {
+        "default": 80,
+        "description": "Alert threshold percentage",
+        "maximum": 100,
+        "minimum": 0,
+        "title": "Alert Threshold Percent",
+        "type": "integer"
+      }
+    },
+    "title": "QuotaUpdateRequest",
+    "type": "object"
+  },
+  "QuotaUpdateResponse": {
+    "description": "Response model for quota update.\n\nAttributes:\n    tenant_id: The tenant identifier.\n    monthly_token_limit: Updated monthly token limit.\n    quota_enabled: Updated quota enforcement status.\n    alert_threshold_percent: Updated alert threshold.\n    updated_at: Timestamp of the update.",
+    "properties": {
+      "tenant_id": {
+        "description": "Tenant identifier",
+        "title": "Tenant Id",
+        "type": "string"
+      },
+      "monthly_token_limit": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Monthly limit",
+        "title": "Monthly Token Limit"
+      },
+      "quota_enabled": {
+        "default": false,
+        "description": "Quota enabled",
+        "title": "Quota Enabled",
+        "type": "boolean"
+      },
+      "alert_threshold_percent": {
+        "default": 80,
+        "description": "Alert threshold",
+        "title": "Alert Threshold Percent",
+        "type": "integer"
+      },
+      "message": {
+        "default": "Quota updated successfully",
+        "description": "Status message",
+        "title": "Message",
+        "type": "string"
+      }
+    },
+    "required": [
+      "tenant_id"
+    ],
+    "title": "QuotaUpdateResponse",
+    "type": "object"
+  }
+}

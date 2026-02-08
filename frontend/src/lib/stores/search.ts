@@ -134,7 +134,9 @@ function createSearchStore() {
 								model: state.streamModel || 'unknown',
 								usage: data.usage,
 								latency_ms: data.latency_ms,
-								strategy_used: null
+								strategy_used: null,
+								context_quality: data.context_quality ?? null,
+								retrieval_mode: data.retrieval_mode ?? null
 							};
 							return {
 								...state,
