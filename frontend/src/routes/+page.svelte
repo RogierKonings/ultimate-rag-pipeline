@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { VIDEO_ENABLED } from '$lib/config';
 	import { documents } from '$lib/stores/documents';
 	import { videos, videoUpload } from '$lib/stores/videos';
 	import { search } from '$lib/stores/search';
@@ -14,7 +15,7 @@
 	import SourcesPanel from '$lib/components/SourcesPanel.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
 
-	// Video components
+	// Video components (only rendered when VIDEO_ENABLED)
 	import ContentTabs from '$lib/components/ContentTabs.svelte';
 	import VideoSidebar from '$lib/components/VideoSidebar.svelte';
 	import VideoSearchBar from '$lib/components/VideoSearchBar.svelte';
@@ -24,10 +25,14 @@
 
 	type Tab = 'documents' | 'videos';
 
-	// Get tab from URL or default to documents
-	let activeTab = $derived<Tab>(($page.url.searchParams.get('tab') as Tab) || 'documents');
+	// Get tab from URL or default to documents.
+	// When video is disabled, always force 'documents' even if ?tab=videos is in the URL.
+	let activeTab = $derived<Tab>(
+		VIDEO_ENABLED ? (($page.url.searchParams.get('tab') as Tab) || 'documents') : 'documents'
+	);
 
 	function handleTabChange(tab: Tab) {
+		if (!VIDEO_ENABLED && tab === 'videos') return;
 		const url = new URL($page.url);
 		if (tab === 'documents') {
 			url.searchParams.delete('tab');
@@ -39,7 +44,9 @@
 
 	onMount(() => {
 		documents.fetch();
-		videos.fetch();
+		if (VIDEO_ENABLED) {
+			videos.fetch();
+		}
 	});
 
 	function handleVideoMatchSelect(

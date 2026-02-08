@@ -9,6 +9,27 @@ import type {
 	VideoSearchResponse
 } from './types';
 import { PUBLIC_DEMO_TENANT_ID } from '$env/static/public';
+import { VIDEO_ENABLED } from '$lib/config';
+
+/**
+ * Error thrown when video API functions are called while the feature is disabled.
+ */
+export class VideoFeatureDisabledError extends Error {
+	constructor() {
+		super('Video features are not enabled. Set PUBLIC_VIDEO_ENABLED=true to enable.');
+		this.name = 'VideoFeatureDisabledError';
+	}
+}
+
+/**
+ * Guard that throws if video features are disabled.
+ * All video API functions call this before making network requests.
+ */
+function assertVideoEnabled(): void {
+	if (!VIDEO_ENABLED) {
+		throw new VideoFeatureDisabledError();
+	}
+}
 
 // Lazy client initialization to avoid SSR fetch issues
 let _ingestionClient: ApiClient | null = null;
@@ -31,7 +52,8 @@ function getRetrievalClient(): ApiClient {
 const TENANT_ID = PUBLIC_DEMO_TENANT_ID || '00000000-0000-0000-0000-000000000001';
 
 /**
- * List all videos for the demo tenant
+ * List all videos for the demo tenant.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function listVideos(
 	page = 1,
@@ -41,6 +63,7 @@ export async function listVideos(
 		search?: string;
 	}
 ): Promise<VideoListResponse> {
+	assertVideoEnabled();
 	return getIngestionClient().get<VideoListResponse>('/api/v1/videos', {
 		tenant_id: TENANT_ID,
 		page,
@@ -50,36 +73,44 @@ export async function listVideos(
 }
 
 /**
- * Get a single video by ID
+ * Get a single video by ID.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function getVideo(videoId: string): Promise<Video> {
+	assertVideoEnabled();
 	return getIngestionClient().get<Video>(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
 
 /**
- * Get video processing status
+ * Get video processing status.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function getVideoStatus(videoId: string): Promise<VideoStatusResponse> {
+	assertVideoEnabled();
 	return getIngestionClient().get<VideoStatusResponse>(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
 
 /**
- * Delete a video and all its data
+ * Delete a video and all its data.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function deleteVideo(videoId: string): Promise<{ deleted: boolean; message: string }> {
+	assertVideoEnabled();
 	return getIngestionClient().delete(`/api/v1/videos/${videoId}`, {
 		tenant_id: TENANT_ID
 	});
 }
 
 /**
- * Delete multiple videos at once
+ * Delete multiple videos at once.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function batchDeleteVideos(videoIds: string[]): Promise<VideoBatchDeleteResponse> {
+	assertVideoEnabled();
 	return getIngestionClient().post<VideoBatchDeleteResponse>(
 		`/api/v1/videos/batch-delete?tenant_id=${TENANT_ID}`,
 		{
@@ -89,9 +120,11 @@ export async function batchDeleteVideos(videoIds: string[]): Promise<VideoBatchD
 }
 
 /**
- * Search videos with hybrid search
+ * Search videos with hybrid search.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function searchVideos(request: VideoSearchRequest): Promise<VideoSearchResponse> {
+	assertVideoEnabled();
 	return getRetrievalClient().post<VideoSearchResponse>(`/retrieve/video?tenant_id=${TENANT_ID}`, {
 		query: request.query,
 		mode: request.mode || 'hybrid',
@@ -105,21 +138,26 @@ export async function searchVideos(request: VideoSearchRequest): Promise<VideoSe
 }
 
 /**
- * Get clip URL for a video segment
+ * Get clip URL for a video segment.
+ * Returns empty string when VIDEO_ENABLED is false.
  */
 export function getClipUrl(videoId: string, startMs: number, endMs: number): string {
+	if (!VIDEO_ENABLED) return '';
 	return `/api/proxy/retrieval/videos/${videoId}/clip?start=${startMs}&end=${endMs}&tenant_id=${TENANT_ID}`;
 }
 
 /**
- * Get stream URL for full video
+ * Get stream URL for full video.
+ * Returns empty string when VIDEO_ENABLED is false.
  */
 export function getStreamUrl(videoId: string): string {
+	if (!VIDEO_ENABLED) return '';
 	return `/api/proxy/retrieval/videos/${videoId}/stream?tenant_id=${TENANT_ID}`;
 }
 
 /**
- * Poll video status until complete or failed
+ * Poll video status until complete or failed.
+ * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function pollVideoStatus(
 	videoId: string,
@@ -127,6 +165,7 @@ export async function pollVideoStatus(
 	intervalMs = 3000,
 	maxAttempts = 600 // 30 minutes max
 ): Promise<VideoStatusResponse> {
+	assertVideoEnabled();
 	let attempts = 0;
 
 	return new Promise((resolve, reject) => {

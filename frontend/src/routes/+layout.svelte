@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { Upload, Scale } from 'lucide-svelte';
 	import { page } from '$app/stores';
+	import { VIDEO_ENABLED } from '$lib/config';
 	import { upload } from '$lib/stores/upload';
 	import { videoUpload } from '$lib/stores/videos';
 
@@ -11,7 +12,7 @@
 	const activeTab = $derived($page.url.searchParams.get('tab') || 'documents');
 
 	function handleUploadClick() {
-		if (activeTab === 'videos') {
+		if (VIDEO_ENABLED && activeTab === 'videos') {
 			videoUpload.openModal();
 		} else {
 			upload.openModal();
@@ -42,7 +43,7 @@
 				class="flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
 			>
 				<Upload class="h-4 w-4" />
-				{#if activeTab === 'videos'}
+				{#if VIDEO_ENABLED && activeTab === 'videos'}
 					Upload Video
 				{:else}
 					Upload Document

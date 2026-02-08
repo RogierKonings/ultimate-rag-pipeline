@@ -9,6 +9,7 @@ import {
 	INGESTION_URL,
 	DEMO_TENANT_ID
 } from '$env/static/private';
+import { VIDEO_ENABLED } from '$lib/config';
 
 const s3Client = new S3Client({
 	endpoint: MINIO_ENDPOINT || 'http://localhost:9000',
@@ -35,6 +36,12 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
 
 export const POST: RequestHandler = async ({ request }) => {
+	if (!VIDEO_ENABLED) {
+		throw error(503, {
+			message: 'Video features are not enabled. Set PUBLIC_VIDEO_ENABLED=true to enable.'
+		});
+	}
+
 	try {
 		const formData = await request.formData();
 		const file = formData.get('file') as File | null;
