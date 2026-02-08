@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { FileText, Video } from 'lucide-svelte';
-	import { VIDEO_ENABLED } from '$lib/config';
+	import { capabilities } from '$lib/stores/capabilities';
 
 	interface Props {
 		activeTab: 'documents' | 'videos';
@@ -8,6 +8,8 @@
 	}
 
 	let { activeTab, onTabChange }: Props = $props();
+
+	const videoSearchEnabled = $derived($capabilities.capabilities.features.video_search ?? false);
 </script>
 
 <div class="flex border-b border-[var(--color-border)]">
@@ -22,7 +24,7 @@
 		<FileText class="h-4 w-4" />
 		Documents
 	</button>
-	{#if VIDEO_ENABLED}
+	{#if videoSearchEnabled}
 		<button
 			type="button"
 			onclick={() => onTabChange('videos')}

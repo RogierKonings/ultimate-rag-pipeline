@@ -1,18 +1,27 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
 	import { Upload, Scale } from 'lucide-svelte';
 	import { page } from '$app/stores';
-	import { VIDEO_ENABLED } from '$lib/config';
 	import { upload } from '$lib/stores/upload';
 	import { videoUpload } from '$lib/stores/videos';
+	import { capabilities } from '$lib/stores/capabilities';
 
 	let { children } = $props();
 
 	// Determine active tab from URL
 	const activeTab = $derived($page.url.searchParams.get('tab') || 'documents');
 
+	// Fetch capabilities on app startup
+	onMount(() => {
+		capabilities.fetch();
+	});
+
+	// Only show video upload if video_search is enabled
+	const videoSearchEnabled = $derived($capabilities.capabilities.features.video_search ?? false);
+
 	function handleUploadClick() {
-		if (VIDEO_ENABLED && activeTab === 'videos') {
+		if (activeTab === 'videos' && videoSearchEnabled) {
 			videoUpload.openModal();
 		} else {
 			upload.openModal();
@@ -43,7 +52,7 @@
 				class="flex items-center gap-2 rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-accent-hover)]"
 			>
 				<Upload class="h-4 w-4" />
-				{#if VIDEO_ENABLED && activeTab === 'videos'}
+				{#if activeTab === 'videos' && videoSearchEnabled}
 					Upload Video
 				{:else}
 					Upload Document

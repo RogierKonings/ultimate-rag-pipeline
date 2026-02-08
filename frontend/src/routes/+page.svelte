@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { VIDEO_ENABLED } from '$lib/config';
 	import { documents } from '$lib/stores/documents';
 	import { videos, videoUpload } from '$lib/stores/videos';
 	import { search } from '$lib/stores/search';
 	import { videoSearch, videoPlayer, videoExampleQueries } from '$lib/stores/videoSearch';
 	import { upload } from '$lib/stores/upload';
+	import { capabilities } from '$lib/stores/capabilities';
 	// Document components
 	import DocumentSidebar from '$lib/components/DocumentSidebar.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
@@ -15,7 +15,7 @@
 	import SourcesPanel from '$lib/components/SourcesPanel.svelte';
 	import UploadModal from '$lib/components/UploadModal.svelte';
 
-	// Video components (only rendered when VIDEO_ENABLED)
+	// Video components (only rendered when video_search capability is enabled)
 	import ContentTabs from '$lib/components/ContentTabs.svelte';
 	import VideoSidebar from '$lib/components/VideoSidebar.svelte';
 	import VideoSearchBar from '$lib/components/VideoSearchBar.svelte';
@@ -25,14 +25,18 @@
 
 	type Tab = 'documents' | 'videos';
 
+	const videoSearchEnabled = $derived($capabilities.capabilities.features.video_search ?? false);
+
 	// Get tab from URL or default to documents.
-	// When video is disabled, always force 'documents' even if ?tab=videos is in the URL.
+	// If video_search is disabled, force documents tab regardless of URL param.
 	let activeTab = $derived<Tab>(
-		VIDEO_ENABLED ? (($page.url.searchParams.get('tab') as Tab) || 'documents') : 'documents'
+		videoSearchEnabled
+			? (($page.url.searchParams.get('tab') as Tab) || 'documents')
+			: 'documents'
 	);
 
 	function handleTabChange(tab: Tab) {
-		if (!VIDEO_ENABLED && tab === 'videos') return;
+		if (!videoSearchEnabled && tab === 'videos') return;
 		const url = new URL($page.url);
 		if (tab === 'documents') {
 			url.searchParams.delete('tab');
@@ -44,7 +48,7 @@
 
 	onMount(() => {
 		documents.fetch();
-		if (VIDEO_ENABLED) {
+		if (videoSearchEnabled) {
 			videos.fetch();
 		}
 	});
@@ -61,7 +65,7 @@
 	<!-- Sidebar -->
 	{#if activeTab === 'documents'}
 		<DocumentSidebar />
-	{:else}
+	{:else if videoSearchEnabled}
 		<VideoSidebar
 			selectedVideoId={$videoPlayer.selectedVideo?.video_id}
 			onSelectVideo={(id: string) => {
@@ -172,8 +176,8 @@
 					{/if}
 				</div>
 			</div>
-		{:else}
-			<!-- Videos View -->
+		{:else if videoSearchEnabled}
+			<!-- Videos View (only rendered when video_search capability is enabled) -->
 			<div class="flex flex-1 overflow-hidden">
 				<!-- Search Results -->
 				<div class="flex-1 overflow-y-auto">
@@ -274,6 +278,6 @@
 	<UploadModal />
 {/if}
 
-{#if $videoUpload.modalOpen}
+{#if $videoUpload.modalOpen && videoSearchEnabled}
 	<VideoUploadModal />
 {/if}

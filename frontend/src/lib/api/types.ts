@@ -394,3 +394,9 @@ export interface QueuedVideoFile {
 	status: 'valid' | 'invalid';
 	error?: string;
 }
+
+// Capability discovery types
+export interface ServiceCapabilities {
+	version: string;
+	features: Record<string, boolean>;
+}

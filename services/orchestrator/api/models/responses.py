@@ -331,3 +331,24 @@ class DeleteSessionResponse(BaseModel):
     success: bool = Field(..., description="Whether session was deleted")
     session_id: UUID = Field(..., description="Deleted session identifier")
     message: str = Field(..., description="Status message")
+
+
+class ServiceCapabilities(BaseModel):
+    """Response model for the capability discovery endpoint.
+
+    Exposes runtime feature availability so that frontends can safely
+    enable or disable UI features without hard-coding assumptions.
+
+    Attributes:
+        version: Schema version for forward-compatible evolution.
+        features: Mapping of feature name to availability flag.
+    """
+
+    version: str = Field(
+        default="1",
+        description="Schema version for forward-compatible evolution",
+    )
+    features: dict[str, bool] = Field(
+        default_factory=dict,
+        description="Mapping of feature name to availability flag",
+    )
