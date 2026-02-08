@@ -73,10 +73,10 @@ RUN cargo build --release -p rag-embedding
 # Downloads the ONNX model during build so it's baked into the image
 FROM python:3.11-slim AS model-downloader
 
-RUN pip install --no-cache-dir "huggingface_hub[cli]"
+RUN pip install --no-cache-dir huggingface_hub
 
 # Download model to HF Hub cache format (same format fastembed expects)
-RUN huggingface-cli download Qdrant/all-MiniLM-L6-v2-onnx --cache-dir /model-cache
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Qdrant/all-MiniLM-L6-v2-onnx', cache_dir='/model-cache')"
 
 # ============ Runtime Stage ============
 FROM debian:bookworm-slim
