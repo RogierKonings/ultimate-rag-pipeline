@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::acl::ACLFilter;
 use crate::embedding::EmbeddingClient;
 use crate::hybrid::HybridSearcher;
+use crate::query::{HydeGenerator, QueryExpander};
 use crate::reranking::RerankerService;
 
 /// Application state shared across all request handlers.
@@ -44,6 +45,12 @@ pub struct AppState {
     /// The reranker service (optional).
     pub reranker: Option<Arc<RerankerService>>,
 
+    /// Query expansion service (optional).
+    pub query_expander: Option<Arc<QueryExpander>>,
+
+    /// HyDE generator service (optional).
+    pub hyde_generator: Option<Arc<HydeGenerator>>,
+
     /// The ACL filter for access control.
     pub acl_filter: Arc<ACLFilter>,
 
@@ -69,12 +76,26 @@ impl AppState {
     pub fn has_reranker(&self) -> bool {
         self.reranker.is_some()
     }
+
+    /// Check if query expansion is available.
+    #[must_use]
+    pub fn has_query_expander(&self) -> bool {
+        self.query_expander.is_some()
+    }
+
+    /// Check if HyDE generation is available.
+    #[must_use]
+    pub fn has_hyde_generator(&self) -> bool {
+        self.hyde_generator.is_some()
+    }
 }
 
 impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState")
             .field("has_reranker", &self.reranker.is_some())
+            .field("has_query_expander", &self.query_expander.is_some())
+            .field("has_hyde_generator", &self.hyde_generator.is_some())
             .field("version", &self.version)
             .finish()
     }
@@ -96,6 +117,8 @@ pub struct AppStateBuilder {
     hybrid: Option<Arc<HybridSearcher>>,
     embedding: Option<Arc<EmbeddingClient>>,
     reranker: Option<Arc<RerankerService>>,
+    query_expander: Option<Arc<QueryExpander>>,
+    hyde_generator: Option<Arc<HydeGenerator>>,
     acl_filter: Option<Arc<ACLFilter>>,
     version: String,
 }
@@ -108,6 +131,8 @@ impl AppStateBuilder {
             hybrid: None,
             embedding: None,
             reranker: None,
+            query_expander: None,
+            hyde_generator: None,
             acl_filter: None,
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
@@ -131,6 +156,20 @@ impl AppStateBuilder {
     #[must_use]
     pub fn reranker(mut self, reranker: Arc<RerankerService>) -> Self {
         self.reranker = Some(reranker);
+        self
+    }
+
+    /// Set the query expander service.
+    #[must_use]
+    pub fn query_expander(mut self, query_expander: Arc<QueryExpander>) -> Self {
+        self.query_expander = Some(query_expander);
+        self
+    }
+
+    /// Set the HyDE generator service.
+    #[must_use]
+    pub fn hyde_generator(mut self, hyde_generator: Arc<HydeGenerator>) -> Self {
+        self.hyde_generator = Some(hyde_generator);
         self
     }
 
@@ -170,6 +209,8 @@ impl AppStateBuilder {
             hybrid,
             embedding,
             reranker: self.reranker,
+            query_expander: self.query_expander,
+            hyde_generator: self.hyde_generator,
             acl_filter,
             version: self.version,
         })
@@ -214,6 +255,8 @@ mod tests {
         assert!(builder.hybrid.is_none());
         assert!(builder.embedding.is_none());
         assert!(builder.reranker.is_none());
+        assert!(builder.query_expander.is_none());
+        assert!(builder.hyde_generator.is_none());
         assert!(builder.acl_filter.is_none());
     }
 

@@ -27,20 +27,28 @@ use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
 use rag_retrieval::api::{run_server_with_config, AppState, ServerConfig};
 use rag_retrieval::embedding::{EmbeddingClient, EmbeddingConfig};
 use rag_retrieval::hybrid::{HybridSearchConfig, HybridSearcher};
+use rag_retrieval::query::{HydeConfig, HydeGenerator, QueryExpander, QueryExpanderConfig};
 use rag_retrieval::reranking::{RerankerConfig, RerankerService};
-use rag_retrieval::search::{KeywordSearchConfig, KeywordSearcher, SemanticSearchConfig, SemanticSearcher};
+use rag_retrieval::search::{
+    KeywordSearchConfig, KeywordSearcher, SemanticSearchConfig, SemanticSearcher,
+};
 
 #[tokio::main]
 async fn main() {
     // Initialize tracing
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "retrieval_service=info,rag_retrieval=info,tower_http=info".into()
-        }))
+        .with(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "retrieval_service=info,rag_retrieval=info,tower_http=info".into()
+            }),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    info!("Starting Rust Retrieval Service v{}", env!("CARGO_PKG_VERSION"));
+    info!(
+        "Starting Rust Retrieval Service v{}",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // Load configuration from environment
     let server_config = ServerConfig::from_env();
@@ -127,7 +135,10 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
     let embedding = EmbeddingClient::new(embedding_config)?;
 
     // Initialize reranker
-    let reranker = if std::env::var("RERANKER_ENABLED").map(|v| v.to_lowercase() == "true").unwrap_or(true) {
+    let reranker = if std::env::var("RERANKER_ENABLED")
+        .map(|v| v.to_lowercase() == "true")
+        .unwrap_or(true)
+    {
         info!(
             url = %reranker_config.gateway_url,
             model = %reranker_config.model,
@@ -136,7 +147,10 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
         match RerankerService::new(reranker_config) {
             Ok(service) => Some(Arc::new(service)),
             Err(e) => {
-                warn!("Failed to initialize reranker, continuing without it: {}", e);
+                warn!(
+                    "Failed to initialize reranker, continuing without it: {}",
+                    e
+                );
                 None
             }
         }
@@ -145,17 +159,65 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
         None
     };
 
+    // Initialize query expander (optional)
+    let query_expander = {
+        let config = QueryExpanderConfig::from_env();
+        if config.enabled {
+            info!(
+                max_expansions = config.max_expansions,
+                use_synonyms = config.use_synonyms,
+                use_llm = config.use_llm,
+                "Configuring query expander"
+            );
+            match QueryExpander::new(config) {
+                Ok(expander) => Some(Arc::new(expander)),
+                Err(e) => {
+                    warn!(
+                        "Failed to initialize query expander, continuing without it: {}",
+                        e
+                    );
+                    None
+                }
+            }
+        } else {
+            warn!("Query expansion disabled via EXPANSION_ENABLED=false");
+            None
+        }
+    };
+
+    // Initialize HyDE generator (optional)
+    let hyde_generator = {
+        let config = HydeConfig::from_env();
+        if config.enabled {
+            info!(
+                model = %config.model,
+                num_docs = config.num_hypothetical_docs,
+                timeout_ms = config.timeout_ms,
+                "Configuring HyDE generator"
+            );
+            match HydeGenerator::new(config) {
+                Ok(generator) => Some(Arc::new(generator)),
+                Err(e) => {
+                    warn!(
+                        "Failed to initialize HyDE generator, continuing without it: {}",
+                        e
+                    );
+                    None
+                }
+            }
+        } else {
+            warn!("HyDE disabled via HYDE_ENABLED=false");
+            None
+        }
+    };
+
     // Initialize hybrid searcher
     info!(
         semantic_weight = hybrid_config.semantic_weight,
         keyword_weight = hybrid_config.keyword_weight,
         "Creating hybrid searcher"
     );
-    let hybrid = HybridSearcher::new(
-        Arc::new(semantic),
-        Arc::new(keyword),
-        hybrid_config,
-    );
+    let hybrid = HybridSearcher::new(Arc::new(semantic), Arc::new(keyword), hybrid_config);
 
     // Initialize ACL filter
     let acl_filter = ACLFilter::new(acl_config);
@@ -169,6 +231,12 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
 
     if let Some(reranker) = reranker {
         builder = builder.reranker(reranker);
+    }
+    if let Some(query_expander) = query_expander {
+        builder = builder.query_expander(query_expander);
+    }
+    if let Some(hyde_generator) = hyde_generator {
+        builder = builder.hyde_generator(hyde_generator);
     }
 
     let state = builder.build()?;

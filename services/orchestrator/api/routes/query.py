@@ -348,7 +348,8 @@ async def query_stream(
                         mode_messages = {
                             "semantic_only": "Keyword search unavailable",
                             "keyword_only": "Semantic search unavailable",
-                            "hybrid_no_rerank": "Reranking unavailable",
+                            "rerank_skipped": "Reranking unavailable",
+                            "partial_queries_failed": "Some query expansions failed",
                             "minimal": "Search capabilities significantly limited",
                         }
                         degradation = {

@@ -128,6 +128,8 @@ pub fn evaluate(search_mode: SearchMode, outcome: &ComponentOutcome) -> Degradat
     // We track it as used when it succeeded.
     if outcome.embedding_ok {
         used.push("embedding".into());
+    } else if search_mode.uses_semantic() && outcome.semantic_attempted {
+        skipped.push("embedding".into());
     }
 
     // Determine which search components were expected based on requested mode.
@@ -267,11 +269,21 @@ mod tests {
         let result = evaluate(SearchMode::Hybrid, &outcome);
 
         assert_eq!(result.mode.as_deref(), Some("keyword_only"));
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "keyword"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "keyword"]);
         assert_eq!(result.components_skipped, vec!["semantic"]);
+    }
+
+    #[test]
+    fn test_hybrid_embedding_failed_keyword_fallback() {
+        let outcome = ComponentOutcome::new()
+            .with_semantic(false)
+            .with_keyword(true);
+
+        let result = evaluate(SearchMode::Hybrid, &outcome);
+
+        assert_eq!(result.mode.as_deref(), Some("keyword_only"));
+        assert_eq!(result.components_used, vec!["keyword"]);
+        assert_eq!(result.components_skipped, vec!["embedding", "semantic"]);
     }
 
     #[test]
@@ -284,10 +296,7 @@ mod tests {
         let result = evaluate(SearchMode::Hybrid, &outcome);
 
         assert_eq!(result.mode.as_deref(), Some("semantic_only"));
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "semantic"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "semantic"]);
         assert_eq!(result.components_skipped, vec!["keyword"]);
     }
 
@@ -302,10 +311,7 @@ mod tests {
 
         assert_eq!(result.mode.as_deref(), Some("minimal"));
         assert_eq!(result.components_used, vec!["embedding"]);
-        assert_eq!(
-            result.components_skipped,
-            vec!["semantic", "keyword"]
-        );
+        assert_eq!(result.components_skipped, vec!["semantic", "keyword"]);
     }
 
     #[test]
@@ -339,10 +345,7 @@ mod tests {
         let result = evaluate(SearchMode::Semantic, &outcome);
 
         assert!(result.mode.is_none());
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "semantic"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "semantic"]);
         assert!(result.components_skipped.is_empty());
     }
 
@@ -356,10 +359,7 @@ mod tests {
         let result = evaluate(SearchMode::Semantic, &outcome);
 
         assert_eq!(result.mode.as_deref(), Some("rerank_skipped"));
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "semantic"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "semantic"]);
         assert_eq!(result.components_skipped, vec!["reranker"]);
     }
 
@@ -376,10 +376,7 @@ mod tests {
         let result = evaluate(SearchMode::Keyword, &outcome);
 
         assert!(result.mode.is_none());
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "keyword"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "keyword"]);
         assert!(result.components_skipped.is_empty());
     }
 
@@ -393,10 +390,7 @@ mod tests {
         let result = evaluate(SearchMode::Keyword, &outcome);
 
         assert_eq!(result.mode.as_deref(), Some("rerank_skipped"));
-        assert_eq!(
-            result.components_used,
-            vec!["embedding", "keyword"]
-        );
+        assert_eq!(result.components_used, vec!["embedding", "keyword"]);
         assert_eq!(result.components_skipped, vec!["reranker"]);
     }
 

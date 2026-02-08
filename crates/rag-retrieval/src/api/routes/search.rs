@@ -6,11 +6,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::{
-    extract::State,
-    http::HeaderMap,
-    Json,
-};
+use axum::{extract::State, http::HeaderMap, Json};
 use chrono::Utc;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
@@ -22,7 +18,7 @@ use crate::api::state::AppState;
 use crate::api::types::{
     DebugInfo, RetrieveRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
 };
-use crate::hybrid::HybridSearchConfig;
+use crate::hybrid::HybridSearchResponse;
 use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
 
@@ -116,10 +112,7 @@ pub async fn retrieve(
 /// Extract `tenant_id` from the `X-Tenant-Id` header or the `filters.tenant_id` field.
 ///
 /// Falls back to `Uuid::nil()` if neither is present.
-pub(super) fn extract_tenant_id(
-    headers: &HeaderMap,
-    filters: &Option<serde_json::Value>,
-) -> Uuid {
+pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: &Option<serde_json::Value>) -> Uuid {
     headers
         .get("X-Tenant-Id")
         .and_then(|v| v.to_str().ok())
@@ -148,14 +141,14 @@ pub(super) fn extract_tenant_id(
 ///    ```
 ///    Each key-value pair becomes a `must` condition with exact match.
 ///
-/// 2. **Full UnifiedFilter structure** (advanced format):
+/// 2. **Structured UnifiedFilter format** (must-only currently supported):
 ///    ```json
 ///    {
-///      "must": [{"key": "source_type", "match_type": {"value": "pdf"}}],
-///      "should": [{"key": "visibility", "match_type": {"value": "public"}}],
-///      "must_not": [{"key": "status", "match_type": {"value": "archived"}}]
+///      "must": [{"key": "source_type", "match_type": {"value": "pdf"}}]
 ///    }
 ///    ```
+///    `should` and `must_not` are rejected at the API boundary because the
+///    underlying search filter types only support AND-style (`must`) semantics.
 ///
 /// The `tenant_id` key is always excluded from filter parsing since it is
 /// handled separately via the `X-Tenant-Id` header.
@@ -191,6 +184,15 @@ pub(super) fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter
             }
         }
 
+        // The current search backends only support MUST/AND semantics in the
+        // API path. Reject unsupported clauses instead of silently ignoring.
+        if !unified.should.is_empty() || !unified.must_not.is_empty() {
+            return Err(ApiError::bad_request(
+                "Structured filters currently support only 'must' conditions; \
+                 'should' and 'must_not' are not supported in API requests",
+            ));
+        }
+
         return Ok(unified);
     }
 
@@ -215,14 +217,12 @@ pub(super) fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter
                 let strings: Result<Vec<String>, _> = arr
                     .iter()
                     .map(|v| {
-                        v.as_str()
-                            .map(String::from)
-                            .ok_or_else(|| {
-                                ApiError::bad_request(format!(
-                                    "Filter array values for key '{}' must be strings, got: {}",
-                                    key, v
-                                ))
-                            })
+                        v.as_str().map(String::from).ok_or_else(|| {
+                            ApiError::bad_request(format!(
+                                "Filter array values for key '{}' must be strings, got: {}",
+                                key, v
+                            ))
+                        })
                     })
                     .collect();
                 MatchType::Any(strings?)
@@ -256,27 +256,18 @@ async fn execute_search(
     state: &AppState,
     request: &RetrieveRequest,
     user_context: &UserContext,
-) -> ApiResult<(Vec<RetrievalResult>, SearchMetrics, DebugInfo, ComponentOutcome)> {
+) -> ApiResult<(
+    Vec<RetrievalResult>,
+    SearchMetrics,
+    DebugInfo,
+    ComponentOutcome,
+)> {
     let start_time = Instant::now();
     let mut metrics = SearchMetrics::default();
     let mut debug_info = DebugInfo::default();
     let mut outcome = ComponentOutcome::new();
 
-    // Step 1: Generate query embedding
-    let embed_start = Instant::now();
-    let embedding = state
-        .embedding
-        .embed_query(&request.query)
-        .await
-        .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?;
-
-    // Embedding succeeded
-    outcome = outcome.with_embedding_ok();
-
-    metrics.embedding_ms = Some(embed_start.elapsed().as_secs_f64() * 1000.0);
-    debug_info.embedding_latency_ms = metrics.embedding_ms.unwrap_or(0.0);
-
-    // Step 2: Parse filters from request
+    // Step 1: Parse filters from request
     let unified_filter = match &request.filters {
         Some(filters) => {
             let parsed = parse_filters(filters)?;
@@ -295,69 +286,105 @@ async fn execute_search(
         None => None,
     };
 
-    // Step 3: Configure search
+    // Step 2: Configure search
     let search_top_k = if request.rerank {
         request.rerank_top_k
     } else {
         request.top_k
     };
 
+    // Step 3: Build semantic embedding when needed (semantic/hybrid modes).
+    let mut semantic_embedding: Option<Vec<f32>> = None;
+    if request.mode.uses_semantic() {
+        match build_semantic_embedding(state, &request.query, &mut metrics, &mut debug_info).await {
+            Ok(embedding) => {
+                semantic_embedding = Some(embedding);
+                outcome = outcome.with_embedding_ok();
+            }
+            Err(e) => {
+                if request.mode == SearchMode::Semantic {
+                    return Err(e);
+                }
+
+                // For hybrid mode, degrade to keyword-only when embedding fails.
+                warn!("Semantic embedding failed for hybrid request, falling back to keyword-only: {e}");
+                outcome = outcome.with_semantic(false);
+                debug_info.fallback_mode = Some("keyword_only".to_string());
+            }
+        }
+    }
+
     // Step 4: Execute search based on mode
     let search_result = match request.mode {
         SearchMode::Hybrid => {
-            let _config = HybridSearchConfig::default()
-                .with_semantic_weight(request.semantic_weight)
-                .with_keyword_weight(request.keyword_weight);
-
-            let search_start = Instant::now();
-            let result = state
-                .hybrid
-                .search(&request.query, &embedding, Some(search_top_k), unified_filter.as_ref(), Some(user_context))
-                .await
-                .map_err(|e| ApiError::internal(format!("Search error: {e}")))?;
-
-            let elapsed = search_start.elapsed().as_secs_f64() * 1000.0;
-            metrics.semantic_search_ms = Some(result.semantic_time_ms as f64);
-            metrics.keyword_search_ms = Some(result.keyword_time_ms as f64);
-            metrics.fusion_ms = Some(result.fusion_time_ms as f64);
-            debug_info.semantic_search_latency_ms = result.semantic_time_ms as f64;
-            debug_info.keyword_search_latency_ms = result.keyword_time_ms as f64;
-            debug_info.fusion_latency_ms = result.fusion_time_ms as f64;
             debug_info.semantic_weight = request.semantic_weight;
             debug_info.keyword_weight = request.keyword_weight;
 
-            debug!(
-                semantic_count = result.total_semantic,
-                keyword_count = result.total_keyword,
-                fused_count = result.results.len(),
-                elapsed_ms = elapsed,
-                "Hybrid search completed"
-            );
+            if let Some(ref embedding) = semantic_embedding {
+                execute_hybrid_with_fallback(
+                    state,
+                    request,
+                    embedding,
+                    search_top_k,
+                    unified_filter.as_ref(),
+                    user_context,
+                    &mut metrics,
+                    &mut debug_info,
+                    &mut outcome,
+                )
+                .await?
+            } else {
+                // Embedding failed above; serve keyword-only fallback.
+                let search_start = Instant::now();
+                let result = state
+                    .hybrid
+                    .search_keyword_only(
+                        &request.query,
+                        search_top_k,
+                        unified_filter.as_ref(),
+                        Some(user_context),
+                    )
+                    .await
+                    .map_err(|e| {
+                        ApiError::internal(format!("Keyword fallback search error: {e}"))
+                    })?;
 
-            metrics.semantic_results_count = result.total_semantic;
-            metrics.keyword_results_count = result.total_keyword;
-            metrics.fused_results_count = result.results.len();
-            debug_info.semantic_candidates = result.total_semantic;
-            debug_info.keyword_candidates = result.total_keyword;
-            debug_info.after_fusion = result.results.len();
+                metrics.keyword_search_ms = Some(search_start.elapsed().as_secs_f64() * 1000.0);
+                metrics.keyword_results_count = result.total_keyword;
+                metrics.fused_results_count = result.results.len();
+                debug_info.keyword_candidates = result.total_keyword;
+                debug_info.keyword_search_latency_ms = metrics.keyword_search_ms.unwrap_or(0.0);
+                debug_info.after_fusion = result.results.len();
+                outcome = outcome.with_keyword(true);
 
-            // Both components succeeded (search() propagates errors)
-            outcome = outcome.with_semantic(true).with_keyword(true);
-
-            result
+                result
+            }
         }
         SearchMode::Semantic => {
+            let Some(ref embedding) = semantic_embedding else {
+                return Err(ApiError::internal(
+                    "Semantic mode requires a query embedding but none was available",
+                ));
+            };
+
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_semantic_only(&embedding, search_top_k, unified_filter.as_ref(), Some(user_context))
+                .search_semantic_only(
+                    embedding,
+                    search_top_k,
+                    unified_filter.as_ref(),
+                    Some(user_context),
+                )
                 .await
                 .map_err(|e| ApiError::internal(format!("Semantic search error: {e}")))?;
 
             metrics.semantic_search_ms = Some(search_start.elapsed().as_secs_f64() * 1000.0);
             metrics.semantic_results_count = result.total_semantic;
+            metrics.fused_results_count = result.results.len();
             debug_info.semantic_candidates = result.total_semantic;
             debug_info.semantic_search_latency_ms = metrics.semantic_search_ms.unwrap_or(0.0);
+            debug_info.after_fusion = result.results.len();
 
             // Semantic succeeded
             outcome = outcome.with_semantic(true);
@@ -368,14 +395,21 @@ async fn execute_search(
             let search_start = Instant::now();
             let result = state
                 .hybrid
-                .search_keyword_only(&request.query, search_top_k, unified_filter.as_ref(), Some(user_context))
+                .search_keyword_only(
+                    &request.query,
+                    search_top_k,
+                    unified_filter.as_ref(),
+                    Some(user_context),
+                )
                 .await
                 .map_err(|e| ApiError::internal(format!("Keyword search error: {e}")))?;
 
             metrics.keyword_search_ms = Some(search_start.elapsed().as_secs_f64() * 1000.0);
             metrics.keyword_results_count = result.total_keyword;
+            metrics.fused_results_count = result.results.len();
             debug_info.keyword_candidates = result.total_keyword;
             debug_info.keyword_search_latency_ms = metrics.keyword_search_ms.unwrap_or(0.0);
+            debug_info.after_fusion = result.results.len();
 
             // Keyword succeeded
             outcome = outcome.with_keyword(true);
@@ -423,7 +457,10 @@ async fn execute_search(
                 Ok(reranked) => {
                     // Re-order results based on rerank scores
                     let mut result_map: std::collections::HashMap<String, RetrievalResult> =
-                        results.into_iter().map(|r| (r.chunk_id.clone(), r)).collect();
+                        results
+                            .into_iter()
+                            .map(|r| (r.chunk_id.clone(), r))
+                            .collect();
 
                     results = reranked
                         .into_iter()
@@ -483,6 +520,328 @@ async fn execute_search(
     debug_info.total_latency_ms = start_time.elapsed().as_secs_f64() * 1000.0;
 
     Ok((results, metrics, debug_info, outcome))
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn execute_hybrid_with_fallback(
+    state: &AppState,
+    request: &RetrieveRequest,
+    embedding: &[f32],
+    search_top_k: usize,
+    unified_filter: Option<&UnifiedFilter>,
+    user_context: &UserContext,
+    metrics: &mut SearchMetrics,
+    debug_info: &mut DebugInfo,
+    outcome: &mut ComponentOutcome,
+) -> ApiResult<HybridSearchResponse> {
+    let search_start = Instant::now();
+    match state
+        .hybrid
+        .search(
+            &request.query,
+            embedding,
+            Some(search_top_k),
+            unified_filter,
+            Some(user_context),
+        )
+        .await
+    {
+        Ok(result) => {
+            apply_hybrid_metrics(
+                result.total_semantic,
+                result.total_keyword,
+                metrics,
+                debug_info,
+            );
+            metrics.semantic_search_ms = Some(result.semantic_time_ms as f64);
+            metrics.keyword_search_ms = Some(result.keyword_time_ms as f64);
+            metrics.fusion_ms = Some(result.fusion_time_ms as f64);
+            metrics.fused_results_count = result.results.len();
+            debug_info.semantic_search_latency_ms = result.semantic_time_ms as f64;
+            debug_info.keyword_search_latency_ms = result.keyword_time_ms as f64;
+            debug_info.fusion_latency_ms = result.fusion_time_ms as f64;
+            debug_info.after_fusion = result.results.len();
+            outcome.semantic_attempted = true;
+            outcome.semantic_ok = true;
+            outcome.keyword_attempted = true;
+            outcome.keyword_ok = true;
+
+            debug!(
+                semantic_count = result.total_semantic,
+                keyword_count = result.total_keyword,
+                fused_count = result.results.len(),
+                elapsed_ms = search_start.elapsed().as_secs_f64() * 1000.0,
+                "Hybrid search completed"
+            );
+
+            Ok(result)
+        }
+        Err(primary_err) => {
+            warn!("Hybrid search failed, attempting component fallback: {primary_err}");
+
+            let semantic_start = Instant::now();
+            let keyword_start = Instant::now();
+            let (semantic_result, keyword_result) = tokio::join!(
+                state.hybrid.search_semantic_only(
+                    embedding,
+                    search_top_k,
+                    unified_filter,
+                    Some(user_context),
+                ),
+                state.hybrid.search_keyword_only(
+                    &request.query,
+                    search_top_k,
+                    unified_filter,
+                    Some(user_context),
+                ),
+            );
+
+            let semantic_elapsed_ms = semantic_start.elapsed().as_secs_f64() * 1000.0;
+            let keyword_elapsed_ms = keyword_start.elapsed().as_secs_f64() * 1000.0;
+            metrics.semantic_search_ms = Some(semantic_elapsed_ms);
+            metrics.keyword_search_ms = Some(keyword_elapsed_ms);
+            metrics.fusion_ms = None;
+            debug_info.semantic_search_latency_ms = semantic_elapsed_ms;
+            debug_info.keyword_search_latency_ms = keyword_elapsed_ms;
+            debug_info.fusion_latency_ms = 0.0;
+
+            match (semantic_result, keyword_result) {
+                (Ok(semantic_only), Err(keyword_err)) => {
+                    warn!("Keyword fallback failed, serving semantic-only results: {keyword_err}");
+                    debug_info.fallback_mode = Some("semantic_only".to_string());
+                    outcome.semantic_attempted = true;
+                    outcome.semantic_ok = true;
+                    outcome.keyword_attempted = true;
+                    outcome.keyword_ok = false;
+                    apply_hybrid_metrics(
+                        semantic_only.total_semantic,
+                        0,
+                        metrics,
+                        debug_info,
+                    );
+                    metrics.fused_results_count = semantic_only.results.len();
+                    debug_info.after_fusion = semantic_only.results.len();
+                    Ok(semantic_only)
+                }
+                (Err(semantic_err), Ok(keyword_only)) => {
+                    warn!("Semantic fallback failed, serving keyword-only results: {semantic_err}");
+                    debug_info.fallback_mode = Some("keyword_only".to_string());
+                    outcome.semantic_attempted = true;
+                    outcome.semantic_ok = false;
+                    outcome.keyword_attempted = true;
+                    outcome.keyword_ok = true;
+                    apply_hybrid_metrics(
+                        0,
+                        keyword_only.total_keyword,
+                        metrics,
+                        debug_info,
+                    );
+                    metrics.fused_results_count = keyword_only.results.len();
+                    debug_info.after_fusion = keyword_only.results.len();
+                    Ok(keyword_only)
+                }
+                (Ok(semantic_only), Ok(keyword_only)) => {
+                    // If both component fallbacks succeeded but hybrid fusion failed,
+                    // serve whichever side produced more candidates.
+                    let use_semantic = semantic_only.results.len() >= keyword_only.results.len();
+                    if use_semantic {
+                        debug_info.fallback_mode = Some("semantic_only".to_string());
+                        outcome.semantic_attempted = true;
+                        outcome.semantic_ok = true;
+                        outcome.keyword_attempted = true;
+                        outcome.keyword_ok = false;
+                        apply_hybrid_metrics(
+                            semantic_only.total_semantic,
+                            keyword_only.total_keyword,
+                            metrics,
+                            debug_info,
+                        );
+                        metrics.fused_results_count = semantic_only.results.len();
+                        debug_info.after_fusion = semantic_only.results.len();
+                        Ok(semantic_only)
+                    } else {
+                        debug_info.fallback_mode = Some("keyword_only".to_string());
+                        outcome.semantic_attempted = true;
+                        outcome.semantic_ok = false;
+                        outcome.keyword_attempted = true;
+                        outcome.keyword_ok = true;
+                        apply_hybrid_metrics(
+                            semantic_only.total_semantic,
+                            keyword_only.total_keyword,
+                            metrics,
+                            debug_info,
+                        );
+                        metrics.fused_results_count = keyword_only.results.len();
+                        debug_info.after_fusion = keyword_only.results.len();
+                        Ok(keyword_only)
+                    }
+                }
+                (Err(semantic_err), Err(keyword_err)) => Err(ApiError::internal(format!(
+                    "Hybrid search failed: {primary_err}; semantic fallback failed: {semantic_err}; keyword fallback failed: {keyword_err}"
+                ))),
+            }
+        }
+    }
+}
+
+fn apply_hybrid_metrics(
+    semantic_count: usize,
+    keyword_count: usize,
+    metrics: &mut SearchMetrics,
+    debug_info: &mut DebugInfo,
+) {
+    metrics.semantic_results_count = semantic_count;
+    metrics.keyword_results_count = keyword_count;
+    debug_info.semantic_candidates = semantic_count;
+    debug_info.keyword_candidates = keyword_count;
+}
+
+async fn build_semantic_embedding(
+    state: &AppState,
+    query: &str,
+    metrics: &mut SearchMetrics,
+    debug_info: &mut DebugInfo,
+) -> ApiResult<Vec<f32>> {
+    let preprocess_start = Instant::now();
+    let mut embedding_inputs = vec![query.to_string()];
+
+    // Optional query expansion
+    if let Some(ref expander) = state.query_expander {
+        match expander.expand(query).await {
+            Ok(expanded) => {
+                let mut deduped = dedupe_non_empty(expanded);
+                if !deduped.iter().any(|candidate| candidate == query) {
+                    deduped.insert(0, query.to_string());
+                }
+
+                debug_info.expanded_queries = deduped
+                    .iter()
+                    .filter(|candidate| candidate.as_str() != query)
+                    .cloned()
+                    .collect();
+                embedding_inputs = deduped;
+            }
+            Err(e) => {
+                warn!("Query expansion failed, continuing with original query: {e}");
+            }
+        }
+    }
+
+    // Optional HyDE generation
+    if let Some(ref hyde) = state.hyde_generator {
+        match hyde.generate(query).await {
+            Ok(result) => {
+                debug_info.hyde_latency_ms = result.generation_time_ms as f64;
+                if result.success {
+                    let docs = dedupe_non_empty(result.hypothetical_docs);
+                    if !docs.is_empty() {
+                        debug_info.hyde_used = true;
+                        debug_info.hyde_generated_docs = docs.len();
+                        embedding_inputs.extend(docs);
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("HyDE generation failed, continuing without hypothetical docs: {e}");
+            }
+        }
+    }
+
+    embedding_inputs = dedupe_non_empty(embedding_inputs);
+    if embedding_inputs.is_empty() {
+        embedding_inputs.push(query.to_string());
+    }
+
+    debug_info.embedding_input_count = embedding_inputs.len();
+    metrics.query_preprocessing_ms = preprocess_start.elapsed().as_secs_f64() * 1000.0;
+    debug_info.preprocessing_latency_ms = metrics.query_preprocessing_ms;
+
+    let embed_start = Instant::now();
+    let embedding = if embedding_inputs.len() == 1 {
+        state
+            .embedding
+            .embed_query(&embedding_inputs[0])
+            .await
+            .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?
+    } else {
+        let prefixed_inputs = apply_instruction_prefix(
+            &embedding_inputs,
+            state.embedding.config().instruction_prefix.as_deref(),
+        );
+        let embeddings = state
+            .embedding
+            .embed_texts(&prefixed_inputs)
+            .await
+            .map_err(|e| ApiError::internal(format!("Embedding error: {e}")))?;
+        average_embeddings(&embeddings)?
+    };
+
+    metrics.embedding_ms = Some(embed_start.elapsed().as_secs_f64() * 1000.0);
+    debug_info.embedding_latency_ms = metrics.embedding_ms.unwrap_or(0.0);
+
+    Ok(embedding)
+}
+
+fn apply_instruction_prefix(inputs: &[String], prefix: Option<&str>) -> Vec<String> {
+    match prefix {
+        Some(prefix) => inputs
+            .iter()
+            .map(|input| format!("{prefix}{input}"))
+            .collect(),
+        None => inputs.to_vec(),
+    }
+}
+
+fn dedupe_non_empty(inputs: Vec<String>) -> Vec<String> {
+    let mut unique = Vec::new();
+    for input in inputs {
+        let trimmed = input.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let candidate = trimmed.to_string();
+        if !unique.contains(&candidate) {
+            unique.push(candidate);
+        }
+    }
+    unique
+}
+
+fn average_embeddings(embeddings: &[Vec<f32>]) -> ApiResult<Vec<f32>> {
+    if embeddings.is_empty() {
+        return Err(ApiError::internal(
+            "Embedding service returned no vectors for multi-input query",
+        ));
+    }
+
+    let dimensions = embeddings[0].len();
+    if dimensions == 0 {
+        return Err(ApiError::internal(
+            "Embedding service returned empty vector",
+        ));
+    }
+
+    let mut averaged = vec![0.0f32; dimensions];
+    for (index, vector) in embeddings.iter().enumerate() {
+        if vector.len() != dimensions {
+            return Err(ApiError::internal(format!(
+                "Embedding dimension mismatch at index {index}: expected {dimensions}, got {}",
+                vector.len()
+            )));
+        }
+
+        for (dim, value) in vector.iter().enumerate() {
+            averaged[dim] += *value;
+        }
+    }
+
+    let count = embeddings.len() as f32;
+    for value in &mut averaged {
+        *value /= count;
+    }
+
+    Ok(averaged)
 }
 
 /// Convert retrieval results to response format.
@@ -632,7 +991,10 @@ mod tests {
         assert_eq!(cond.key, "allowed_groups");
         match &cond.match_type {
             MatchType::Any(values) => {
-                assert_eq!(values, &vec!["engineering".to_string(), "product".to_string()]);
+                assert_eq!(
+                    values,
+                    &vec!["engineering".to_string(), "product".to_string()]
+                );
             }
             _ => panic!("Expected MatchType::Any"),
         }
@@ -655,17 +1017,43 @@ mod tests {
         let filters = serde_json::json!({
             "must": [
                 {"key": "source_type", "match_type": {"value": "pdf"}}
-            ],
-            "should": [
-                {"key": "visibility", "match_type": {"value": "public"}}
-            ],
-            "must_not": []
+            ]
         });
 
         let result = parse_filters(&filters).unwrap();
         assert_eq!(result.must.len(), 1);
-        assert_eq!(result.should.len(), 1);
+        assert!(result.should.is_empty());
         assert!(result.must_not.is_empty());
+    }
+
+    #[test]
+    fn test_parse_filters_structured_rejects_should() {
+        let filters = serde_json::json!({
+            "must": [
+                {"key": "source_type", "match_type": {"value": "pdf"}}
+            ],
+            "should": [
+                {"key": "visibility", "match_type": {"value": "public"}}
+            ]
+        });
+
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_filters_structured_rejects_must_not() {
+        let filters = serde_json::json!({
+            "must": [
+                {"key": "source_type", "match_type": {"value": "pdf"}}
+            ],
+            "must_not": [
+                {"key": "status", "match_type": {"value": "archived"}}
+            ]
+        });
+
+        let result = parse_filters(&filters);
+        assert!(result.is_err());
     }
 
     #[test]
