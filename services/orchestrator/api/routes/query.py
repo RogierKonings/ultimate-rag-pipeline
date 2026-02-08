@@ -39,6 +39,8 @@ from observability.business_metrics import rag_feedback_total
 from observability.metrics_collector import QueryMetrics, metrics_collector
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import get_config
+
 from . import query_service
 
 logger = structlog.get_logger(__name__)
@@ -385,9 +387,10 @@ async def query_stream(
             messages.insert(0, {"role": "system", "content": context_message})
 
         # Stream response from LLM (with degradation info if present - US-10.2.2)
+        config = get_config()
         async for event in stream_manager.stream_response(
             request_id=request_id,
-            model="meta-llama/Llama-3.1-8B-Instruct",
+            model=config.fallback_model,
             messages=messages,
             session_id=str(query_request.session_id) if query_request.session_id else None,
             documents=documents,
