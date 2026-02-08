@@ -9,7 +9,7 @@
 //! - **Configurable fusion**: Support for RRF, Linear, and DBSF fusion methods
 //! - **Score threshold filtering**: Filter results below a minimum score
 //! - **Deduplication**: Remove duplicate results by document ID
-//! - **Full pipeline**: Optional query preprocessing, reranking, and ACL filtering
+//! - **Reranking and ACL**: Optional cross-encoder reranking and ACL filtering via route handlers
 //!
 //! # Example
 //!
@@ -51,13 +51,11 @@
 //! ```
 
 mod config;
-mod pipeline;
 mod pipeline_config;
 mod response;
 mod searcher;
 
 pub use config::HybridSearchConfig;
-pub use pipeline::{SearchPipeline, SearchPipelineBuilder};
 pub use pipeline_config::{PipelineConfig, SearchOptions, SearchPipelineResponse};
 pub use response::{HybridSearchResponse, HybridSearchResult};
 pub use searcher::HybridSearcher;

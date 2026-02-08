@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::acl::ACLFilter;
 use crate::embedding::EmbeddingClient;
-use crate::hybrid::{HybridSearcher, SearchPipeline};
+use crate::hybrid::HybridSearcher;
 use crate::reranking::RerankerService;
 
 /// Application state shared across all request handlers.
@@ -24,7 +24,6 @@ use crate::reranking::RerankerService;
 ///
 /// // Create the state (typically in main.rs)
 /// let state = Arc::new(AppState {
-///     pipeline: Arc::new(pipeline),
 ///     hybrid: Arc::new(hybrid_searcher),
 ///     embedding: Arc::new(embedding_client),
 ///     reranker: Some(Arc::new(reranker)),
@@ -36,9 +35,6 @@ use crate::reranking::RerankerService;
 /// let app = create_router(state);
 /// ```
 pub struct AppState {
-    /// The full search pipeline (optional, use if you have all components).
-    pub pipeline: Option<Arc<SearchPipeline>>,
-
     /// The hybrid searcher for executing searches.
     pub hybrid: Arc<HybridSearcher>,
 
@@ -73,18 +69,11 @@ impl AppState {
     pub fn has_reranker(&self) -> bool {
         self.reranker.is_some()
     }
-
-    /// Check if the full pipeline is available.
-    #[must_use]
-    pub fn has_pipeline(&self) -> bool {
-        self.pipeline.is_some()
-    }
 }
 
 impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState")
-            .field("has_pipeline", &self.pipeline.is_some())
             .field("has_reranker", &self.reranker.is_some())
             .field("version", &self.version)
             .finish()
@@ -104,7 +93,6 @@ impl std::fmt::Debug for AppState {
 ///     .build()?;
 /// ```
 pub struct AppStateBuilder {
-    pipeline: Option<Arc<SearchPipeline>>,
     hybrid: Option<Arc<HybridSearcher>>,
     embedding: Option<Arc<EmbeddingClient>>,
     reranker: Option<Arc<RerankerService>>,
@@ -117,20 +105,12 @@ impl AppStateBuilder {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            pipeline: None,
             hybrid: None,
             embedding: None,
             reranker: None,
             acl_filter: None,
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
-    }
-
-    /// Set the search pipeline.
-    #[must_use]
-    pub fn pipeline(mut self, pipeline: Arc<SearchPipeline>) -> Self {
-        self.pipeline = Some(pipeline);
-        self
     }
 
     /// Set the hybrid searcher.
@@ -187,7 +167,6 @@ impl AppStateBuilder {
             .ok_or(AppStateBuilderError::MissingComponent("acl_filter"))?;
 
         Ok(AppState {
-            pipeline: self.pipeline,
             hybrid,
             embedding,
             reranker: self.reranker,
@@ -232,7 +211,6 @@ mod tests {
     #[test]
     fn test_app_state_builder_default() {
         let builder = AppStateBuilder::default();
-        assert!(builder.pipeline.is_none());
         assert!(builder.hybrid.is_none());
         assert!(builder.embedding.is_none());
         assert!(builder.reranker.is_none());

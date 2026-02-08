@@ -19,16 +19,13 @@
 //!
 //! The retrieval pipeline follows these stages:
 //!
-//! 1. **Cache Check** - Check for cached results to avoid redundant computation
-//! 2. **Query Preprocessing** - Normalize and classify query intent
-//! 3. **Query Expansion** (optional) - Add synonym terms to improve recall
-//! 4. **HyDE** (optional) - Generate hypothetical document for embedding
-//! 5. **Embedding** - Convert query to vector representation
-//! 6. **Hybrid Search** - Parallel semantic + keyword search execution
-//! 7. **Fusion** - Combine results using RRF, Linear, or DBSF algorithms
-//! 8. **Reranking** (optional) - Cross-encoder reranking for precision
-//! 9. **ACL Filtering** - Visibility-based access control enforcement
-//! 10. **Cache Store** - Cache results for future queries
+//! 1. **Embedding** - Convert query to vector representation
+//! 2. **Hybrid Search** - Parallel semantic + keyword search execution
+//! 3. **Fusion** - Combine results using RRF, Linear, or DBSF algorithms
+//! 4. **Reranking** (optional) - Cross-encoder reranking for precision
+//! 5. **ACL Filtering** - Visibility-based access control enforcement
+//! 6. **Score Threshold** - Filter results below minimum score
+//! 7. **Top-K** - Return final results
 //!
 //! ## Quick Start
 //!
@@ -98,16 +95,13 @@
 //!
 //! ### Pipeline Configuration
 //!
-//! Configure the full search pipeline with optional stages:
+//! Configure retrieval behavior with optional stages:
 //!
 //! ```
 //! use rag_retrieval::hybrid::PipelineConfig;
 //!
 //! let config = PipelineConfig::new()
-//!     .with_query_expansion(true)   // Enable synonym expansion
-//!     .with_hyde(false)             // Disable HyDE
 //!     .with_reranking(true)         // Enable cross-encoder reranking
-//!     .with_caching(true)           // Enable result caching
 //!     .with_rerank_top_k(20)        // Rerank top 20 candidates
 //!     .with_final_top_k(10);        // Return top 10 results
 //! ```
@@ -245,7 +239,7 @@ pub use cache::{CacheKeyBuilder, CacheStats, CacheStatsSnapshot, RetrievalCache}
 // Re-export hybrid search types
 pub use hybrid::{
     HybridSearchConfig, HybridSearchResponse, HybridSearchResult, HybridSearcher, PipelineConfig,
-    SearchOptions, SearchPipeline, SearchPipelineBuilder, SearchPipelineResponse,
+    SearchOptions, SearchPipelineResponse,
 };
 
 // Re-export API types
