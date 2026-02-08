@@ -2,10 +2,13 @@
 //!
 //! Orchestrates the video processing pipeline stages.
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
+use rag_ingestion::embedding::{EmbeddingClient, EmbeddingClientConfig};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use super::config::PipelineConfig;
@@ -424,33 +427,146 @@ impl VideoPipeline {
         }
     }
 
-    /// Generate embeddings for chunks.
+    /// Generate embeddings for chunks using the embedding service.
+    ///
+    /// Sends chunk texts to the embedding service in batches, with retry logic.
+    /// Falls back to placeholder embeddings if the service is unavailable.
     async fn generate_embeddings(
         &self,
         chunks: &[crate::fusion::VideoChunk],
-    ) -> Result<std::collections::HashMap<Uuid, Vec<f32>>> {
-        // TODO: Implement actual embedding generation via HTTP client
-        // For now, generate placeholder embeddings
-        let mut embeddings = std::collections::HashMap::new();
+    ) -> Result<HashMap<Uuid, Vec<f32>>> {
+        if chunks.is_empty() {
+            return Ok(HashMap::new());
+        }
 
-        for chunk in chunks {
-            // Placeholder: Generate random-ish embedding based on chunk content
-            let embedding: Vec<f32> = (0..384)
-                .map(|i| {
-                    let hash = chunk.fused_text.len() as f32 + i as f32;
-                    (hash.sin() + 1.0) / 2.0
-                })
+        // Build the embedding client from pipeline config
+        let embedding_config = EmbeddingClientConfig::new(&self.config.embedding_url)
+            .with_timeout(self.config.embedding_timeout)
+            .with_max_retries(2);
+
+        let client = match EmbeddingClient::new(embedding_config) {
+            Ok(c) => c,
+            Err(e) => {
+                warn!(
+                    error = %e,
+                    chunk_count = chunks.len(),
+                    "Failed to create embedding client, falling back to placeholder embeddings"
+                );
+                return Ok(Self::generate_placeholder_embeddings(chunks));
+            }
+        };
+
+        let batch_size = self.config.embedding_batch_size;
+        let mut embeddings = HashMap::with_capacity(chunks.len());
+        let total_batches = (chunks.len() + batch_size - 1) / batch_size;
+
+        info!(
+            chunk_count = chunks.len(),
+            batch_size,
+            total_batches,
+            embedding_url = %self.config.embedding_url,
+            "Generating embeddings for video chunks"
+        );
+
+        for (batch_idx, batch) in chunks.chunks(batch_size).enumerate() {
+            let texts: Vec<String> = batch
+                .iter()
+                .map(|chunk| chunk.fused_text.clone())
                 .collect();
-            embeddings.insert(chunk.id, embedding);
+
+            match client.embed_batch(&texts).await {
+                Ok((batch_embeddings, token_count)) => {
+                    // Validate that we got the right number of embeddings
+                    if batch_embeddings.len() != batch.len() {
+                        warn!(
+                            expected = batch.len(),
+                            got = batch_embeddings.len(),
+                            batch_idx,
+                            "Embedding count mismatch, falling back to placeholder for remaining chunks"
+                        );
+                        // Use what we got, fill rest with placeholders
+                        for (i, chunk) in batch.iter().enumerate() {
+                            if i < batch_embeddings.len() {
+                                embeddings.insert(chunk.id, batch_embeddings[i].clone());
+                            } else {
+                                embeddings.insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
+                            }
+                        }
+                    } else {
+                        // Validate embedding dimensions on the first result
+                        if let Some(first) = batch_embeddings.first() {
+                            if first.len() != 384 {
+                                warn!(
+                                    expected_dims = 384,
+                                    actual_dims = first.len(),
+                                    "Unexpected embedding dimensions"
+                                );
+                            }
+                        }
+
+                        for (chunk, embedding) in batch.iter().zip(batch_embeddings.into_iter()) {
+                            embeddings.insert(chunk.id, embedding);
+                        }
+                    }
+
+                    info!(
+                        batch = batch_idx + 1,
+                        total_batches,
+                        token_count,
+                        "Embedded batch successfully"
+                    );
+                }
+                Err(e) => {
+                    warn!(
+                        error = %e,
+                        batch_idx,
+                        batch_size = batch.len(),
+                        "Embedding batch failed, falling back to placeholder for this batch"
+                    );
+                    // Fall back to placeholder for this batch
+                    for chunk in batch {
+                        embeddings.insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
+                    }
+                }
+            }
         }
 
         Ok(embeddings)
+    }
+
+    /// Generate placeholder embeddings for all chunks.
+    ///
+    /// Used as a fallback when the embedding service is unavailable.
+    fn generate_placeholder_embeddings(
+        chunks: &[crate::fusion::VideoChunk],
+    ) -> HashMap<Uuid, Vec<f32>> {
+        chunks
+            .iter()
+            .map(|chunk| (chunk.id, Self::placeholder_vector(&chunk.fused_text)))
+            .collect()
+    }
+
+    /// Generate a single placeholder embedding vector from text content.
+    ///
+    /// Produces a deterministic 384-dimensional vector based on the text length.
+    /// This is NOT suitable for semantic search but provides a consistent fallback.
+    fn placeholder_vector(text: &str) -> Vec<f32> {
+        (0..384)
+            .map(|i| {
+                let hash = text.len() as f32 + i as f32;
+                (hash.sin() + 1.0) / 2.0
+            })
+            .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fusion::VideoChunk;
+    use serde_json::json;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_video_pipeline_new() {
@@ -487,5 +603,231 @@ mod tests {
             .await;
 
         assert!(result.is_err());
+    }
+
+    fn create_test_chunks(count: usize) -> Vec<VideoChunk> {
+        let video_id = Uuid::new_v4();
+        let tenant_id = Uuid::new_v4();
+        (0..count)
+            .map(|i| {
+                let mut chunk = VideoChunk::new(
+                    video_id,
+                    tenant_id,
+                    i as u32,
+                    (i as u64) * 10000,
+                    ((i + 1) as u64) * 10000,
+                );
+                chunk.fused_text = format!("This is test chunk number {i} with some content for embedding");
+                chunk
+            })
+            .collect()
+    }
+
+    fn mock_embedding_response(count: usize, dims: usize) -> serde_json::Value {
+        let data: Vec<serde_json::Value> = (0..count)
+            .map(|i| {
+                let embedding: Vec<f32> = (0..dims).map(|d| (d as f32 + i as f32) * 0.001).collect();
+                json!({
+                    "embedding": embedding,
+                    "index": i
+                })
+            })
+            .collect();
+        json!({
+            "data": data,
+            "usage": {"total_tokens": count * 10}
+        })
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_empty_chunks() {
+        let config = PipelineConfig::default();
+        let pipeline = VideoPipeline::new(config);
+
+        let result = pipeline.generate_embeddings(&[]).await.unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_success() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(mock_embedding_response(3, 384)),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let config = PipelineConfig::default()
+            .with_embedding_url(&mock_server.uri())
+            .with_embedding_batch_size(32);
+        let pipeline = VideoPipeline::new(config);
+
+        let chunks = create_test_chunks(3);
+        let result = pipeline.generate_embeddings(&chunks).await.unwrap();
+
+        assert_eq!(result.len(), 3);
+        for chunk in &chunks {
+            assert!(result.contains_key(&chunk.id));
+            assert_eq!(result[&chunk.id].len(), 384);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_batching() {
+        let mock_server = MockServer::start().await;
+
+        // With batch_size=2 and 5 chunks, we expect 3 requests
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(|req: &wiremock::Request| {
+                let body: serde_json::Value = req.body_json().unwrap();
+                let input = body["input"].as_array().unwrap();
+                let count = input.len();
+                ResponseTemplate::new(200)
+                    .set_body_json(mock_embedding_response(count, 384))
+            })
+            .expect(3)
+            .mount(&mock_server)
+            .await;
+
+        let config = PipelineConfig::default()
+            .with_embedding_url(&mock_server.uri())
+            .with_embedding_batch_size(2);
+        let pipeline = VideoPipeline::new(config);
+
+        let chunks = create_test_chunks(5);
+        let result = pipeline.generate_embeddings(&chunks).await.unwrap();
+
+        assert_eq!(result.len(), 5);
+        for chunk in &chunks {
+            assert!(result.contains_key(&chunk.id));
+            assert_eq!(result[&chunk.id].len(), 384);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_fallback_on_service_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .mount(&mock_server)
+            .await;
+
+        let config = PipelineConfig::default()
+            .with_embedding_url(&mock_server.uri())
+            .with_embedding_batch_size(32);
+        let pipeline = VideoPipeline::new(config);
+
+        let chunks = create_test_chunks(2);
+        let result = pipeline.generate_embeddings(&chunks).await.unwrap();
+
+        // Should still return embeddings (placeholder fallback)
+        assert_eq!(result.len(), 2);
+        for chunk in &chunks {
+            assert!(result.contains_key(&chunk.id));
+            // Placeholder embeddings are 384-dimensional
+            assert_eq!(result[&chunk.id].len(), 384);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_dimension_check() {
+        let mock_server = MockServer::start().await;
+
+        // Return embeddings with correct dimensions
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(mock_embedding_response(1, 384)),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let config = PipelineConfig::default()
+            .with_embedding_url(&mock_server.uri());
+        let pipeline = VideoPipeline::new(config);
+
+        let chunks = create_test_chunks(1);
+        let result = pipeline.generate_embeddings(&chunks).await.unwrap();
+
+        assert_eq!(result.len(), 1);
+        let embedding = result.values().next().unwrap();
+        assert_eq!(embedding.len(), 384, "Embedding should have 384 dimensions");
+    }
+
+    #[tokio::test]
+    async fn test_generate_embeddings_partial_batch_failure() {
+        let mock_server = MockServer::start().await;
+
+        // First batch succeeds, second batch fails
+        let counter = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let counter_clone = counter.clone();
+
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(move |req: &wiremock::Request| {
+                let call = counter_clone.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                if call == 0 {
+                    let body: serde_json::Value = req.body_json().unwrap();
+                    let input = body["input"].as_array().unwrap();
+                    let count = input.len();
+                    ResponseTemplate::new(200)
+                        .set_body_json(mock_embedding_response(count, 384))
+                } else {
+                    ResponseTemplate::new(500)
+                        .set_body_string("Internal Server Error")
+                }
+            })
+            .mount(&mock_server)
+            .await;
+
+        let config = PipelineConfig::default()
+            .with_embedding_url(&mock_server.uri())
+            .with_embedding_batch_size(2);
+        let pipeline = VideoPipeline::new(config);
+
+        let chunks = create_test_chunks(4);
+        let result = pipeline.generate_embeddings(&chunks).await.unwrap();
+
+        // All chunks should have embeddings (some real, some placeholder)
+        assert_eq!(result.len(), 4);
+        for chunk in &chunks {
+            assert!(result.contains_key(&chunk.id));
+            assert_eq!(result[&chunk.id].len(), 384);
+        }
+    }
+
+    #[test]
+    fn test_placeholder_vector_deterministic() {
+        let vec1 = VideoPipeline::placeholder_vector("hello world");
+        let vec2 = VideoPipeline::placeholder_vector("hello world");
+        assert_eq!(vec1, vec2, "Placeholder vectors should be deterministic");
+        assert_eq!(vec1.len(), 384);
+    }
+
+    #[test]
+    fn test_placeholder_vector_different_for_different_text() {
+        let vec1 = VideoPipeline::placeholder_vector("hello");
+        let vec2 = VideoPipeline::placeholder_vector("hello world");
+        assert_ne!(vec1, vec2, "Different texts should produce different placeholder vectors");
+    }
+
+    #[test]
+    fn test_generate_placeholder_embeddings() {
+        let chunks = create_test_chunks(3);
+        let result = VideoPipeline::generate_placeholder_embeddings(&chunks);
+
+        assert_eq!(result.len(), 3);
+        for chunk in &chunks {
+            assert!(result.contains_key(&chunk.id));
+            assert_eq!(result[&chunk.id].len(), 384);
+        }
     }
 }

@@ -33,6 +33,10 @@ pub enum VideoError {
     #[error("Indexing error: {0}")]
     Indexing(String),
 
+    /// An error occurred during embedding generation.
+    #[error("Embedding error: {0}")]
+    Embedding(String),
+
     /// An HTTP request error occurred.
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
@@ -103,6 +107,12 @@ mod tests {
             err.to_string(),
             "Indexing error: vector store unavailable"
         );
+    }
+
+    #[test]
+    fn test_embedding_error() {
+        let err = VideoError::Embedding("service unavailable".to_string());
+        assert_eq!(err.to_string(), "Embedding error: service unavailable");
     }
 
     #[test]
