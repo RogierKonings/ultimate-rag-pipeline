@@ -129,6 +129,78 @@ export interface BatchDeleteResponse {
 	results: DocumentDeleteResponse[];
 }
 
+// Streaming query types (SSE events)
+export type StreamEventType = 'start' | 'delta' | 'citations' | 'done' | 'error';
+
+export interface StreamStartData {
+	request_id: string;
+	model: string;
+	session_id: string | null;
+	degradation: {
+		level: string;
+		mode: string;
+		message: string;
+	} | null;
+	timestamp: number;
+}
+
+export interface StreamDeltaData {
+	token: string;
+	request_id: string;
+	timestamp: number;
+}
+
+export interface StreamCitationsData {
+	sources: Array<{
+		title: string;
+		uri: string;
+		chunk_id: string;
+	}>;
+	request_id: string;
+	timestamp: number;
+}
+
+export interface StreamDoneData {
+	request_id: string;
+	usage: {
+		prompt_tokens: number;
+		completion_tokens: number;
+		total_tokens: number;
+	};
+	latency_ms: number;
+	context_quality: string;
+	retrieval_mode: string;
+	timestamp: number;
+}
+
+export interface StreamErrorData {
+	error: string;
+	code: string;
+	recoverable: boolean;
+	request_id: string;
+	timestamp: number;
+}
+
+export type StreamEventData =
+	| StreamStartData
+	| StreamDeltaData
+	| StreamCitationsData
+	| StreamDoneData
+	| StreamErrorData;
+
+export interface StreamQueryRequest {
+	query: string;
+	tenant_id?: string;
+	user_id?: string;
+	session_id?: string;
+	options?: {
+		include_citations?: boolean;
+		mode?: 'qa' | 'chat';
+		max_tokens?: number;
+		temperature?: number;
+	};
+}
+
 // Error types
 export interface ApiError {
 	error: string;

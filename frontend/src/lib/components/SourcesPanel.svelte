@@ -4,7 +4,9 @@
 	import SourceCard from './SourceCard.svelte';
 
 	const response = $derived($search.response);
-	const sources = $derived(response?.sources || []);
+	const streamSources = $derived($search.streamSources);
+	// Show completed response sources, or stream sources if available
+	const sources = $derived(response?.sources || (streamSources.length > 0 ? streamSources : []));
 </script>
 
 {#if sources.length > 0}

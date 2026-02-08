@@ -25,6 +25,13 @@ export interface ProxyConfig {
 	 * return the (potentially modified) data.
 	 */
 	transformResponse?: (data: unknown) => unknown;
+
+	/**
+	 * Path patterns that should be treated as SSE (Server-Sent Events) streams.
+	 * When a request path matches one of these patterns, the upstream response
+	 * is streamed through without JSON parsing.
+	 */
+	streamPaths?: string[];
 }
 
 /**
@@ -48,6 +55,14 @@ function isSvelteKitError(err: unknown): boolean {
 }
 
 /**
+ * Check whether the given path should be handled as an SSE stream.
+ */
+function isStreamPath(config: ProxyConfig, path: string): boolean {
+	if (!config.streamPaths || config.streamPaths.length === 0) return false;
+	return config.streamPaths.some((pattern) => path === pattern || path.startsWith(pattern));
+}
+
+/**
  * Forward a proxy request to an upstream service.
  *
  * This helper centralises URL composition, header forwarding, error translation,
@@ -57,6 +72,9 @@ function isSvelteKitError(err: unknown): boolean {
  * Supported HTTP methods: GET, POST, PUT, PATCH, DELETE.
  * Methods with a request body (POST, PUT, PATCH) will forward the raw body
  * and the original Content-Type header.
+ *
+ * For paths matching `streamPaths`, the response is passed through as-is
+ * (supporting SSE text/event-stream responses).
  */
 export async function forwardProxyRequest(
 	event: RequestEvent,
@@ -84,6 +102,27 @@ export async function forwardProxyRequest(
 		}
 
 		const response = await event.fetch(targetUrl, init);
+
+		// For stream paths, pass through the response directly without JSON parsing
+		if (isStreamPath(config, path)) {
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));
+				throw error(response.status, {
+					message: errorData.detail || errorData.message || 'Stream request failed'
+				});
+			}
+
+			// Pass through SSE stream with appropriate headers
+			return new Response(response.body, {
+				status: response.status,
+				headers: {
+					'Content-Type': 'text/event-stream',
+					'Cache-Control': 'no-cache',
+					Connection: 'keep-alive',
+					'X-Request-ID': response.headers.get('X-Request-ID') || ''
+				}
+			});
+		}
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({ detail: 'Request failed' }));

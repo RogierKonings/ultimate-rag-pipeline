@@ -77,7 +77,14 @@
 				<div class="mx-auto max-w-4xl px-6 py-8">
 					<SearchBar />
 
-					{#if $search.loading}
+					{#if $search.streamingState === 'streaming' || $search.streamingState === 'connecting' || $search.streamingState === 'cancelled'}
+						<!-- Streaming: show incremental answer and sources as they arrive -->
+						<div class="mt-8 space-y-6">
+							<AnswerCard />
+							<SourcesPanel />
+						</div>
+					{:else if $search.loading && $search.streamingState === 'idle'}
+						<!-- Sync fallback loading: show skeleton placeholders -->
 						<div class="mt-8 space-y-4">
 							<div class="skeleton h-32 w-full"></div>
 							<div class="skeleton h-24 w-full"></div>
@@ -89,6 +96,12 @@
 						>
 							<p class="font-medium">Search failed</p>
 							<p class="mt-1 text-sm">{$search.error}</p>
+							<button
+								onclick={() => search.retry()}
+								class="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+							>
+								Retry
+							</button>
 						</div>
 					{:else if $search.response}
 						<div class="mt-8 space-y-6">
