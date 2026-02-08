@@ -176,7 +176,7 @@ make affected-lint     # Lint affected projects only
 **.moon/toolchain.yml** - Defines toolchain versions:
 - Node.js 22.11.0
 - pnpm 9.15.0
-- Rust 1.85.0
+- Rust 1.93.0
 
 **.moon/tasks.yml** - Global tasks inherited by all projects
 
