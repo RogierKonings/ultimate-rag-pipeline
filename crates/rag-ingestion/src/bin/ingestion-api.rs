@@ -18,6 +18,7 @@ use tokio::sync::Mutex;
 
 use rag_database::{DatabaseConfig, DatabasePool};
 use rag_ingestion::api::{run_server_with_config, AppState, JobTracker, ServerConfig};
+use rag_ingestion::cache_invalidation::CacheInvalidationPublisher;
 use rag_ingestion::embedding::{EmbeddingClient, EmbeddingClientConfig};
 use rag_ingestion::indexing::{IndexCoordinator, IndexCoordinatorConfig};
 use rag_ingestion::worker::{IngestionJobHandler, JobQueue, WorkerPool, WorkerPoolConfig};
@@ -104,6 +105,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    // Create cache invalidation publisher (reuses the same Redis connection)
+    let cache_invalidation = match CacheInvalidationPublisher::new(&redis_url).await {
+        Ok(publisher) => {
+            tracing::info!("Cache invalidation publisher initialized");
+            Some(Arc::new(publisher))
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to create cache invalidation publisher - cache invalidation disabled");
+            None
+        }
+    };
+
     // Build application state
     let mut state_builder = AppState::builder()
         .job_tracker(Arc::clone(&job_tracker));
@@ -114,6 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(db) = database {
         state_builder = state_builder.database(db);
+    }
+
+    if let Some(publisher) = cache_invalidation {
+        state_builder = state_builder.cache_invalidation(publisher);
     }
 
     let state = Arc::new(state_builder.build()?);

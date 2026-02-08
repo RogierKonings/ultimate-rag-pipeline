@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use rag_database::DatabasePool;
 
 use crate::api::jobs::JobTracker;
+use crate::cache_invalidation::CacheInvalidationPublisher;
 use crate::embedding::EmbeddingClient;
 use crate::indexing::IndexCoordinator;
 use crate::worker::JobQueue;
@@ -26,6 +27,9 @@ pub struct AppState {
 
     /// Database pool for PostgreSQL queries (optional for tests).
     pub database: Option<DatabasePool>,
+
+    /// Cache invalidation publisher for notifying orchestrator of document changes.
+    pub cache_invalidation: Option<Arc<CacheInvalidationPublisher>>,
 
     /// Service version string.
     pub version: String,
@@ -67,6 +71,12 @@ impl AppState {
     pub fn has_database(&self) -> bool {
         self.database.is_some()
     }
+
+    /// Check if cache invalidation publisher is available.
+    #[must_use]
+    pub fn has_cache_invalidation(&self) -> bool {
+        self.cache_invalidation.is_some()
+    }
 }
 
 impl std::fmt::Debug for AppState {
@@ -76,6 +86,7 @@ impl std::fmt::Debug for AppState {
             .field("has_embedding_client", &self.embedding_client.is_some())
             .field("has_job_queue", &self.job_queue.is_some())
             .field("has_database", &self.database.is_some())
+            .field("has_cache_invalidation", &self.cache_invalidation.is_some())
             .field("active_jobs", &self.job_tracker.active_count())
             .field("version", &self.version)
             .finish()
@@ -89,6 +100,7 @@ pub struct AppStateBuilder {
     embedding_client: Option<Arc<EmbeddingClient>>,
     job_queue: Option<Arc<Mutex<JobQueue>>>,
     database: Option<DatabasePool>,
+    cache_invalidation: Option<Arc<CacheInvalidationPublisher>>,
     version: String,
 }
 
@@ -102,6 +114,7 @@ impl AppStateBuilder {
             embedding_client: None,
             job_queue: None,
             database: None,
+            cache_invalidation: None,
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
@@ -141,6 +154,13 @@ impl AppStateBuilder {
         self
     }
 
+    /// Set the cache invalidation publisher.
+    #[must_use]
+    pub fn cache_invalidation(mut self, publisher: Arc<CacheInvalidationPublisher>) -> Self {
+        self.cache_invalidation = Some(publisher);
+        self
+    }
+
     /// Set the service version.
     #[must_use]
     pub fn version(mut self, version: impl Into<String>) -> Self {
@@ -164,6 +184,7 @@ impl AppStateBuilder {
             embedding_client: self.embedding_client,
             job_queue: self.job_queue,
             database: self.database,
+            cache_invalidation: self.cache_invalidation,
             version: self.version,
         })
     }

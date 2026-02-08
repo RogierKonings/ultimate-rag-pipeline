@@ -60,6 +60,7 @@
 //! - Semantic chunker (sentence-boundary based)
 
 pub mod api;
+pub mod cache_invalidation;
 pub mod chunking;
 pub mod connectors;
 pub mod embedding;
@@ -93,3 +94,6 @@ pub use parsers::{HtmlParser, MarkdownParser, ParsedDocument, Parser};
 
 // Chunking (commonly used)
 pub use chunking::{Chunk, ChunkingConfig, ChunkingStrategy, RecursiveCharacterSplitter};
+
+// Cache invalidation
+pub use cache_invalidation::{CacheInvalidationPublisher, InvalidationEvent, INVALIDATION_CHANNEL};

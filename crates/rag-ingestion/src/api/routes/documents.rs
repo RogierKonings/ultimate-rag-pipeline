@@ -387,6 +387,13 @@ pub async fn delete_document(
         "Document deleted"
     );
 
+    // Publish cache invalidation event (fire-and-forget)
+    if let Some(publisher) = &state.cache_invalidation {
+        publisher
+            .publish_document_deleted(&query.tenant_id, &document_id.to_string())
+            .await;
+    }
+
     Ok(Json(DocumentDeleteResponse {
         document_id,
         deleted: true,
@@ -575,6 +582,20 @@ pub async fn batch_delete_documents(
         "Batch delete completed"
     );
 
+    // Publish cache invalidation for all successfully deleted documents (fire-and-forget)
+    if let Some(publisher) = &state.cache_invalidation {
+        let deleted_ids: Vec<String> = results
+            .iter()
+            .filter(|r| r.deleted)
+            .map(|r| r.document_id.to_string())
+            .collect();
+        if !deleted_ids.is_empty() {
+            publisher
+                .publish_batch_deleted(&query.tenant_id, deleted_ids)
+                .await;
+        }
+    }
+
     Ok(Json(BatchDeleteResponse {
         deleted_count,
         failed_count,
@@ -652,6 +673,13 @@ pub async fn reindex_document(
             document_id = %document_id,
             "No job queue configured - reindex job will remain pending"
         );
+    }
+
+    // Publish cache invalidation for reindexed document (fire-and-forget)
+    if let Some(publisher) = &state.cache_invalidation {
+        publisher
+            .publish_document_reindexed(&query.tenant_id, &document_id.to_string())
+            .await;
     }
 
     Ok((
