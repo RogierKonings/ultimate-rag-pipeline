@@ -40,7 +40,7 @@ tasks:
       - '~:build'
 
   lint:
-    command: 'cargo clippy -p rag-video --'
+    command: 'cargo clippy -p rag-video -- -D warnings'
     inputs:
       - '@group(sources)'
 

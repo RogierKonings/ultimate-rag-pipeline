@@ -35,7 +35,7 @@ tasks:
       - '~:build'
 
   lint:
-    command: 'cargo clippy -p rag-config --'
+    command: 'cargo clippy -p rag-config -- -D warnings'
     inputs:
       - '@group(sources)'
 

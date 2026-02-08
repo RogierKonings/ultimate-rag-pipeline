@@ -37,7 +37,7 @@ tasks:
       - '~:build'
 
   lint:
-    command: 'cargo clippy -p rag-vectorstore --'
+    command: 'cargo clippy -p rag-vectorstore -- -D warnings'
     inputs:
       - '@group(sources)'
 
