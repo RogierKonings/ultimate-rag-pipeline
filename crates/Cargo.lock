@@ -5275,6 +5275,7 @@ dependencies = [
  "unicode-normalization",
  "utoipa",
  "uuid",
+ "wiremock",
 ]
 
 [[package]]
