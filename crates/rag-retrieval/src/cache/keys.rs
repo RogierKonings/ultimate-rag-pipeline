@@ -298,8 +298,7 @@ mod tests {
     fn test_cache_key_builder_with_filters() {
         let tenant_id = Uuid::new_v4();
 
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("source_type", "pdf"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("source_type", "pdf"));
 
         let key_with_filter = CacheKeyBuilder::new(tenant_id, "test")
             .with_filters(&filter)
@@ -464,11 +463,9 @@ mod tests {
     fn test_different_filters_different_keys() {
         let tenant_id = Uuid::new_v4();
 
-        let filter1 = UnifiedFilter::new()
-            .must(FilterCondition::value("type", "pdf"));
+        let filter1 = UnifiedFilter::new().must(FilterCondition::value("type", "pdf"));
 
-        let filter2 = UnifiedFilter::new()
-            .must(FilterCondition::value("type", "docx"));
+        let filter2 = UnifiedFilter::new().must(FilterCondition::value("type", "docx"));
 
         let key1 = CacheKeyBuilder::new(tenant_id, "test")
             .with_filters(&filter1)

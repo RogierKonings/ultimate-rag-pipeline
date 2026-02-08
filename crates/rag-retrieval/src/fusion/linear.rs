@@ -295,15 +295,9 @@ mod tests {
 
     #[test]
     fn test_linear_fusion_basic() {
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.9),
-            ScoredItem::new("doc2", 0.8),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.9), ScoredItem::new("doc2", 0.8)];
 
-        let keyword = vec![
-            ScoredItem::new("doc2", 0.95),
-            ScoredItem::new("doc3", 0.85),
-        ];
+        let keyword = vec![ScoredItem::new("doc2", 0.95), ScoredItem::new("doc3", 0.85)];
 
         let config = LinearConfig::default();
         let fused = linear_fusion(&semantic, &keyword, &config);
@@ -327,10 +321,7 @@ mod tests {
 
     #[test]
     fn test_linear_fusion_without_normalization() {
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.9),
-            ScoredItem::new("doc2", 0.8),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.9), ScoredItem::new("doc2", 0.8)];
 
         let keyword = vec![
             ScoredItem::new("doc2", 10.0), // Different scale
@@ -351,10 +342,7 @@ mod tests {
 
     #[test]
     fn test_linear_fusion_with_normalization() {
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.9),
-            ScoredItem::new("doc2", 0.7),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.9), ScoredItem::new("doc2", 0.7)];
 
         let keyword = vec![
             ScoredItem::new("doc2", 10.0), // Different scale
@@ -378,10 +366,7 @@ mod tests {
             ScoredItem::new("doc3", 0.7),
         ];
 
-        let keyword = vec![
-            ScoredItem::new("doc4", 0.95),
-            ScoredItem::new("doc5", 0.85),
-        ];
+        let keyword = vec![ScoredItem::new("doc4", 0.95), ScoredItem::new("doc5", 0.85)];
 
         let config = LinearConfig::default().with_top_k(3);
         let fused = linear_fusion(&semantic, &keyword, &config);
@@ -402,10 +387,7 @@ mod tests {
 
     #[test]
     fn test_linear_fusion_single_source() {
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.9),
-            ScoredItem::new("doc2", 0.8),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.9), ScoredItem::new("doc2", 0.8)];
         let keyword: Vec<ScoredItem<&str>> = vec![];
 
         let config = LinearConfig::default().with_weights(0.7, 0.3);

@@ -14,11 +14,11 @@ use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use rag_vectorstore::{
-    Condition, Filter, FilterBuilder, SearchParams, SearchRequest, ScoredPoint, VectorStoreClient,
+    Condition, Filter, FilterBuilder, ScoredPoint, SearchParams, SearchRequest, VectorStoreClient,
     VectorStoreConfig,
 };
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::fusion::ScoredItem;
 use crate::types::{UserContext, Visibility};
 
@@ -342,11 +342,7 @@ impl SemanticSearcher {
 
     /// Build a Qdrant filter with tenant isolation and optional additional filters.
     #[allow(clippy::unused_self)]
-    fn build_filter(
-        &self,
-        user_context: &UserContext,
-        filters: Option<&SearchFilters>,
-    ) -> Filter {
+    fn build_filter(&self, user_context: &UserContext, filters: Option<&SearchFilters>) -> Filter {
         let mut builder = FilterBuilder::new();
 
         // Always filter by tenant
@@ -402,10 +398,7 @@ impl SemanticSearcher {
             .unwrap_or_else(Uuid::nil);
 
         // Extract content from payload
-        let content = point
-            .get_string("content")
-            .unwrap_or_default()
-            .to_string();
+        let content = point.get_string("content").unwrap_or_default().to_string();
 
         // Extract optional fields
         let title = point.get_string("title").map(String::from);
@@ -673,8 +666,8 @@ mod tests {
         let chunk_id = Uuid::new_v4();
         let document_id = Uuid::new_v4();
 
-        let result = SemanticResult::new(chunk_id, document_id, 0.9, "Test".into())
-            .with_title("Title");
+        let result =
+            SemanticResult::new(chunk_id, document_id, 0.9, "Test".into()).with_title("Title");
 
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains(&chunk_id.to_string()));

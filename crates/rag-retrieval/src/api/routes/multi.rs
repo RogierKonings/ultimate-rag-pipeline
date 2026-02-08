@@ -7,11 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::{
-    extract::State,
-    http::HeaderMap,
-    Json,
-};
+use axum::{extract::State, http::HeaderMap, Json};
 use chrono::Utc;
 use futures::future::join_all;
 use tracing::{debug, instrument, warn};
@@ -21,9 +17,7 @@ use crate::acl::UnifiedFilter;
 use crate::api::degradation::{evaluate, ComponentOutcome};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
-use crate::api::types::{
-    MultiQueryRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
-};
+use crate::api::types::{MultiQueryRequest, RetrieveResponse, RetrievedDocument, SearchMetrics};
 use crate::hybrid::HybridSearchResult;
 use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
@@ -246,12 +240,7 @@ pub async fn retrieve_multi(
     let response_results: Vec<RetrievedDocument> = final_results
         .iter()
         .map(|r| {
-            RetrievedDocument::new(
-                r.chunk_id,
-                r.document_id,
-                r.content.clone(),
-                r.fused_score,
-            )
+            RetrievedDocument::new(r.chunk_id, r.document_id, r.content.clone(), r.fused_score)
         })
         .collect();
 
@@ -337,7 +326,11 @@ fn aggregate_max(results: &[(String, Vec<HybridSearchResult>)]) -> Vec<HybridSea
     }
 
     let mut sorted: Vec<_> = aggregated.into_values().collect();
-    sorted.sort_by(|a, b| b.fused_score.partial_cmp(&a.fused_score).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_by(|a, b| {
+        b.fused_score
+            .partial_cmp(&a.fused_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     sorted
 }
 
@@ -365,7 +358,11 @@ fn aggregate_avg(results: &[(String, Vec<HybridSearchResult>)]) -> Vec<HybridSea
         })
         .collect();
 
-    sorted.sort_by(|a, b| b.fused_score.partial_cmp(&a.fused_score).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_by(|a, b| {
+        b.fused_score
+            .partial_cmp(&a.fused_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     sorted
 }
 
@@ -396,7 +393,11 @@ fn aggregate_rrf(results: &[(String, Vec<HybridSearchResult>)]) -> Vec<HybridSea
         })
         .collect();
 
-    sorted.sort_by(|a, b| b.fused_score.partial_cmp(&a.fused_score).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_by(|a, b| {
+        b.fused_score
+            .partial_cmp(&a.fused_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     sorted
 }
 
@@ -569,8 +570,7 @@ mod tests {
     #[test]
     fn test_acl_filter_admin_bypasses() {
         // Admin users should see all documents regardless of visibility
-        let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
-            .with_admin(true);
+        let user_context = UserContext::new(Uuid::new_v4(), Uuid::new_v4()).with_admin(true);
 
         let chunk1 = Uuid::new_v4();
         let chunk2 = Uuid::new_v4();

@@ -90,7 +90,10 @@ fn test_dbsf_fusion_normalizes_distributions() {
 
     // All fused scores should be normalized (typically in a reasonable range)
     for result in &fused {
-        assert!(result.fused_score.is_finite(), "Fused scores should be finite");
+        assert!(
+            result.fused_score.is_finite(),
+            "Fused scores should be finite"
+        );
     }
 }
 
@@ -171,13 +174,13 @@ fn test_fusion_preserves_score_information() {
     let chunk_id = Uuid::new_v4();
 
     let semantic = vec![
-        ScoredItem::new(chunk_id, 0.95),           // rank 1
-        ScoredItem::new(Uuid::new_v4(), 0.85),     // rank 2
+        ScoredItem::new(chunk_id, 0.95),       // rank 1
+        ScoredItem::new(Uuid::new_v4(), 0.85), // rank 2
     ];
 
     let keyword = vec![
-        ScoredItem::new(Uuid::new_v4(), 12.0),     // rank 1
-        ScoredItem::new(chunk_id, 10.0),           // rank 2
+        ScoredItem::new(Uuid::new_v4(), 12.0), // rank 1
+        ScoredItem::new(chunk_id, 10.0),       // rank 2
     ];
 
     let config = FusionConfig::new(FusionMethod::Rrf);
@@ -217,7 +220,10 @@ fn test_hybrid_search_result_creation() {
     assert_eq!(result.keyword_score, Some(0.88));
     assert_eq!(result.keyword_rank, Some(3));
     assert_eq!(result.title, Some("Test Document".into()));
-    assert_eq!(result.source_uri, Some("https://example.com/doc.pdf".into()));
+    assert_eq!(
+        result.source_uri,
+        Some("https://example.com/doc.pdf".into())
+    );
     assert_eq!(result.chunk_index, 2);
     assert_eq!(result.visibility, Visibility::Group);
     assert_eq!(result.allowed_groups, vec!["engineering", "devops"]);
@@ -228,38 +234,25 @@ fn test_hybrid_search_result_creation() {
 #[test]
 fn test_hybrid_search_result_ranking() {
     // Result in both lists
-    let result_both = HybridSearchResult::new(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        "Both".into(),
-        0.9,
-    )
-    .with_semantic(0.9, 3)
-    .with_keyword(0.85, 1);
+    let result_both = HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Both".into(), 0.9)
+        .with_semantic(0.9, 3)
+        .with_keyword(0.85, 1);
 
     assert!(result_both.is_in_both());
     assert_eq!(result_both.best_rank(), Some(1)); // min(3, 1) = 1
 
     // Result only in semantic
-    let result_semantic = HybridSearchResult::new(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        "Semantic".into(),
-        0.8,
-    )
-    .with_semantic(0.8, 5);
+    let result_semantic =
+        HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Semantic".into(), 0.8)
+            .with_semantic(0.8, 5);
 
     assert!(!result_semantic.is_in_both());
     assert_eq!(result_semantic.best_rank(), Some(5));
 
     // Result only in keyword
-    let result_keyword = HybridSearchResult::new(
-        Uuid::new_v4(),
-        Uuid::new_v4(),
-        "Keyword".into(),
-        0.7,
-    )
-    .with_keyword(0.7, 2);
+    let result_keyword =
+        HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Keyword".into(), 0.7)
+            .with_keyword(0.7, 2);
 
     assert!(!result_keyword.is_in_both());
     assert_eq!(result_keyword.best_rank(), Some(2));
@@ -377,15 +370,15 @@ fn test_rrf_boosts_overlap_results() {
 
     // Shared result appears first in both lists
     let semantic = vec![
-        ScoredItem::new(shared_id, 0.95),          // rank 1
-        ScoredItem::new(Uuid::new_v4(), 0.85),    // rank 2
-        ScoredItem::new(Uuid::new_v4(), 0.75),    // rank 3
+        ScoredItem::new(shared_id, 0.95),      // rank 1
+        ScoredItem::new(Uuid::new_v4(), 0.85), // rank 2
+        ScoredItem::new(Uuid::new_v4(), 0.75), // rank 3
     ];
 
     let keyword = vec![
-        ScoredItem::new(shared_id, 12.0),          // rank 1
-        ScoredItem::new(Uuid::new_v4(), 10.0),    // rank 2
-        ScoredItem::new(Uuid::new_v4(), 8.0),     // rank 3
+        ScoredItem::new(shared_id, 12.0),      // rank 1
+        ScoredItem::new(Uuid::new_v4(), 10.0), // rank 2
+        ScoredItem::new(Uuid::new_v4(), 8.0),  // rank 3
     ];
 
     let config = FusionConfig::new(FusionMethod::Rrf);

@@ -4,8 +4,8 @@
 //! pipeline, including search modes, query types, visibility controls,
 //! user context, and result structures.
 
-pub use rag_types::Visibility;
 use rag_types::SearchMode;
+pub use rag_types::Visibility;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;

@@ -208,10 +208,7 @@ mod tests {
     #[test]
     fn test_match_type_any() {
         let m = MatchType::any(vec!["a".to_string(), "b".to_string()]);
-        assert_eq!(
-            m,
-            MatchType::Any(vec!["a".to_string(), "b".to_string()])
-        );
+        assert_eq!(m, MatchType::Any(vec!["a".to_string(), "b".to_string()]));
     }
 
     #[test]
@@ -237,7 +234,10 @@ mod tests {
             .must(FilterCondition::value("tenant_id", "t1"))
             .should(FilterCondition::value("visibility", "public"))
             .should(FilterCondition::value("visibility", "tenant"))
-            .must_not(FilterCondition::any_of("denied_users", vec!["u1".to_string()]));
+            .must_not(FilterCondition::any_of(
+                "denied_users",
+                vec!["u1".to_string()],
+            ));
 
         assert_eq!(filter.must.len(), 1);
         assert_eq!(filter.should.len(), 2);

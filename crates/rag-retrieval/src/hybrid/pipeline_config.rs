@@ -311,7 +311,11 @@ pub struct SearchPipelineResponse {
 impl SearchPipelineResponse {
     /// Create a new response.
     #[must_use]
-    pub fn new(results: Vec<RetrievalResult>, metrics: RetrievalMetrics, debug: RetrievalDebug) -> Self {
+    pub fn new(
+        results: Vec<RetrievalResult>,
+        metrics: RetrievalMetrics,
+        debug: RetrievalDebug,
+    ) -> Self {
         Self {
             results,
             metrics,

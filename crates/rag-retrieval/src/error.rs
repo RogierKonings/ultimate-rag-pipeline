@@ -157,7 +157,9 @@ impl From<SearchError> for RetrievalError {
 impl From<CacheError> for RetrievalError {
     fn from(err: CacheError) -> Self {
         match err {
-            CacheError::Timeout(ms) => Self::Timeout(format!("Cache operation timed out after {ms}ms")),
+            CacheError::Timeout(ms) => {
+                Self::Timeout(format!("Cache operation timed out after {ms}ms"))
+            }
             _ => Self::Cache(err.to_string()),
         }
     }

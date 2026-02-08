@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 use super::EmbeddingConfig;
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 
 /// Request body for the OpenAI-compatible embeddings API.
 #[derive(Debug, Serialize)]
@@ -129,9 +129,9 @@ impl EmbeddingClient {
         let texts = vec![text.to_string()];
         let mut embeddings = self.embed_texts(&texts).await?;
 
-        embeddings.pop().ok_or_else(|| {
-            RetrievalError::embedding("No embedding returned for single text")
-        })
+        embeddings
+            .pop()
+            .ok_or_else(|| RetrievalError::embedding("No embedding returned for single text"))
     }
 
     /// Embed multiple texts.
@@ -165,12 +165,8 @@ impl EmbeddingClient {
         );
 
         // Process batches in parallel
-        let batch_results: Vec<Result<Vec<Vec<f32>>>> = join_all(
-            batches
-                .iter()
-                .map(|batch| self.embed_batch(batch))
-        )
-        .await;
+        let batch_results: Vec<Result<Vec<Vec<f32>>>> =
+            join_all(batches.iter().map(|batch| self.embed_batch(batch))).await;
 
         // Collect results, preserving order
         let mut all_embeddings = Vec::with_capacity(texts.len());
@@ -219,8 +215,12 @@ impl EmbeddingClient {
                 |e: &RetrievalError| {
                     // Retry on timeout and connection errors
                     let msg = e.to_string();
-                    msg.contains("timed out") || msg.contains("connect") || msg.contains("500")
-                        || msg.contains("502") || msg.contains("503") || msg.contains("504")
+                    msg.contains("timed out")
+                        || msg.contains("connect")
+                        || msg.contains("500")
+                        || msg.contains("502")
+                        || msg.contains("503")
+                        || msg.contains("504")
                 },
             )
             .await
@@ -257,7 +257,10 @@ impl EmbeddingClient {
 
         let status = response.status();
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(RetrievalError::embedding(format!(
                 "Embedding service returned {status}: {error_text}"
             )));

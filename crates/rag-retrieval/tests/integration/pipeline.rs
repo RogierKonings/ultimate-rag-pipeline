@@ -113,15 +113,24 @@ fn test_search_mode_options() {
     assert_eq!(hybrid.search_mode, SearchMode::Hybrid);
     assert_eq!(semantic.search_mode, SearchMode::Semantic);
     assert_eq!(keyword.search_mode, SearchMode::Keyword);
-
 }
 
 /// Test SearchPipelineResponse construction.
 #[test]
 fn test_pipeline_response_construction() {
     let results = vec![
-        RetrievalResult::new("chunk_1".into(), "doc_1".into(), "Test content 1".into(), 0.95),
-        RetrievalResult::new("chunk_2".into(), "doc_2".into(), "Test content 2".into(), 0.90),
+        RetrievalResult::new(
+            "chunk_1".into(),
+            "doc_1".into(),
+            "Test content 1".into(),
+            0.95,
+        ),
+        RetrievalResult::new(
+            "chunk_2".into(),
+            "doc_2".into(),
+            "Test content 2".into(),
+            0.90,
+        ),
     ];
 
     let metrics = RetrievalMetrics {
@@ -183,10 +192,16 @@ fn test_retrieval_debug_builder() {
         .with_processed_query("processed query text");
 
     assert_eq!(debug.query_type, Some(QueryType::Semantic));
-    assert_eq!(debug.expanded_terms, vec!["term1".to_string(), "term2".to_string()]);
+    assert_eq!(
+        debug.expanded_terms,
+        vec!["term1".to_string(), "term2".to_string()]
+    );
     assert!(debug.hyde_used);
     assert!(debug.cache_hit);
-    assert_eq!(debug.processed_query, Some("processed query text".to_string()));
+    assert_eq!(
+        debug.processed_query,
+        Some("processed query text".to_string())
+    );
 }
 
 /// Test RetrievalResult construction with all fields.
@@ -209,7 +224,10 @@ fn test_retrieval_result_full_construction() {
     assert_eq!(result.content, "This is the chunk content.");
     assert!((result.score - 0.95).abs() < f32::EPSILON);
     assert_eq!(result.title.as_deref(), Some("Test Document"));
-    assert_eq!(result.source_uri.as_deref(), Some("https://example.com/doc.pdf"));
+    assert_eq!(
+        result.source_uri.as_deref(),
+        Some("https://example.com/doc.pdf")
+    );
     assert!((result.semantic_score.unwrap() - 0.92).abs() < f32::EPSILON);
     assert!((result.keyword_score.unwrap() - 0.88).abs() < f32::EPSILON);
     assert!((result.rerank_score.unwrap() - 0.95).abs() < f32::EPSILON);
@@ -228,7 +246,10 @@ fn test_user_context_creation() {
 
     assert_eq!(ctx.user_id, user_id);
     assert_eq!(ctx.tenant_id, tenant_id);
-    assert_eq!(ctx.groups, vec!["engineering".to_string(), "backend".to_string()]);
+    assert_eq!(
+        ctx.groups,
+        vec!["engineering".to_string(), "backend".to_string()]
+    );
     assert_eq!(ctx.roles, vec!["developer".to_string()]);
     assert!(!ctx.is_admin);
 }
@@ -236,8 +257,8 @@ fn test_user_context_creation() {
 /// Test UserContext access control for different visibility levels.
 #[test]
 fn test_user_context_access_control() {
-    let ctx = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
-        .with_groups(vec!["engineering".into()]);
+    let ctx =
+        UserContext::new(Uuid::new_v4(), Uuid::new_v4()).with_groups(vec!["engineering".into()]);
 
     // Public documents are always accessible
     assert!(ctx.can_access(Visibility::Public, &[]));
@@ -264,8 +285,7 @@ fn test_user_context_access_control() {
 /// Test admin access bypasses all restrictions.
 #[test]
 fn test_admin_access_control() {
-    let admin_ctx = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
-        .with_admin(true);
+    let admin_ctx = UserContext::new(Uuid::new_v4(), Uuid::new_v4()).with_admin(true);
 
     // Admin can access everything
     assert!(admin_ctx.can_access(Visibility::Public, &[]));
@@ -277,10 +297,22 @@ fn test_admin_access_control() {
 /// Test QueryType recommended search modes.
 #[test]
 fn test_query_type_recommended_modes() {
-    assert_eq!(QueryType::Simple.recommended_search_mode(), SearchMode::Keyword);
-    assert_eq!(QueryType::Question.recommended_search_mode(), SearchMode::Hybrid);
-    assert_eq!(QueryType::Semantic.recommended_search_mode(), SearchMode::Semantic);
-    assert_eq!(QueryType::Hybrid.recommended_search_mode(), SearchMode::Hybrid);
+    assert_eq!(
+        QueryType::Simple.recommended_search_mode(),
+        SearchMode::Keyword
+    );
+    assert_eq!(
+        QueryType::Question.recommended_search_mode(),
+        SearchMode::Hybrid
+    );
+    assert_eq!(
+        QueryType::Semantic.recommended_search_mode(),
+        SearchMode::Semantic
+    );
+    assert_eq!(
+        QueryType::Hybrid.recommended_search_mode(),
+        SearchMode::Hybrid
+    );
 }
 
 /// Test Visibility requirements for ACL checking.
@@ -360,7 +392,8 @@ fn test_user_context_serialization() {
 /// Test empty pipeline response.
 #[test]
 fn test_empty_pipeline_response() {
-    let response = SearchPipelineResponse::new(Vec::new(), RetrievalMetrics::new(), RetrievalDebug::new());
+    let response =
+        SearchPipelineResponse::new(Vec::new(), RetrievalMetrics::new(), RetrievalDebug::new());
 
     assert!(response.is_empty());
     assert_eq!(response.len(), 0);
@@ -373,7 +406,7 @@ fn test_pipeline_config_validation_patterns() {
     // (validation would happen at runtime)
     let config = PipelineConfig::new()
         .with_reranking(true)
-        .with_rerank_top_k(5)  // Rerank fewer than final
+        .with_rerank_top_k(5) // Rerank fewer than final
         .with_final_top_k(10);
 
     // Configuration is valid even if rerank_top_k < final_top_k

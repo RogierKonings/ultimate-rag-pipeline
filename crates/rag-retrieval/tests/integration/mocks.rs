@@ -126,7 +126,11 @@ impl MockVectorStore {
     }
 
     /// Simulate a search query.
-    pub fn search(&self, _embedding: &[f32], top_k: usize) -> Result<Vec<MockSearchResult>, String> {
+    pub fn search(
+        &self,
+        _embedding: &[f32],
+        top_k: usize,
+    ) -> Result<Vec<MockSearchResult>, String> {
         let mut count = self.call_count.lock().unwrap();
         *count += 1;
 
@@ -537,13 +541,10 @@ mod tests {
     #[test]
     fn test_mock_keyword_searcher() {
         let chunk_id = Uuid::new_v4();
-        let results = vec![MockSearchResult::new(
-            chunk_id,
-            Uuid::new_v4(),
-            "Content",
-            12.0,
-        )
-        .with_highlights(vec!["<em>Content</em>".into()])];
+        let results = vec![
+            MockSearchResult::new(chunk_id, Uuid::new_v4(), "Content", 12.0)
+                .with_highlights(vec!["<em>Content</em>".into()]),
+        ];
 
         let searcher = MockKeywordSearcher::new(results);
 

@@ -115,7 +115,10 @@ impl ACLFilter {
 
         // Tenant isolation (always required unless super tenant)
         if !self.config.is_super_tenant(user.tenant_id) {
-            filter = filter.must(FilterCondition::value("tenant_id", user.tenant_id.to_string()));
+            filter = filter.must(FilterCondition::value(
+                "tenant_id",
+                user.tenant_id.to_string(),
+            ));
         }
 
         // Visibility options (document must match at least one)
@@ -134,7 +137,10 @@ impl ACLFilter {
 
         // 3. Documents allowed for user's groups
         if !user.groups.is_empty() {
-            filter = filter.should(FilterCondition::any_of("allowed_groups", user.groups.clone()));
+            filter = filter.should(FilterCondition::any_of(
+                "allowed_groups",
+                user.groups.clone(),
+            ));
         }
 
         // 4. Documents explicitly allowed for this user
@@ -148,7 +154,10 @@ impl ACLFilter {
 
         // Denied access (must not match any)
         if !user.groups.is_empty() {
-            filter = filter.must_not(FilterCondition::any_of("denied_groups", user.groups.clone()));
+            filter = filter.must_not(FilterCondition::any_of(
+                "denied_groups",
+                user.groups.clone(),
+            ));
         }
 
         filter = filter.must_not(FilterCondition::any_of(
@@ -403,8 +412,8 @@ fn visibility_to_string(visibility: Visibility) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::MatchType;
+    use super::*;
 
     /// Helper struct for testing HasACLFields
     #[derive(Debug, Clone)]
@@ -536,11 +545,9 @@ mod tests {
         let filter = acl.build_filter(&user, None);
 
         // Should have tenant_id and status in must
-        assert!(filter
-            .must
-            .iter()
-            .any(|c| c.key == "tenant_id"
-                && c.match_type == MatchType::Value(tenant_id.to_string())));
+        assert!(filter.must.iter().any(
+            |c| c.key == "tenant_id" && c.match_type == MatchType::Value(tenant_id.to_string())
+        ));
         assert!(filter
             .must
             .iter()
@@ -574,10 +581,12 @@ mod tests {
         let filter = acl.build_filter(&user, None);
 
         // Should have visibility options in should
-        assert!(filter.should.iter().any(|c| c.key == "visibility"
-            && c.match_type == MatchType::Value("public".to_string())));
-        assert!(filter.should.iter().any(|c| c.key == "visibility"
-            && c.match_type == MatchType::Value("tenant".to_string())));
+        assert!(filter.should.iter().any(
+            |c| c.key == "visibility" && c.match_type == MatchType::Value("public".to_string())
+        ));
+        assert!(filter.should.iter().any(
+            |c| c.key == "visibility" && c.match_type == MatchType::Value("tenant".to_string())
+        ));
         assert!(filter.should.iter().any(|c| c.key == "allowed_groups"));
         assert!(filter.should.iter().any(|c| c.key == "allowed_users"));
         assert!(filter.should.iter().any(|c| c.key == "owner_id"));
@@ -589,8 +598,8 @@ mod tests {
         let acl = ACLFilter::new(config);
 
         let user_id = Uuid::new_v4();
-        let user = UserContext::new(user_id, Uuid::new_v4())
-            .with_groups(vec!["engineering".into()]);
+        let user =
+            UserContext::new(user_id, Uuid::new_v4()).with_groups(vec!["engineering".into()]);
         let filter = acl.build_filter(&user, None);
 
         // Should have denied_groups and denied_users in must_not
@@ -759,8 +768,7 @@ mod tests {
         let acl = ACLFilter::new(config);
 
         let tenant_id = Uuid::new_v4();
-        let user = UserContext::new(Uuid::new_v4(), tenant_id)
-            .with_groups(vec!["sales".into()]);
+        let user = UserContext::new(Uuid::new_v4(), tenant_id).with_groups(vec!["sales".into()]);
 
         // User not in allowed group cannot access
         assert!(!acl.can_access(
@@ -803,8 +811,8 @@ mod tests {
         let acl = ACLFilter::new(config);
 
         let tenant_id = Uuid::new_v4();
-        let user = UserContext::new(Uuid::new_v4(), tenant_id)
-            .with_groups(vec!["contractors".into()]);
+        let user =
+            UserContext::new(Uuid::new_v4(), tenant_id).with_groups(vec!["contractors".into()]);
 
         // User in denied group cannot access
         assert!(!acl.can_access(
@@ -872,8 +880,7 @@ mod tests {
 
         let tenant_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
-        let user = UserContext::new(user_id, tenant_id)
-            .with_groups(vec!["engineering".into()]);
+        let user = UserContext::new(user_id, tenant_id).with_groups(vec!["engineering".into()]);
 
         let docs = vec![
             TestDocument::new("doc1", tenant_id, Visibility::Public),

@@ -115,9 +115,7 @@ pub async fn liveness() -> Json<LivenessResponse> {
 /// # Errors
 ///
 /// Returns 503 Service Unavailable if all search backends are down.
-pub async fn readiness(
-    State(state): State<Arc<AppState>>,
-) -> ApiResult<Json<ReadinessResponse>> {
+pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<ReadinessResponse>> {
     // Check if at least one search backend is available
     let (qdrant_healthy, opensearch_healthy) = quick_health_check(&state).await;
 

@@ -141,8 +141,7 @@ fn main() {
 
     let rrf_base = measure_rrf_fusion(base_size, base_size);
     let rrf_large = measure_rrf_fusion(large_size, large_size);
-    let rrf_per_item =
-        (rrf_large as f64 - rrf_base as f64) / ((large_size - base_size) * 2) as f64;
+    let rrf_per_item = (rrf_large as f64 - rrf_base as f64) / ((large_size - base_size) * 2) as f64;
 
     let linear_base = measure_linear_fusion(base_size, base_size);
     let linear_large = measure_linear_fusion(large_size, large_size);
@@ -177,7 +176,5 @@ fn main() {
 
     println!();
     println!("Profiling complete. See dhat-heap.json for detailed allocation report.");
-    println!(
-        "View at: https://nnethercote.github.io/dh_view/dh_view.html"
-    );
+    println!("View at: https://nnethercote.github.io/dh_view/dh_view.html");
 }

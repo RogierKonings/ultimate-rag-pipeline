@@ -7,11 +7,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::{
-    extract::State,
-    http::HeaderMap,
-    Json,
-};
+use axum::{extract::State, http::HeaderMap, Json};
 use chrono::Utc;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
@@ -20,8 +16,7 @@ use crate::api::degradation::{evaluate, ComponentOutcome};
 use crate::api::error::{ApiError, ApiResult};
 use crate::api::state::AppState;
 use crate::api::types::{
-    ExplainEffectiveConfig, ExplainResponse, ExplainResultSummary, ExplainStage,
-    RetrieveRequest,
+    ExplainEffectiveConfig, ExplainResponse, ExplainResultSummary, ExplainStage, RetrieveRequest,
 };
 use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
@@ -193,10 +188,7 @@ async fn execute_explain_pipeline(
     outcome = outcome.with_embedding_ok();
     let embed_ms = embed_start.elapsed().as_secs_f64() * 1000.0;
 
-    stages.push(
-        ExplainStage::executed("embedding", embed_ms)
-            .with_counts(1, 1),
-    );
+    stages.push(ExplainStage::executed("embedding", embed_ms).with_counts(1, 1));
 
     // Stage 2: Parse filters
     let unified_filter = match &request.filters {
@@ -238,20 +230,14 @@ async fn execute_explain_pipeline(
 
             // Semantic search stage
             stages.push(
-                ExplainStage::executed(
-                    "semantic_search",
-                    result.semantic_time_ms as f64,
-                )
-                .with_counts(0, result.total_semantic),
+                ExplainStage::executed("semantic_search", result.semantic_time_ms as f64)
+                    .with_counts(0, result.total_semantic),
             );
 
             // Keyword search stage
             stages.push(
-                ExplainStage::executed(
-                    "keyword_search",
-                    result.keyword_time_ms as f64,
-                )
-                .with_counts(0, result.total_keyword),
+                ExplainStage::executed("keyword_search", result.keyword_time_ms as f64)
+                    .with_counts(0, result.total_keyword),
             );
 
             // Fusion stage
@@ -374,7 +360,10 @@ async fn execute_explain_pipeline(
             {
                 Ok(reranked) => {
                     let mut result_map: std::collections::HashMap<String, RetrievalResult> =
-                        results.into_iter().map(|r| (r.chunk_id.clone(), r)).collect();
+                        results
+                            .into_iter()
+                            .map(|r| (r.chunk_id.clone(), r))
+                            .collect();
 
                     results = reranked
                         .into_iter()
@@ -411,10 +400,7 @@ async fn execute_explain_pipeline(
             "Reranker requested but not available in this deployment",
         ));
     } else {
-        stages.push(ExplainStage::skipped(
-            "reranking",
-            "Not requested",
-        ));
+        stages.push(ExplainStage::skipped("reranking", "Not requested"));
     }
 
     outcome = outcome.with_rerank(rerank_requested, rerank_ok);
@@ -429,10 +415,8 @@ async fn execute_explain_pipeline(
         .collect();
 
     let acl_ms = acl_start.elapsed().as_secs_f64() * 1000.0;
-    stages.push(
-        ExplainStage::executed("acl_filter", acl_ms)
-            .with_counts(before_acl, results.len()),
-    );
+    stages
+        .push(ExplainStage::executed("acl_filter", acl_ms).with_counts(before_acl, results.len()));
 
     // Stage 6: Score threshold
     if request.min_score > 0.0 {
@@ -449,8 +433,7 @@ async fn execute_explain_pipeline(
     let before_topk = results.len();
     results.truncate(request.top_k);
     stages.push(
-        ExplainStage::executed("top_k_truncation", 0.0)
-            .with_counts(before_topk, results.len()),
+        ExplainStage::executed("top_k_truncation", 0.0).with_counts(before_topk, results.len()),
     );
 
     Ok((results, stages, outcome))
@@ -530,14 +513,20 @@ mod tests {
     #[test]
     fn test_extract_user_context_with_groups() {
         let mut headers = HeaderMap::new();
-        headers.insert("X-User-Groups", "engineering, product, backend".parse().unwrap());
+        headers.insert(
+            "X-User-Groups",
+            "engineering, product, backend".parse().unwrap(),
+        );
 
         let ctx = extract_user_context(&headers, Uuid::nil());
-        assert_eq!(ctx.groups, vec![
-            "engineering".to_string(),
-            "product".to_string(),
-            "backend".to_string(),
-        ]);
+        assert_eq!(
+            ctx.groups,
+            vec![
+                "engineering".to_string(),
+                "product".to_string(),
+                "backend".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -580,9 +569,12 @@ mod tests {
 
     #[test]
     fn test_build_result_summary_single_result() {
-        let results = vec![
-            RetrievalResult::new("c1".into(), "d1".into(), "content".into(), 0.9),
-        ];
+        let results = vec![RetrievalResult::new(
+            "c1".into(),
+            "d1".into(),
+            "content".into(),
+            0.9,
+        )];
 
         let summary = build_result_summary(&results);
 
@@ -618,8 +610,7 @@ mod tests {
 
     #[test]
     fn test_explain_stage_with_counts() {
-        let stage = ExplainStage::executed("fusion", 2.0)
-            .with_counts(100, 50);
+        let stage = ExplainStage::executed("fusion", 2.0).with_counts(100, 50);
         assert_eq!(stage.input_count, Some(100));
         assert_eq!(stage.output_count, Some(50));
     }
@@ -690,7 +681,10 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("X-User-Admin", "false".parse().unwrap());
         let ctx = extract_user_context(&headers, Uuid::nil());
-        assert!(!ctx.is_admin, "Explicit false should not grant admin access");
+        assert!(
+            !ctx.is_admin,
+            "Explicit false should not grant admin access"
+        );
     }
 
     #[test]
@@ -714,6 +708,9 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("X-User-Admin", "TRUE".parse().unwrap());
         let ctx = extract_user_context(&headers, Uuid::nil());
-        assert!(ctx.is_admin, "Admin header check should be case insensitive");
+        assert!(
+            ctx.is_admin,
+            "Admin header check should be case insensitive"
+        );
     }
 }

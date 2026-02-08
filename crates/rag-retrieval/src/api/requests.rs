@@ -199,9 +199,8 @@ impl RetrieveRequest {
         };
 
         // Check for structured format
-        let is_structured = obj.contains_key("must")
-            || obj.contains_key("should")
-            || obj.contains_key("must_not");
+        let is_structured =
+            obj.contains_key("must") || obj.contains_key("should") || obj.contains_key("must_not");
 
         if is_structured {
             // Validate structured filter arrays
@@ -331,10 +330,7 @@ impl MultiQueryRequest {
         }
 
         if self.queries.len() > 5 {
-            return Err(ValidationError::new(
-                "queries",
-                "Cannot exceed 5 queries",
-            ));
+            return Err(ValidationError::new("queries", "Cannot exceed 5 queries"));
         }
 
         for (i, query) in self.queries.iter().enumerate() {

@@ -11,9 +11,12 @@ use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
 use crate::acl::{MatchType, UnifiedFilter};
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::fusion::{fuse, FusionConfig, ScoredItem};
-use crate::search::{KeywordResult, KeywordSearchFilters, KeywordSearcher, SearchFilters, SemanticResult, SemanticSearcher};
+use crate::search::{
+    KeywordResult, KeywordSearchFilters, KeywordSearcher, SearchFilters, SemanticResult,
+    SemanticSearcher,
+};
 
 use super::config::HybridSearchConfig;
 use super::response::{HybridSearchResponse, HybridSearchResult};
@@ -123,12 +126,8 @@ impl HybridSearcher {
                 semantic_filters,
                 Some(self.config.semantic_top_k),
             ),
-            self.keyword.search(
-                query,
-                ctx,
-                keyword_filters,
-                Some(self.config.keyword_top_k),
-            ),
+            self.keyword
+                .search(query, ctx, keyword_filters, Some(self.config.keyword_top_k),),
         );
 
         let semantic_time_ms = semantic_start.elapsed().as_millis() as u64;
@@ -150,10 +149,7 @@ impl HybridSearcher {
 
         debug!(
             total_semantic,
-            total_keyword,
-            semantic_time_ms,
-            keyword_time_ms,
-            "Parallel search completed"
+            total_keyword, semantic_time_ms, keyword_time_ms, "Parallel search completed"
         );
 
         // Build content lookup maps for enriching fused results
@@ -185,55 +181,63 @@ impl HybridSearcher {
 
         let fusion_time_ms = fusion_start.elapsed().as_millis() as u64;
 
-        debug!(fused_count = fused_results.len(), fusion_time_ms, "Fusion completed");
+        debug!(
+            fused_count = fused_results.len(),
+            fusion_time_ms, "Fusion completed"
+        );
 
         // Enrich fused results with content data
         let mut enriched_results: Vec<HybridSearchResult> = fused_results
             .into_iter()
             .filter_map(|fused| {
                 // Get content from either source
-                let (content, document_id, title, source_uri, chunk_index, visibility, allowed_groups, highlights, metadata) =
-                    if let Some(semantic) = semantic_content_map.get(&fused.id) {
-                        (
-                            semantic.content.clone(),
-                            semantic.document_id,
-                            semantic.title.clone(),
-                            semantic.source_uri.clone(),
-                            semantic.chunk_index,
-                            semantic.visibility,
-                            semantic.allowed_groups.clone(),
-                            Vec::new(),
-                            semantic.metadata.clone(),
-                        )
-                    } else if let Some(keyword) = keyword_content_map.get(&fused.id) {
-                        (
-                            keyword.content.clone(),
-                            keyword.document_id,
-                            keyword.title.clone(),
-                            keyword.source_uri.clone(),
-                            keyword.chunk_index,
-                            keyword.visibility,
-                            keyword.allowed_groups.clone(),
-                            keyword.highlights.clone(),
-                            keyword.metadata.clone(),
-                        )
-                    } else {
-                        // This shouldn't happen, but skip if it does
-                        warn!("Fused result {} has no content source", fused.id);
-                        return None;
-                    };
-
-                let mut result = HybridSearchResult::new(
-                    fused.id,
-                    document_id,
+                let (
                     content,
-                    fused.fused_score,
-                )
-                .with_chunk_index(chunk_index)
-                .with_visibility(visibility)
-                .with_allowed_groups(allowed_groups)
-                .with_highlights(highlights)
-                .with_metadata(metadata);
+                    document_id,
+                    title,
+                    source_uri,
+                    chunk_index,
+                    visibility,
+                    allowed_groups,
+                    highlights,
+                    metadata,
+                ) = if let Some(semantic) = semantic_content_map.get(&fused.id) {
+                    (
+                        semantic.content.clone(),
+                        semantic.document_id,
+                        semantic.title.clone(),
+                        semantic.source_uri.clone(),
+                        semantic.chunk_index,
+                        semantic.visibility,
+                        semantic.allowed_groups.clone(),
+                        Vec::new(),
+                        semantic.metadata.clone(),
+                    )
+                } else if let Some(keyword) = keyword_content_map.get(&fused.id) {
+                    (
+                        keyword.content.clone(),
+                        keyword.document_id,
+                        keyword.title.clone(),
+                        keyword.source_uri.clone(),
+                        keyword.chunk_index,
+                        keyword.visibility,
+                        keyword.allowed_groups.clone(),
+                        keyword.highlights.clone(),
+                        keyword.metadata.clone(),
+                    )
+                } else {
+                    // This shouldn't happen, but skip if it does
+                    warn!("Fused result {} has no content source", fused.id);
+                    return None;
+                };
+
+                let mut result =
+                    HybridSearchResult::new(fused.id, document_id, content, fused.fused_score)
+                        .with_chunk_index(chunk_index)
+                        .with_visibility(visibility)
+                        .with_allowed_groups(allowed_groups)
+                        .with_highlights(highlights)
+                        .with_metadata(metadata);
 
                 if let Some(title) = title {
                     result = result.with_title(title);
@@ -312,13 +316,9 @@ impl HybridSearcher {
         let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
         let ctx = user_context.unwrap_or(&default_ctx);
 
-        let results = self.semantic
-            .search(
-                query_embedding,
-                ctx,
-                semantic_filters,
-                Some(top_k),
-            )
+        let results = self
+            .semantic
+            .search(query_embedding, ctx, semantic_filters, Some(top_k))
             .await?;
 
         let search_time_ms = start_time.elapsed().as_millis() as u64;
@@ -329,17 +329,13 @@ impl HybridSearcher {
             .into_iter()
             .enumerate()
             .map(|(i, r)| {
-                let mut result = HybridSearchResult::new(
-                    r.chunk_id,
-                    r.document_id,
-                    r.content,
-                    r.score,
-                )
-                .with_semantic(r.score, i + 1)
-                .with_chunk_index(r.chunk_index)
-                .with_visibility(r.visibility)
-                .with_allowed_groups(r.allowed_groups)
-                .with_metadata(r.metadata);
+                let mut result =
+                    HybridSearchResult::new(r.chunk_id, r.document_id, r.content, r.score)
+                        .with_semantic(r.score, i + 1)
+                        .with_chunk_index(r.chunk_index)
+                        .with_visibility(r.visibility)
+                        .with_allowed_groups(r.allowed_groups)
+                        .with_metadata(r.metadata);
 
                 if let Some(title) = r.title {
                     result = result.with_title(title);
@@ -386,13 +382,9 @@ impl HybridSearcher {
         let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
         let ctx = user_context.unwrap_or(&default_ctx);
 
-        let results = self.keyword
-            .search(
-                query,
-                ctx,
-                keyword_filters,
-                Some(top_k),
-            )
+        let results = self
+            .keyword
+            .search(query, ctx, keyword_filters, Some(top_k))
             .await?;
 
         let search_time_ms = start_time.elapsed().as_millis() as u64;
@@ -403,18 +395,14 @@ impl HybridSearcher {
             .into_iter()
             .enumerate()
             .map(|(i, r)| {
-                let mut result = HybridSearchResult::new(
-                    r.chunk_id,
-                    r.document_id,
-                    r.content,
-                    r.score,
-                )
-                .with_keyword(r.score, i + 1)
-                .with_chunk_index(r.chunk_index)
-                .with_visibility(r.visibility)
-                .with_allowed_groups(r.allowed_groups)
-                .with_highlights(r.highlights)
-                .with_metadata(r.metadata);
+                let mut result =
+                    HybridSearchResult::new(r.chunk_id, r.document_id, r.content, r.score)
+                        .with_keyword(r.score, i + 1)
+                        .with_chunk_index(r.chunk_index)
+                        .with_visibility(r.visibility)
+                        .with_allowed_groups(r.allowed_groups)
+                        .with_highlights(r.highlights)
+                        .with_metadata(r.metadata);
 
                 if let Some(title) = r.title {
                     result = result.with_title(title);
@@ -443,10 +431,8 @@ impl HybridSearcher {
     /// Returns `Ok(true)` if both backends are healthy, `Ok(false)` if one or both
     /// are unhealthy, or an error if health checks fail.
     pub async fn health_check(&self) -> Result<bool> {
-        let (semantic_health, keyword_health) = tokio::join!(
-            self.semantic.health_check(),
-            self.keyword.health_check(),
-        );
+        let (semantic_health, keyword_health) =
+            tokio::join!(self.semantic.health_check(), self.keyword.health_check(),);
 
         match (semantic_health, keyword_health) {
             (Ok(()), Ok(())) => Ok(true),
@@ -467,9 +453,10 @@ impl HybridSearcher {
     ///
     /// Returns an error if the semantic search backend is unhealthy.
     pub async fn health_check_semantic(&self) -> Result<()> {
-        self.semantic.health_check().await.map_err(|e| {
-            RetrievalError::semantic_search(format!("Health check failed: {e}"))
-        })
+        self.semantic
+            .health_check()
+            .await
+            .map_err(|e| RetrievalError::semantic_search(format!("Health check failed: {e}")))
     }
 
     /// Check health of the keyword search backend (OpenSearch).
@@ -478,9 +465,10 @@ impl HybridSearcher {
     ///
     /// Returns an error if the keyword search backend is unhealthy.
     pub async fn health_check_keyword(&self) -> Result<()> {
-        self.keyword.health_check().await.map_err(|e| {
-            RetrievalError::keyword_search(format!("Health check failed: {e}"))
-        })
+        self.keyword
+            .health_check()
+            .await
+            .map_err(|e| RetrievalError::keyword_search(format!("Health check failed: {e}")))
     }
 
     /// Get the current configuration.
@@ -593,8 +581,7 @@ fn convert_to_semantic_filters(filter: &UnifiedFilter) -> SearchFilters {
                             key = key,
                             "Converting Any filter to single-value custom filter for semantic search"
                         );
-                        search_filters =
-                            search_filters.with_custom(key.to_string(), first.clone());
+                        search_filters = search_filters.with_custom(key.to_string(), first.clone());
                     }
                 }
             }
@@ -707,24 +694,9 @@ mod tests {
         let doc_id_2 = Uuid::new_v4();
 
         let results = vec![
-            HybridSearchResult::new(
-                Uuid::new_v4(),
-                doc_id_1,
-                "Chunk 1 from Doc 1".into(),
-                0.95,
-            ),
-            HybridSearchResult::new(
-                Uuid::new_v4(),
-                doc_id_1,
-                "Chunk 2 from Doc 1".into(),
-                0.90,
-            ),
-            HybridSearchResult::new(
-                Uuid::new_v4(),
-                doc_id_2,
-                "Chunk 1 from Doc 2".into(),
-                0.85,
-            ),
+            HybridSearchResult::new(Uuid::new_v4(), doc_id_1, "Chunk 1 from Doc 1".into(), 0.95),
+            HybridSearchResult::new(Uuid::new_v4(), doc_id_1, "Chunk 2 from Doc 1".into(), 0.90),
+            HybridSearchResult::new(Uuid::new_v4(), doc_id_2, "Chunk 1 from Doc 2".into(), 0.85),
         ];
 
         // Simulate deduplication logic
@@ -804,8 +776,7 @@ mod tests {
 
     #[test]
     fn test_convert_to_semantic_filters_source_type() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("source_type", "pdf"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("source_type", "pdf"));
 
         let result = convert_to_semantic_filters(&filter);
         assert_eq!(result.source_type, Some("pdf".to_string()));
@@ -814,8 +785,8 @@ mod tests {
     #[test]
     fn test_convert_to_semantic_filters_document_id() {
         let doc_id = Uuid::new_v4();
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("document_id", doc_id.to_string()));
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::value("document_id", doc_id.to_string()));
 
         let result = convert_to_semantic_filters(&filter);
         assert_eq!(result.document_id, Some(doc_id));
@@ -823,11 +794,10 @@ mod tests {
 
     #[test]
     fn test_convert_to_semantic_filters_groups_any() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::any_of(
-                "allowed_groups",
-                vec!["engineering".to_string(), "product".to_string()],
-            ));
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["engineering".to_string(), "product".to_string()],
+        ));
 
         let result = convert_to_semantic_filters(&filter);
         assert_eq!(
@@ -838,8 +808,8 @@ mod tests {
 
     #[test]
     fn test_convert_to_semantic_filters_groups_single_value() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("allowed_groups", "engineering"));
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::value("allowed_groups", "engineering"));
 
         let result = convert_to_semantic_filters(&filter);
         assert_eq!(result.groups, Some(vec!["engineering".to_string()]));
@@ -847,8 +817,7 @@ mod tests {
 
     #[test]
     fn test_convert_to_semantic_filters_custom_field() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("category", "docs"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("category", "docs"));
 
         let result = convert_to_semantic_filters(&filter);
         assert_eq!(result.custom.get("category"), Some(&"docs".to_string()));
@@ -870,8 +839,7 @@ mod tests {
 
     #[test]
     fn test_convert_to_semantic_filters_invalid_uuid_ignored() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("document_id", "not-a-uuid"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("document_id", "not-a-uuid"));
 
         let result = convert_to_semantic_filters(&filter);
         assert!(result.document_id.is_none());
@@ -889,8 +857,7 @@ mod tests {
 
     #[test]
     fn test_convert_to_keyword_filters_source_type() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("source_type", "pdf"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("source_type", "pdf"));
 
         let result = convert_to_keyword_filters(&filter);
         assert_eq!(result.source_type, Some("pdf".to_string()));
@@ -899,8 +866,8 @@ mod tests {
     #[test]
     fn test_convert_to_keyword_filters_document_id() {
         let doc_id = Uuid::new_v4();
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("document_id", doc_id.to_string()));
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::value("document_id", doc_id.to_string()));
 
         let result = convert_to_keyword_filters(&filter);
         assert_eq!(result.document_id, Some(doc_id));
@@ -908,11 +875,10 @@ mod tests {
 
     #[test]
     fn test_convert_to_keyword_filters_groups() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::any_of(
-                "allowed_groups",
-                vec!["engineering".to_string()],
-            ));
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["engineering".to_string()],
+        ));
 
         let result = convert_to_keyword_filters(&filter);
         assert_eq!(result.groups, Some(vec!["engineering".to_string()]));
@@ -920,8 +886,7 @@ mod tests {
 
     #[test]
     fn test_convert_to_keyword_filters_custom_field() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("category", "docs"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value("category", "docs"));
 
         let result = convert_to_keyword_filters(&filter);
         assert_eq!(result.custom.get("category"), Some(&"docs".to_string()));
@@ -951,8 +916,8 @@ mod tests {
 
     #[test]
     fn test_convert_to_keyword_filters_invalid_uuid_ignored() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("document_id", "invalid-uuid"));
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::value("document_id", "invalid-uuid"));
 
         let result = convert_to_keyword_filters(&filter);
         assert!(result.document_id.is_none());

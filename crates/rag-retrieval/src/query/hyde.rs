@@ -31,7 +31,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, warn};
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 
 /// Query placeholder used in the prompt template.
 const QUERY_PLACEHOLDER: &str = "{query}";
@@ -208,7 +208,10 @@ impl HydeConfig {
     /// Get the chat completions API endpoint URL.
     #[must_use]
     pub fn completions_endpoint(&self) -> String {
-        format!("{}/v1/chat/completions", self.llm_gateway_url.trim_end_matches('/'))
+        format!(
+            "{}/v1/chat/completions",
+            self.llm_gateway_url.trim_end_matches('/')
+        )
     }
 
     /// Load configuration from environment variables.
@@ -316,7 +319,11 @@ pub struct HydeResult {
 impl HydeResult {
     /// Create a new successful `HyDE` result.
     #[must_use]
-    pub const fn success(original_query: String, hypothetical_docs: Vec<String>, generation_time_ms: u64) -> Self {
+    pub const fn success(
+        original_query: String,
+        hypothetical_docs: Vec<String>,
+        generation_time_ms: u64,
+    ) -> Self {
         Self {
             original_query,
             hypothetical_docs,
@@ -485,8 +492,7 @@ impl HydeGenerator {
         } else {
             debug!(
                 num_docs = hypothetical_docs.len(),
-                generation_time_ms,
-                "HyDE generation successful"
+                generation_time_ms, "HyDE generation successful"
             );
             Ok(HydeResult::success(
                 query.to_string(),
@@ -499,7 +505,9 @@ impl HydeGenerator {
     /// Build the prompt for `HyDE` generation.
     #[must_use]
     pub fn build_prompt(&self, query: &str) -> String {
-        self.config.prompt_template.replace(QUERY_PLACEHOLDER, query)
+        self.config
+            .prompt_template
+            .replace(QUERY_PLACEHOLDER, query)
     }
 
     /// Generate a single hypothetical document.
@@ -544,15 +552,19 @@ impl HydeGenerator {
 
         let status = response.status();
         if !status.is_success() {
-            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(RetrievalError::llm(format!(
                 "LLM gateway returned {status}: {error_text}"
             )));
         }
 
-        let llm_response: LlmResponse = response.json().await.map_err(|e| {
-            RetrievalError::llm(format!("Failed to parse LLM response: {e}"))
-        })?;
+        let llm_response: LlmResponse = response
+            .json()
+            .await
+            .map_err(|e| RetrievalError::llm(format!("Failed to parse LLM response: {e}")))?;
 
         llm_response
             .choices
@@ -866,7 +878,10 @@ mod llm_integration_tests {
             .with_timeout_ms(5000);
 
         let generator = HydeGenerator::new(config).unwrap();
-        let result = generator.generate("What is machine learning?").await.unwrap();
+        let result = generator
+            .generate("What is machine learning?")
+            .await
+            .unwrap();
 
         assert!(result.success);
         assert_eq!(result.hypothetical_docs.len(), 1);
@@ -881,10 +896,9 @@ mod llm_integration_tests {
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(&mock_completion_response(
-                        "A hypothetical document about the topic.",
-                    )),
+                ResponseTemplate::new(200).set_body_json(&mock_completion_response(
+                    "A hypothetical document about the topic.",
+                )),
             )
             .expect(3) // Should be called 3 times for 3 docs
             .mount(&mock_server)

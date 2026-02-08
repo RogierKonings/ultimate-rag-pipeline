@@ -114,7 +114,8 @@ impl ACLFilterConfig {
     /// Check if the given tenant is the super tenant.
     #[must_use]
     pub fn is_super_tenant(&self, tenant_id: Uuid) -> bool {
-        self.super_tenant_id.map_or(false, |super_id| super_id == tenant_id)
+        self.super_tenant_id
+            .map_or(false, |super_id| super_id == tenant_id)
     }
 
     /// Load configuration from environment variables.
@@ -201,7 +202,9 @@ impl ACLFilterConfigBuilder {
             enabled: self.enabled.unwrap_or(default.enabled),
             admin_bypass: self.admin_bypass.unwrap_or(default.admin_bypass),
             super_tenant_id: self.super_tenant_id.unwrap_or(default.super_tenant_id),
-            default_visibility: self.default_visibility.unwrap_or(default.default_visibility),
+            default_visibility: self
+                .default_visibility
+                .unwrap_or(default.default_visibility),
         }
     }
 }

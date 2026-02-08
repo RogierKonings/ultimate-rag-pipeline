@@ -202,7 +202,7 @@ pub use fusion::{
 };
 
 // Re-export error types
-pub use error::{RetrievalError, Result};
+pub use error::{Result, RetrievalError};
 
 // Re-export core types
 pub use types::{
@@ -219,7 +219,9 @@ pub use search::{
 pub use embedding::{EmbeddingClient, EmbeddingConfig};
 
 // Re-export reranking types
-pub use reranking::{RerankerClient, RerankerConfig, RerankerService, RerankResponse, RerankResult};
+pub use reranking::{
+    RerankResponse, RerankResult, RerankerClient, RerankerConfig, RerankerService,
+};
 
 // Re-export query types
 pub use query::{

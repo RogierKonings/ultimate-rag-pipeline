@@ -26,7 +26,10 @@ const SAMPLE_QUERIES: &[&str] = &[
 
 /// Long query for edge case testing.
 fn generate_long_query(words: usize) -> String {
-    (0..words).map(|i| format!("word{i}")).collect::<Vec<_>>().join(" ")
+    (0..words)
+        .map(|i| format!("word{i}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Benchmark query preprocessing with default config.
@@ -59,13 +62,9 @@ fn bench_preprocessing_by_length(c: &mut Criterion) {
     for word_count in [5, 10, 25, 50, 100, 200].iter() {
         let query = generate_long_query(*word_count);
 
-        group.bench_with_input(
-            BenchmarkId::new("words", word_count),
-            &query,
-            |b, query| {
-                b.iter(|| preprocessor.preprocess(black_box(query)));
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("words", word_count), &query, |b, query| {
+            b.iter(|| preprocessor.preprocess(black_box(query)));
+        });
     }
 
     group.finish();
@@ -104,9 +103,7 @@ fn bench_cache_key_complexity(c: &mut Criterion) {
 
     // Minimal key (query + tenant only)
     group.bench_function("minimal", |b| {
-        b.iter(|| {
-            CacheKeyBuilder::new(black_box(tenant_id), black_box(query)).build()
-        });
+        b.iter(|| CacheKeyBuilder::new(black_box(tenant_id), black_box(query)).build());
     });
 
     // Standard key (with user and mode)
@@ -122,8 +119,10 @@ fn bench_cache_key_complexity(c: &mut Criterion) {
 
     // Full key (with filters)
     group.bench_function("with_filters", |b| {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::any_of("allowed_groups", vec!["engineering".to_string(), "backend".to_string()]));
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["engineering".to_string(), "backend".to_string()],
+        ));
 
         b.iter(|| {
             CacheKeyBuilder::new(black_box(tenant_id), black_box(query))
@@ -152,7 +151,11 @@ fn bench_user_context_creation(c: &mut Criterion) {
 
     // Context with groups
     group.bench_function("with_groups", |b| {
-        let groups = vec!["group1".to_string(), "group2".to_string(), "group3".to_string()];
+        let groups = vec![
+            "group1".to_string(),
+            "group2".to_string(),
+            "group3".to_string(),
+        ];
 
         b.iter(|| {
             UserContext::new(black_box(user_id), black_box(tenant_id))
@@ -195,20 +198,31 @@ fn bench_access_control(c: &mut Criterion) {
     // Group access with match
     group.bench_function("group_match", |b| {
         b.iter(|| {
-            ctx.can_access(black_box(Visibility::Group), black_box(&allowed_groups_match))
+            ctx.can_access(
+                black_box(Visibility::Group),
+                black_box(&allowed_groups_match),
+            )
         });
     });
 
     // Group access without match
     group.bench_function("group_no_match", |b| {
         b.iter(|| {
-            ctx.can_access(black_box(Visibility::Group), black_box(&allowed_groups_no_match))
+            ctx.can_access(
+                black_box(Visibility::Group),
+                black_box(&allowed_groups_no_match),
+            )
         });
     });
 
     // Group access with many groups to check
     group.bench_function("group_many", |b| {
-        b.iter(|| ctx.can_access(black_box(Visibility::Group), black_box(&allowed_groups_many)));
+        b.iter(|| {
+            ctx.can_access(
+                black_box(Visibility::Group),
+                black_box(&allowed_groups_many),
+            )
+        });
     });
 
     group.finish();
@@ -304,17 +318,13 @@ fn bench_config_serialization(c: &mut Criterion) {
     // Deserialize hybrid config
     let hybrid_json = serde_json::to_string(&hybrid_config).unwrap();
     group.bench_function("hybrid_deserialize", |b| {
-        b.iter(|| {
-            serde_json::from_str::<HybridSearchConfig>(black_box(&hybrid_json))
-        });
+        b.iter(|| serde_json::from_str::<HybridSearchConfig>(black_box(&hybrid_json)));
     });
 
     // Deserialize pipeline config
     let pipeline_json = serde_json::to_string(&pipeline_config).unwrap();
     group.bench_function("pipeline_deserialize", |b| {
-        b.iter(|| {
-            serde_json::from_str::<PipelineConfig>(black_box(&pipeline_json))
-        });
+        b.iter(|| serde_json::from_str::<PipelineConfig>(black_box(&pipeline_json)));
     });
 
     group.finish();

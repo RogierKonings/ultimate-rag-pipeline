@@ -357,9 +357,7 @@ where
 }
 
 /// Build a map of ID -> (score, rank) from a list of scored items.
-fn build_score_rank_map<T: Clone + Eq + Hash>(
-    items: &[ScoredItem<T>],
-) -> HashMap<T, (f32, usize)> {
+fn build_score_rank_map<T: Clone + Eq + Hash>(items: &[ScoredItem<T>]) -> HashMap<T, (f32, usize)> {
     items
         .iter()
         .enumerate()

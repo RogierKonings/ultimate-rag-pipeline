@@ -12,8 +12,8 @@ use rag_retrieval::fusion::{
 /// Generate an arbitrary scored item with a string ID.
 fn arb_scored_item() -> impl Strategy<Value = ScoredItem<String>> {
     (
-        "[a-z]{1,10}",        // Random ID
-        0.0f32..=100.0f32,    // Score can range widely
+        "[a-z]{1,10}",     // Random ID
+        0.0f32..=100.0f32, // Score can range widely
     )
         .prop_map(|(id, score)| ScoredItem::new(id, score))
 }

@@ -86,6 +86,6 @@ mod client;
 mod config;
 mod service;
 
-pub use client::{RerankerClient, RerankResponse, RerankResult};
+pub use client::{RerankResponse, RerankResult, RerankerClient};
 pub use config::RerankerConfig;
 pub use service::RerankerService;

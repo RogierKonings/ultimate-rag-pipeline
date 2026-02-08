@@ -167,8 +167,7 @@ impl OpenSearchFilterBuilder {
 
         // Should clauses wrapped in bool with minimum_should_match
         if !filter.should.is_empty() {
-            let should_clauses: Vec<Value> =
-                filter.should.iter().map(Self::build_clause).collect();
+            let should_clauses: Vec<Value> = filter.should.iter().map(Self::build_clause).collect();
 
             clauses.push(json!({
                 "bool": {
@@ -412,11 +411,10 @@ mod tests {
 
     #[test]
     fn test_opensearch_builder_terms_for_any() {
-        let filter =
-            UnifiedFilter::new().must(FilterCondition::any_of(
-                "allowed_groups",
-                vec!["engineering".into(), "product".into()],
-            ));
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["engineering".into(), "product".into()],
+        ));
 
         let clauses = OpenSearchFilterBuilder::build(&filter);
         assert_eq!(clauses.len(), 1);

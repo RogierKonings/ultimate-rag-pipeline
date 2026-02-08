@@ -74,7 +74,8 @@ impl CacheStats {
     /// * `latency_us` - The latency in microseconds
     pub fn record_hit(&self, latency_us: u64) {
         self.hits.fetch_add(1, Ordering::Relaxed);
-        self.total_hit_latency_us.fetch_add(latency_us, Ordering::Relaxed);
+        self.total_hit_latency_us
+            .fetch_add(latency_us, Ordering::Relaxed);
     }
 
     /// Record a cache miss with latency.
@@ -84,7 +85,8 @@ impl CacheStats {
     /// * `latency_us` - The latency in microseconds
     pub fn record_miss(&self, latency_us: u64) {
         self.misses.fetch_add(1, Ordering::Relaxed);
-        self.total_miss_latency_us.fetch_add(latency_us, Ordering::Relaxed);
+        self.total_miss_latency_us
+            .fetch_add(latency_us, Ordering::Relaxed);
     }
 
     /// Record a cache set operation.

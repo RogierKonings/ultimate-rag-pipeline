@@ -99,9 +99,7 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
     };
 
     // Apply base middleware and state
-    router
-        .layer(base)
-        .with_state(state)
+    router.layer(base).with_state(state)
 }
 
 /// Run the HTTP server.
@@ -396,8 +394,8 @@ impl ServerConfig {
         }
 
         // CORS configuration -- also accept legacy RETRIEVAL_CORS_ENABLED
-        if let Ok(cors) = std::env::var("CORS_ENABLED")
-            .or_else(|_| std::env::var("RETRIEVAL_CORS_ENABLED"))
+        if let Ok(cors) =
+            std::env::var("CORS_ENABLED").or_else(|_| std::env::var("RETRIEVAL_CORS_ENABLED"))
         {
             config.cors_enabled = cors.to_lowercase() == "true";
         }
@@ -554,9 +552,15 @@ mod tests {
         assert_eq!(config.timeout_secs, 45);
         assert!(!config.cors_enabled);
         assert_eq!(config.environment, "production");
-        assert_eq!(config.allowed_origins, vec!["https://a.com", "https://b.com"]);
+        assert_eq!(
+            config.allowed_origins,
+            vec!["https://a.com", "https://b.com"]
+        );
         assert_eq!(config.allowed_methods, vec!["GET", "POST"]);
-        assert_eq!(config.allowed_headers, vec!["Content-Type", "Authorization"]);
+        assert_eq!(
+            config.allowed_headers,
+            vec!["Content-Type", "Authorization"]
+        );
 
         // Clean up
         std::env::remove_var("RETRIEVAL_HOST");

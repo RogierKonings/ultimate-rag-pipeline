@@ -41,7 +41,7 @@ use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use super::{RerankerClient, RerankerConfig};
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::fusion::FusedResult;
 use crate::types::RetrievalResult;
 
@@ -181,9 +181,7 @@ impl RerankerService {
         }
 
         // Generate UUIDs for each result to track them
-        let document_ids: Vec<Uuid> = (0..fused_results.len())
-            .map(|_| Uuid::new_v4())
-            .collect();
+        let document_ids: Vec<Uuid> = (0..fused_results.len()).map(|_| Uuid::new_v4()).collect();
 
         // Build a map from UUID to index for reverse lookup
         let id_to_index: HashMap<Uuid, usize> = document_ids
@@ -200,13 +198,7 @@ impl RerankerService {
         // Rerank via client
         let rerank_response = self
             .client
-            .rerank_with_options(
-                query,
-                contents,
-                &document_ids,
-                top_k,
-                false,
-            )
+            .rerank_with_options(query, contents, &document_ids, top_k, false)
             .await?;
 
         // Rebuild results with rerank scores
@@ -221,7 +213,8 @@ impl RerankerService {
                 let mut result = FusedResult::new(original.id.clone(), rr.relevance_score);
 
                 // Preserve original semantic info
-                if let (Some(score), Some(rank)) = (original.semantic_score, original.semantic_rank) {
+                if let (Some(score), Some(rank)) = (original.semantic_score, original.semantic_rank)
+                {
                     result = result.with_semantic(score, rank);
                 }
 
@@ -242,10 +235,7 @@ impl RerankerService {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        debug!(
-            num_reranked = reranked.len(),
-            "Reranking complete"
-        );
+        debug!(num_reranked = reranked.len(), "Reranking complete");
 
         Ok(reranked)
     }
@@ -331,10 +321,7 @@ impl RerankerService {
             .map(|(idx, &id)| (id, idx))
             .collect();
 
-        debug!(
-            num_results = results.len(),
-            "Reranking retrieval results"
-        );
+        debug!(num_results = results.len(), "Reranking retrieval results");
 
         // Rerank via client
         let rerank_response = self

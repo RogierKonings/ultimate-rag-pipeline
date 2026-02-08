@@ -173,9 +173,11 @@ impl RetrievalMetricsCollector {
             .register(Box::new(cache_hits.clone()))
             .map_err(|e| MetricsError::Registration(e.to_string()))?;
 
-        let cache_misses =
-            Counter::new("retrieval_cache_misses_total", "Total number of cache misses")
-                .map_err(|e| MetricsError::Registration(e.to_string()))?;
+        let cache_misses = Counter::new(
+            "retrieval_cache_misses_total",
+            "Total number of cache misses",
+        )
+        .map_err(|e| MetricsError::Registration(e.to_string()))?;
 
         registry
             .register(Box::new(cache_misses.clone()))
@@ -242,9 +244,7 @@ impl RetrievalMetricsCollector {
     /// * `status` - Request status: "success" or "error"
     /// * `latency_seconds` - Request latency in seconds
     pub fn record_request(&self, mode: &str, status: &str, latency_seconds: f64) {
-        self.requests_total
-            .with_label_values(&[mode, status])
-            .inc();
+        self.requests_total.with_label_values(&[mode, status]).inc();
         self.request_latency
             .with_label_values(&[mode])
             .observe(latency_seconds);

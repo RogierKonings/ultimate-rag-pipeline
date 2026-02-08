@@ -377,16 +377,10 @@ mod tests {
     #[test]
     fn test_dbsf_different_scales() {
         // Semantic scores: 0-1 range
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.95),
-            ScoredItem::new("doc2", 0.5),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.95), ScoredItem::new("doc2", 0.5)];
 
         // Keyword scores: 0-100 range
-        let keyword = vec![
-            ScoredItem::new("doc2", 80.0),
-            ScoredItem::new("doc3", 20.0),
-        ];
+        let keyword = vec![ScoredItem::new("doc2", 80.0), ScoredItem::new("doc3", 20.0)];
 
         let config = DbsfConfig::new().with_weights(0.5, 0.5);
         let fused = distribution_based_fusion(&semantic, &keyword, &config);
@@ -408,10 +402,7 @@ mod tests {
             ScoredItem::new("doc3", 0.7),
         ];
 
-        let keyword = vec![
-            ScoredItem::new("doc4", 0.95),
-            ScoredItem::new("doc5", 0.85),
-        ];
+        let keyword = vec![ScoredItem::new("doc4", 0.95), ScoredItem::new("doc5", 0.85)];
 
         let config = DbsfConfig::default().with_top_k(3);
         let fused = distribution_based_fusion(&semantic, &keyword, &config);
@@ -432,10 +423,7 @@ mod tests {
 
     #[test]
     fn test_dbsf_single_source() {
-        let semantic = vec![
-            ScoredItem::new("doc1", 0.9),
-            ScoredItem::new("doc2", 0.8),
-        ];
+        let semantic = vec![ScoredItem::new("doc1", 0.9), ScoredItem::new("doc2", 0.8)];
         let keyword: Vec<ScoredItem<&str>> = vec![];
 
         let config = DbsfConfig::default();

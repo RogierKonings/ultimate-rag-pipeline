@@ -18,12 +18,7 @@ use rag_retrieval::fusion::{
 fn generate_uuid_results(count: usize, score_range: (f32, f32)) -> Vec<ScoredItem<Uuid>> {
     let mut rng = rand::thread_rng();
     (0..count)
-        .map(|_| {
-            ScoredItem::new(
-                Uuid::new_v4(),
-                rng.gen_range(score_range.0..score_range.1),
-            )
-        })
+        .map(|_| ScoredItem::new(Uuid::new_v4(), rng.gen_range(score_range.0..score_range.1)))
         .collect()
 }
 
@@ -94,10 +89,7 @@ fn bench_rrf_sizes(c: &mut Criterion) {
             let config = RrfConfig::default();
 
             b.iter(|| {
-                reciprocal_rank_fusion(
-                    black_box(&[&semantic, &keyword]),
-                    black_box(&config),
-                )
+                reciprocal_rank_fusion(black_box(&[&semantic, &keyword]), black_box(&config))
             });
         });
     }
@@ -118,7 +110,11 @@ fn bench_linear_sizes(c: &mut Criterion) {
             let config = LinearConfig::default();
 
             b.iter(|| {
-                linear_fusion(black_box(&semantic), black_box(&keyword), black_box(&config))
+                linear_fusion(
+                    black_box(&semantic),
+                    black_box(&keyword),
+                    black_box(&config),
+                )
             });
         });
     }
@@ -160,19 +156,37 @@ fn bench_fusion_comparison(c: &mut Criterion) {
     // RRF
     group.bench_function("RRF", |b| {
         let config = FusionConfig::new(FusionMethod::Rrf);
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Linear
     group.bench_function("Linear", |b| {
         let config = FusionConfig::new(FusionMethod::Linear);
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // DBSF
     group.bench_function("DBSF", |b| {
         let config = FusionConfig::new(FusionMethod::Dbsf);
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     group.finish();
@@ -189,7 +203,13 @@ fn bench_overlap_impact(c: &mut Criterion) {
             let (semantic, keyword) = generate_overlapping_results(50, overlap);
             let config = FusionConfig::default();
 
-            b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+            b.iter(|| {
+                fuse(
+                    black_box(&semantic),
+                    black_box(&keyword),
+                    black_box(&config),
+                )
+            });
         });
     }
 
@@ -206,7 +226,13 @@ fn bench_rrf_k_parameter(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(k), k, |b, &k| {
             let config = FusionConfig::new(FusionMethod::Rrf).with_rrf_k(k);
 
-            b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+            b.iter(|| {
+                fuse(
+                    black_box(&semantic),
+                    black_box(&keyword),
+                    black_box(&config),
+                )
+            });
         });
     }
 
@@ -223,7 +249,13 @@ fn bench_top_k_limiting(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(top_k), top_k, |b, &top_k| {
             let config = FusionConfig::default().with_top_k(top_k);
 
-            b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+            b.iter(|| {
+                fuse(
+                    black_box(&semantic),
+                    black_box(&keyword),
+                    black_box(&config),
+                )
+            });
         });
     }
 
@@ -271,7 +303,13 @@ fn bench_weight_configurations(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("Linear", *name), name, |b, _| {
             let config = FusionConfig::new(FusionMethod::Linear).with_weights(*sem_w, *kw_w);
 
-            b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+            b.iter(|| {
+                fuse(
+                    black_box(&semantic),
+                    black_box(&keyword),
+                    black_box(&config),
+                )
+            });
         });
     }
 
@@ -288,7 +326,13 @@ fn bench_edge_cases(c: &mut Criterion) {
         let keyword = generate_uuid_results(50, (0.0, 1.0));
         let config = FusionConfig::default();
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Empty keyword list
@@ -297,7 +341,13 @@ fn bench_edge_cases(c: &mut Criterion) {
         let keyword: Vec<ScoredItem<Uuid>> = Vec::new();
         let config = FusionConfig::default();
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Both empty
@@ -306,7 +356,13 @@ fn bench_edge_cases(c: &mut Criterion) {
         let keyword: Vec<ScoredItem<Uuid>> = Vec::new();
         let config = FusionConfig::default();
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Very small lists
@@ -315,7 +371,13 @@ fn bench_edge_cases(c: &mut Criterion) {
         let keyword = generate_uuid_results(3, (0.0, 1.0));
         let config = FusionConfig::default();
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Large lists
@@ -324,7 +386,13 @@ fn bench_edge_cases(c: &mut Criterion) {
         let keyword = generate_uuid_results(1000, (0.0, 1.0));
         let config = FusionConfig::default();
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     group.finish();
@@ -342,7 +410,13 @@ fn bench_realistic_scenario(c: &mut Criterion) {
             .with_rrf_k(60.0)
             .with_top_k(10);
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // High-throughput scenario: 100 candidates, return top 20
@@ -350,7 +424,13 @@ fn bench_realistic_scenario(c: &mut Criterion) {
         let (semantic, keyword) = generate_overlapping_results(100, 0.25);
         let config = FusionConfig::new(FusionMethod::Rrf).with_top_k(20);
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     // Precision scenario: fewer candidates, more reranking expected
@@ -358,7 +438,13 @@ fn bench_realistic_scenario(c: &mut Criterion) {
         let (semantic, keyword) = generate_overlapping_results(25, 0.4);
         let config = FusionConfig::new(FusionMethod::Dbsf).with_top_k(5);
 
-        b.iter(|| fuse(black_box(&semantic), black_box(&keyword), black_box(&config)));
+        b.iter(|| {
+            fuse(
+                black_box(&semantic),
+                black_box(&keyword),
+                black_box(&config),
+            )
+        });
     });
 
     group.finish();

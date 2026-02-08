@@ -247,10 +247,7 @@ mod tests {
         assert_eq!(config.batch_size, 16);
         assert_eq!(config.timeout_ms, 10_000);
         assert_eq!(config.max_retries, 3);
-        assert_eq!(
-            config.instruction_prefix,
-            Some("Query: ".to_string())
-        );
+        assert_eq!(config.instruction_prefix, Some("Query: ".to_string()));
     }
 
     #[test]
@@ -299,6 +296,9 @@ mod tests {
 
         let deserialized: EmbeddingConfig = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.url, "http://embedding:8080");
-        assert_eq!(deserialized.instruction_prefix, Some("Prefix: ".to_string()));
+        assert_eq!(
+            deserialized.instruction_prefix,
+            Some("Prefix: ".to_string())
+        );
     }
 }

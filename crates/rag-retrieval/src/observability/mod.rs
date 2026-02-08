@@ -37,6 +37,8 @@ pub mod metrics;
 pub mod tracing;
 
 // Re-export main types
-pub use logging::{log_error, log_request_complete, log_request_start, log_stage_complete, RequestContext};
+pub use logging::{
+    log_error, log_request_complete, log_request_start, log_stage_complete, RequestContext,
+};
 pub use metrics::{encode_metrics, register_metrics, RetrievalMetricsCollector, RETRIEVAL_METRICS};
 pub use tracing::{init_tracing, shutdown_tracing, span_names, TracingConfig};

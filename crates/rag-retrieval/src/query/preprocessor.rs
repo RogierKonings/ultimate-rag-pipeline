@@ -19,7 +19,7 @@
 use serde::{Deserialize, Serialize};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::types::QueryType;
 
 /// Configuration for query preprocessing.
@@ -125,10 +125,7 @@ impl PreprocessedQuery {
     #[must_use]
     pub fn new(original: String, normalized: String, query_type: QueryType) -> Self {
         let was_modified = original != normalized;
-        let tokens = normalized
-            .split_whitespace()
-            .map(String::from)
-            .collect();
+        let tokens = normalized.split_whitespace().map(String::from).collect();
         Self {
             original,
             normalized,
@@ -246,13 +243,15 @@ impl QueryPreprocessor {
 
         // Check for question indicators
         let has_question_mark = query.contains('?');
-        let question_words = ["who", "what", "where", "when", "why", "how", "which", "whose"];
-        let starts_with_question_word = question_words
-            .iter()
-            .any(|word| lower.starts_with(word) && (lower.len() == word.len() || lower[word.len()..].starts_with(|c: char| c.is_whitespace())));
-        let contains_question_word = question_words
-            .iter()
-            .any(|word| lower.contains(word));
+        let question_words = [
+            "who", "what", "where", "when", "why", "how", "which", "whose",
+        ];
+        let starts_with_question_word = question_words.iter().any(|word| {
+            lower.starts_with(word)
+                && (lower.len() == word.len()
+                    || lower[word.len()..].starts_with(|c: char| c.is_whitespace()))
+        });
+        let contains_question_word = question_words.iter().any(|word| lower.contains(word));
 
         // Check for semantic indicators (quoted phrases)
         let has_quotes = query.contains('"') || query.contains('\'');
@@ -295,9 +294,7 @@ impl QueryPreprocessor {
 
     /// Remove punctuation from a string.
     fn remove_punctuation(s: &str) -> String {
-        s.chars()
-            .filter(|c| !c.is_ascii_punctuation())
-            .collect()
+        s.chars().filter(|c| !c.is_ascii_punctuation()).collect()
     }
 }
 
@@ -354,7 +351,9 @@ mod tests {
     #[test]
     fn test_preprocess_whitespace_normalization() {
         let preprocessor = QueryPreprocessor::with_defaults();
-        let result = preprocessor.preprocess("  multiple   spaces   here  ").unwrap();
+        let result = preprocessor
+            .preprocess("  multiple   spaces   here  ")
+            .unwrap();
 
         assert_eq!(result.normalized, "multiple spaces here");
         assert!(result.was_modified);
@@ -400,7 +399,10 @@ mod tests {
         assert_eq!(preprocessor.classify_query_type("rust"), QueryType::Simple);
 
         // Two words without question context
-        assert_eq!(preprocessor.classify_query_type("rust programming"), QueryType::Simple);
+        assert_eq!(
+            preprocessor.classify_query_type("rust programming"),
+            QueryType::Simple
+        );
     }
 
     #[test]
@@ -408,16 +410,40 @@ mod tests {
         let preprocessor = QueryPreprocessor::with_defaults();
 
         // Question mark
-        assert_eq!(preprocessor.classify_query_type("what is rust?"), QueryType::Question);
+        assert_eq!(
+            preprocessor.classify_query_type("what is rust?"),
+            QueryType::Question
+        );
 
         // Starts with question word
-        assert_eq!(preprocessor.classify_query_type("what is rust"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("how does rust work"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("where can i learn rust"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("when was rust released"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("why use rust"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("who created rust"), QueryType::Question);
-        assert_eq!(preprocessor.classify_query_type("which rust version"), QueryType::Question);
+        assert_eq!(
+            preprocessor.classify_query_type("what is rust"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("how does rust work"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("where can i learn rust"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("when was rust released"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("why use rust"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("who created rust"),
+            QueryType::Question
+        );
+        assert_eq!(
+            preprocessor.classify_query_type("which rust version"),
+            QueryType::Question
+        );
     }
 
     #[test]
@@ -454,10 +480,7 @@ mod tests {
             QueryPreprocessor::collapse_whitespace("  hello   world  "),
             "hello world"
         );
-        assert_eq!(
-            QueryPreprocessor::collapse_whitespace("a\t\nb"),
-            "a b"
-        );
+        assert_eq!(QueryPreprocessor::collapse_whitespace("a\t\nb"), "a b");
         assert_eq!(
             QueryPreprocessor::collapse_whitespace("no  extra  spaces"),
             "no extra spaces"
@@ -554,11 +577,17 @@ mod tests {
         let preprocessor = QueryPreprocessor::with_defaults();
 
         // "what" at beginning should be a question
-        assert_eq!(preprocessor.classify_query_type("what is this"), QueryType::Question);
+        assert_eq!(
+            preprocessor.classify_query_type("what is this"),
+            QueryType::Question
+        );
 
         // "whatever" should not trigger question classification
         // (word doesn't start cleanly with question word followed by space)
-        assert_eq!(preprocessor.classify_query_type("whatever this is"), QueryType::Hybrid);
+        assert_eq!(
+            preprocessor.classify_query_type("whatever this is"),
+            QueryType::Hybrid
+        );
     }
 
     #[test]

@@ -31,7 +31,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument, warn};
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 
 /// Configuration for query expansion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,9 +169,9 @@ impl QueryExpanderConfig {
     /// Get the chat completions API endpoint URL.
     #[must_use]
     pub fn completions_endpoint(&self) -> Option<String> {
-        self.llm_gateway_url.as_ref().map(|url| {
-            format!("{}/v1/chat/completions", url.trim_end_matches('/'))
-        })
+        self.llm_gateway_url
+            .as_ref()
+            .map(|url| format!("{}/v1/chat/completions", url.trim_end_matches('/')))
     }
 }
 
@@ -247,7 +247,9 @@ impl QueryExpander {
                 reqwest::Client::builder()
                     .timeout(Duration::from_millis(config.llm_timeout_ms))
                     .build()
-                    .map_err(|e| RetrievalError::config(format!("Failed to create HTTP client: {e}")))?,
+                    .map_err(|e| {
+                        RetrievalError::config(format!("Failed to create HTTP client: {e}"))
+                    })?,
             )
         } else {
             None
@@ -435,10 +437,7 @@ impl QueryExpander {
             ));
         };
 
-        let endpoint = format!(
-            "{}/v1/chat/completions",
-            gateway_url.trim_end_matches('/')
-        );
+        let endpoint = format!("{}/v1/chat/completions", gateway_url.trim_end_matches('/'));
 
         // Request max_expansions - 1 alternatives (original query is counted separately)
         let num_alternatives = self.config.max_expansions.saturating_sub(1).max(1);
@@ -507,10 +506,7 @@ impl QueryExpander {
 
         let expansions = parse_expansion_response(&raw_content, query);
 
-        debug!(
-            num_expansions = expansions.len(),
-            "LLM expansion completed"
-        );
+        debug!(num_expansions = expansions.len(), "LLM expansion completed");
 
         Ok(expansions)
     }
@@ -548,10 +544,7 @@ impl QueryExpander {
                 "how".to_string(),
                 vec!["what way".to_string(), "in what manner".to_string()],
             ),
-            (
-                "what".to_string(),
-                vec!["which".to_string()],
-            ),
+            ("what".to_string(), vec!["which".to_string()]),
             // Quality adjectives
             (
                 "best".to_string(),
@@ -629,33 +622,20 @@ impl QueryExpander {
             ),
             (
                 "install".to_string(),
-                vec![
-                    "setup".to_string(),
-                    "deploy".to_string(),
-                ],
+                vec!["setup".to_string(), "deploy".to_string()],
             ),
             // Common nouns
             (
                 "document".to_string(),
-                vec![
-                    "file".to_string(),
-                    "doc".to_string(),
-                    "record".to_string(),
-                ],
+                vec!["file".to_string(), "doc".to_string(), "record".to_string()],
             ),
             (
                 "list".to_string(),
-                vec![
-                    "array".to_string(),
-                    "collection".to_string(),
-                ],
+                vec!["array".to_string(), "collection".to_string()],
             ),
             (
                 "function".to_string(),
-                vec![
-                    "method".to_string(),
-                    "procedure".to_string(),
-                ],
+                vec!["method".to_string(), "procedure".to_string()],
             ),
         ])
     }
@@ -804,7 +784,9 @@ mod tests {
             vec!["specialized".to_string(), "unique".to_string()],
         );
 
-        let expander = QueryExpander::with_defaults().unwrap().with_synonyms(custom_synonyms);
+        let expander = QueryExpander::with_defaults()
+            .unwrap()
+            .with_synonyms(custom_synonyms);
 
         let expansions = expander.expand_with_synonyms("custom word");
 
@@ -819,7 +801,9 @@ mod tests {
         // Add to existing synonyms for "find"
         custom_synonyms.insert("find".to_string(), vec!["seek".to_string()]);
 
-        let expander = QueryExpander::with_defaults().unwrap().with_synonyms(custom_synonyms);
+        let expander = QueryExpander::with_defaults()
+            .unwrap()
+            .with_synonyms(custom_synonyms);
 
         // Check that "seek" was added to the synonyms for "find"
         let find_synonyms = expander.synonyms().get("find").unwrap();
@@ -1024,16 +1008,14 @@ mod tests {
 
     #[test]
     fn test_completions_endpoint() {
-        let config = QueryExpanderConfig::default()
-            .with_llm_gateway_url("http://localhost:8004");
+        let config = QueryExpanderConfig::default().with_llm_gateway_url("http://localhost:8004");
         assert_eq!(
             config.completions_endpoint(),
             Some("http://localhost:8004/v1/chat/completions".to_string())
         );
 
         // Test with trailing slash
-        let config = QueryExpanderConfig::default()
-            .with_llm_gateway_url("http://localhost:8004/");
+        let config = QueryExpanderConfig::default().with_llm_gateway_url("http://localhost:8004/");
         assert_eq!(
             config.completions_endpoint(),
             Some("http://localhost:8004/v1/chat/completions".to_string())
@@ -1097,9 +1079,8 @@ mod llm_integration_tests {
     async fn test_expand_with_llm_full_pipeline() {
         let mock_server = MockServer::start().await;
 
-        let response_body = mock_llm_response(
-            "Locating optimal documents\nRetrieving the best files",
-        );
+        let response_body =
+            mock_llm_response("Locating optimal documents\nRetrieving the best files");
 
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
@@ -1121,8 +1102,10 @@ mod llm_integration_tests {
         // Should include original query + synonym expansions + LLM expansions
         assert!(expansions.len() > 1);
         assert_eq!(expansions[0], "find the best documents"); // Original first
-        // LLM expansions should be included
-        assert!(expansions.iter().any(|e| e.contains("Locating") || e.contains("Retrieving")));
+                                                              // LLM expansions should be included
+        assert!(expansions
+            .iter()
+            .any(|e| e.contains("Locating") || e.contains("Retrieving")));
     }
 
     #[tokio::test]
@@ -1209,9 +1192,7 @@ mod llm_integration_tests {
 
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_string("not valid json"),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_string("not valid json"))
             .mount(&mock_server)
             .await;
 

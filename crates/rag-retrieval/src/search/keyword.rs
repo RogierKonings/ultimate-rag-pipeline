@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use rag_search::{BM25Request, SearchClient, SearchConfig, SearchHit};
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::fusion::ScoredItem;
 use crate::types::{UserContext, Visibility};
 
@@ -70,7 +70,13 @@ pub struct KeywordResult {
 impl KeywordResult {
     /// Create a new keyword result with minimal fields.
     #[must_use]
-    pub fn new(chunk_id: Uuid, document_id: Uuid, score: f32, raw_score: f32, content: String) -> Self {
+    pub fn new(
+        chunk_id: Uuid,
+        document_id: Uuid,
+        score: f32,
+        raw_score: f32,
+        content: String,
+    ) -> Self {
         Self {
             chunk_id,
             document_id,
@@ -407,10 +413,7 @@ impl KeywordSearcher {
         let document_id = Self::parse_uuid(&hit.source, "document_id", &Uuid::nil().to_string())?;
 
         // Extract content from source
-        let content = hit
-            .get_string("content")
-            .unwrap_or_default()
-            .to_string();
+        let content = hit.get_string("content").unwrap_or_default().to_string();
 
         // Extract optional fields
         let title = hit.get_string("title").map(String::from);
@@ -441,12 +444,7 @@ impl KeywordSearcher {
             .unwrap_or_default();
 
         // Extract highlights (flatten all field highlights into a single list)
-        let highlights: Vec<String> = hit
-            .highlights
-            .values()
-            .flatten()
-            .cloned()
-            .collect();
+        let highlights: Vec<String> = hit.highlights.values().flatten().cloned().collect();
 
         // Build metadata from remaining source fields
         let excluded_keys = [
@@ -494,9 +492,8 @@ impl KeywordSearcher {
             .and_then(Value::as_str)
             .unwrap_or(fallback);
 
-        Uuid::parse_str(uuid_str).map_err(|e| {
-            RetrievalError::internal(format!("Invalid UUID in {field}: {e}"))
-        })
+        Uuid::parse_str(uuid_str)
+            .map_err(|e| RetrievalError::internal(format!("Invalid UUID in {field}: {e}")))
     }
 
     /// Aggregate results from multiple queries, deduplicating and re-ranking.

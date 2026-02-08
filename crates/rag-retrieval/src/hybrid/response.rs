@@ -76,12 +76,7 @@ pub struct HybridSearchResult {
 impl HybridSearchResult {
     /// Create a new hybrid search result with minimal fields.
     #[must_use]
-    pub fn new(
-        chunk_id: Uuid,
-        document_id: Uuid,
-        content: String,
-        fused_score: f32,
-    ) -> Self {
+    pub fn new(chunk_id: Uuid, document_id: Uuid, content: String, fused_score: f32) -> Self {
         Self {
             chunk_id,
             document_id,
@@ -361,20 +356,15 @@ mod tests {
         let chunk_id = Uuid::new_v4();
         let document_id = Uuid::new_v4();
 
-        let result = HybridSearchResult::new(
-            chunk_id,
-            document_id,
-            "Test content".into(),
-            0.95,
-        )
-        .with_semantic(0.92, 1)
-        .with_keyword(0.88, 3)
-        .with_title("Test Document")
-        .with_source_uri("https://example.com/doc.pdf")
-        .with_chunk_index(2)
-        .with_visibility(Visibility::Group)
-        .with_allowed_groups(vec!["engineering".into()])
-        .with_highlights(vec!["<em>test</em> content".into()]);
+        let result = HybridSearchResult::new(chunk_id, document_id, "Test content".into(), 0.95)
+            .with_semantic(0.92, 1)
+            .with_keyword(0.88, 3)
+            .with_title("Test Document")
+            .with_source_uri("https://example.com/doc.pdf")
+            .with_chunk_index(2)
+            .with_visibility(Visibility::Group)
+            .with_allowed_groups(vec!["engineering".into()])
+            .with_highlights(vec!["<em>test</em> content".into()]);
 
         assert_eq!(result.chunk_id, chunk_id);
         assert_eq!(result.document_id, document_id);
@@ -391,13 +381,8 @@ mod tests {
 
     #[test]
     fn test_hybrid_search_result_single_source() {
-        let result = HybridSearchResult::new(
-            Uuid::new_v4(),
-            Uuid::new_v4(),
-            "Content".into(),
-            0.9,
-        )
-        .with_semantic(0.9, 2);
+        let result = HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Content".into(), 0.9)
+            .with_semantic(0.9, 2);
 
         assert!(!result.is_in_both());
         assert_eq!(result.best_rank(), Some(2));
@@ -443,25 +428,14 @@ mod tests {
     #[test]
     fn test_hybrid_search_response_with_results() {
         let results = vec![
-            HybridSearchResult::new(
-                Uuid::new_v4(),
-                Uuid::new_v4(),
-                "Result 1".into(),
-                0.95,
-            )
-            .with_semantic(0.92, 1)
-            .with_keyword(0.88, 2),
-            HybridSearchResult::new(
-                Uuid::new_v4(),
-                Uuid::new_v4(),
-                "Result 2".into(),
-                0.85,
-            )
-            .with_semantic(0.85, 3),
+            HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Result 1".into(), 0.95)
+                .with_semantic(0.92, 1)
+                .with_keyword(0.88, 2),
+            HybridSearchResult::new(Uuid::new_v4(), Uuid::new_v4(), "Result 2".into(), 0.85)
+                .with_semantic(0.85, 3),
         ];
 
-        let response = HybridSearchResponse::new(FusionMethod::Linear)
-            .with_results(results);
+        let response = HybridSearchResponse::new(FusionMethod::Linear).with_results(results);
 
         assert_eq!(response.len(), 2);
         assert!(!response.is_empty());
@@ -491,14 +465,9 @@ mod tests {
         let chunk_id = Uuid::new_v4();
         let document_id = Uuid::new_v4();
 
-        let result = HybridSearchResult::new(
-            chunk_id,
-            document_id,
-            "Test content".into(),
-            0.9,
-        )
-        .with_title("Test Title")
-        .with_visibility(Visibility::Group);
+        let result = HybridSearchResult::new(chunk_id, document_id, "Test content".into(), 0.9)
+            .with_title("Test Title")
+            .with_visibility(Visibility::Group);
 
         let json = serde_json::to_string(&result).unwrap();
         assert!(json.contains(&chunk_id.to_string()));

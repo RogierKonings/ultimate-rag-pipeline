@@ -24,7 +24,10 @@ use tracing::debug;
 pub enum RrfError {
     /// Weights length does not match the number of lists.
     #[error("Weights length ({weights_len}) must match lists length ({lists_len})")]
-    WeightsMismatch { weights_len: usize, lists_len: usize },
+    WeightsMismatch {
+        weights_len: usize,
+        lists_len: usize,
+    },
 }
 
 /// Result type for RRF operations.

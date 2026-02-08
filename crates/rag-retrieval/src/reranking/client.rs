@@ -12,7 +12,7 @@ use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use super::RerankerConfig;
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 
 /// Request body for the Cohere-compatible rerank API.
 #[derive(Debug, Serialize)]
@@ -317,13 +317,19 @@ impl RerankerClient {
         retry_policy
             .execute(
                 || async {
-                    let response = self.make_request(query, documents, return_documents).await?;
+                    let response = self
+                        .make_request(query, documents, return_documents)
+                        .await?;
                     self.process_response(response, doc_count)
                 },
                 |e: &RetrievalError| {
                     let msg = e.to_string();
-                    msg.contains("timed out") || msg.contains("connect") || msg.contains("500")
-                        || msg.contains("502") || msg.contains("503") || msg.contains("504")
+                    msg.contains("timed out")
+                        || msg.contains("connect")
+                        || msg.contains("500")
+                        || msg.contains("502")
+                        || msg.contains("503")
+                        || msg.contains("504")
                 },
             )
             .await
@@ -376,9 +382,10 @@ impl RerankerClient {
             )));
         }
 
-        response.json::<ApiRerankResponse>().await.map_err(|e| {
-            RetrievalError::reranking(format!("Failed to parse rerank response: {e}"))
-        })
+        response
+            .json::<ApiRerankResponse>()
+            .await
+            .map_err(|e| RetrievalError::reranking(format!("Failed to parse rerank response: {e}")))
     }
 
     /// Process the API response, extracting scores in input order.
@@ -599,7 +606,10 @@ mod tests {
 
         let result = client.process_response(response, 1);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid result index"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid result index"));
     }
 
     #[tokio::test]
@@ -632,16 +642,15 @@ mod tests {
         let config = RerankerConfig::new().with_max_documents(2);
         let client = RerankerClient::new(config).unwrap();
 
-        let documents = vec![
-            "doc1".to_string(),
-            "doc2".to_string(),
-            "doc3".to_string(),
-        ];
+        let documents = vec!["doc1".to_string(), "doc2".to_string(), "doc3".to_string()];
         let ids: Vec<Uuid> = (0..3).map(|_| Uuid::new_v4()).collect();
 
         let result = client.rerank("test", &documents, &ids).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Too many documents"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Too many documents"));
     }
 
     #[test]

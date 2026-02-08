@@ -49,10 +49,10 @@
 //! }
 //! ```
 
-use crate::error::{RetrievalError, Result};
+use crate::error::{Result, RetrievalError};
 use crate::types::RetrievalResult;
-use rag_types::SearchMode;
 use rag_cache::CacheClient;
+use rag_types::SearchMode;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -177,7 +177,12 @@ pub struct QueryCacheKey {
 impl QueryCacheKey {
     /// Create a new query cache key.
     #[must_use]
-    pub fn new(query: impl Into<String>, tenant_id: Uuid, search_mode: SearchMode, top_k: usize) -> Self {
+    pub fn new(
+        query: impl Into<String>,
+        tenant_id: Uuid,
+        search_mode: SearchMode,
+        top_k: usize,
+    ) -> Self {
         Self {
             query: query.into(),
             tenant_id,
@@ -267,7 +272,11 @@ impl QueryCache {
         let cache_key = self.build_key(key);
         debug!(cache_key = %cache_key, "Looking up query cache");
 
-        match self.cache_client.get::<Vec<RetrievalResult>>(&cache_key).await {
+        match self
+            .cache_client
+            .get::<Vec<RetrievalResult>>(&cache_key)
+            .await
+        {
             Ok(result) => {
                 if result.is_some() {
                     debug!(cache_key = %cache_key, "Query cache hit");
@@ -305,20 +314,21 @@ impl QueryCache {
         let ttl = Duration::from_secs(self.config.ttl_seconds);
 
         // Truncate results if necessary
-        let results_to_cache: Vec<RetrievalResult> = if results.len() > self.config.max_cached_results {
-            debug!(
-                original_count = results.len(),
-                max = self.config.max_cached_results,
-                "Truncating results for caching"
-            );
-            results
-                .iter()
-                .take(self.config.max_cached_results)
-                .cloned()
-                .collect()
-        } else {
-            results.to_vec()
-        };
+        let results_to_cache: Vec<RetrievalResult> =
+            if results.len() > self.config.max_cached_results {
+                debug!(
+                    original_count = results.len(),
+                    max = self.config.max_cached_results,
+                    "Truncating results for caching"
+                );
+                results
+                    .iter()
+                    .take(self.config.max_cached_results)
+                    .cloned()
+                    .collect()
+            } else {
+                results.to_vec()
+            };
 
         debug!(
             cache_key = %cache_key,
@@ -462,14 +472,8 @@ mod tests {
     fn test_normalize_query() {
         use crate::utils::normalize_query;
 
-        assert_eq!(
-            normalize_query("  Hello   WORLD  "),
-            "hello world"
-        );
-        assert_eq!(
-            normalize_query("MULTIPLE    spaces"),
-            "multiple spaces"
-        );
+        assert_eq!(normalize_query("  Hello   WORLD  "), "hello world");
+        assert_eq!(normalize_query("MULTIPLE    spaces"), "multiple spaces");
         assert_eq!(normalize_query("  trim  "), "trim");
     }
 

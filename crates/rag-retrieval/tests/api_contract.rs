@@ -6,9 +6,7 @@
 
 use uuid::Uuid;
 
-use rag_retrieval::api::{
-    ApiError, RetrieveRequest, RetrieveResponse,
-};
+use rag_retrieval::api::{ApiError, RetrieveRequest, RetrieveResponse};
 use rag_types::SearchMode;
 
 // Import integration test mocks
@@ -381,11 +379,10 @@ fn test_api_error_creation() {
 /// Test ApiError with details.
 #[test]
 fn test_api_error_with_details() {
-    let error = ApiError::validation("Invalid query")
-        .with_details(serde_json::json!({
-            "field": "query",
-            "constraint": "non_empty"
-        }));
+    let error = ApiError::validation("Invalid query").with_details(serde_json::json!({
+        "field": "query",
+        "constraint": "non_empty"
+    }));
 
     assert!(error.details.is_some());
     let details = error.details.unwrap();

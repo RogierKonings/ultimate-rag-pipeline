@@ -19,7 +19,10 @@ use axum::response::IntoResponse;
 pub async fn metrics() -> impl IntoResponse {
     let metrics = crate::observability::metrics::encode_metrics();
     (
-        [(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; charset=utf-8",
+        )],
         metrics,
     )
 }
@@ -39,7 +42,12 @@ mod tests {
         let app = Router::new().route("/metrics", get(metrics));
 
         let response = app
-            .oneshot(Request::builder().uri("/metrics").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/metrics")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
