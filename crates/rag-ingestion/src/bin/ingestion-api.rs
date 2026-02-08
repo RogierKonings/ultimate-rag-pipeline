@@ -84,10 +84,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Create embedding client
-    let embedding_client = create_embedding_client().await;
+    let embedding_client = create_embedding_client().await.map(Arc::new);
 
     // Create index coordinator
-    let index_coordinator = create_index_coordinator().await;
+    let index_coordinator = create_index_coordinator().await.map(Arc::new);
 
     // Connect to PostgreSQL for document queries
     let database_url = std::env::var("DATABASE_URL")
@@ -118,19 +118,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Build application state
-    let mut state_builder = AppState::builder()
-        .job_tracker(Arc::clone(&job_tracker));
+    let mut state_builder = AppState::builder().job_tracker(Arc::clone(&job_tracker));
 
     if let Some(queue) = api_job_queue {
         state_builder = state_builder.job_queue(queue);
     }
 
-    if let Some(db) = database {
-        state_builder = state_builder.database(db);
+    if let Some(ref db) = database {
+        state_builder = state_builder.database(db.clone());
     }
 
-    if let Some(publisher) = cache_invalidation {
-        state_builder = state_builder.cache_invalidation(publisher);
+    if let Some(ref client) = embedding_client {
+        state_builder = state_builder.embedding_client(Arc::clone(client));
+    }
+
+    if let Some(ref coordinator) = index_coordinator {
+        state_builder = state_builder.index_coordinator(Arc::clone(coordinator));
+    }
+
+    if let Some(ref publisher) = cache_invalidation {
+        state_builder = state_builder.cache_invalidation(Arc::clone(publisher));
     }
 
     let state = Arc::new(state_builder.build()?);
@@ -140,8 +147,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Create the ingestion job handler with embedding client and index coordinator
         let handler = IngestionJobHandler::new(
             Arc::clone(&job_tracker),
-            embedding_client.map(Arc::new),
-            index_coordinator.map(Arc::new),
+            embedding_client.clone(),
+            index_coordinator.clone(),
+            database.clone(),
         );
 
         // Create and start worker pool
@@ -210,10 +218,10 @@ async fn create_embedding_client() -> Option<EmbeddingClient> {
 /// Create the index coordinator from environment variables.
 async fn create_index_coordinator() -> Option<IndexCoordinator> {
     // Get configuration from environment
-    let qdrant_url = std::env::var("QDRANT_URL")
-        .unwrap_or_else(|_| "http://localhost:6333".to_string());
-    let opensearch_url = std::env::var("OPENSEARCH_URL")
-        .unwrap_or_else(|_| "http://localhost:9200".to_string());
+    let qdrant_url =
+        std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://localhost:6333".to_string());
+    let opensearch_url =
+        std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string());
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string());
 
