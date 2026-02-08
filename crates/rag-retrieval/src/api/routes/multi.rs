@@ -22,7 +22,7 @@ use crate::hybrid::HybridSearchResult;
 use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
 
-use super::search::{extract_tenant_id, parse_filters};
+use super::search::{extract_tenant_id, extract_user_context, parse_filters};
 
 /// Handle the POST /api/v1/retrieve/multi endpoint.
 ///
@@ -64,7 +64,7 @@ pub async fn retrieve_multi(
     // mirroring the single-query route behavior.
     let tenant_id = extract_tenant_id(&headers, &request.filters);
 
-    let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
+    let user_context = extract_user_context(&headers, tenant_id);
 
     // Parse filters from request, mirroring the single-query route behavior.
     let unified_filter = match &request.filters {

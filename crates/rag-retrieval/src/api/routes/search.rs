@@ -64,7 +64,7 @@ pub async fn retrieve(
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id
     let tenant_id = extract_tenant_id(&headers, &request.filters);
 
-    let user_context = UserContext::new(Uuid::new_v4(), tenant_id);
+    let user_context = extract_user_context(&headers, tenant_id);
 
     // Execute the search
     let (results, metrics, debug_info, outcome) =
@@ -125,6 +125,74 @@ pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: &Option<serde_json
                 .and_then(|s| Uuid::parse_str(s).ok())
         })
         .unwrap_or_else(Uuid::nil)
+}
+
+/// Build user context from request headers plus tenant scope.
+///
+/// Header mapping:
+/// - `X-User-Id`: UUID user identifier (optional, random UUID fallback)
+/// - `X-User-Roles` or `X-Role`: comma-separated roles
+/// - `X-User-Groups` or `X-Groups`: comma-separated groups
+/// - `X-Admin`: boolean (`true`/`1`) explicit admin override
+pub(super) fn extract_user_context(headers: &HeaderMap, tenant_id: Uuid) -> UserContext {
+    let user_id = headers
+        .get("X-User-Id")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .unwrap_or_else(Uuid::new_v4);
+
+    let mut roles = parse_csv_header(headers, "X-User-Roles");
+    roles.extend(parse_csv_header(headers, "X-Role"));
+    roles = dedupe_values(roles);
+
+    let mut groups = parse_csv_header(headers, "X-User-Groups");
+    groups.extend(parse_csv_header(headers, "X-Groups"));
+    groups = dedupe_values(groups);
+
+    let explicit_admin = headers
+        .get("X-Admin")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| {
+            let v = s.trim().to_ascii_lowercase();
+            v == "true" || v == "1"
+        })
+        .unwrap_or(false);
+
+    let role_admin = roles.iter().any(|role| {
+        matches!(
+            role.trim().to_ascii_lowercase().as_str(),
+            "admin" | "tenant_admin" | "super_admin" | "service"
+        )
+    });
+
+    UserContext::new(user_id, tenant_id)
+        .with_roles(roles)
+        .with_groups(groups)
+        .with_admin(explicit_admin || role_admin)
+}
+
+fn parse_csv_header(headers: &HeaderMap, name: &str) -> Vec<String> {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .map(|raw| {
+            raw.split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn dedupe_values(values: Vec<String>) -> Vec<String> {
+    let mut deduped = Vec::new();
+    for value in values {
+        if !deduped.contains(&value) {
+            deduped.push(value);
+        }
+    }
+    deduped
 }
 
 /// Parse raw JSON filters into a `UnifiedFilter`.
@@ -900,6 +968,7 @@ fn convert_to_response(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::HeaderValue;
 
     #[test]
     fn test_convert_to_response_with_metadata() {
@@ -956,6 +1025,55 @@ mod tests {
 
         assert!(response[0].highlights.is_some());
         assert_eq!(response[0].highlights.as_ref().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_extract_user_context_defaults() {
+        let headers = HeaderMap::new();
+        let tenant_id = Uuid::new_v4();
+
+        let context = extract_user_context(&headers, tenant_id);
+
+        assert_eq!(context.tenant_id, tenant_id);
+        assert!(!context.user_id.is_nil());
+        assert!(context.roles.is_empty());
+        assert!(context.groups.is_empty());
+        assert!(!context.is_admin);
+    }
+
+    #[test]
+    fn test_extract_user_context_from_headers() {
+        let mut headers = HeaderMap::new();
+        let user_id = Uuid::new_v4();
+        let tenant_id = Uuid::new_v4();
+
+        headers.insert(
+            "X-User-Id",
+            HeaderValue::from_str(&user_id.to_string()).unwrap(),
+        );
+        headers.insert(
+            "X-User-Roles",
+            HeaderValue::from_static("analyst, tenant_admin"),
+        );
+        headers.insert(
+            "X-User-Groups",
+            HeaderValue::from_static("engineering, product"),
+        );
+        headers.insert("X-Admin", HeaderValue::from_static("false"));
+
+        let context = extract_user_context(&headers, tenant_id);
+
+        assert_eq!(context.user_id, user_id);
+        assert_eq!(context.tenant_id, tenant_id);
+        assert_eq!(
+            context.roles,
+            vec!["analyst".to_string(), "tenant_admin".to_string()]
+        );
+        assert_eq!(
+            context.groups,
+            vec!["engineering".to_string(), "product".to_string()]
+        );
+        assert!(context.is_admin);
     }
 
     // --- Filter parsing tests ---
