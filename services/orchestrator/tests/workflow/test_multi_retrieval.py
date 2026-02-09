@@ -448,3 +448,52 @@ class TestMultiRetrievalNode:
         call_args = mock_instance.post.call_args
         payload = call_args.kwargs.get("json", call_args[1].get("json", {}))
         assert payload.get("top_k") == 5
+
+    @pytest.mark.asyncio
+    async def test_enables_rerank_for_comparison_strategy(self):
+        """Comparison strategy should enable reranking by default."""
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="Compare Python and Java",
+        )
+        state["strategy"] = "comparison"
+        state["intent"] = "ANALYTICAL"
+
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
+            mock_instance = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"results": []}
+            mock_response.raise_for_status.return_value = None
+            mock_instance.post.return_value = mock_response
+            mock_get_client.return_value = mock_instance
+
+            await multi_retrieval_node(state)
+
+        call_args = mock_instance.post.call_args
+        payload = call_args.kwargs.get("json", call_args[1].get("json", {}))
+        assert payload.get("rerank") is True
+
+    @pytest.mark.asyncio
+    async def test_respects_rerank_override(self):
+        """Explicit rerank option should override strategy-based defaults."""
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="Compare Python and Java",
+            options={"rerank": False},
+        )
+        state["strategy"] = "comparison"
+        state["intent"] = "ANALYTICAL"
+
+        with patch("workflow.nodes.multi_retrieval.get_retrieval_client") as mock_get_client:
+            mock_instance = AsyncMock()
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"results": []}
+            mock_response.raise_for_status.return_value = None
+            mock_instance.post.return_value = mock_response
+            mock_get_client.return_value = mock_instance
+
+            await multi_retrieval_node(state)
+
+        call_args = mock_instance.post.call_args
+        payload = call_args.kwargs.get("json", call_args[1].get("json", {}))
+        assert payload.get("rerank") is False

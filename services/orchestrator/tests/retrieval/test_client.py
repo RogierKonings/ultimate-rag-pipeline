@@ -6,7 +6,6 @@ import httpx
 import pytest
 from retrieval.client import RetrievalClient
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -114,6 +113,7 @@ class TestRetrievalClientSearch:
         assert payload["query"] == "my query"
         assert payload["top_k"] == 25
         assert payload["mode"] == "hybrid"
+        assert payload["rerank"] is False
         assert payload["filters"] == {"tenant_id": "t-1"}
         assert headers["X-Tenant-Id"] == "t-1"
 
@@ -136,6 +136,16 @@ class TestRetrievalClientSearch:
         call_kwargs = mock_http_client.post.call_args
         payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
         assert payload["top_k"] == 5
+
+    async def test_search_allows_rerank_override(self, mock_http_client):
+        """Test that search() supports rerank override per call."""
+        with patch("retrieval.client._get_http_client", return_value=mock_http_client):
+            client = RetrievalClient(top_k=10)
+            await client.search("test", rerank=True)
+
+        call_kwargs = mock_http_client.post.call_args
+        payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+        assert payload["rerank"] is True
 
     async def test_search_propagates_http_error(self, mock_http_client):
         """Test that search() propagates HTTP errors for callers to handle."""

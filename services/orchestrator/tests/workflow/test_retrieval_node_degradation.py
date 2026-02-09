@@ -245,3 +245,71 @@ class TestRetrievalNodeDegradation:
 
         assert "previous_fallback" in result["fallbacks_used"]
         assert "retrieval:semantic_only" in result["fallbacks_used"]
+
+    @pytest.mark.asyncio
+    async def test_retrieval_node_rerank_default_disabled_for_simple(
+        self, mock_httpx_response_normal
+    ):
+        """Simple strategy should keep rerank disabled by default."""
+        state: RAGState = {
+            "request_id": "test-123",
+            "query": "what is python",
+            "strategy": "simple",
+            "intent": "FACTUAL",
+            "timing": {},
+        }
+
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_httpx_response_normal
+            mock_get_client.return_value = mock_instance
+
+            await retrieval_node(state)
+
+        payload = mock_instance.post.call_args.kwargs["json"]
+        assert payload["rerank"] is False
+
+    @pytest.mark.asyncio
+    async def test_retrieval_node_rerank_enabled_for_comparison_strategy(
+        self, mock_httpx_response_normal
+    ):
+        """Comparison strategy should enable rerank unless overridden."""
+        state: RAGState = {
+            "request_id": "test-123",
+            "query": "compare python and java",
+            "strategy": "comparison",
+            "intent": "ANALYTICAL",
+            "timing": {},
+        }
+
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_httpx_response_normal
+            mock_get_client.return_value = mock_instance
+
+            await retrieval_node(state)
+
+        payload = mock_instance.post.call_args.kwargs["json"]
+        assert payload["rerank"] is True
+
+    @pytest.mark.asyncio
+    async def test_retrieval_node_rerank_override_respected(self, mock_httpx_response_normal):
+        """Explicit rerank option should override strategy-based default."""
+        state: RAGState = {
+            "request_id": "test-123",
+            "query": "compare python and java",
+            "strategy": "comparison",
+            "intent": "ANALYTICAL",
+            "options": {"rerank": False},
+            "timing": {},
+        }
+
+        with patch("workflow.nodes.retrieval.get_retrieval_client") as mock_get_client:
+            mock_instance = AsyncMock()
+            mock_instance.post.return_value = mock_httpx_response_normal
+            mock_get_client.return_value = mock_instance
+
+            await retrieval_node(state)
+
+        payload = mock_instance.post.call_args.kwargs["json"]
+        assert payload["rerank"] is False

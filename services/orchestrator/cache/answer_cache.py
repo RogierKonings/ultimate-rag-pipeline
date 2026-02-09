@@ -221,7 +221,7 @@ class AnswerCache:
         self,
         retrieval_mode: str = "hybrid",
         top_k: int = 10,
-        rerank: bool = True,
+        rerank: bool = False,
         semantic_weight: float = 0.7,
         keyword_weight: float = 0.3,
         extra_config: dict | None = None,

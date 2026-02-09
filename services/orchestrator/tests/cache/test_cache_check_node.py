@@ -13,6 +13,8 @@ from workflow.nodes.cache_check import (
     cache_store_node,
 )
 
+from config import get_config
+
 
 @pytest.fixture
 def mock_answer_cache():
@@ -78,7 +80,14 @@ class TestComputeConfigHashFromOptions:
         """Test config hash with default options."""
         options = {}
         _compute_config_hash_from_options(options, mock_answer_cache)
-        mock_answer_cache._compute_config_hash.assert_called_once()
+        mock_answer_cache._compute_config_hash.assert_called_once_with(
+            retrieval_mode="hybrid",
+            top_k=10,
+            rerank=False,
+            semantic_weight=0.7,
+            keyword_weight=0.3,
+            extra_config=None,
+        )
 
     def test_custom_options(self, mock_answer_cache):
         """Test config hash with custom options."""
@@ -99,6 +108,52 @@ class TestComputeConfigHashFromOptions:
             extra_config=None,
         )
 
+    def test_comparison_query_defaults_to_rerank(self, mock_answer_cache):
+        """Comparison query should enable rerank in computed cache config."""
+        options = {}
+        state = {
+            "query": "Compare Python and Java",
+            "timing": {},
+        }
+        _compute_config_hash_from_options(options, mock_answer_cache, state=state)
+
+        call_args = mock_answer_cache._compute_config_hash.call_args.kwargs
+        assert call_args["rerank"] is True
+
+    def test_explicit_rerank_override_takes_precedence(self, mock_answer_cache):
+        """Explicit rerank=False should override complex-query defaults."""
+        options = {"rerank": False}
+        state = {
+            "query": "Compare Python and Java",
+            "timing": {},
+        }
+        _compute_config_hash_from_options(options, mock_answer_cache, state=state)
+
+        call_args = mock_answer_cache._compute_config_hash.call_args.kwargs
+        assert call_args["rerank"] is False
+
+    def test_nested_retrieval_options_are_supported(self, mock_answer_cache):
+        """Nested retrieval options should be used in config hash computation."""
+        options = {
+            "retrieval": {
+                "mode": "semantic",
+                "top_k": 42,
+                "rerank": True,
+                "semantic_weight": 0.9,
+                "keyword_weight": 0.1,
+            }
+        }
+        _compute_config_hash_from_options(options, mock_answer_cache)
+
+        mock_answer_cache._compute_config_hash.assert_called_once_with(
+            retrieval_mode="semantic",
+            top_k=42,
+            rerank=True,
+            semantic_weight=0.9,
+            keyword_weight=0.1,
+            extra_config=None,
+        )
+
     def test_extra_config_with_temperature(self, mock_answer_cache):
         """Test extra config is included when temperature set."""
         options = {"temperature": 0.5, "max_tokens": 512}
@@ -106,6 +161,19 @@ class TestComputeConfigHashFromOptions:
 
         call_args = mock_answer_cache._compute_config_hash.call_args
         assert call_args[1]["extra_config"] == {"temperature": 0.5, "max_tokens": 512}
+
+    @pytest.mark.asyncio
+    async def test_cache_check_uses_policy_top_k_default(self, base_state, mock_answer_cache):
+        """Cache check should use orchestrator retrieval_top_k as hash default."""
+        base_state["options"] = {
+            "enable_answer_cache": True,
+            "answer_cache": mock_answer_cache,
+        }
+
+        await cache_check_node(base_state)
+
+        call_args = mock_answer_cache._compute_config_hash.call_args.kwargs
+        assert call_args["top_k"] == get_config().retrieval_top_k
 
 
 class TestCacheCheckNode:

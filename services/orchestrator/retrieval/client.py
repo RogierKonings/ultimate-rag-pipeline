@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
 import structlog
 
 from config import get_config
@@ -55,6 +54,7 @@ class RetrievalClient:
         tenant_id: str | None = None,
         top_k: int | None = None,
         mode: str = "hybrid",
+        rerank: bool = False,
     ) -> dict[str, Any]:
         """Search the retrieval service for documents matching *query*.
 
@@ -63,6 +63,7 @@ class RetrievalClient:
             tenant_id: Optional tenant scope for multi-tenant filtering.
             top_k: Override the default ``retrieval_top_k`` for this call.
             mode: Retrieval mode (``"hybrid"``, ``"semantic"``, ``"keyword"``).
+            rerank: Whether cross-encoder reranking should be enabled.
 
         Returns:
             A dict with keys:
@@ -82,7 +83,7 @@ class RetrievalClient:
             "query": query,
             "mode": mode,
             "top_k": effective_top_k,
-            "rerank": False,
+            "rerank": rerank,
             "include_metadata": True,
             "include_highlights": True,
         }
@@ -98,6 +99,7 @@ class RetrievalClient:
             tenant_id=tenant_id,
             top_k=effective_top_k,
             mode=mode,
+            rerank=rerank,
         )
 
         response = await client.post(

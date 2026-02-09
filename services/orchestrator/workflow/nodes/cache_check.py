@@ -4,12 +4,22 @@ Implements US-10.5.3: Check answer cache before expensive retrieval/generation.
 On cache hit, returns stored response and citations, skipping retrieval and LLM.
 """
 
+from __future__ import annotations
+
 import time
 from typing import TYPE_CHECKING
 
 import structlog
+from model_policy import infer_intent_from_strategy
 from opentelemetry import trace
+from retrieval.policy import (
+    coerce_positive_int,
+    get_retrieval_option,
+    should_enable_rerank,
+)
+from workflow.nodes.routing import _classify_query, _complexity_score_from_strategy
 
+from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:
@@ -20,25 +30,120 @@ logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
+def _coerce_float(value: object, default: float) -> float:
+    """Parse a float-like value, falling back to *default* when invalid."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _resolve_strategy_intent_complexity(
+    *,
+    state: RAGState | None,
+    options: dict,
+) -> tuple[str, str, float]:
+    """Resolve routing signals for cache key generation.
+
+    Cache check runs before routing in the main workflow, so we infer strategy
+    from query heuristics unless caller overrides are present.
+    """
+    if not state:
+        return ("simple", "FACTUAL", 0.0)
+
+    query = state.get("query", "")
+    timing = state.get("timing", {})
+    routing_completed = isinstance(timing, dict) and "routing" in timing
+
+    strategy_from_options = options.get("strategy")
+    if strategy_from_options:
+        strategy = str(strategy_from_options).strip().lower()
+    elif routing_completed and state.get("strategy"):
+        strategy = str(state.get("strategy", "simple")).strip().lower()
+    else:
+        strategy, _ = _classify_query(query)
+
+    intent_from_options = options.get("intent")
+    if intent_from_options:
+        intent = str(intent_from_options).strip().upper()
+    elif routing_completed and state.get("intent"):
+        intent = str(state.get("intent", "FACTUAL")).strip().upper()
+    else:
+        intent = infer_intent_from_strategy(strategy)
+
+    complexity_from_options = options.get("complexity_score")
+    if complexity_from_options is not None:
+        complexity_score = _coerce_float(
+            complexity_from_options,
+            _complexity_score_from_strategy(strategy),
+        )
+    elif routing_completed and state.get("complexity_score") is not None:
+        complexity_score = _coerce_float(
+            state.get("complexity_score"),
+            _complexity_score_from_strategy(strategy),
+        )
+    else:
+        complexity_score = _complexity_score_from_strategy(strategy)
+
+    return (strategy, intent, complexity_score)
+
+
 def _compute_config_hash_from_options(
     options: dict,
-    answer_cache: "AnswerCache",
+    answer_cache: AnswerCache,
+    *,
+    state: RAGState | None = None,
+    default_top_k: int = 10,
 ) -> str:
     """Compute config hash from request options.
 
     Args:
         options: Request options dict.
         answer_cache: AnswerCache instance for hash computation.
+        state: Optional workflow state for routing-aware defaults.
+        default_top_k: Default top_k to use when request does not override it.
 
     Returns:
         Configuration hash string.
     """
+    strategy, intent, complexity_score = _resolve_strategy_intent_complexity(
+        state=state,
+        options=options,
+    )
+    retrieval_mode = str(
+        get_retrieval_option(
+            options,
+            key="mode",
+            default="hybrid",
+            legacy_key="retrieval_mode",
+        )
+        or "hybrid"
+    )
+    top_k = coerce_positive_int(
+        get_retrieval_option(options, key="top_k", default=default_top_k),
+        default=default_top_k,
+    )
+    rerank = should_enable_rerank(
+        strategy=strategy,
+        intent=intent,
+        complexity_score=complexity_score,
+        rerank_override=get_retrieval_option(options, key="rerank", default=None),
+    )
+    semantic_weight = _coerce_float(
+        get_retrieval_option(options, key="semantic_weight", default=0.7),
+        0.7,
+    )
+    keyword_weight = _coerce_float(
+        get_retrieval_option(options, key="keyword_weight", default=0.3),
+        0.3,
+    )
+
     return answer_cache._compute_config_hash(
-        retrieval_mode=options.get("retrieval_mode", "hybrid"),
-        top_k=options.get("top_k", 10),
-        rerank=options.get("rerank", True),
-        semantic_weight=options.get("semantic_weight", 0.7),
-        keyword_weight=options.get("keyword_weight", 0.3),
+        retrieval_mode=retrieval_mode,
+        top_k=top_k,
+        rerank=rerank,
+        semantic_weight=semantic_weight,
+        keyword_weight=keyword_weight,
         extra_config={
             "temperature": options.get("temperature"),
             "max_tokens": options.get("max_tokens"),
@@ -48,7 +153,7 @@ def _compute_config_hash_from_options(
     )
 
 
-async def cache_check_node(state: "RAGState") -> "RAGState":
+async def cache_check_node(state: RAGState) -> RAGState:
     """Check cache before expensive retrieval/generation.
 
     This node:
@@ -97,7 +202,13 @@ async def cache_check_node(state: "RAGState") -> "RAGState":
             }
 
         # Compute config hash
-        config_hash = _compute_config_hash_from_options(options, answer_cache)
+        config = get_config()
+        config_hash = _compute_config_hash_from_options(
+            options,
+            answer_cache,
+            state=state,
+            default_top_k=config.retrieval_top_k,
+        )
         span.set_attribute("orchestrator.config_hash", config_hash)
 
         # Check cache
@@ -166,7 +277,7 @@ async def cache_check_node(state: "RAGState") -> "RAGState":
         }
 
 
-async def cache_store_node(state: "RAGState") -> "RAGState":
+async def cache_store_node(state: RAGState) -> RAGState:
     """Store response in cache after generation.
 
     This node runs after generation and stores the response for future cache hits.
@@ -209,7 +320,13 @@ async def cache_store_node(state: "RAGState") -> "RAGState":
         # Get config hash computed during cache check
         config_hash = options.get("_config_hash")
         if not config_hash:
-            config_hash = _compute_config_hash_from_options(options, answer_cache)
+            config = get_config()
+            config_hash = _compute_config_hash_from_options(
+                options,
+                answer_cache,
+                state=state,
+                default_top_k=config.retrieval_top_k,
+            )
 
         # Build cached answer
         documents = state.get("documents", [])

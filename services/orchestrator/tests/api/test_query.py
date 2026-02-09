@@ -476,7 +476,13 @@ class TestStreamingQuery:
         assert response.status_code == 200
         assert "event: start" in response.text
         # Verify retrieval was actually called
-        retrieval_client.search.assert_called_once_with("What is Python?")
+        retrieval_client.search.assert_called_once_with(
+            "What is Python?",
+            tenant_id=None,
+            top_k=None,
+            mode="hybrid",
+            rerank=False,
+        )
 
     def test_stream_query_graceful_fallback_on_retrieval_failure(
         self,
@@ -507,6 +513,44 @@ class TestStreamingQuery:
         # Should succeed (200) despite retrieval failure
         assert response.status_code == 200
         assert "event: start" in response.text
+
+    def test_stream_query_enables_rerank_for_analytical_strategy(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+        mock_stream_manager,
+    ):
+        """Streaming retrieval should enable rerank for analytical strategies."""
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.stream_manager = mock_stream_manager
+
+        retrieval_client = AsyncMock()
+        retrieval_client.search = AsyncMock(
+            return_value={
+                "documents": [],
+                "degradation_mode": "hybrid_full",
+                "components_used": ["qdrant", "opensearch", "reranker"],
+                "components_skipped": [],
+            },
+        )
+        app.state.retrieval_client = retrieval_client
+
+        response = client.post(
+            "/api/v1/query/stream",
+            json={
+                "query": "What is Python?",
+                "options": {"strategy": "comparison", "intent": "ANALYTICAL"},
+            },
+        )
+
+        assert response.status_code == 200
+        call_kwargs = retrieval_client.search.call_args.kwargs
+        assert call_kwargs["rerank"] is True
 
     def test_stream_query_without_retrieval_client(self, client, configured_app):
         """Test streaming works when retrieval_client is None."""

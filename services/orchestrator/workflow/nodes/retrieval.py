@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import httpx
 import structlog
 from opentelemetry import trace
+from retrieval.policy import coerce_positive_int, get_retrieval_option, should_enable_rerank
 
 from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
@@ -92,9 +93,36 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
         config = get_config()
         query = state.get("query", "")
         tenant_id = state.get("tenant_id")
+        options = state.get("options", {})
+        strategy = state.get("strategy", "simple")
+        intent = state.get("intent")
+        complexity_score = state.get("complexity_score")
+
+        mode = str(
+            get_retrieval_option(
+                options,
+                key="mode",
+                default="hybrid",
+                legacy_key="retrieval_mode",
+            )
+            or "hybrid"
+        )
+        top_k = coerce_positive_int(
+            get_retrieval_option(options, key="top_k", default=config.retrieval_top_k),
+            default=config.retrieval_top_k,
+        )
+        rerank_enabled = should_enable_rerank(
+            strategy=strategy,
+            intent=intent,
+            complexity_score=complexity_score,
+            rerank_override=get_retrieval_option(options, key="rerank", default=None),
+        )
 
         # Set span attributes for query context
         span.set_attribute("orchestrator.query_length", len(query) if query else 0)
+        span.set_attribute("orchestrator.retrieval_mode", mode)
+        span.set_attribute("orchestrator.retrieval_rerank", rerank_enabled)
+        span.set_attribute("orchestrator.retrieval_top_k", top_k)
         if tenant_id:
             span.set_attribute("orchestrator.tenant_id", tenant_id)
 
@@ -108,9 +136,9 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
             # Build request payload
             payload = {
                 "query": query,
-                "mode": "hybrid",
-                "top_k": config.retrieval_top_k,
-                "rerank": False,  # Disable reranking for faster results
+                "mode": mode,
+                "top_k": top_k,
+                "rerank": rerank_enabled,
                 "include_metadata": True,
                 "include_highlights": True,
             }

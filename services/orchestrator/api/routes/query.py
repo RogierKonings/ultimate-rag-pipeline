@@ -35,13 +35,14 @@ from database.models.feedback import QueryFeedback
 from database.models.verification_log import VerificationLog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from model_policy import select_generation_model
 from observability.business_metrics import rag_feedback_total
 from observability.metrics_collector import QueryMetrics, metrics_collector
+from retrieval.policy import coerce_positive_int, get_retrieval_option, should_enable_rerank
+from routing import QueryRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_config
-from model_policy import select_generation_model
-from routing import QueryRouter
 
 from . import query_service
 
@@ -345,9 +346,32 @@ async def query_stream(
         if retrieval_client is not None:
             try:
                 tenant_id = str(query_request.tenant_id) if query_request.tenant_id else None
+                retrieval_mode = str(
+                    get_retrieval_option(
+                        options,
+                        key="mode",
+                        default="hybrid",
+                        legacy_key="retrieval_mode",
+                    )
+                    or "hybrid"
+                )
+                rerank_enabled = should_enable_rerank(
+                    strategy=stream_strategy,
+                    intent=stream_intent,
+                    rerank_override=get_retrieval_option(options, key="rerank", default=None),
+                )
+                top_k_value = get_retrieval_option(options, key="top_k", default=None)
+                top_k = (
+                    coerce_positive_int(top_k_value, get_config().retrieval_top_k)
+                    if top_k_value is not None
+                    else None
+                )
                 retrieval_result = await retrieval_client.search(
                     query_request.query,
                     tenant_id=tenant_id,
+                    top_k=top_k,
+                    mode=retrieval_mode,
+                    rerank=rerank_enabled,
                 )
                 # Handle both old format (list) and new format (dict with documents)
                 if isinstance(retrieval_result, dict):

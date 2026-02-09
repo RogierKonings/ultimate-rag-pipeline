@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 import httpx
 import structlog
 from opentelemetry import trace
+from retrieval.policy import coerce_positive_int, get_retrieval_option, should_enable_rerank
 
-from config import get_config
 from orchestrator.observability.otel.span_names import SpanNames
 from shared.http_clients import get_retrieval_client
 
@@ -48,6 +48,8 @@ async def _retrieve_for_sub_question(
     sub_question: str,
     tenant_id: str | None,
     top_k: int,
+    mode: str,
+    rerank: bool,
 ) -> SubQueryResult:
     """
     Retrieve documents for a single sub-question.
@@ -57,6 +59,8 @@ async def _retrieve_for_sub_question(
         sub_question: The sub-question to retrieve for
         tenant_id: Optional tenant filter
         top_k: Number of results to retrieve per sub-question
+        mode: Retrieval mode (hybrid/semantic/keyword)
+        rerank: Whether reranking should be enabled
 
     Returns:
         SubQueryResult with documents and latency
@@ -65,9 +69,9 @@ async def _retrieve_for_sub_question(
 
     payload = {
         "query": sub_question,
-        "mode": "hybrid",
+        "mode": mode,
         "top_k": top_k,
-        "rerank": False,
+        "rerank": rerank,
         "include_metadata": True,
         "include_highlights": True,
     }
@@ -198,7 +202,6 @@ async def multi_retrieval_node(state: "RAGState") -> "RAGState":
         timing = dict(state.get("timing", {}))
         fallbacks_used = list(state.get("fallbacks_used", []))
 
-        config = get_config()
         query = state.get("query", "")
         tenant_id = state.get("tenant_id")
         options = state.get("options", {})
@@ -215,8 +218,35 @@ async def multi_retrieval_node(state: "RAGState") -> "RAGState":
             span.set_attribute("orchestrator.tenant_id", tenant_id)
 
         # Configuration for parallel retrieval
-        sub_question_top_k = options.get("sub_question_top_k", 10)
-        max_total_documents = options.get("max_total_documents", 20)
+        strategy = state.get("strategy", "simple")
+        intent = state.get("intent")
+        complexity_score = state.get("complexity_score")
+        retrieval_mode = str(
+            get_retrieval_option(
+                options,
+                key="mode",
+                default="hybrid",
+                legacy_key="retrieval_mode",
+            )
+            or "hybrid"
+        )
+        rerank_enabled = should_enable_rerank(
+            strategy=strategy,
+            intent=intent,
+            complexity_score=complexity_score,
+            rerank_override=get_retrieval_option(options, key="rerank", default=None),
+        )
+        sub_question_top_k = coerce_positive_int(
+            get_retrieval_option(options, key="sub_question_top_k", default=10),
+            default=10,
+        )
+        max_total_documents = coerce_positive_int(
+            get_retrieval_option(options, key="max_total_documents", default=20),
+            default=20,
+        )
+        span.set_attribute("orchestrator.retrieval_mode", retrieval_mode)
+        span.set_attribute("orchestrator.retrieval_rerank", rerank_enabled)
+        span.set_attribute("orchestrator.retrieval_top_k", sub_question_top_k)
 
         # Perform parallel retrieval for all sub-questions
         client = get_retrieval_client()
@@ -226,6 +256,8 @@ async def multi_retrieval_node(state: "RAGState") -> "RAGState":
                 sub_question=sq,
                 tenant_id=tenant_id,
                 top_k=sub_question_top_k,
+                mode=retrieval_mode,
+                rerank=rerank_enabled,
             )
             for sq in sub_questions
         ]

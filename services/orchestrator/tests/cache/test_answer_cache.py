@@ -194,6 +194,12 @@ class TestAnswerCacheConfigHash:
         hash_val = answer_cache._compute_config_hash()
         assert len(hash_val) == 16
 
+    def test_config_hash_default_matches_rerank_false(self, answer_cache):
+        """Default config hash should use rerank=False."""
+        default_hash = answer_cache._compute_config_hash()
+        explicit_false_hash = answer_cache._compute_config_hash(rerank=False)
+        assert default_hash == explicit_false_hash
+
 
 class TestAnswerCacheKeyBuilding:
     """Tests for cache key building."""
