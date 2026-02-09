@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import httpx
 import structlog
+from model_policy import select_decomposition_model
+from model_router import ModelRouter
 from observability.business_metrics import record_decomposition, record_multi_hop_query
 from opentelemetry import trace
 
@@ -22,6 +24,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger(__name__)
 tracer = trace.get_tracer(__name__)
+_model_router = ModelRouter()
 
 
 # Prompt templates for different multi-hop types
@@ -263,9 +266,21 @@ async def decomposition_node(state: "RAGState") -> "RAGState":
 
         # Perform decomposition
         config = get_config()
+        options = state.get("options", {})
+        stage_models = options.get("stage_models", {})
+        model_selection = select_decomposition_model(
+            config=config,
+            max_tokens_override=options.get("max_tokens"),
+            model_override=stage_models.get("decomposition"),
+            router=_model_router,
+        )
+
+        span.set_attribute("orchestrator.decomposition_model", model_selection.model)
+        span.set_attribute("orchestrator.decomposition_model_tier", model_selection.tier)
+
         decomposer = QueryDecomposer(
             llm_gateway_url=config.llm_gateway_url,
-            model=config.fallback_model,  # Use smaller model for decomposition
+            model=model_selection.model,
             max_sub_questions=5,
             timeout=config.retrieval_timeout,
         )

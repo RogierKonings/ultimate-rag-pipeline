@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 from gateway.client import ModelGateway
+from model_policy import select_verification_model
+from model_router import ModelRouter
 from observability.verification_metrics import record_verification_metrics
 from workflow.verification.claim_extractor import ClaimExtractor
 from workflow.verification.claim_verifier import ClaimVerifier
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
     from workflow.state import RAGState
 
 logger = structlog.get_logger(__name__)
+_model_router = ModelRouter()
 
 LOW_CONFIDENCE_DISCLAIMER = (
     "\n\n*Note: Some information in this response could not be fully "
@@ -64,6 +67,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
     config = get_config()
     timing = dict(state.get("timing", {}))
     options = state.get("options", {})
+    stage_models = options.get("stage_models", {})
 
     # Check if verification is enabled (request-level option overrides config)
     enable_verification = options.get("enable_verification", config.verification_enabled)
@@ -71,6 +75,7 @@ async def verification_node(state: "RAGState") -> "RAGState":
     # Extract request_id and tenant_id for logging/metrics
     request_id = state.get("request_id", "unknown")
     tenant_id = state.get("tenant_id")
+    strategy = state.get("strategy", "simple")
 
     if not enable_verification:
         result = _create_skipped_result("verification_disabled")
@@ -114,8 +119,30 @@ async def verification_node(state: "RAGState") -> "RAGState":
 
     # Initialize components
     gateway = ModelGateway(config)
-    extractor = ClaimExtractor(gateway, max_claims=config.verification_max_claims)
-    verifier = ClaimVerifier(gateway)
+    verification_model = select_verification_model(
+        config=config,
+        tenant_tier=options.get("tenant_tier", "standard"),
+        strategy=strategy,
+        intent=options.get("intent") or state.get("intent"),
+        model_override=stage_models.get("verification"),
+        router=_model_router,
+    )
+    extractor = ClaimExtractor(
+        gateway,
+        max_claims=config.verification_max_claims,
+        model=verification_model.model,
+    )
+    verifier = ClaimVerifier(gateway, model=verification_model.model)
+
+    logger.info(
+        "verification_model_selected",
+        request_id=request_id,
+        tenant_id=tenant_id,
+        model=verification_model.model,
+        tier=verification_model.tier,
+        strategy=strategy,
+        intent=verification_model.intent,
+    )
 
     try:
         # Extract claims from the response

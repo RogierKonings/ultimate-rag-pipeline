@@ -36,13 +36,15 @@ Return ONLY the JSON object, no other text."""
 class ClaimVerifier:
     """Verifies claims against retrieved context."""
 
-    def __init__(self, gateway: ModelGateway) -> None:
+    def __init__(self, gateway: ModelGateway, model: str | None = None) -> None:
         """Initialize the claim verifier.
 
         Args:
             gateway: Model gateway for LLM calls.
+            model: Optional model override for verification calls.
         """
         self.gateway = gateway
+        self.model = model or gateway.default_model
 
     async def verify(
         self,
@@ -64,7 +66,7 @@ class ClaimVerifier:
         )
 
         request = ChatCompletionRequest(
-            model=self.gateway.default_model,
+            model=self.model,
             messages=[ChatMessage(role="user", content=prompt)],
             temperature=0.0,
             max_tokens=300,

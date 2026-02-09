@@ -35,15 +35,22 @@ Return ONLY the JSON array, no other text."""
 class ClaimExtractor:
     """Extracts verifiable claims from generated answers."""
 
-    def __init__(self, gateway: ModelGateway, max_claims: int = 5) -> None:
+    def __init__(
+        self,
+        gateway: ModelGateway,
+        max_claims: int = 5,
+        model: str | None = None,
+    ) -> None:
         """Initialize the claim extractor.
 
         Args:
             gateway: Model gateway for LLM calls.
             max_claims: Maximum number of claims to extract.
+            model: Optional model override for extraction calls.
         """
         self.gateway = gateway
         self.max_claims = max_claims
+        self.model = model or gateway.default_model
 
     async def extract(self, answer: str) -> ClaimExtractionResult:
         """Extract claims from an answer.
@@ -62,7 +69,7 @@ class ClaimExtractor:
         )
 
         request = ChatCompletionRequest(
-            model=self.gateway.default_model,
+            model=self.model,
             messages=[ChatMessage(role="user", content=prompt)],
             temperature=0.0,
             max_tokens=500,

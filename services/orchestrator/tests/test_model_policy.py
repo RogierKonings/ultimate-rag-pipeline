@@ -4,7 +4,9 @@ from unittest.mock import MagicMock
 
 from model_policy import (
     infer_intent_from_strategy,
+    select_decomposition_model,
     select_generation_model,
+    select_verification_model,
     strategy_to_complexity,
 )
 
@@ -75,3 +77,67 @@ def test_select_generation_model_routes_comparison_as_complex():
     assert result.complexity == "complex"
     assert result.intent == "ANALYTICAL"
     assert mock_router.select_model.call_args.kwargs["complexity"] == "complex"
+
+
+def test_select_decomposition_model_prefers_small_tier():
+    """Decomposition policy should use the small tier model when available."""
+    config = DummyConfig()
+    mock_router = MagicMock()
+    mock_router.get_model_config.return_value = MagicMock(
+        model_name="small-model",
+        max_tokens=2048,
+    )
+
+    result = select_decomposition_model(
+        config=config,
+        router=mock_router,
+    )
+
+    assert result.model == "small-model"
+    assert result.tier == "small"
+    mock_router.get_model_config.assert_called_once()
+
+
+def test_select_verification_model_caps_large_to_medium():
+    """Verification policy should cap large-tier generation selection to medium."""
+    config = DummyConfig()
+    mock_router = MagicMock()
+    mock_router.select_model.return_value = MagicMock(
+        model="large-model",
+        max_tokens=8192,
+        tier="large",
+        tenant_tier="premium",
+        complexity="complex",
+        intent="ANALYTICAL",
+    )
+    mock_router.get_model_config.return_value = MagicMock(
+        model_name="medium-model",
+        max_tokens=4096,
+    )
+
+    result = select_verification_model(
+        config=config,
+        tenant_tier="premium",
+        strategy="comparison",
+        router=mock_router,
+    )
+
+    assert result.model == "medium-model"
+    assert result.tier == "medium"
+
+
+def test_generation_model_override_is_respected():
+    """Explicit model override should bypass tiering output model."""
+    config = DummyConfig()
+
+    result = select_generation_model(
+        config=config,
+        tenant_tier="standard",
+        strategy="simple",
+        model_override="custom-model",
+        max_tokens_override=777,
+    )
+
+    assert result.model == "custom-model"
+    assert result.tier == "override"
+    assert result.max_tokens == 777

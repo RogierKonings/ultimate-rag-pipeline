@@ -317,6 +317,7 @@ async def query_stream(
     async def generate_stream() -> AsyncGenerator[str, None]:
         """Generate SSE stream."""
         options = query_request.options or {}
+        stage_models = options.get("stage_models", {})
 
         # Infer strategy/intent for stream model selection, unless explicitly provided.
         stream_strategy = options.get("strategy", "simple")
@@ -425,6 +426,7 @@ async def query_stream(
             tenant_tier=options.get("tenant_tier", "standard"),
             strategy=stream_strategy,
             intent=stream_intent,
+            model_override=stage_models.get("streaming") or options.get("model"),
         )
         async for event in stream_manager.stream_response(
             request_id=request_id,

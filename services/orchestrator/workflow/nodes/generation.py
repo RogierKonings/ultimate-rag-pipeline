@@ -88,8 +88,10 @@ async def generation_node(state: "RAGState") -> "RAGState":
 
         # Get options from state for per-request overrides
         options = state.get("options", {})
+        stage_models = options.get("stage_models", {})
         temperature = options.get("temperature", config.temperature)
         max_tokens_override = options.get("max_tokens")
+        model_override = stage_models.get("generation") or options.get("model")
 
         # Get routing dimensions for model selection
         tenant_tier = options.get("tenant_tier", "standard")
@@ -105,6 +107,7 @@ async def generation_node(state: "RAGState") -> "RAGState":
             strategy=strategy,
             intent=intent,
             max_tokens_override=max_tokens_override,
+            model_override=model_override,
             router=_model_router,
         )
         model_to_use = selection.model

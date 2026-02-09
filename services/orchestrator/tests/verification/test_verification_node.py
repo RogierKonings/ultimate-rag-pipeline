@@ -302,6 +302,46 @@ class TestVerificationNode:
         assert result["response"] == base_state["response"]
 
     @pytest.mark.asyncio
+    @patch("workflow.nodes.verification.select_verification_model")
+    @patch("workflow.nodes.verification.ModelGateway")
+    async def test_verification_uses_model_policy(
+        self, MockGateway, mock_select_model, base_state, mock_gateway
+    ):
+        """Verification should use the model selected by centralized policy."""
+        MockGateway.return_value = mock_gateway
+        mock_select_model.return_value = MagicMock(
+            model="policy-model",
+            tier="medium",
+            intent="ANALYTICAL",
+        )
+
+        extraction_response = MagicMock()
+        extraction_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    content='[{"text": "Python released in 1991", "claim_type": "temporal"}]'
+                )
+            )
+        ]
+        verification_response = MagicMock()
+        verification_response.choices = [
+            MagicMock(
+                message=MagicMock(content='{"status": "supported", "evidence": "created in 1991"}')
+            )
+        ]
+        mock_gateway.chat_completion.side_effect = [
+            extraction_response,
+            verification_response,
+        ]
+
+        await verification_node(base_state)
+
+        first_request = mock_gateway.chat_completion.call_args_list[0].args[0]
+        second_request = mock_gateway.chat_completion.call_args_list[1].args[0]
+        assert first_request.model == "policy-model"
+        assert second_request.model == "policy-model"
+
+    @pytest.mark.asyncio
     async def test_uses_config_default_when_option_not_set(self):
         """Test that config default is used when option not specified."""
         state = create_initial_state(

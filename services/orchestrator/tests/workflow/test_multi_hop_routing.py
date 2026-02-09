@@ -368,6 +368,45 @@ class TestDecompositionNode:
         assert "decomposition" in result["timing"]
 
     @pytest.mark.asyncio
+    @patch("workflow.nodes.decomposition.select_decomposition_model")
+    async def test_decomposition_uses_model_policy(self, mock_select_model):
+        """Decomposition should use centralized model policy selection."""
+        mock_select_model.return_value = MagicMock(
+            model="policy-small-model",
+            tier="small",
+        )
+
+        mock_response = {
+            "choices": [
+                {
+                    "message": {
+                        "content": '["What is Python?", "What is Java?"]',
+                    },
+                },
+            ],
+        }
+
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="Compare Python and Java",
+        )
+        state["strategy"] = "comparison"
+        state["multi_hop_type"] = "comparison"
+
+        with patch("httpx.AsyncClient") as mock_client:
+            post_mock = AsyncMock(
+                return_value=MagicMock(
+                    json=lambda: mock_response,
+                    raise_for_status=lambda: None,
+                ),
+            )
+            mock_client.return_value.__aenter__.return_value.post = post_mock
+
+            await decomposition_node(state)
+
+        assert post_mock.call_args.kwargs["json"]["model"] == "policy-small-model"
+
+    @pytest.mark.asyncio
     async def test_decomposes_aggregation_query(self):
         """Test decomposition works for aggregation queries."""
         mock_response = {
