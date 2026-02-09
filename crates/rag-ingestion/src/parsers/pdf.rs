@@ -1,11 +1,12 @@
 //! PDF document parser.
 //!
-//! Uses the `pdf-extract` crate for PDF text extraction.
-//! For complex layouts with OCR, consider using a fallback HTTP service.
+//! Uses the `pdf-extract` crate for PDF text extraction with a fallback to
+//! the `pdftotext` CLI (from poppler-utils) for PDFs that `pdf-extract` cannot handle.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::io::Write;
 use thiserror::Error;
 
 use crate::parsers::base::{ContentBlock, ContentType, ParsedDocument, Parser};
@@ -60,10 +61,42 @@ impl PdfParser {
 
     /// Parse PDF using the pdf-extract crate.
     fn parse_with_pdf_extract(&self, content: &[u8]) -> Result<ParsedDocument, PdfError> {
-        // Extract text from PDF bytes
         let text = pdf_extract::extract_text_from_mem(content)
             .map_err(|e| PdfError::ParseError(e.to_string()))?;
 
+        self.text_to_document(&text)
+    }
+
+    /// Fallback: parse PDF by shelling out to `pdftotext` (poppler-utils).
+    fn parse_with_pdftotext(&self, content: &[u8]) -> Result<ParsedDocument, PdfError> {
+        // Write bytes to a temp file since pdftotext reads from a file path.
+        let mut tmp = tempfile::NamedTempFile::new()
+            .map_err(|e| PdfError::ParseError(format!("Failed to create temp file: {e}")))?;
+        tmp.write_all(content)
+            .map_err(|e| PdfError::ParseError(format!("Failed to write temp file: {e}")))?;
+        tmp.flush()
+            .map_err(|e| PdfError::ParseError(format!("Failed to flush temp file: {e}")))?;
+
+        let output = std::process::Command::new("pdftotext")
+            .arg("-layout")
+            .arg(tmp.path())
+            .arg("-") // write to stdout
+            .output()
+            .map_err(|e| PdfError::ParseError(format!("pdftotext not available: {e}")))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(PdfError::ParseError(format!(
+                "pdftotext failed: {stderr}"
+            )));
+        }
+
+        let text = String::from_utf8_lossy(&output.stdout).into_owned();
+        self.text_to_document(&text)
+    }
+
+    /// Convert extracted text into a `ParsedDocument`.
+    fn text_to_document(&self, text: &str) -> Result<ParsedDocument, PdfError> {
         if text.trim().is_empty() {
             return Err(PdfError::NoContent);
         }
@@ -137,7 +170,12 @@ impl Parser for PdfParser {
         content: &[u8],
         metadata: Option<HashMap<String, Value>>,
     ) -> crate::Result<ParsedDocument> {
-        match self.parse_with_pdf_extract(content) {
+        let result = self.parse_with_pdf_extract(content).or_else(|e| {
+            tracing::warn!("pdf-extract failed ({e}), trying pdftotext fallback");
+            self.parse_with_pdftotext(content)
+        });
+
+        match result {
             Ok(mut doc) => {
                 if let Some(meta) = metadata {
                     doc.metadata.extend(meta);
@@ -193,5 +231,21 @@ mod tests {
         let parser = PdfParser::new();
         assert!(parser.can_parse("application/pdf"));
         assert!(!parser.can_parse("text/html"));
+    }
+
+    #[test]
+    fn test_text_to_document_empty() {
+        let parser = PdfParser::new();
+        let result = parser.text_to_document("");
+        assert!(matches!(result, Err(PdfError::NoContent)));
+    }
+
+    #[test]
+    fn test_text_to_document_with_pages() {
+        let parser = PdfParser::new();
+        let text = "Page 1 content\x0cPage 2 content";
+        let doc = parser.text_to_document(text).unwrap();
+        assert_eq!(doc.blocks.len(), 2);
+        assert_eq!(doc.page_count, Some(2));
     }
 }

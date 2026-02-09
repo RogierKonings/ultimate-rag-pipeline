@@ -21,6 +21,7 @@ pulldown-cmark = "0.13"
 serde_yaml = "0.9"
 # PDF parsing
 pdf-extract = "0.10"
+tempfile = "3.24"
 # DOCX parsing (Office Open XML)
 quick-xml = "0.39"
 zip = "2.4"

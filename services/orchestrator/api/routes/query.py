@@ -40,12 +40,15 @@ from observability.metrics_collector import QueryMetrics, metrics_collector
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_config
+from model_policy import select_generation_model
+from routing import QueryRouter
 
 from . import query_service
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Query"])
+_stream_query_router = QueryRouter()
 
 # Type alias for database session dependency
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
@@ -313,6 +316,25 @@ async def query_stream(
 
     async def generate_stream() -> AsyncGenerator[str, None]:
         """Generate SSE stream."""
+        options = query_request.options or {}
+
+        # Infer strategy/intent for stream model selection, unless explicitly provided.
+        stream_strategy = options.get("strategy", "simple")
+        stream_intent = options.get("intent")
+        try:
+            routing_result = await _stream_query_router.route(query_request.query)
+            if "strategy" not in options:
+                stream_strategy = routing_result.strategy.value
+            if "intent" not in options:
+                stream_intent = routing_result.intent.value.upper()
+        except Exception as exc:
+            logger.warning(
+                "stream_query_routing_failed",
+                request_id=request_id,
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+
         # Get retrieval client for documents (if available)
         retrieval_client = getattr(request.app.state, "retrieval_client", None)
         documents = []
@@ -321,7 +343,11 @@ async def query_stream(
 
         if retrieval_client is not None:
             try:
-                retrieval_result = await retrieval_client.search(query_request.query)
+                tenant_id = str(query_request.tenant_id) if query_request.tenant_id else None
+                retrieval_result = await retrieval_client.search(
+                    query_request.query,
+                    tenant_id=tenant_id,
+                )
                 # Handle both old format (list) and new format (dict with documents)
                 if isinstance(retrieval_result, dict):
                     documents = retrieval_result.get("documents", [])
@@ -383,14 +409,26 @@ async def query_stream(
             context = "\n\n".join(
                 [f"[{i + 1}] {doc.get('content', '')}" for i, doc in enumerate(documents)],
             )
-            context_message = f"Use the following context to answer the question:\n\n{context}"
+            context_message = (
+                "You are a helpful assistant that answers questions based on the provided documents. "
+                "When comparing values (amounts, dates, quantities), carefully extract the relevant "
+                "value from EACH document before making comparisons. "
+                "Always cite the specific document number and exact value in your answer.\n\n"
+                f"Documents:\n\n{context}"
+            )
             messages.insert(0, {"role": "system", "content": context_message})
 
         # Stream response from LLM (with degradation info if present - US-10.2.2)
         config = get_config()
+        model_selection = select_generation_model(
+            config=config,
+            tenant_tier=options.get("tenant_tier", "standard"),
+            strategy=stream_strategy,
+            intent=stream_intent,
+        )
         async for event in stream_manager.stream_response(
             request_id=request_id,
-            model=config.fallback_model,
+            model=model_selection.model,
             messages=messages,
             session_id=str(query_request.session_id) if query_request.session_id else None,
             documents=documents,

@@ -140,6 +140,7 @@ services:
       - "8001:8001"
     environment:
       - RUST_LOG=info,rag_ingestion=debug
+      - TOKIO_WORKER_THREADS=8
       - DATABASE_URL=postgres://raguser:ragpass@postgres:5432/ragpipeline
       - QDRANT_URL=http://qdrant:6334
       - OPENSEARCH_URL=http://opensearch:9200
@@ -177,9 +178,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 128M
+          memory: 256M
     profiles:
       - app
 
@@ -209,6 +210,7 @@ services:
       - RETRIEVAL_HOST=0.0.0.0
       - RETRIEVAL_PORT=8002
       - RUST_LOG=info,rag_retrieval=debug
+      - TOKIO_WORKER_THREADS=8
       # Hybrid search weights
       - HYBRID_SEMANTIC_WEIGHT=0.7
       - HYBRID_KEYWORD_WEIGHT=0.3
@@ -230,9 +232,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 128M
+          memory: 256M
     profiles:
       - app
 
@@ -249,8 +251,8 @@ services:
       - .env.docker
     environment:
       # Service-specific overrides (model config)
-      - ORCHESTRATOR_DEFAULT_MODEL=${LLM_MODEL:-llama3.1:8b}
-      - ORCHESTRATOR_FALLBACK_MODEL=llama3.2:3b
+      - ORCHESTRATOR_DEFAULT_MODEL=${LLM_MODEL:-qwen2.5:14b}
+      - ORCHESTRATOR_FALLBACK_MODEL=llama3.1:8b
       - ORCHESTRATOR_SMALL_MODEL=llama3.2:3b
       - ORCHESTRATOR_MEDIUM_MODEL=llama3.1:8b
       - ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
@@ -285,6 +287,7 @@ services:
     environment:
       - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
       - EMBEDDING_BATCH_SIZE=32
+      - TOKIO_WORKER_THREADS=8
       - EMBEDDING_HOST=0.0.0.0
       - EMBEDDING_PORT=8080
       - RUST_LOG=info
@@ -300,15 +303,22 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 3G
         reservations:
-          memory: 512M
+          memory: 1G
     profiles:
       - app
 
   # NOTE: For GPU acceleration on Apple Silicon, run Ollama natively (not in Docker)
   # Docker containers cannot access Metal GPU. Install Ollama from https://ollama.ai
   # The services below connect to native Ollama via host.docker.internal:11434
+  #
+  # For best performance on Apple Silicon, set these env vars BEFORE starting Ollama:
+  #   export OLLAMA_NUM_PARALLEL=4        # Handle 4 concurrent requests (default: 1)
+  #   export OLLAMA_FLASH_ATTENTION=1     # Enable flash attention optimization
+  #   export OLLAMA_KEEP_ALIVE=10m        # Keep model loaded in GPU memory
+  #
+  # Add these to ~/.zshrc for persistence, then restart Ollama.
   #
   # To use Docker-based Ollama (CPU only, slower), uncomment this service and change
   # all LLM_GATEWAY_URL references from host.docker.internal:11434 to llm-gateway:11434
@@ -324,7 +334,7 @@ services:
   #     - OLLAMA_NUM_PARALLEL=4
   #     - OLLAMA_MAX_LOADED_MODELS=2
   #     - OLLAMA_FLASH_ATTENTION=1
-  #     - OLLAMA_KEEP_ALIVE=5m
+  #     - OLLAMA_KEEP_ALIVE=10m
   #   networks:
   #     - rag-network
   #   profiles:

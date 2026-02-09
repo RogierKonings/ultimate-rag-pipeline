@@ -135,6 +135,8 @@ class TestRoutingNode:
 
         assert result["strategy"] == "comparison"
         assert result.get("multi_hop_type") == "comparison"
+        assert result["intent"] == "ANALYTICAL"
+        assert result["complexity_score"] == 0.9
         assert "routing" in result["timing"]
 
     @pytest.mark.asyncio
@@ -149,6 +151,8 @@ class TestRoutingNode:
 
         assert result["strategy"] == "aggregation"
         assert result.get("multi_hop_type") == "aggregation"
+        assert result["intent"] == "ANALYTICAL"
+        assert result["complexity_score"] == 0.9
 
     @pytest.mark.asyncio
     async def test_routes_sequential_query(self):
@@ -162,6 +166,8 @@ class TestRoutingNode:
 
         assert result["strategy"] == "multi_hop"
         assert result.get("multi_hop_type") == "sequential"
+        assert result["intent"] == "ANALYTICAL"
+        assert result["complexity_score"] == 0.9
 
     @pytest.mark.asyncio
     async def test_routes_simple_query(self):

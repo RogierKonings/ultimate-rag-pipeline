@@ -139,7 +139,8 @@ async def retrieval_node(state: "RAGState") -> "RAGState":
                     "chunk_id": item.get("chunk_id"),
                     "document_id": item.get("document_id"),
                     "metadata": item.get("metadata", {}),
-                    "source": item.get("metadata", {}).get("source_uri", "unknown"),
+                    "title": item.get("title") or item.get("metadata", {}).get("title"),
+                    "source": item.get("source") or item.get("metadata", {}).get("source_uri", "unknown"),
                 }
                 documents.append(doc)
 

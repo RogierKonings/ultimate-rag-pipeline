@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from opentelemetry import trace
 
+from model_policy import infer_intent_from_strategy, strategy_to_complexity
 from orchestrator.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:
@@ -155,6 +156,25 @@ def _classify_query(query: str) -> tuple[str, str | None]:
     return ("simple", None)
 
 
+def _complexity_score_from_strategy(strategy: str) -> float:
+    """Map routing strategy to a normalized complexity score.
+
+    This score is intentionally coarse and used to expose a consistent
+    complexity signal in workflow state for downstream model policy decisions.
+    """
+    strategy_lower = strategy.lower()
+    if strategy_lower == "no_retrieval":
+        return 0.0
+
+    if strategy_to_complexity(strategy_lower) == "complex":
+        # Multi-hop style strategies are typically harder than generic complex.
+        if strategy_lower in {"multi_hop", "comparison", "aggregation"}:
+            return 0.9
+        return 0.75
+
+    return 0.25
+
+
 async def routing_node(state: "RAGState") -> "RAGState":
     """
     Determine handling strategy for the query.
@@ -194,8 +214,14 @@ async def routing_node(state: "RAGState") -> "RAGState":
         # Classify the query (returns strategy and optional multi_hop_type)
         strategy, multi_hop_type = _classify_query(query)
 
+        # Derive intent + normalized complexity for downstream model policy
+        intent = infer_intent_from_strategy(strategy)
+        complexity_score = _complexity_score_from_strategy(strategy)
+
         # Set span attributes
         span.set_attribute("orchestrator.strategy", strategy)
+        span.set_attribute("orchestrator.intent", intent)
+        span.set_attribute("orchestrator.complexity_score", complexity_score)
         if multi_hop_type:
             span.set_attribute("orchestrator.multi_hop_type", multi_hop_type)
 
@@ -204,6 +230,8 @@ async def routing_node(state: "RAGState") -> "RAGState":
         result = {
             **state,
             "strategy": strategy,
+            "intent": intent,
+            "complexity_score": complexity_score,
             "timing": timing,
         }
 

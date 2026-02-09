@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 import structlog
+from model_policy import select_generation_model
 from model_router import ModelRouter
 from observability.llm_metrics import (
     record_llm_duration,
@@ -32,18 +33,6 @@ tracer = trace.get_tracer(__name__)
 
 # Module-level router instance
 _model_router = ModelRouter()
-
-
-def _get_complexity_from_strategy(strategy: str) -> str:
-    """Map routing strategy to complexity level.
-
-    Args:
-        strategy: The routing strategy (simple, complex, no_retrieval).
-
-    Returns:
-        Complexity level (simple, complex).
-    """
-    return "complex" if strategy == "complex" else "simple"
 
 
 async def generation_node(state: "RAGState") -> "RAGState":
@@ -102,47 +91,44 @@ async def generation_node(state: "RAGState") -> "RAGState":
         temperature = options.get("temperature", config.temperature)
         max_tokens_override = options.get("max_tokens")
 
-        # Get tenant tier and complexity for model selection
+        # Get routing dimensions for model selection
         tenant_tier = options.get("tenant_tier", "standard")
         strategy = state.get("strategy", "simple")
-        complexity = _get_complexity_from_strategy(strategy)
 
-        # Get intent from routing (if available)
-        intent = options.get("intent", "FACTUAL")
+        # Intent precedence: explicit request override -> routing signal in state.
+        intent = options.get("intent") or state.get("intent")
 
-        # Dynamic model selection (US-10.5.2)
-        if config.enable_model_tiering:
-            try:
-                selection = _model_router.select_model(
-                    tenant_tier=tenant_tier,
-                    complexity=complexity,
-                    intent=intent,
-                )
-                model_to_use = selection.model
-                max_tokens = max_tokens_override or selection.max_tokens
-                selected_tier = selection.tier
+        # Centralized model policy for generation stage.
+        selection = select_generation_model(
+            config=config,
+            tenant_tier=tenant_tier,
+            strategy=strategy,
+            intent=intent,
+            max_tokens_override=max_tokens_override,
+            router=_model_router,
+        )
+        model_to_use = selection.model
+        max_tokens = selection.max_tokens
+        selected_tier = selection.tier
+        complexity = selection.complexity
+        intent = selection.intent
 
-                logger.info(
-                    f"Model router selected: {model_to_use} (tier={selected_tier})",
-                    extra={
-                        "model": model_to_use,
-                        "tier": selected_tier,
-                        "tenant_tier": tenant_tier,
-                        "complexity": complexity,
-                        "intent": intent,
-                    },
-                )
-            except Exception as e:
-                logger.warning(f"Model router failed, using default: {e}")
-                model_to_use = config.default_model
-                max_tokens = max_tokens_override or config.max_tokens
-        else:
-            # Feature flag disabled - use default model
-            model_to_use = config.default_model
-            max_tokens = max_tokens_override or config.max_tokens
+        logger.info(
+            f"Model policy selected: {model_to_use} (tier={selected_tier})",
+            extra={
+                "model": model_to_use,
+                "tier": selected_tier,
+                "tenant_tier": tenant_tier,
+                "strategy": strategy,
+                "complexity": complexity,
+                "intent": intent,
+            },
+        )
 
         # Set model attribute on span
         span.set_attribute("orchestrator.model", model_to_use)
+        span.set_attribute("orchestrator.intent", intent)
+        span.set_attribute("orchestrator.complexity", complexity)
 
         async def _call_llm(model: str, max_tok: int) -> dict | None:
             """Make LLM call with given model."""

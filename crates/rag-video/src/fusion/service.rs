@@ -302,6 +302,8 @@ impl ContentFusionService {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use crate::extraction::ExtractedKeyframe;
 

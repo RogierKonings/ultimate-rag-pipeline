@@ -1,6 +1,6 @@
 """Tests for individual workflow nodes."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import httpx
@@ -102,6 +102,8 @@ class TestRoutingNode:
         result = await routing_node(state)
 
         assert result["strategy"] == "simple"
+        assert result["intent"] == "FACTUAL"
+        assert result["complexity_score"] == 0.25
         assert "routing" in result["timing"]
 
     @pytest.mark.asyncio
@@ -115,6 +117,8 @@ class TestRoutingNode:
         result = await routing_node(state)
 
         assert result["strategy"] == "no_retrieval"
+        assert result["intent"] == "CONVERSATIONAL"
+        assert result["complexity_score"] == 0.0
 
     @pytest.mark.asyncio
     async def test_routes_comparison_query(self):
@@ -129,6 +133,8 @@ class TestRoutingNode:
         # Now routes to 'comparison' instead of 'complex' per US-10.4.3
         assert result["strategy"] == "comparison"
         assert result.get("multi_hop_type") == "comparison"
+        assert result["intent"] == "ANALYTICAL"
+        assert result["complexity_score"] == 0.9
 
     @pytest.mark.asyncio
     async def test_routing_records_timing(self):
@@ -411,6 +417,41 @@ class TestGenerationNode:
 
         assert "generation" in result["timing"]
         assert result["timing"]["generation"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_generation_treats_comparison_strategy_as_complex(self):
+        """Comparison strategy should be routed to complex tiering complexity."""
+        state = create_initial_state(
+            request_id=str(uuid4()),
+            query="Compare Python and Java",
+        )
+        state["strategy"] = "comparison"
+        state["messages"] = [{"role": "user", "content": "compare"}]
+
+        with patch("workflow.nodes.generation._model_router.select_model") as mock_select:
+            mock_select.return_value = MagicMock(
+                model="test-model",
+                max_tokens=256,
+                tier="small",
+                complexity="complex",
+                intent="ANALYTICAL",
+            )
+
+            with patch("workflow.nodes.generation.get_llm_client") as mock_get_client:
+                mock_instance = AsyncMock()
+                mock_response = AsyncMock()
+                mock_response.json.return_value = {
+                    "choices": [{"message": {"content": "Comparison answer"}}],
+                    "model": "test-model",
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
+                }
+                mock_response.raise_for_status.return_value = None
+                mock_instance.post.return_value = mock_response
+                mock_get_client.return_value = mock_instance
+
+                await generation_node(state)
+
+        assert mock_select.call_args.kwargs["complexity"] == "complex"
 
 
 class TestOutputValidationNode:

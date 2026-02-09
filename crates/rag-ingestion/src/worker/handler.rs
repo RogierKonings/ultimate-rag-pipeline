@@ -765,13 +765,23 @@ impl IngestionJobHandler {
 impl JobHandler for IngestionJobHandler {
     #[instrument(skip(self, job), fields(job_id = %job.id, job_type = %job.job_type))]
     async fn handle(&self, job: &Job) -> Result<Value, String> {
-        match job.job_type.as_str() {
+        let result = match job.job_type.as_str() {
             "ingest_single" | "ingest_batch" | "sync" | "reindex_document" => {
                 self.process_ingest_single(job).await
             }
             "reembed" => self.process_reembed(job).await,
             _ => Err(format!("Unknown job type: {}", job.job_type)),
+        };
+
+        // Propagate failure to the in-memory job tracker so the status API
+        // reflects the error instead of staying stuck at "progress".
+        if let Err(ref error) = result {
+            if let Ok(tracker_job_id) = self.extract_tracker_job_id(&job.payload) {
+                self.job_tracker.fail_job(&tracker_job_id, error.clone());
+            }
         }
+
+        result
     }
 }
 

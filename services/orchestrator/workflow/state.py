@@ -39,6 +39,8 @@ class RAGState(TypedDict, total=False):
     # =========================================================================
     strategy: str  # "simple", "complex", "no_retrieval", "multi_hop", "comparison", "aggregation"
     multi_hop_type: str | None  # Type of multi-hop query: "comparison", "aggregation", "sequential"
+    intent: str  # "FACTUAL", "ANALYTICAL", "PROCEDURAL", "CONVERSATIONAL", etc.
+    complexity_score: float  # Normalized complexity score (0.0 - 1.0)
 
     # =========================================================================
     # Retrieval Fields
@@ -123,6 +125,8 @@ def create_initial_state(
         # Routing
         strategy="simple",  # Default strategy
         multi_hop_type=None,  # US-10.4.3
+        intent="FACTUAL",
+        complexity_score=0.0,
         # Retrieval
         documents=[],
         context="",

@@ -78,7 +78,7 @@ impl IndexCoordinator {
 
         // Run all writes in parallel using tokio::join!
         let (qdrant_result, opensearch_result, db_result) = tokio::join!(
-            self.write_to_qdrant(&chunks),
+            self.write_to_qdrant(&document, &chunks),
             self.write_to_opensearch(&document, &chunks),
             self.write_to_database(&document, &chunks),
         );
@@ -148,7 +148,7 @@ impl IndexCoordinator {
         self.index_document(document, chunks).await
     }
 
-    async fn write_to_qdrant(&self, chunks: &[IndexedChunk]) -> WriteResult {
+    async fn write_to_qdrant(&self, document: &DocumentRecord, chunks: &[IndexedChunk]) -> WriteResult {
         let start = Instant::now();
 
         if chunks.is_empty() {
@@ -175,6 +175,8 @@ impl IndexCoordinator {
                     "tenant_id": c.tenant_id.to_string(),
                     "chunk_index": c.chunk_index,
                     "content": c.content,
+                    "title": document.title,
+                    "source_uri": document.source_id,
                     "visibility": visibility,
                     "allowed_groups": allowed_groups,
                 });
