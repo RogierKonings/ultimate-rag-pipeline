@@ -16,6 +16,7 @@ The Orchestrator Service is the central coordination layer of the RAG pipeline, 
 - [Streaming Support](#streaming-support)
 - [Graceful Degradation](#graceful-degradation)
 - [Cost-Aware Retrieval & Model Tiering](#cost-aware-retrieval--model-tiering)
+- [Model & Retrieval Policy](#model--retrieval-policy)
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
 
@@ -936,6 +937,22 @@ status = manager.get_status()
 ## Cost-Aware Retrieval & Model Tiering
 
 The Orchestrator Service implements intelligent cost optimization through dynamic retrieval parameters, model tiering, answer-level caching, and token usage accounting.
+
+## Model & Retrieval Policy
+
+The latest policy-driven behavior is documented in:
+
+- [Model and Retrieval Policy](model-retrieval-policy.md)
+
+Key capabilities added:
+
+- Centralized stage-aware model policy for generation, streaming, decomposition, and verification.
+- Routing signals (`strategy`, `intent`, `complexity_score`) propagated into downstream model/retrieval decisions.
+- Selective reranking (complex/analytical queries) with explicit request override support.
+- Retrieval option normalization with support for both nested (`options.retrieval.*`) and legacy request keys.
+- Cache-key hashing aligned with effective retrieval policy (including rerank defaults and query-based routing inference).
+
+---
 
 ### Dynamic Retrieval Parameters
 

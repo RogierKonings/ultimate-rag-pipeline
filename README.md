@@ -75,6 +75,9 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 - LangGraph-based stateful workflows
 - Intelligent query routing (simple, complex, multi-hop, comparison, aggregation, no-retrieval strategies)
 - Multi-hop query decomposition with parallel sub-question retrieval
+- Centralized stage-aware model policy (generation, streaming, decomposition, verification)
+- Request-level model overrides (`options.model` and `options.stage_models.*`)
+- Policy-based selective reranking with routing-aware defaults and explicit overrides
 - CRAG-style answer verification with claim extraction and validation
 - Jinja2 prompt templates with context management
 - Input/output guardrails (PII detection, injection prevention)
@@ -97,11 +100,11 @@ The Ultimate RAG Pipeline provides enterprise-ready RAG capabilities with:
 - SOC 2, GDPR, and HIPAA compliance support
 
 ### Cost-Aware Retrieval & Model Tiering
-- Dynamic retrieval parameters based on query type and tenant tier
-- LLM model tiering (small/medium/large) for cost optimization:
-  - Small: llama3.2:3b (3B params) - simple queries, basic tenants
-  - Medium: llama3.1:8b (8B params) - standard complexity
-  - Large: qwen2.5:14b (14B params) - complex analytical, premium tenants
+- LLM model tiering (small/medium/large) driven by tenant tier, strategy, and intent
+- Stage-specific model defaults with per-stage override support (`options.stage_models.*`)
+- Retrieval policy tuning (`mode`, `top_k`, `rerank`) with nested and legacy option compatibility
+- Selective reranking for complex/analytical queries, with explicit override support
+- Policy-aligned answer-cache hashing so cache keys reflect effective retrieval behavior
 - Answer-level caching for instant repeated query responses
 - Per-tenant token usage accounting with quota enforcement
 - Configurable tenant tiers: basic, standard, premium
@@ -936,6 +939,7 @@ docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml \
 | [Retrieval Service](docs/retrieval-service/README.md) | Hybrid search and reranking |
 | [Resilience & Degradation](docs/resilience-degradation.md) | Circuit breakers, graceful degradation, timeout policies |
 | [Orchestrator Service](docs/orchestrator-service/README.md) | RAG workflow orchestration, answer verification, multi-hop RAG, cost optimization |
+| [Orchestrator Model & Retrieval Policy](docs/orchestrator-service/model-retrieval-policy.md) | Stage-aware model selection, selective reranking, retrieval option normalization, and cache-key alignment |
 | [LLM Gateway](docs/llm-gateway/README.md) | Rust LLM Gateway (embeddings, reranking, chat proxy) |
 | [Embedding Service](docs/embedding-service/README.md) | Rust embedding service with ONNX inference |
 | [Security](docs/security/README.md) | Security and compliance overview |

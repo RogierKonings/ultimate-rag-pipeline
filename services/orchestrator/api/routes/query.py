@@ -27,17 +27,13 @@ from api.models.responses import (
     FeedbackResponse,
     QueryResponse,
     SourceDocument,
-    UsageInfo,
-    VerificationInfo,
 )
 from database.connection import get_db
 from database.models.feedback import QueryFeedback
-from database.models.verification_log import VerificationLog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from model_policy import select_generation_model
 from observability.business_metrics import rag_feedback_total
-from observability.metrics_collector import QueryMetrics, metrics_collector
 from retrieval.policy import coerce_positive_int, get_retrieval_option, should_enable_rerank
 from routing import QueryRouter
 from sqlalchemy.ext.asyncio import AsyncSession
