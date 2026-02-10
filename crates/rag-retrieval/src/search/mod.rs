@@ -3,7 +3,7 @@
 //! This module provides search functionality:
 //!
 //! - **Semantic search**: Vector similarity search using Qdrant
-//! - **Keyword search**: BM25 search using OpenSearch
+//! - **Keyword search**: BM25 search using `OpenSearch`
 //! - **Configuration**: Unified search configuration for both methods
 //!
 //! # Example

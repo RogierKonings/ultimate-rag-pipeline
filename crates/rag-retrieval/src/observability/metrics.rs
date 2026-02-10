@@ -7,17 +7,16 @@
 //! - Component health gauges
 //! - Cache hit/miss counters
 
-use once_cell::sync::Lazy;
 use prometheus::{
     Counter, Encoder, Histogram, HistogramOpts, HistogramVec, IntCounterVec, IntGaugeVec, Opts,
     Registry, TextEncoder,
 };
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use rag_telemetry::{MetricsRegistry, TelemetryError};
 
 /// Global metrics registry for the retrieval service.
-pub static RETRIEVAL_METRICS: Lazy<Arc<Registry>> = Lazy::new(|| Arc::new(Registry::new()));
+pub static RETRIEVAL_METRICS: LazyLock<Arc<Registry>> = LazyLock::new(|| Arc::new(Registry::new()));
 
 /// Register all retrieval metrics with the global registry.
 ///
@@ -91,6 +90,7 @@ impl RetrievalMetricsCollector {
     /// # Errors
     ///
     /// Returns an error if metric registration fails.
+    #[allow(clippy::too_many_lines)]
     pub fn new_with_registry(registry: &Registry) -> Result<Self, MetricsError> {
         // Request counters
         let requests_total = IntCounterVec::new(
@@ -254,8 +254,8 @@ impl RetrievalMetricsCollector {
     ///
     /// # Arguments
     ///
-    /// * `stage` - Stage name (e.g., embedding, semantic_search, keyword_search,
-    ///   fusion, rerank, acl_filter)
+    /// * `stage` - Stage name (e.g., embedding, `semantic_search`, `keyword_search`,
+    ///   fusion, rerank, `acl_filter`)
     /// * `latency_seconds` - Stage latency in seconds
     pub fn record_stage_latency(&self, stage: &str, latency_seconds: f64) {
         self.stage_latency
@@ -285,7 +285,7 @@ impl RetrievalMetricsCollector {
     pub fn set_component_health(&self, component: &str, healthy: bool) {
         self.component_health
             .with_label_values(&[component])
-            .set(if healthy { 1 } else { 0 });
+            .set(i64::from(healthy));
     }
 
     /// Record a cache hit.
@@ -344,7 +344,7 @@ pub mod stages {
 pub mod components {
     /// Qdrant vector database.
     pub const QDRANT: &str = "qdrant";
-    /// OpenSearch keyword search.
+    /// `OpenSearch` keyword search.
     pub const OPENSEARCH: &str = "opensearch";
     /// Embedding service.
     pub const EMBEDDING: &str = "embedding";
@@ -368,7 +368,7 @@ pub enum MetricsError {
 
 impl From<TelemetryError> for MetricsError {
     fn from(err: TelemetryError) -> Self {
-        MetricsError::Registration(err.to_string())
+        Self::Registration(err.to_string())
     }
 }
 

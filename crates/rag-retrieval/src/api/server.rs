@@ -42,14 +42,12 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 /// - Request/response tracing
 /// - CORS support (conditionally applied based on config)
 /// - Request timeout
-#[must_use]
 pub fn create_router(state: Arc<AppState>) -> Router {
     let config = ServerConfig::default();
     create_router_with_config(state, &config)
 }
 
 /// Create the Axum router with a custom timeout (legacy API, uses permissive CORS).
-#[must_use]
 pub fn create_router_with_timeout(state: Arc<AppState>, timeout_secs: u64) -> Router {
     let config = ServerConfig {
         timeout_secs,
@@ -59,7 +57,6 @@ pub fn create_router_with_timeout(state: Arc<AppState>, timeout_secs: u64) -> Ro
 }
 
 /// Create the Axum router with full server configuration.
-#[must_use]
 pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) -> Router {
     // Build base middleware stack (tracing + timeout)
     let base = ServiceBuilder::new()

@@ -99,6 +99,7 @@ async fn main() {
 }
 
 /// Initialize all application components using environment-based configuration.
+#[allow(clippy::too_many_lines)]
 async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + Send + Sync>> {
     // Load configs from environment
     let semantic_config = SemanticSearchConfig::from_env();

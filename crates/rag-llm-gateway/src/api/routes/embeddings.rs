@@ -96,7 +96,7 @@ pub struct EmbeddingUsage {
 /// Create embeddings endpoint.
 ///
 /// Generates embeddings for the provided input text(s).
-/// Compatible with OpenAI's `/v1/embeddings` API.
+/// Compatible with `OpenAI`'s `/v1/embeddings` API.
 #[instrument(skip(state, request), fields(num_inputs = request.input.len()))]
 pub async fn create_embeddings(
     State(state): State<Arc<AppState>>,

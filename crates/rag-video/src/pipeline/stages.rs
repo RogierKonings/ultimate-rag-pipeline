@@ -11,7 +11,7 @@ pub enum PipelineStage {
     KeyframeExtraction,
     /// Extract audio track to WAV file.
     AudioExtraction,
-    /// Detect scene boundaries using PySceneDetect service.
+    /// Detect scene boundaries using `PySceneDetect` service.
     SceneDetection,
     /// Transcribe audio using Whisper service.
     Transcription,
@@ -26,16 +26,16 @@ pub enum PipelineStage {
 impl PipelineStage {
     /// Get all stages in execution order.
     #[must_use]
-    pub const fn all() -> &'static [PipelineStage] {
+    pub const fn all() -> &'static [Self] {
         &[
-            PipelineStage::MetadataProbe,
-            PipelineStage::KeyframeExtraction,
-            PipelineStage::AudioExtraction,
-            PipelineStage::SceneDetection,
-            PipelineStage::Transcription,
-            PipelineStage::ContentFusion,
-            PipelineStage::EmbeddingGeneration,
-            PipelineStage::QdrantIndexing,
+            Self::MetadataProbe,
+            Self::KeyframeExtraction,
+            Self::AudioExtraction,
+            Self::SceneDetection,
+            Self::Transcription,
+            Self::ContentFusion,
+            Self::EmbeddingGeneration,
+            Self::QdrantIndexing,
         ]
     }
 
@@ -43,14 +43,14 @@ impl PipelineStage {
     #[must_use]
     pub const fn index(&self) -> usize {
         match self {
-            PipelineStage::MetadataProbe => 0,
-            PipelineStage::KeyframeExtraction => 1,
-            PipelineStage::AudioExtraction => 2,
-            PipelineStage::SceneDetection => 3,
-            PipelineStage::Transcription => 4,
-            PipelineStage::ContentFusion => 5,
-            PipelineStage::EmbeddingGeneration => 6,
-            PipelineStage::QdrantIndexing => 7,
+            Self::MetadataProbe => 0,
+            Self::KeyframeExtraction => 1,
+            Self::AudioExtraction => 2,
+            Self::SceneDetection => 3,
+            Self::Transcription => 4,
+            Self::ContentFusion => 5,
+            Self::EmbeddingGeneration => 6,
+            Self::QdrantIndexing => 7,
         }
     }
 
@@ -66,13 +66,13 @@ impl PipelineStage {
     /// - `KeyframeExtraction` and `AudioExtraction` can run in parallel
     /// - `SceneDetection` and `Transcription` can run in parallel (after their inputs are ready)
     #[must_use]
-    pub const fn can_parallel_with(&self, other: &PipelineStage) -> bool {
+    pub const fn can_parallel_with(&self, other: &Self) -> bool {
         matches!(
             (self, other),
-            (PipelineStage::KeyframeExtraction, PipelineStage::AudioExtraction)
-                | (PipelineStage::AudioExtraction, PipelineStage::KeyframeExtraction)
-                | (PipelineStage::SceneDetection, PipelineStage::Transcription)
-                | (PipelineStage::Transcription, PipelineStage::SceneDetection)
+            (Self::KeyframeExtraction, Self::AudioExtraction)
+                | (Self::AudioExtraction, Self::KeyframeExtraction)
+                | (Self::SceneDetection, Self::Transcription)
+                | (Self::Transcription, Self::SceneDetection)
         )
     }
 
@@ -80,14 +80,14 @@ impl PipelineStage {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
-            PipelineStage::MetadataProbe => "Metadata Probe",
-            PipelineStage::KeyframeExtraction => "Keyframe Extraction",
-            PipelineStage::AudioExtraction => "Audio Extraction",
-            PipelineStage::SceneDetection => "Scene Detection",
-            PipelineStage::Transcription => "Transcription",
-            PipelineStage::ContentFusion => "Content Fusion",
-            PipelineStage::EmbeddingGeneration => "Embedding Generation",
-            PipelineStage::QdrantIndexing => "Qdrant Indexing",
+            Self::MetadataProbe => "Metadata Probe",
+            Self::KeyframeExtraction => "Keyframe Extraction",
+            Self::AudioExtraction => "Audio Extraction",
+            Self::SceneDetection => "Scene Detection",
+            Self::Transcription => "Transcription",
+            Self::ContentFusion => "Content Fusion",
+            Self::EmbeddingGeneration => "Embedding Generation",
+            Self::QdrantIndexing => "Qdrant Indexing",
         }
     }
 
@@ -95,14 +95,14 @@ impl PipelineStage {
     #[must_use]
     pub const fn description(&self) -> &'static str {
         match self {
-            PipelineStage::MetadataProbe => "Probing video metadata using ffprobe",
-            PipelineStage::KeyframeExtraction => "Extracting keyframes at scene boundaries",
-            PipelineStage::AudioExtraction => "Extracting audio track to WAV file",
-            PipelineStage::SceneDetection => "Detecting scene boundaries",
-            PipelineStage::Transcription => "Transcribing audio using Whisper",
-            PipelineStage::ContentFusion => "Fusing transcript, scenes, and OCR",
-            PipelineStage::EmbeddingGeneration => "Generating embeddings for chunks",
-            PipelineStage::QdrantIndexing => "Indexing chunks in Qdrant",
+            Self::MetadataProbe => "Probing video metadata using ffprobe",
+            Self::KeyframeExtraction => "Extracting keyframes at scene boundaries",
+            Self::AudioExtraction => "Extracting audio track to WAV file",
+            Self::SceneDetection => "Detecting scene boundaries",
+            Self::Transcription => "Transcribing audio using Whisper",
+            Self::ContentFusion => "Fusing transcript, scenes, and OCR",
+            Self::EmbeddingGeneration => "Generating embeddings for chunks",
+            Self::QdrantIndexing => "Indexing chunks in Qdrant",
         }
     }
 
@@ -111,17 +111,17 @@ impl PipelineStage {
     pub const fn requires_video(&self) -> bool {
         matches!(
             self,
-            PipelineStage::MetadataProbe
-                | PipelineStage::KeyframeExtraction
-                | PipelineStage::AudioExtraction
-                | PipelineStage::SceneDetection
+            Self::MetadataProbe
+                | Self::KeyframeExtraction
+                | Self::AudioExtraction
+                | Self::SceneDetection
         )
     }
 
     /// Check if the stage requires audio file.
     #[must_use]
     pub const fn requires_audio(&self) -> bool {
-        matches!(self, PipelineStage::Transcription)
+        matches!(self, Self::Transcription)
     }
 
     /// Check if the stage makes HTTP requests.
@@ -129,10 +129,10 @@ impl PipelineStage {
     pub const fn is_http_stage(&self) -> bool {
         matches!(
             self,
-            PipelineStage::SceneDetection
-                | PipelineStage::Transcription
-                | PipelineStage::EmbeddingGeneration
-                | PipelineStage::QdrantIndexing
+            Self::SceneDetection
+                | Self::Transcription
+                | Self::EmbeddingGeneration
+                | Self::QdrantIndexing
         )
     }
 }

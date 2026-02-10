@@ -131,7 +131,7 @@ impl JobTracker {
             entry.state.progress.total = total;
             entry.state.progress.stage = stage.into();
             entry.state.progress.percentage = if total > 0 {
-                (current as f64 / total as f64) * 100.0
+                (f64::from(current) / f64::from(total)) * 100.0
             } else {
                 0.0
             };
@@ -220,7 +220,7 @@ impl JobTracker {
     pub fn cleanup_old_jobs(&self, max_age: chrono::Duration) {
         let cutoff = Utc::now() - max_age;
         self.jobs.retain(|_, v| {
-            v.state.completed_at.map(|t| t > cutoff).unwrap_or(true) // Keep active jobs
+            v.state.completed_at.map_or(true, |t| t > cutoff) // Keep active jobs
         });
     }
 }
@@ -240,6 +240,7 @@ fn is_active(status: JobStatus) -> bool {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

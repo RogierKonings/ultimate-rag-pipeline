@@ -19,7 +19,7 @@ pub struct FilesystemConfig {
     /// Whether to scan subdirectories recursively.
     #[serde(default = "default_recursive")]
     pub recursive: bool,
-    /// File extensions to include (e.g., [".pdf", ".md"]).
+    /// File extensions to include (e.g., `[".pdf", ".md"]`).
     /// If None, all files are included.
     pub file_extensions: Option<Vec<String>>,
 }
@@ -75,11 +75,10 @@ impl FilesystemConnector {
             Some(extensions) => path
                 .extension()
                 .and_then(|ext| ext.to_str())
-                .map(|ext| {
+                .is_some_and(|ext| {
                     let ext_with_dot = format!(".{}", ext.to_lowercase());
                     extensions.iter().any(|e| e.to_lowercase() == ext_with_dot)
-                })
-                .unwrap_or(false),
+                }),
         }
     }
 
@@ -308,7 +307,9 @@ mod tests {
 
         let docs = connector.list_documents(None).await.unwrap();
         assert_eq!(docs.len(), 2); // test.txt, subdir/nested.txt
-        assert!(docs.iter().all(|d| d.filename.ends_with(".txt")));
+        assert!(docs.iter().all(|d| std::path::Path::new(&d.filename)
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("txt"))));
     }
 
     #[tokio::test]

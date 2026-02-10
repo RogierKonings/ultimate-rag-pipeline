@@ -117,21 +117,21 @@ pub struct PipelineResult {
     pub error: Option<String>,
 
     // Stage outputs
-    /// Video metadata (from MetadataProbe stage).
+    /// Video metadata (from `MetadataProbe` stage).
     pub metadata: Option<VideoMetadata>,
-    /// Extracted keyframes (from KeyframeExtraction stage).
+    /// Extracted keyframes (from `KeyframeExtraction` stage).
     pub keyframes: Vec<ExtractedKeyframe>,
-    /// Path to extracted audio (from AudioExtraction stage).
+    /// Path to extracted audio (from `AudioExtraction` stage).
     pub audio_path: Option<PathBuf>,
-    /// Scene detection result (from SceneDetection stage).
+    /// Scene detection result (from `SceneDetection` stage).
     pub scene_result: Option<SceneDetectionResult>,
     /// Transcription result (from Transcription stage).
     pub transcription_result: Option<TranscriptionResult>,
-    /// Fused video chunks (from ContentFusion stage).
+    /// Fused video chunks (from `ContentFusion` stage).
     pub chunks: Vec<VideoChunk>,
-    /// Generated embeddings (chunk_id -> vector).
+    /// Generated embeddings (`chunk_id` -> vector).
     pub embeddings: HashMap<Uuid, Vec<f32>>,
-    /// Index result (from QdrantIndexing stage).
+    /// Index result (from `QdrantIndexing` stage).
     pub index_result: Option<IndexResult>,
 }
 
@@ -161,7 +161,7 @@ impl PipelineResult {
     /// Add a stage result.
     pub fn add_stage_result(&mut self, result: StageResult) {
         if !result.success && self.error.is_none() {
-            self.error = result.error.clone();
+            self.error.clone_from(&result.error);
         }
         self.stage_results.push(result);
     }
@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(progress.current_stage, PipelineStage::KeyframeExtraction);
         assert_eq!(progress.stage_index, 1);
         assert_eq!(progress.total_stages, 8);
-        assert_eq!(progress.stage_progress, 0.5);
+        assert!((progress.stage_progress - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]

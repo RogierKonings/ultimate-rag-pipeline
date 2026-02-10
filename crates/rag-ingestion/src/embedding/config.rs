@@ -9,7 +9,7 @@ use std::time::Duration;
 /// Configuration for the embedding client.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingClientConfig {
-    /// Base URL of the embedding service (e.g., "http://localhost:8080").
+    /// Base URL of the embedding service (e.g., "<http://localhost:8080>").
     #[serde(default = "default_url")]
     pub url: String,
 

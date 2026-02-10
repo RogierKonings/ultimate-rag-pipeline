@@ -1,4 +1,4 @@
-//! Audio extraction from video files using FFmpeg.
+//! Audio extraction from video files using `FFmpeg`.
 
 use crate::error::VideoError;
 use crate::extraction::AudioConfig;
@@ -10,7 +10,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 use tracing::{debug, instrument};
 
-/// Audio extractor using FFmpeg CLI.
+/// Audio extractor using `FFmpeg` CLI.
 pub struct AudioExtractor {
     pub(crate) config: AudioConfig,
 }
@@ -50,7 +50,7 @@ impl AudioExtractor {
     /// Returns an error if:
     /// - The video file does not exist
     /// - The video has no audio track
-    /// - FFmpeg fails to extract the audio
+    /// - `FFmpeg` fails to extract the audio
     #[instrument(skip_all, fields(path = %video_path.as_ref().display(), output = %output_path.as_ref().display()))]
     pub async fn extract(
         &self,
@@ -115,7 +115,7 @@ impl AudioExtractor {
         })
     }
 
-    /// Build FFmpeg command for audio extraction.
+    /// Build `FFmpeg` command for audio extraction.
     ///
     /// Command format:
     /// ```text
@@ -149,6 +149,7 @@ impl AudioExtractor {
     }
 
     /// Probe audio file duration using ffprobe.
+    #[allow(clippy::cast_possible_truncation)]
     async fn probe_audio_duration(&self, audio_path: &Path) -> Result<u64> {
         let output = Command::new("ffprobe")
             .args(["-v", "quiet", "-print_format", "json", "-show_format"])
@@ -175,8 +176,7 @@ impl AudioExtractor {
             .duration
             .as_ref()
             .and_then(|d| d.parse::<f64>().ok())
-            .map(|d| (d * 1000.0) as u64)
-            .unwrap_or(0);
+            .map_or(0, |d| (d * 1000.0) as u64);
 
         Ok(duration_ms)
     }
@@ -413,9 +413,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::similar_names)]
     fn test_build_extract_command_all_required_args() {
         let config = AudioConfig {
-            sample_rate: 22050,
+            sample_rate: 22_050,
             channels: 2,
             format: "wav".to_string(),
         };
@@ -460,16 +461,16 @@ mod tests {
     fn test_audio_metadata_from_extraction() {
         // Test that AudioMetadata fields can be populated correctly
         let metadata = AudioMetadata {
-            duration_ms: 120000,
-            sample_rate: 16000,
+            duration_ms: 120_000,
+            sample_rate: 16_000,
             channels: 1,
-            file_size_bytes: 3840000, // 120s * 16000 Hz * 2 bytes
+            file_size_bytes: 3_840_000, // 120s * 16000 Hz * 2 bytes
         };
 
-        assert_eq!(metadata.duration_ms, 120000);
-        assert_eq!(metadata.sample_rate, 16000);
+        assert_eq!(metadata.duration_ms, 120_000);
+        assert_eq!(metadata.sample_rate, 16_000);
         assert_eq!(metadata.channels, 1);
-        assert_eq!(metadata.file_size_bytes, 3840000);
+        assert_eq!(metadata.file_size_bytes, 3_840_000);
     }
 
     #[test]

@@ -140,7 +140,7 @@ impl RerankerService {
     ///
     /// * `query` - The search query
     /// * `fused_results` - Fused results to rerank
-    /// * `contents` - Content for each result (must match length of fused_results)
+    /// * `contents` - Content for each result (must match length of `fused_results`)
     /// * `top_k` - Optional limit on number of results to return
     ///
     /// # Returns

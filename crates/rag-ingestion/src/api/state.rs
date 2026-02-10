@@ -25,7 +25,7 @@ pub struct AppState {
     /// Job queue for async processing (optional for tests).
     pub job_queue: Option<Arc<Mutex<JobQueue>>>,
 
-    /// Database pool for PostgreSQL queries (optional for tests).
+    /// Database pool for `PostgreSQL` queries (optional for tests).
     pub database: Option<DatabasePool>,
 
     /// Cache invalidation publisher for notifying orchestrator of document changes.
@@ -36,7 +36,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Create a new AppState builder.
+    /// Create a new `AppState` builder.
     #[must_use]
     pub fn builder() -> AppStateBuilder {
         AppStateBuilder::new()
@@ -168,7 +168,7 @@ impl AppStateBuilder {
         self
     }
 
-    /// Build the AppState.
+    /// Build the `AppState`.
     ///
     /// # Errors
     ///
@@ -189,7 +189,7 @@ impl AppStateBuilder {
         })
     }
 
-    /// Build AppState with a new job tracker (convenience method).
+    /// Build `AppState` with a new job tracker (convenience method).
     pub fn build_with_new_tracker(self) -> Result<AppState, AppStateBuilderError> {
         let builder = if self.job_tracker.is_none() {
             self.job_tracker(Arc::new(JobTracker::new()))
@@ -206,7 +206,7 @@ impl Default for AppStateBuilder {
     }
 }
 
-/// Error when building AppState.
+/// Error when building `AppState`.
 #[derive(Debug, Clone)]
 pub enum AppStateBuilderError {
     /// A required component is missing.
@@ -275,7 +275,7 @@ mod tests {
     #[test]
     fn test_app_state_debug() {
         let state = AppStateBuilder::new().build_with_new_tracker().unwrap();
-        let debug = format!("{:?}", state);
+        let debug = format!("{state:?}");
         assert!(debug.contains("AppState"));
         assert!(debug.contains("has_index_coordinator"));
     }

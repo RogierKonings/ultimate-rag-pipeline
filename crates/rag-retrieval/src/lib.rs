@@ -7,9 +7,9 @@
 //!
 //! ## Features
 //!
-//! - **Hybrid Search**: Combines semantic (Qdrant) and keyword (OpenSearch) search
+//! - **Hybrid Search**: Combines semantic (Qdrant) and keyword (`OpenSearch`) search
 //! - **Fusion Algorithms**: RRF, Linear, and Distribution-Based Score Fusion (DBSF)
-//! - **Query Processing**: Preprocessing, expansion, and HyDE (Hypothetical Document Embeddings)
+//! - **Query Processing**: Preprocessing, expansion, and `HyDE` (Hypothetical Document Embeddings)
 //! - **Reranking**: Cross-encoder reranking via LLM Gateway
 //! - **ACL Filtering**: Visibility-based access control with group memberships
 //! - **Caching**: Query result caching with Redis
@@ -132,14 +132,14 @@
 //! - [`fusion`]: Fusion algorithms (RRF, Linear, DBSF) for combining search results
 //! - [`hybrid`]: Hybrid search orchestration and pipeline configuration
 //! - [`search`]: Semantic and keyword search client implementations
-//! - [`query`]: Query preprocessing, expansion, and HyDE generation
+//! - [`query`]: Query preprocessing, expansion, and `HyDE` generation
 //! - [`reranking`]: Cross-encoder reranking service integration
 //! - [`acl`]: Access control list filtering and visibility enforcement
 //! - [`cache`]: Query result caching with Redis
 //! - [`embedding`]: Embedding service client for query vectorization
 //! - [`api`]: HTTP API types, routes, and server configuration
 //! - [`observability`]: Metrics, tracing, and structured logging
-//! - [`types`]: Core types (SearchMode, Visibility, UserContext, etc.)
+//! - [`types`]: Core types (`SearchMode`, Visibility, `UserContext`, etc.)
 //! - [`error`]: Error types and result handling
 //!
 //! ## Legacy RRF API

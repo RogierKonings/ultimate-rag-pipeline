@@ -115,8 +115,7 @@ impl UserContext {
         }
 
         match visibility {
-            Visibility::Public => true,
-            Visibility::Tenant => true, // Tenant filtering is done at query level
+            Visibility::Public | Visibility::Tenant => true, // Tenant filtering is done at query level
             Visibility::Private => false, // Private docs require owner check (not done here)
             Visibility::Group => {
                 // Check if user is in any of the allowed groups
@@ -309,7 +308,7 @@ pub struct RetrievalDebug {
     /// Terms added during query expansion.
     #[serde(default)]
     pub expanded_terms: Vec<String>,
-    /// Whether HyDE (Hypothetical Document Embedding) was used.
+    /// Whether `HyDE` (Hypothetical Document Embedding) was used.
     #[serde(default)]
     pub hyde_used: bool,
     /// Whether results were served from cache.
@@ -341,7 +340,7 @@ impl RetrievalDebug {
         self
     }
 
-    /// Set HyDE flag.
+    /// Set `HyDE` flag.
     #[must_use]
     pub const fn with_hyde(mut self, hyde_used: bool) -> Self {
         self.hyde_used = hyde_used;

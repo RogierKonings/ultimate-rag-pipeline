@@ -11,7 +11,9 @@ use uuid::Uuid;
 /// Feedback type categories.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum FeedbackType {
+    #[default]
     General,
     Helpful,
     Unhelpful,
@@ -33,11 +35,6 @@ impl FeedbackType {
     }
 }
 
-impl Default for FeedbackType {
-    fn default() -> Self {
-        Self::General
-    }
-}
 
 impl std::fmt::Display for FeedbackType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

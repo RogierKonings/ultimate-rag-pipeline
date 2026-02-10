@@ -45,7 +45,7 @@ impl InMemoryBlocklist {
         let mut entries = self.entries.write().unwrap();
         let now = Instant::now();
         entries.retain(|_, expires_at| {
-            expires_at.map_or(true, |exp| exp > now)
+            expires_at.is_none_or(|exp| exp > now)
         });
     }
 }

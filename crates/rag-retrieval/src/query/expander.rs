@@ -35,6 +35,7 @@ use crate::error::{Result, RetrievalError};
 
 /// Configuration for query expansion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct QueryExpanderConfig {
     /// Whether query expansion is enabled.
     pub enabled: bool,
@@ -442,6 +443,7 @@ impl QueryExpander {
         // Request max_expansions - 1 alternatives (original query is counted separately)
         let num_alternatives = self.config.max_expansions.saturating_sub(1).max(1);
 
+        #[allow(clippy::literal_string_with_formatting_args)]
         let prompt = EXPANSION_PROMPT_TEMPLATE
             .replace("{count}", &num_alternatives.to_string())
             .replace("{query}", query);
@@ -512,6 +514,7 @@ impl QueryExpander {
     }
 
     /// Create the default synonym database.
+    #[allow(clippy::too_many_lines)]
     fn default_synonyms() -> HashMap<String, Vec<String>> {
         HashMap::from([
             // Search/retrieval verbs
@@ -671,7 +674,7 @@ fn parse_expansion_response(response_text: &str, original_query: &str) -> Vec<St
         .filter(|s| {
             // Must be at least 3 characters and at most 500 characters
             let len = s.len();
-            len >= 3 && len <= 500
+            (3..=500).contains(&len)
         })
         .filter(|s| {
             // Must not be identical to the original query (case-insensitive)
@@ -1143,7 +1146,7 @@ mod llm_integration_tests {
             .and(path("/v1/chat/completions"))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(&mock_llm_response("test expansion"))
+                    .set_body_json(mock_llm_response("test expansion"))
                     .set_delay(std::time::Duration::from_secs(10)),
             )
             .mount(&mock_server)

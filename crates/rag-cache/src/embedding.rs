@@ -262,7 +262,7 @@ mod tests {
         cache.set_many(tenant_id, &pairs).await.unwrap();
 
         // Retrieve batch
-        let refs: Vec<&str> = contents.iter().copied().collect();
+        let refs: Vec<&str> = contents.to_vec();
         let found = cache.get_many(tenant_id, &refs).await.unwrap();
         assert_eq!(found.len(), 3);
 

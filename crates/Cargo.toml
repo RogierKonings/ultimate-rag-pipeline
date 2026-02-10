@@ -87,7 +87,7 @@ cast_precision_loss = "allow"  # f64 to usize is often intentional
 single_match_else = "allow"  # Match is often clearer than if let
 option_if_let_else = "allow"  # Not always clearer
 indexing_slicing = "allow"  # We validate bounds elsewhere
-match_on_vec_items = "allow"  # We validate bounds elsewhere
+# match_on_vec_items removed in newer clippy (subsumed by indexing_slicing)
 unnecessary_lazy_evaluations = "allow"  # Often clearer with closures
 unnecessary_map_or = "allow"  # map_or style preference
 match_like_matches_macro = "allow"  # Sometimes match is clearer

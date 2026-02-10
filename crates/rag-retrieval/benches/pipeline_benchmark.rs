@@ -59,7 +59,7 @@ fn bench_preprocessing_by_length(c: &mut Criterion) {
     let config = QueryPreprocessorConfig::default();
     let preprocessor = QueryPreprocessor::new(config);
 
-    for word_count in [5, 10, 25, 50, 100, 200].iter() {
+    for word_count in &[5, 10, 25, 50, 100, 200] {
         let query = generate_long_query(*word_count);
 
         group.bench_with_input(BenchmarkId::new("words", word_count), &query, |b, query| {
@@ -137,7 +137,7 @@ fn bench_cache_key_complexity(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark UserContext creation.
+/// Benchmark `UserContext` creation.
 fn bench_user_context_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("UserContext Creation");
 
@@ -228,13 +228,13 @@ fn bench_access_control(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark SearchOptions construction.
+/// Benchmark `SearchOptions` construction.
 fn bench_search_options(c: &mut Criterion) {
     let mut group = c.benchmark_group("SearchOptions Construction");
 
     // Default options
     group.bench_function("default", |b| {
-        b.iter(|| SearchOptions::default());
+        b.iter(SearchOptions::default);
     });
 
     // Builder pattern
@@ -251,13 +251,13 @@ fn bench_search_options(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark HybridSearchConfig construction.
+/// Benchmark `HybridSearchConfig` construction.
 fn bench_config_construction(c: &mut Criterion) {
     let mut group = c.benchmark_group("Config Construction");
 
     // Default hybrid config
     group.bench_function("hybrid_default", |b| {
-        b.iter(|| HybridSearchConfig::default());
+        b.iter(HybridSearchConfig::default);
     });
 
     // Builder pattern
@@ -274,7 +274,7 @@ fn bench_config_construction(c: &mut Criterion) {
 
     // Default pipeline config
     group.bench_function("pipeline_default", |b| {
-        b.iter(|| PipelineConfig::default());
+        b.iter(PipelineConfig::default);
     });
 
     // Pipeline builder
@@ -336,7 +336,7 @@ fn bench_uuid_operations(c: &mut Criterion) {
 
     // Generate new UUID
     group.bench_function("generate_v4", |b| {
-        b.iter(|| Uuid::new_v4());
+        b.iter(Uuid::new_v4);
     });
 
     // Parse UUID from string

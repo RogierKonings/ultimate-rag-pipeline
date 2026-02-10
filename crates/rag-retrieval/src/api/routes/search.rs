@@ -62,7 +62,7 @@ pub async fn retrieve(
     );
 
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id
-    let tenant_id = extract_tenant_id(&headers, &request.filters);
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
 
     let user_context = extract_user_context(&headers, tenant_id);
 
@@ -112,14 +112,13 @@ pub async fn retrieve(
 /// Extract `tenant_id` from the `X-Tenant-Id` header or the `filters.tenant_id` field.
 ///
 /// Falls back to `Uuid::nil()` if neither is present.
-pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: &Option<serde_json::Value>) -> Uuid {
+pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json::Value>) -> Uuid {
     headers
         .get("X-Tenant-Id")
         .and_then(|v| v.to_str().ok())
         .and_then(|s| Uuid::parse_str(s).ok())
         .or_else(|| {
             filters
-                .as_ref()
                 .and_then(|f| f.get("tenant_id"))
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
@@ -152,11 +151,10 @@ pub(super) fn extract_user_context(headers: &HeaderMap, tenant_id: Uuid) -> User
     let explicit_admin = headers
         .get("X-Admin")
         .and_then(|v| v.to_str().ok())
-        .map(|s| {
+        .is_some_and(|s| {
             let v = s.trim().to_ascii_lowercase();
             v == "true" || v == "1"
-        })
-        .unwrap_or(false);
+        });
 
     let role_admin = roles.iter().any(|role| {
         matches!(
@@ -209,7 +207,7 @@ fn dedupe_values(values: Vec<String>) -> Vec<String> {
 ///    ```
 ///    Each key-value pair becomes a `must` condition with exact match.
 ///
-/// 2. **Structured UnifiedFilter format** (must-only currently supported):
+/// 2. **Structured `UnifiedFilter` format** (must-only currently supported):
 ///    ```json
 ///    {
 ///      "must": [{"key": "source_type", "match_type": {"value": "pdf"}}]
@@ -287,8 +285,7 @@ pub(super) fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter
                     .map(|v| {
                         v.as_str().map(String::from).ok_or_else(|| {
                             ApiError::bad_request(format!(
-                                "Filter array values for key '{}' must be strings, got: {}",
-                                key, v
+                                "Filter array values for key '{key}' must be strings, got: {v}"
                             ))
                         })
                     })
@@ -320,6 +317,7 @@ pub(super) fn parse_filters(filters: &serde_json::Value) -> Result<UnifiedFilter
 ///
 /// Returns the results, metrics, debug info, and component outcome for
 /// degradation evaluation.
+#[allow(clippy::too_many_lines)]
 async fn execute_search(
     state: &AppState,
     request: &RetrieveRequest,
@@ -560,10 +558,7 @@ async fn execute_search(
     let acl_start = Instant::now();
     let before_acl = results.len();
 
-    results = results
-        .into_iter()
-        .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
-        .collect();
+    results.retain(|r| user_context.can_access(r.visibility, &r.allowed_groups));
 
     debug_info.acl_filter_latency_ms = acl_start.elapsed().as_secs_f64() * 1000.0;
     debug_info.after_acl = results.len();
@@ -590,7 +585,7 @@ async fn execute_search(
     Ok((results, metrics, debug_info, outcome))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 async fn execute_hybrid_with_fallback(
     state: &AppState,
     request: &RetrieveRequest,
@@ -929,11 +924,11 @@ fn convert_to_response(
                 .get("source_type")
                 .and_then(|v| v.as_str())
                 .map(String::from);
+            #[allow(clippy::cast_possible_truncation)]
             let total_chunks = metadata_dict
                 .get("total_chunks")
-                .and_then(|v| v.as_u64())
-                .map(|v| v as u32)
-                .unwrap_or(1);
+                .and_then(serde_json::Value::as_u64)
+                .map_or(1, |v| v as u32);
 
             RetrievedDocument {
                 chunk_id,
@@ -1114,7 +1109,7 @@ mod tests {
                     &vec!["engineering".to_string(), "product".to_string()]
                 );
             }
-            _ => panic!("Expected MatchType::Any"),
+            MatchType::Value(_) => panic!("Expected MatchType::Any"),
         }
     }
 
@@ -1218,7 +1213,7 @@ mod tests {
         assert_eq!(result.must[0].key, "document_id");
         match &result.must[0].match_type {
             MatchType::Value(v) => assert_eq!(v, &doc_id.to_string()),
-            _ => panic!("Expected MatchType::Value"),
+            MatchType::Any(_) => panic!("Expected MatchType::Value"),
         }
     }
 

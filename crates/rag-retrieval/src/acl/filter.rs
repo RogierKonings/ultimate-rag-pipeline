@@ -23,7 +23,7 @@ use crate::types::{UserContext, Visibility};
 ///    - GROUP visibility with matching groups, OR
 ///    - Explicitly allowed for user, OR
 ///    - Owned by user
-/// 3. User must not be in denied_groups or denied_users
+/// 3. User must not be in `denied_groups` or `denied_users`
 ///
 /// # Example
 ///
@@ -70,7 +70,7 @@ impl ACLFilter {
 
     /// Build unified filter for user context.
     ///
-    /// This creates a filter that can be converted to Qdrant or OpenSearch
+    /// This creates a filter that can be converted to Qdrant or `OpenSearch`
     /// format. The filter enforces:
     ///
     /// - Tenant isolation
@@ -169,6 +169,7 @@ impl ACLFilter {
     }
 
     /// Merge ACL filter with additional filters.
+    #[allow(clippy::unused_self)]
     fn merge_filters(
         &self,
         acl_filter: UnifiedFilter,
@@ -246,8 +247,7 @@ impl ACLFilter {
 
         // Check visibility and access rules
         match visibility {
-            Visibility::Public => true,
-            Visibility::Tenant => true, // Already passed tenant check
+            Visibility::Public | Visibility::Tenant => true, // Already passed tenant check
             Visibility::Private => {
                 // Owner check
                 owner_id.map_or(false, |owner| owner == user_context.user_id)
@@ -358,7 +358,7 @@ impl ACLFilter {
         super::builders::QdrantFilterBuilder::build(&unified)
     }
 
-    /// Build OpenSearch filter clauses directly from user context.
+    /// Build `OpenSearch` filter clauses directly from user context.
     ///
     /// This is a convenience method that combines [`build_filter`] and
     /// [`OpenSearchFilterBuilder::build`].
@@ -371,7 +371,7 @@ impl ACLFilter {
     /// # Returns
     ///
     /// A `Vec<serde_json::Value>` containing the filter clauses for use
-    /// in an OpenSearch bool query.
+    /// in an `OpenSearch` bool query.
     ///
     /// # Example
     ///
@@ -415,7 +415,7 @@ mod tests {
     use super::super::types::MatchType;
     use super::*;
 
-    /// Helper struct for testing HasACLFields
+    /// Helper struct for testing `HasACLFields`
     #[derive(Debug, Clone)]
     struct TestDocument {
         id: String,

@@ -1,4 +1,5 @@
 //! Regex patterns for PII detection.
+#![allow(clippy::non_std_lazy_statics)] // lazy_static is used for consistency across the codebase
 
 use lazy_static::lazy_static;
 use regex::Regex;

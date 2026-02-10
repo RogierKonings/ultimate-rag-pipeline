@@ -369,7 +369,7 @@ mod tests {
         stats.record_miss(100);
 
         let hit_rate = stats.hit_rate();
-        assert!((hit_rate - 0.6666666666666666).abs() < 0.0001);
+        assert!((hit_rate - 0.666_666_666_666_666_6).abs() < 0.0001);
     }
 
     #[test]
@@ -449,8 +449,8 @@ mod tests {
         assert_eq!(snapshot.invalidations, 1);
         assert_eq!(snapshot.errors, 1);
         assert_eq!(snapshot.total_requests, 3);
-        assert!((snapshot.hit_rate - 0.6666666666666666).abs() < 0.0001);
-        assert!((snapshot.miss_rate - 0.3333333333333333).abs() < 0.0001);
+        assert!((snapshot.hit_rate - 0.666_666_666_666_666_6).abs() < 0.0001);
+        assert!((snapshot.miss_rate - 0.333_333_333_333_333_3).abs() < 0.0001);
         assert!((snapshot.avg_hit_latency_us - 1500.0).abs() < 0.001);
         assert!((snapshot.avg_miss_latency_us - 3000.0).abs() < 0.001);
     }

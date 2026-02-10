@@ -246,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_supported_mime_types() {
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         assert!(parser.can_parse("text/markdown"));
         assert!(parser.can_parse("text/x-markdown"));
         assert!(!parser.can_parse("text/plain"));
@@ -254,14 +254,14 @@ mod tests {
 
     #[test]
     fn test_parse_simple_markdown() {
-        let md = r#"# Hello World
+        let md = r"# Hello World
 
 This is a test paragraph.
 
 Another paragraph here.
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         assert_eq!(result.title, Some("Hello World".to_string()));
@@ -270,7 +270,7 @@ Another paragraph here.
 
     #[test]
     fn test_parse_extracts_frontmatter() {
-        let md = r#"---
+        let md = r"---
 title: My Document
 author: Test Author
 tags:
@@ -281,9 +281,9 @@ tags:
 # Content
 
 Some text here.
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         // Title from frontmatter takes precedence
@@ -314,7 +314,7 @@ print("Hello")
 ```
 "#;
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         let code_blocks: Vec<_> = result
@@ -338,15 +338,15 @@ print("Hello")
 
     #[test]
     fn test_parse_extracts_tables() {
-        let md = r#"# Data
+        let md = r"# Data
 
 | Name | Age |
 |------|-----|
 | Alice | 30 |
 | Bob | 25 |
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         assert_eq!(result.tables.len(), 1);
@@ -356,7 +356,7 @@ print("Hello")
 
     #[test]
     fn test_parse_extracts_headings_as_blocks() {
-        let md = r#"# Main Title
+        let md = r"# Main Title
 
 ## Section One
 
@@ -365,32 +365,32 @@ Content one.
 ## Section Two
 
 Content two.
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
-        let headings: Vec<_> = result
+        let heading_count = result
             .blocks
             .iter()
             .filter(|b| b.metadata.contains_key("heading_level"))
-            .collect();
+            .count();
 
-        assert!(headings.len() >= 2);
+        assert!(heading_count >= 2);
     }
 
     #[test]
     fn test_parse_handles_invalid_frontmatter() {
-        let md = r#"---
+        let md = r"---
 invalid: yaml: [broken
 ---
 
 # Title
 
 Content.
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         // Should not crash, should fall back to parsing content
@@ -400,17 +400,17 @@ Content.
 
     #[test]
     fn test_parse_merges_metadata() {
-        let md = r#"---
+        let md = r"---
 title: From Frontmatter
 ---
 
 Content.
-"#;
+";
 
         let mut metadata = HashMap::new();
         metadata.insert("source".to_string(), Value::String("test".to_string()));
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), Some(metadata)).unwrap();
 
         // Both should be present, frontmatter overwrites conflicts
@@ -423,12 +423,12 @@ Content.
 
     #[test]
     fn test_parse_title_from_h1_when_no_frontmatter() {
-        let md = r#"# Document Title
+        let md = r"# Document Title
 
 Some content here.
-"#;
+";
 
-        let parser = MarkdownParser::default();
+        let parser = MarkdownParser;
         let result = parser.parse(md.as_bytes(), None).unwrap();
 
         assert_eq!(result.title, Some("Document Title".to_string()));

@@ -11,7 +11,6 @@ This module contains the business logic extracted from query route handlers:
 """
 
 import time
-import uuid
 from typing import Any
 
 import structlog

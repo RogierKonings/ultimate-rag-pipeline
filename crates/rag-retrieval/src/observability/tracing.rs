@@ -11,7 +11,7 @@ pub struct TracingConfig {
     /// Service name for traces.
     pub service_name: String,
 
-    /// OTLP endpoint for trace export (e.g., "http://localhost:4317").
+    /// OTLP endpoint for trace export (e.g., "<http://localhost:4317>").
     pub otlp_endpoint: Option<String>,
 
     /// Log level filter (e.g., "info", "debug").
@@ -220,7 +220,7 @@ pub mod span_names {
     /// Semantic (vector) search in Qdrant.
     pub const SEMANTIC_SEARCH: &str = "semantic_search";
 
-    /// Keyword (BM25) search in OpenSearch.
+    /// Keyword (BM25) search in `OpenSearch`.
     pub const KEYWORD_SEARCH: &str = "keyword_search";
 
     /// Result fusion (RRF, linear, DBSF).
@@ -238,7 +238,7 @@ pub mod span_names {
     /// Cache store.
     pub const CACHE_STORE: &str = "cache_store";
 
-    /// HyDE (Hypothetical Document Embedding) generation.
+    /// `HyDE` (Hypothetical Document Embedding) generation.
     pub const HYDE: &str = "hyde_generate";
 
     /// Multi-query retrieval.
@@ -292,7 +292,10 @@ mod tests {
         assert_eq!(config.service_name, "rag-retrieval");
         assert_eq!(config.log_level, "info");
         assert!(config.otlp_endpoint.is_none());
-        assert_eq!(config.sample_ratio, 1.0);
+        #[allow(clippy::float_cmp)]
+        {
+            assert_eq!(config.sample_ratio, 1.0);
+        }
     }
 
     #[test]

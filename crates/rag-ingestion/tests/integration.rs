@@ -45,7 +45,9 @@ fn test_html_to_chunks_pipeline() {
 
     // Verify chunk properties
     for (i, chunk) in chunks.iter().enumerate() {
-        assert_eq!(chunk.chunk_index, i as u32);
+        #[allow(clippy::cast_possible_truncation)]
+        let expected_index = i as u32;
+        assert_eq!(chunk.chunk_index, expected_index);
         assert!(!chunk.content.is_empty());
         assert!(chunk.token_count > 0);
         assert!(chunk.start_char <= chunk.end_char);
@@ -54,7 +56,7 @@ fn test_html_to_chunks_pipeline() {
 
 #[test]
 fn test_markdown_to_chunks_pipeline() {
-    let markdown = r#"---
+    let markdown = r"---
 title: Technical Documentation
 author: Test Author
 ---
@@ -89,22 +91,22 @@ Run the following command to start:
 ```bash
 npm start
 ```
-"#;
+";
 
     // Parse Markdown
-    let parser = MarkdownParser::default();
+    let parser = MarkdownParser;
     let doc = parser.parse(markdown.as_bytes(), None).unwrap();
 
     assert_eq!(doc.title, Some("Technical Documentation".to_string()));
     assert!(!doc.tables.is_empty());
 
     // Verify code blocks were extracted
-    let code_blocks: Vec<_> = doc
+    let code_block_count = doc
         .blocks
         .iter()
         .filter(|b| b.content_type == ContentType::Code)
-        .collect();
-    assert!(code_blocks.len() >= 2);
+        .count();
+    assert!(code_block_count >= 2);
 
     // Chunk the parsed text
     let chunker = RecursiveCharacterSplitter::default();
@@ -123,11 +125,10 @@ fn test_large_document_chunking() {
     // Generate a large document
     let paragraph = "This is a test paragraph with some content. ".repeat(50);
     let large_doc = format!(
-        "# Large Document\n\n{}\n\n## Section Two\n\n{}\n\n## Section Three\n\n{}",
-        paragraph, paragraph, paragraph
+        "# Large Document\n\n{paragraph}\n\n## Section Two\n\n{paragraph}\n\n## Section Three\n\n{paragraph}"
     );
 
-    let parser = MarkdownParser::default();
+    let parser = MarkdownParser;
     let doc = parser.parse(large_doc.as_bytes(), None).unwrap();
 
     let config = ChunkingConfig {

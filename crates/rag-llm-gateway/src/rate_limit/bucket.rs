@@ -66,6 +66,7 @@ impl RateLimiter {
     }
 
     /// Check rate limit for a tenant/user.
+    #[allow(clippy::cast_possible_truncation)]
     pub async fn check(&self, tenant_id: &str, user_id: Option<&str>) -> RateLimitResult {
         if !self.config.enabled {
             return RateLimitResult {
@@ -83,22 +84,22 @@ impl RateLimiter {
         };
 
         let limit = self.get_limit(tenant_id);
-        let burst_limit = (limit as f64 * self.config.burst_multiplier as f64) as u32;
+        let burst_limit = (f64::from(limit) * f64::from(self.config.burst_multiplier)) as u32;
         let window = Duration::from_secs(self.config.window_secs);
 
         let mut buckets = self.buckets.lock().await;
         let now = Instant::now();
 
         let bucket = buckets.entry(key).or_insert_with(|| Bucket {
-            tokens: burst_limit as f64,
+            tokens: f64::from(burst_limit),
             last_update: now,
             request_count: 0,
         });
 
         // Refill tokens based on elapsed time
         let elapsed = now.duration_since(bucket.last_update);
-        let refill = (elapsed.as_secs_f64() / window.as_secs_f64()) * limit as f64;
-        bucket.tokens = (bucket.tokens + refill).min(burst_limit as f64);
+        let refill = (elapsed.as_secs_f64() / window.as_secs_f64()) * f64::from(limit);
+        bucket.tokens = (bucket.tokens + refill).min(f64::from(burst_limit));
         bucket.last_update = now;
 
         if bucket.tokens >= 1.0 {
@@ -120,7 +121,7 @@ impl RateLimiter {
             }
         } else {
             let tokens_needed = 1.0 - bucket.tokens;
-            let retry_after = ((tokens_needed / limit as f64) * window.as_secs_f64()).ceil() as u64;
+            let retry_after = ((tokens_needed / f64::from(limit)) * window.as_secs_f64()).ceil() as u64;
 
             debug!(
                 remaining = 0,

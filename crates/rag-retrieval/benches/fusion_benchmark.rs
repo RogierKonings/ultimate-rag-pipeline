@@ -36,6 +36,7 @@ fn generate_overlapping_results(
     overlap_ratio: f32,
 ) -> (Vec<ScoredItem<Uuid>>, Vec<ScoredItem<Uuid>>) {
     let mut rng = rand::thread_rng();
+    #[allow(clippy::cast_possible_truncation)]
     let overlap_count = (count as f32 * overlap_ratio) as usize;
     let unique_count = count - overlap_count;
 
@@ -80,7 +81,7 @@ fn generate_bm25_results(count: usize) -> Vec<ScoredItem<Uuid>> {
 fn bench_rrf_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("RRF List Sizes");
 
-    for size in [10, 25, 50, 100, 250, 500].iter() {
+    for size in &[10, 25, 50, 100, 250, 500] {
         group.throughput(Throughput::Elements(*size as u64 * 2)); // Two lists
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
@@ -101,7 +102,7 @@ fn bench_rrf_sizes(c: &mut Criterion) {
 fn bench_linear_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("Linear List Sizes");
 
-    for size in [10, 25, 50, 100, 250, 500].iter() {
+    for size in &[10, 25, 50, 100, 250, 500] {
         group.throughput(Throughput::Elements(*size as u64 * 2));
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
@@ -126,7 +127,7 @@ fn bench_linear_sizes(c: &mut Criterion) {
 fn bench_dbsf_sizes(c: &mut Criterion) {
     let mut group = c.benchmark_group("DBSF List Sizes");
 
-    for size in [10, 25, 50, 100, 250, 500].iter() {
+    for size in &[10, 25, 50, 100, 250, 500] {
         group.throughput(Throughput::Elements(*size as u64 * 2));
 
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
@@ -196,7 +197,7 @@ fn bench_fusion_comparison(c: &mut Criterion) {
 fn bench_overlap_impact(c: &mut Criterion) {
     let mut group = c.benchmark_group("Overlap Impact");
 
-    for overlap in [0.0, 0.25, 0.5, 0.75, 1.0].iter() {
+    for overlap in &[0.0, 0.25, 0.5, 0.75, 1.0] {
         let param = format!("overlap_{:.0}%", overlap * 100.0);
 
         group.bench_with_input(BenchmarkId::new("RRF", &param), overlap, |b, &overlap| {
@@ -222,7 +223,7 @@ fn bench_rrf_k_parameter(c: &mut Criterion) {
 
     let (semantic, keyword) = generate_overlapping_results(50, 0.3);
 
-    for k in [1.0, 10.0, 30.0, 60.0, 100.0].iter() {
+    for k in &[1.0, 10.0, 30.0, 60.0, 100.0] {
         group.bench_with_input(BenchmarkId::from_parameter(k), k, |b, &k| {
             let config = FusionConfig::new(FusionMethod::Rrf).with_rrf_k(k);
 
@@ -239,13 +240,13 @@ fn bench_rrf_k_parameter(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark fusion with top_k limiting.
+/// Benchmark fusion with `top_k` limiting.
 fn bench_top_k_limiting(c: &mut Criterion) {
     let mut group = c.benchmark_group("Top-K Limiting");
 
     let (semantic, keyword) = generate_overlapping_results(100, 0.3);
 
-    for top_k in [5, 10, 25, 50, 100].iter() {
+    for top_k in &[5, 10, 25, 50, 100] {
         group.bench_with_input(BenchmarkId::from_parameter(top_k), top_k, |b, &top_k| {
             let config = FusionConfig::default().with_top_k(top_k);
 
@@ -266,7 +267,7 @@ fn bench_top_k_limiting(c: &mut Criterion) {
 fn bench_multi_list_rrf(c: &mut Criterion) {
     let mut group = c.benchmark_group("Multi-List RRF");
 
-    for num_lists in [2, 3, 5, 10].iter() {
+    for num_lists in &[2, 3, 5, 10] {
         group.bench_with_input(
             BenchmarkId::from_parameter(num_lists),
             num_lists,
@@ -299,7 +300,7 @@ fn bench_weight_configurations(c: &mut Criterion) {
         (0.1, 0.9, "keyword_dominant"),
     ];
 
-    for (sem_w, kw_w, name) in weight_configs.iter() {
+    for (sem_w, kw_w, name) in &weight_configs {
         group.bench_with_input(BenchmarkId::new("Linear", *name), name, |b, _| {
             let config = FusionConfig::new(FusionMethod::Linear).with_weights(*sem_w, *kw_w);
 

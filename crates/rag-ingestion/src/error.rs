@@ -37,11 +37,11 @@ pub enum Error {
     #[error("Vector store error: {0}")]
     VectorStore(String),
 
-    /// Search store (OpenSearch) error.
+    /// Search store (`OpenSearch`) error.
     #[error("Search store error: {0}")]
     SearchStore(String),
 
-    /// Database (PostgreSQL) error.
+    /// Database (`PostgreSQL`) error.
     #[error("Database error: {0}")]
     Database(String),
 
@@ -68,19 +68,19 @@ pub enum Error {
 
 impl From<rag_vectorstore::VectorStoreError> for Error {
     fn from(e: rag_vectorstore::VectorStoreError) -> Self {
-        Error::VectorStore(e.to_string())
+        Self::VectorStore(e.to_string())
     }
 }
 
 impl From<rag_search::SearchError> for Error {
     fn from(e: rag_search::SearchError) -> Self {
-        Error::SearchStore(e.to_string())
+        Self::SearchStore(e.to_string())
     }
 }
 
 impl From<rag_database::DatabaseError> for Error {
     fn from(e: rag_database::DatabaseError) -> Self {
-        Error::Database(e.to_string())
+        Self::Database(e.to_string())
     }
 }
 

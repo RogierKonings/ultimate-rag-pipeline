@@ -431,8 +431,7 @@ mod tests {
 
         assert!(key_str.contains(":sem:5"));
         // Should not have extra segments for user_id
-        let parts: Vec<&str> = key_str.split(':').collect();
-        assert_eq!(parts.len(), 6); // prefix:query:tenant:hash:mode:top_k
+        assert_eq!(key_str.split(':').count(), 6); // prefix:query:tenant:hash:mode:top_k
     }
 
     #[test]

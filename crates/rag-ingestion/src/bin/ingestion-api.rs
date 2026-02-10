@@ -28,6 +28,7 @@ use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
+#[allow(clippy::too_many_lines)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::registry()
@@ -195,6 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Create the embedding client from environment variables.
+#[allow(clippy::unused_async)] // async for consistency with other factory functions
 async fn create_embedding_client() -> Option<EmbeddingClient> {
     let embedding_url = std::env::var("EMBEDDING_SERVICE_URL")
         .unwrap_or_else(|_| "http://localhost:8080".to_string());

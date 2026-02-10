@@ -61,7 +61,7 @@ impl EmbeddingClient {
 
     /// Embed a batch of texts.
     ///
-    /// Returns a tuple of (embeddings, token_count).
+    /// Returns a tuple of (embeddings, `token_count`).
     ///
     /// # Arguments
     ///
@@ -76,9 +76,11 @@ impl EmbeddingClient {
             return Ok((vec![], 0));
         }
 
+        #[allow(clippy::cast_possible_truncation)] // retry delay millis fits in u64
+        let retry_delay_ms = self.config.retry_delay().as_millis() as u64;
         let retry_policy = RetryPolicy::new(
             self.config.max_retries,
-            self.config.retry_delay().as_millis() as u64,
+            retry_delay_ms,
             30_000,
         );
 
@@ -191,7 +193,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri());
+        let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
         let texts = vec!["hello".to_string(), "world".to_string()];
@@ -224,7 +226,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri())
+        let config = EmbeddingClientConfig::new(mock_server.uri())
             .with_max_retries(1)
             .with_retry_delay_ms(10); // Fast for tests
         let client = EmbeddingClient::new(config).unwrap();
@@ -244,7 +246,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri()).with_max_retries(3);
+        let config = EmbeddingClientConfig::new(mock_server.uri()).with_max_retries(3);
         let client = EmbeddingClient::new(config).unwrap();
 
         let result = client.embed_batch(&["test".to_string()]).await;
@@ -269,7 +271,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri());
+        let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
         let texts = vec!["a".to_string(), "b".to_string(), "c".to_string()];
@@ -297,7 +299,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri());
+        let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
         let texts = vec!["hello".to_string()];
@@ -321,7 +323,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri());
+        let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
         let healthy = client.health_check().await.unwrap();
@@ -338,7 +340,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let config = EmbeddingClientConfig::new(&mock_server.uri()).with_max_retries(0); // No retries for faster test
+        let config = EmbeddingClientConfig::new(mock_server.uri()).with_max_retries(0); // No retries for faster test
         let client = EmbeddingClient::new(config).unwrap();
 
         let healthy = client.health_check().await.unwrap();

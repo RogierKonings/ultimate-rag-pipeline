@@ -9,6 +9,7 @@ use std::time::Duration;
 
 /// Container for both semantic and keyword search configurations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct SearchConfig {
     /// Configuration for semantic (vector) search.
     pub semantic: SemanticSearchConfig,
@@ -17,14 +18,6 @@ pub struct SearchConfig {
     pub keyword: KeywordSearchConfig,
 }
 
-impl Default for SearchConfig {
-    fn default() -> Self {
-        Self {
-            semantic: SemanticSearchConfig::default(),
-            keyword: KeywordSearchConfig::default(),
-        }
-    }
-}
 
 impl SearchConfig {
     /// Create a new search config with defaults.

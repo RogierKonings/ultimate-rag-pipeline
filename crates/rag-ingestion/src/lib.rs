@@ -14,7 +14,7 @@
 //!   - [`embedding::EmbeddingClientConfig`]: Configuration for the embedding client
 //!
 //! - **Indexing** ([`indexing`]): Coordinate writes to multiple stores
-//!   - [`indexing::IndexCoordinator`]: Parallel writes to Qdrant, OpenSearch, PostgreSQL
+//!   - [`indexing::IndexCoordinator`]: Parallel writes to Qdrant, `OpenSearch`, `PostgreSQL`
 //!   - [`indexing::IndexStatus`]: Document indexing status tracking
 //!
 //! - **Connectors** ([`connectors`]): Load documents from various sources

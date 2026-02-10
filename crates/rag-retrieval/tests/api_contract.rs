@@ -12,7 +12,7 @@ use rag_types::SearchMode;
 // Import integration test mocks
 mod integration;
 
-/// Test RetrieveRequest serialization with all fields.
+/// Test `RetrieveRequest` serialization with all fields.
 #[test]
 fn test_retrieve_request_full_serialization() {
     let request = RetrieveRequest {
@@ -49,7 +49,7 @@ fn test_retrieve_request_full_serialization() {
     assert_eq!(parsed.top_k, 15);
 }
 
-/// Test RetrieveRequest default values from minimal JSON.
+/// Test `RetrieveRequest` default values from minimal JSON.
 #[test]
 fn test_retrieve_request_defaults_from_minimal_json() {
     let json = r#"{"query": "test query"}"#;
@@ -68,7 +68,7 @@ fn test_retrieve_request_defaults_from_minimal_json() {
     assert!(request.include_highlights);
 }
 
-/// Test RetrieveRequest validation for empty query.
+/// Test `RetrieveRequest` validation for empty query.
 #[test]
 fn test_retrieve_request_validation_empty_query() {
     let request = RetrieveRequest::new("");
@@ -80,7 +80,7 @@ fn test_retrieve_request_validation_empty_query() {
     assert!(err.message.contains("empty"));
 }
 
-/// Test RetrieveRequest validation for query too long.
+/// Test `RetrieveRequest` validation for query too long.
 #[test]
 fn test_retrieve_request_validation_query_too_long() {
     let long_query = "a".repeat(2001);
@@ -93,7 +93,7 @@ fn test_retrieve_request_validation_query_too_long() {
     assert!(err.message.contains("2000"));
 }
 
-/// Test RetrieveRequest validation for invalid top_k.
+/// Test `RetrieveRequest` validation for invalid `top_k`.
 #[test]
 fn test_retrieve_request_validation_invalid_top_k() {
     let mut request = RetrieveRequest::new("test");
@@ -119,7 +119,7 @@ fn test_retrieve_request_validation_invalid_top_k() {
     assert!(request.validate().is_ok());
 }
 
-/// Test RetrieveRequest validation for invalid weights.
+/// Test `RetrieveRequest` validation for invalid weights.
 #[test]
 fn test_retrieve_request_validation_invalid_weights() {
     let mut request = RetrieveRequest::new("test");
@@ -144,7 +144,7 @@ fn test_retrieve_request_validation_invalid_weights() {
     assert!(request.validate().is_ok());
 }
 
-/// Test RetrieveRequest validation for invalid min_score.
+/// Test `RetrieveRequest` validation for invalid `min_score`.
 #[test]
 fn test_retrieve_request_validation_invalid_min_score() {
     let mut request = RetrieveRequest::new("test");
@@ -166,7 +166,7 @@ fn test_retrieve_request_validation_invalid_min_score() {
     assert!(request.validate().is_ok());
 }
 
-/// Test RetrieveRequest validation for invalid rerank_top_k.
+/// Test `RetrieveRequest` validation for invalid `rerank_top_k`.
 #[test]
 fn test_retrieve_request_validation_invalid_rerank_top_k() {
     let mut request = RetrieveRequest::new("test");
@@ -206,7 +206,7 @@ fn test_search_mode_serialization() {
     assert_eq!(parsed, SearchMode::Keyword);
 }
 
-/// Test RetrieveResponse serialization structure.
+/// Test `RetrieveResponse` serialization structure.
 #[test]
 fn test_retrieve_response_serialization() {
     use rag_retrieval::api::types::{RetrievedDocument, SearchMetrics};
@@ -242,7 +242,7 @@ fn test_retrieve_response_serialization() {
     assert_eq!(parsed.mode, SearchMode::Hybrid);
 }
 
-/// Test RetrievedDocument serialization with optional fields.
+/// Test `RetrievedDocument` serialization with optional fields.
 #[test]
 fn test_retrieved_document_optional_fields() {
     use rag_retrieval::api::types::RetrievedDocument;
@@ -281,7 +281,7 @@ fn test_retrieved_document_optional_fields() {
     assert!(json.contains("<em>Content</em>"));
 }
 
-/// Test SearchMetrics serialization.
+/// Test `SearchMetrics` serialization.
 #[test]
 fn test_search_metrics_serialization() {
     use rag_retrieval::api::types::SearchMetrics;
@@ -338,7 +338,7 @@ fn test_error_response_format() {
     assert_eq!(parsed.error.code, "VALIDATION_ERROR");
 }
 
-/// Test ApiError creation methods.
+/// Test `ApiError` creation methods.
 #[test]
 fn test_api_error_creation() {
     use axum::http::StatusCode;
@@ -376,7 +376,7 @@ fn test_api_error_creation() {
     assert_eq!(unavailable.code, "SERVICE_UNAVAILABLE");
 }
 
-/// Test ApiError with details.
+/// Test `ApiError` with details.
 #[test]
 fn test_api_error_with_details() {
     let error = ApiError::validation("Invalid query").with_details(serde_json::json!({
@@ -423,7 +423,7 @@ fn test_health_response_formats() {
     assert!(json.contains("\"status\":\"unhealthy\""));
 }
 
-/// Test MultiQueryRequest validation.
+/// Test `MultiQueryRequest` validation.
 #[test]
 fn test_multi_query_request_validation() {
     use rag_retrieval::api::types::MultiQueryRequest;
@@ -451,7 +451,7 @@ fn test_multi_query_request_validation() {
     assert_eq!(err.field, "queries");
 
     // Empty string in queries
-    let request = MultiQueryRequest::new(vec!["valid".into(), "".into()]);
+    let request = MultiQueryRequest::new(vec!["valid".into(), String::new()]);
     let err = request.validate().unwrap_err();
     assert_eq!(err.field, "queries");
     assert!(err.message.contains("empty"));
@@ -463,7 +463,7 @@ fn test_multi_query_request_validation() {
     assert_eq!(err.field, "aggregation");
 }
 
-/// Test MultiQueryRequest default aggregation.
+/// Test `MultiQueryRequest` default aggregation.
 #[test]
 fn test_multi_query_request_defaults() {
     use rag_retrieval::api::types::MultiQueryRequest;
@@ -511,7 +511,7 @@ fn test_forward_compatibility() {
     assert!(result.is_ok() || result.is_err());
 }
 
-/// Test ValidationError display format.
+/// Test `ValidationError` display format.
 #[test]
 fn test_validation_error_display() {
     use rag_retrieval::api::types::ValidationError;

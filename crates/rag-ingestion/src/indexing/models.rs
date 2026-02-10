@@ -159,6 +159,7 @@ mod duration_millis {
     use serde::{Deserialize, Deserializer, Serializer};
     use std::time::Duration;
 
+    #[allow(clippy::cast_possible_truncation)] // duration millis fits in u64
     pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

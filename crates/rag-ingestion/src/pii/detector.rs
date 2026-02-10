@@ -24,29 +24,29 @@ pub enum PIIType {
 impl PIIType {
     /// Get all PII types.
     #[must_use]
-    pub fn all() -> &'static [PIIType] {
+    pub fn all() -> &'static [Self] {
         &[
-            PIIType::EmailAddress,
-            PIIType::PhoneNumber,
-            PIIType::SocialSecurityNumber,
-            PIIType::CreditCard,
-            PIIType::IpAddress,
-            PIIType::Date,
-            PIIType::PassportNumber,
-            PIIType::BankAccount,
-            PIIType::DriversLicense,
-            PIIType::MedicalRecord,
+            Self::EmailAddress,
+            Self::PhoneNumber,
+            Self::SocialSecurityNumber,
+            Self::CreditCard,
+            Self::IpAddress,
+            Self::Date,
+            Self::PassportNumber,
+            Self::BankAccount,
+            Self::DriversLicense,
+            Self::MedicalRecord,
         ]
     }
 
     /// Get high-sensitivity PII types.
     #[must_use]
-    pub fn high_sensitivity() -> &'static [PIIType] {
+    pub fn high_sensitivity() -> &'static [Self] {
         &[
-            PIIType::SocialSecurityNumber,
-            PIIType::CreditCard,
-            PIIType::BankAccount,
-            PIIType::MedicalRecord,
+            Self::SocialSecurityNumber,
+            Self::CreditCard,
+            Self::BankAccount,
+            Self::MedicalRecord,
         ]
     }
 
@@ -55,10 +55,10 @@ impl PIIType {
     pub fn is_high_sensitivity(&self) -> bool {
         matches!(
             self,
-            PIIType::SocialSecurityNumber
-                | PIIType::CreditCard
-                | PIIType::BankAccount
-                | PIIType::MedicalRecord
+            Self::SocialSecurityNumber
+                | Self::CreditCard
+                | Self::BankAccount
+                | Self::MedicalRecord
         )
     }
 
@@ -66,16 +66,16 @@ impl PIIType {
     #[must_use]
     pub fn placeholder(&self) -> &'static str {
         match self {
-            PIIType::EmailAddress => "[EMAIL_ADDRESS]",
-            PIIType::PhoneNumber => "[PHONE_NUMBER]",
-            PIIType::SocialSecurityNumber => "[SSN]",
-            PIIType::CreditCard => "[CREDIT_CARD]",
-            PIIType::IpAddress => "[IP_ADDRESS]",
-            PIIType::Date => "[DATE]",
-            PIIType::PassportNumber => "[PASSPORT]",
-            PIIType::BankAccount => "[BANK_ACCOUNT]",
-            PIIType::DriversLicense => "[DRIVERS_LICENSE]",
-            PIIType::MedicalRecord => "[MEDICAL_RECORD]",
+            Self::EmailAddress => "[EMAIL_ADDRESS]",
+            Self::PhoneNumber => "[PHONE_NUMBER]",
+            Self::SocialSecurityNumber => "[SSN]",
+            Self::CreditCard => "[CREDIT_CARD]",
+            Self::IpAddress => "[IP_ADDRESS]",
+            Self::Date => "[DATE]",
+            Self::PassportNumber => "[PASSPORT]",
+            Self::BankAccount => "[BANK_ACCOUNT]",
+            Self::DriversLicense => "[DRIVERS_LICENSE]",
+            Self::MedicalRecord => "[MEDICAL_RECORD]",
         }
     }
 }
@@ -195,6 +195,7 @@ impl PIIDetector {
     }
 
     /// Find all matches for a specific PII type.
+    #[allow(clippy::unused_self)] // kept as method for future extensibility with detector config
     fn find_matches(&self, text: &str, pii_type: PIIType) -> Vec<PIIEntity> {
         let regex = match pii_type {
             PIIType::EmailAddress => &*patterns::EMAIL,

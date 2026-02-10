@@ -2,7 +2,7 @@
 //!
 //! This module provides mock implementations of external service clients
 //! that can be used to test the retrieval pipeline without requiring
-//! actual external services like Qdrant or OpenSearch.
+//! actual external services like Qdrant or `OpenSearch`.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -13,6 +13,7 @@ use rag_retrieval::types::Visibility;
 
 /// Mock result for testing.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct MockSearchResult {
     pub chunk_id: Uuid,
     pub document_id: Uuid,
@@ -86,10 +87,11 @@ pub struct MockVectorStore {
     call_count: Mutex<usize>,
     /// Whether to fail on next call.
     should_fail: Mutex<bool>,
-    /// Error message if should_fail is true.
+    /// Error message if `should_fail` is true.
     error_message: Mutex<String>,
 }
 
+#[allow(dead_code)]
 impl MockVectorStore {
     /// Create a new mock vector store with the given results.
     #[must_use]
@@ -142,7 +144,7 @@ impl MockVectorStore {
         Ok(results.iter().take(top_k).cloned().collect())
     }
 
-    /// Convert results to ScoredItems for fusion testing.
+    /// Convert results to `ScoredItems` for fusion testing.
     #[must_use]
     pub fn as_scored_items(&self) -> Vec<ScoredItem<Uuid>> {
         self.results
@@ -162,7 +164,7 @@ impl Default for MockVectorStore {
 
 /// Mock keyword search client for testing.
 ///
-/// This mock simulates a keyword search engine like OpenSearch by storing
+/// This mock simulates a keyword search engine like `OpenSearch` by storing
 /// pre-defined results and returning them when queried.
 pub struct MockKeywordSearcher {
     /// Pre-configured results to return.
@@ -171,10 +173,11 @@ pub struct MockKeywordSearcher {
     call_count: Mutex<usize>,
     /// Whether to fail on next call.
     should_fail: Mutex<bool>,
-    /// Error message if should_fail is true.
+    /// Error message if `should_fail` is true.
     error_message: Mutex<String>,
 }
 
+#[allow(dead_code)]
 impl MockKeywordSearcher {
     /// Create a new mock keyword searcher with the given results.
     #[must_use]
@@ -223,7 +226,7 @@ impl MockKeywordSearcher {
         Ok(results.iter().take(top_k).cloned().collect())
     }
 
-    /// Convert results to ScoredItems for fusion testing.
+    /// Convert results to `ScoredItems` for fusion testing.
     #[must_use]
     pub fn as_scored_items(&self) -> Vec<ScoredItem<Uuid>> {
         self.results
@@ -256,6 +259,7 @@ pub struct MockEmbeddingClient {
     should_fail: Mutex<bool>,
 }
 
+#[allow(dead_code)]
 impl MockEmbeddingClient {
     /// Create a new mock embedding client with the given dimension.
     #[must_use]
@@ -321,8 +325,8 @@ impl MockEmbeddingClient {
         // Generate deterministic values based on seed
         (0..self.dimension)
             .map(|i| {
-                let val = ((seed.wrapping_add(i as u64) % 1000) as f32 / 1000.0) * 2.0 - 1.0;
-                val
+                
+                ((seed.wrapping_add(i as u64) % 1000) as f32 / 1000.0).mul_add(2.0, -1.0)
             })
             .collect()
     }
@@ -347,6 +351,7 @@ pub struct MockReranker {
     should_fail: Mutex<bool>,
 }
 
+#[allow(dead_code)]
 impl MockReranker {
     /// Create a new mock reranker with the given score factor.
     #[must_use]
@@ -423,10 +428,10 @@ pub fn generate_overlapping_results(
             MockSearchResult::new(
                 chunk_id,
                 doc_id,
-                format!("Shared content {}", i),
-                0.95 - (i as f32 * 0.05),
+                format!("Shared content {i}"),
+                (i as f32).mul_add(-0.05, 0.95),
             )
-            .with_title(format!("Shared Document {}", i))
+            .with_title(format!("Shared Document {i}"))
         })
         .collect();
 
@@ -436,10 +441,10 @@ pub fn generate_overlapping_results(
             MockSearchResult::new(
                 Uuid::new_v4(),
                 doc_id,
-                format!("Semantic unique content {}", i),
-                0.8 - (i as f32 * 0.03),
+                format!("Semantic unique content {i}"),
+                (i as f32).mul_add(-0.03, 0.8),
             )
-            .with_title(format!("Semantic Document {}", i)),
+            .with_title(format!("Semantic Document {i}")),
         );
     }
 
@@ -451,10 +456,10 @@ pub fn generate_overlapping_results(
             MockSearchResult::new(
                 chunk_id,
                 doc_id,
-                format!("Shared content {}", i),
-                12.0 - (i as f32 * 0.5),
+                format!("Shared content {i}"),
+                (i as f32).mul_add(-0.5, 12.0),
             )
-            .with_title(format!("Shared Document {}", i))
+            .with_title(format!("Shared Document {i}"))
             .with_highlights(vec![format!("<em>Shared</em> content {}", i)])
         })
         .collect();
@@ -465,10 +470,10 @@ pub fn generate_overlapping_results(
             MockSearchResult::new(
                 Uuid::new_v4(),
                 doc_id,
-                format!("Keyword unique content {}", i),
-                10.0 - (i as f32 * 0.3),
+                format!("Keyword unique content {i}"),
+                (i as f32).mul_add(-0.3, 10.0),
             )
-            .with_title(format!("Keyword Document {}", i))
+            .with_title(format!("Keyword Document {i}"))
             .with_highlights(vec![format!("<em>Keyword</em> unique {}", i)]),
         );
     }
@@ -585,6 +590,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::similar_names)]
     fn test_mock_reranker() {
         let reranker = MockReranker::new(0.9);
 
@@ -611,8 +617,7 @@ mod tests {
         let keyword_ids: std::collections::HashSet<_> =
             keyword.iter().map(|r| r.chunk_id).collect();
 
-        let overlap: Vec<_> = semantic_ids.intersection(&keyword_ids).collect();
-        assert_eq!(overlap.len(), 3);
+        assert_eq!(semantic_ids.intersection(&keyword_ids).count(), 3);
     }
 
     #[test]

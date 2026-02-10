@@ -80,7 +80,7 @@ impl Default for ProcessingOptions {
             chunk_size: default_chunk_size(),
             chunk_overlap: default_chunk_overlap(),
             enable_pii_detection: default_pii_detection(),
-            custom_metadata: serde_json::Value::Object(Default::default()),
+            custom_metadata: serde_json::Value::Object(serde_json::Map::default()),
         }
     }
 }

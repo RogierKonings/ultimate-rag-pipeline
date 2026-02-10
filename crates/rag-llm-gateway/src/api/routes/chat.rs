@@ -20,7 +20,7 @@ use crate::error::{GatewayError, Result};
 ///
 /// Proxies chat completion requests to the vLLM backend.
 /// Supports both streaming and non-streaming responses.
-/// Compatible with OpenAI's `/v1/chat/completions` API.
+/// Compatible with `OpenAI`'s `/v1/chat/completions` API.
 #[instrument(skip(state, request, auth_context), fields(model = ?request.model, stream = request.stream))]
 pub async fn create_chat_completion(
     State(state): State<Arc<AppState>>,

@@ -24,7 +24,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 ///
 /// Returns detailed health status of all dependent components including:
 /// - Qdrant (semantic search)
-/// - OpenSearch (keyword search)
+/// - `OpenSearch` (keyword search)
 /// - Reranker (LLM Gateway)
 ///
 /// # Response Status
@@ -37,7 +37,7 @@ pub async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> 
     let mut component_details: Vec<ComponentHealth> = Vec::new();
 
     // Check embedding service
-    let embedding_health = check_embedding(&state).await;
+    let embedding_health = check_embedding(&state);
     components.insert("embedding".into(), embedding_health.healthy);
     component_details.push(embedding_health);
 
@@ -143,7 +143,7 @@ pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<Rea
 }
 
 /// Check the embedding service health.
-async fn check_embedding(_state: &AppState) -> ComponentHealth {
+fn check_embedding(_state: &AppState) -> ComponentHealth {
     let start = Instant::now();
 
     // Try a simple health check
@@ -159,7 +159,7 @@ async fn check_embedding(_state: &AppState) -> ComponentHealth {
     }
 }
 
-/// Check the search backend health (Qdrant and OpenSearch).
+/// Check the search backend health (Qdrant and `OpenSearch`).
 async fn check_search_backends(state: &AppState) -> (ComponentHealth, ComponentHealth) {
     let start = Instant::now();
 

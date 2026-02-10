@@ -21,7 +21,7 @@ pub struct ErrorResponse {
 /// Error body within the response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorBody {
-    /// Error code for programmatic handling (e.g., "BAD_REQUEST", "INTERNAL_ERROR").
+    /// Error code for programmatic handling (e.g., "`BAD_REQUEST`", "`INTERNAL_ERROR`").
     pub code: String,
 
     /// Human-readable error message.

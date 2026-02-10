@@ -353,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_parse_simple_html() {
-        let html = r#"
+        let html = r"
             <!DOCTYPE html>
             <html>
             <head><title>Test Document</title></head>
@@ -362,7 +362,7 @@ mod tests {
                 <p>This is a test paragraph.</p>
             </body>
             </html>
-        "#;
+        ";
 
         let parser = HtmlParser::default();
         let result = parser.parse(html.as_bytes(), None).unwrap();
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_parse_extracts_blocks() {
-        let html = r#"
+        let html = r"
             <html>
             <body>
                 <h1>Title</h1>
@@ -382,7 +382,7 @@ mod tests {
                 <p>Paragraph two.</p>
             </body>
             </html>
-        "#;
+        ";
 
         let parser = HtmlParser::default();
         let result = parser.parse(html.as_bytes(), None).unwrap();
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_parse_extracts_tables() {
-        let html = r#"
+        let html = r"
             <html>
             <body>
                 <table>
@@ -441,7 +441,7 @@ mod tests {
                 </table>
             </body>
             </html>
-        "#;
+        ";
 
         let parser = HtmlParser::default();
         let result = parser.parse(html.as_bytes(), None).unwrap();
@@ -478,14 +478,14 @@ mod tests {
 
     #[test]
     fn test_parse_removes_scripts() {
-        let html = r#"
+        let html = r"
             <html>
             <body>
                 <p>Real content</p>
                 <script>alert('malicious');</script>
             </body>
             </html>
-        "#;
+        ";
 
         let parser = HtmlParser::default();
         let result = parser.parse(html.as_bytes(), None).unwrap();

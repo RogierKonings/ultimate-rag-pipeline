@@ -218,22 +218,24 @@ mod tests {
 
     #[test]
     fn test_video_chunk_duration_ms() {
-        let chunk = VideoChunk::new(Uuid::new_v4(), Uuid::new_v4(), 0, 5000, 25000);
-        assert_eq!(chunk.duration_ms(), 20000);
+        let chunk = VideoChunk::new(Uuid::new_v4(), Uuid::new_v4(), 0, 5000, 25_000);
+        assert_eq!(chunk.duration_ms(), 20_000);
     }
 
     #[test]
     fn test_video_chunk_duration_ms_saturating() {
-        let mut chunk = VideoChunk::default();
-        chunk.start_time_ms = 30000;
-        chunk.end_time_ms = 10000;
+        let chunk = VideoChunk {
+            start_time_ms: 30_000,
+            end_time_ms: 10_000,
+            ..VideoChunk::default()
+        };
         assert_eq!(chunk.duration_ms(), 0);
     }
 
     #[test]
     fn test_video_chunk_mid_time_ms() {
-        let chunk = VideoChunk::new(Uuid::new_v4(), Uuid::new_v4(), 0, 10000, 30000);
-        assert_eq!(chunk.mid_time_ms(), 20000);
+        let chunk = VideoChunk::new(Uuid::new_v4(), Uuid::new_v4(), 0, 10_000, 30_000);
+        assert_eq!(chunk.mid_time_ms(), 20_000);
     }
 
     #[test]
@@ -244,22 +246,28 @@ mod tests {
 
     #[test]
     fn test_video_chunk_has_content_with_transcript() {
-        let mut chunk = VideoChunk::default();
-        chunk.transcript_text = "Hello world".to_string();
+        let chunk = VideoChunk {
+            transcript_text: "Hello world".to_string(),
+            ..VideoChunk::default()
+        };
         assert!(chunk.has_content());
     }
 
     #[test]
     fn test_video_chunk_has_content_with_scene() {
-        let mut chunk = VideoChunk::default();
-        chunk.scene_description = "A person speaking".to_string();
+        let chunk = VideoChunk {
+            scene_description: "A person speaking".to_string(),
+            ..VideoChunk::default()
+        };
         assert!(chunk.has_content());
     }
 
     #[test]
     fn test_video_chunk_has_content_with_ocr() {
-        let mut chunk = VideoChunk::default();
-        chunk.ocr_text = "TITLE".to_string();
+        let chunk = VideoChunk {
+            ocr_text: "TITLE".to_string(),
+            ..VideoChunk::default()
+        };
         assert!(chunk.has_content());
     }
 

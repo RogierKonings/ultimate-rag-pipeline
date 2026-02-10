@@ -16,4 +16,4 @@ allowed-wildcard-imports = []
 disallowed-types = []
 
 # MSRV for suggesting newer features
-msrv = "1.75"
+msrv = "1.93"

@@ -5,7 +5,7 @@
 //! - Query type classification
 //! - Token extraction
 //! - Query expansion with synonym support
-//! - Hypothetical Document Embeddings (HyDE) generation
+//! - Hypothetical Document Embeddings (`HyDE`) generation
 //! - Query result caching
 
 mod cache;

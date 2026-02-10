@@ -43,6 +43,7 @@ struct FfprobeOutput {
 impl MetadataProbe {
     /// Probe video file for metadata without full decode.
     /// Uses ffprobe to extract video metadata.
+    #[allow(clippy::cast_possible_truncation)]
     #[instrument(skip_all, fields(path = %video_path.as_ref().display()))]
     pub async fn probe(video_path: impl AsRef<Path>) -> Result<VideoMetadata> {
         let path = video_path.as_ref();
@@ -120,7 +121,8 @@ impl MetadataProbe {
         Ok(())
     }
 
-    /// Parse ffprobe JSON output into VideoMetadata.
+    /// Parse ffprobe JSON output into `VideoMetadata`.
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn parse_ffprobe_output(output: &str) -> Result<VideoMetadata> {
         let ffprobe: FfprobeOutput = serde_json::from_str(output)
             .map_err(|e| VideoError::Ffmpeg(format!("Failed to parse ffprobe output: {e}")))?;
@@ -141,15 +143,13 @@ impl MetadataProbe {
             .duration
             .as_ref()
             .and_then(|d| d.parse::<f64>().ok())
-            .map(|d| (d * 1000.0) as u64)
-            .unwrap_or(0);
+            .map_or(0, |d| (d * 1000.0) as u64);
 
         // Parse frame rate
         let fps = video_stream
             .r_frame_rate
             .as_ref()
-            .map(|r| Self::parse_frame_rate(r))
-            .unwrap_or(0.0);
+            .map_or(0.0, |r| Self::parse_frame_rate(r));
 
         Ok(VideoMetadata {
             duration_ms,
@@ -166,10 +166,10 @@ impl MetadataProbe {
         if let Some((num, den)) = rate.split_once('/') {
             let numerator: f32 = num.parse().unwrap_or(0.0);
             let denominator: f32 = den.parse().unwrap_or(1.0);
-            if denominator != 0.0 {
-                numerator / denominator
-            } else {
+            if denominator == 0.0 {
                 0.0
+            } else {
+                numerator / denominator
             }
         } else {
             // Try parsing as a simple float
@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(metadata.height, 1080);
         assert_eq!(metadata.codec, "h264");
         assert!((metadata.fps - 30.0).abs() < 0.01);
-        assert_eq!(metadata.duration_ms, 120500);
+        assert_eq!(metadata.duration_ms, 120_500);
         assert!(metadata.has_audio);
     }
 
@@ -237,7 +237,7 @@ mod tests {
         assert_eq!(metadata.codec, "vp9");
         // 24000/1001 ≈ 23.976
         assert!((metadata.fps - 23.976).abs() < 0.01);
-        assert_eq!(metadata.duration_ms, 60000);
+        assert_eq!(metadata.duration_ms, 60_000);
         assert!(!metadata.has_audio);
     }
 
@@ -321,17 +321,17 @@ mod tests {
 
     #[test]
     fn test_parse_frame_rate_invalid() {
-        assert_eq!(MetadataProbe::parse_frame_rate("invalid"), 0.0);
+        assert!(MetadataProbe::parse_frame_rate("invalid").abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_parse_frame_rate_zero_denominator() {
-        assert_eq!(MetadataProbe::parse_frame_rate("30/0"), 0.0);
+        assert!(MetadataProbe::parse_frame_rate("30/0").abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_parse_frame_rate_empty_string() {
-        assert_eq!(MetadataProbe::parse_frame_rate(""), 0.0);
+        assert!(MetadataProbe::parse_frame_rate("").abs() < f32::EPSILON);
     }
 
     #[test]

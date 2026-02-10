@@ -18,7 +18,7 @@ from .exceptions import (
     ModelTimeoutError,
     RateLimitError,
 )
-from .models import ChatCompletionRequest, GatewayConfig, ModelConfig
+from .models import ChatCompletionRequest, GatewayConfig
 
 logger = structlog.get_logger(__name__)
 

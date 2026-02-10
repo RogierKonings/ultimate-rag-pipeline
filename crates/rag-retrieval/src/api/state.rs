@@ -48,7 +48,7 @@ pub struct AppState {
     /// Query expansion service (optional).
     pub query_expander: Option<Arc<QueryExpander>>,
 
-    /// HyDE generator service (optional).
+    /// `HyDE` generator service (optional).
     pub hyde_generator: Option<Arc<HydeGenerator>>,
 
     /// The ACL filter for access control.
@@ -59,7 +59,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    /// Create a new AppState builder.
+    /// Create a new `AppState` builder.
     #[must_use]
     pub fn builder() -> AppStateBuilder {
         AppStateBuilder::new()
@@ -83,13 +83,14 @@ impl AppState {
         self.query_expander.is_some()
     }
 
-    /// Check if HyDE generation is available.
+    /// Check if `HyDE` generation is available.
     #[must_use]
     pub fn has_hyde_generator(&self) -> bool {
         self.hyde_generator.is_some()
     }
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl std::fmt::Debug for AppState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppState")
@@ -97,7 +98,7 @@ impl std::fmt::Debug for AppState {
             .field("has_query_expander", &self.query_expander.is_some())
             .field("has_hyde_generator", &self.hyde_generator.is_some())
             .field("version", &self.version)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -166,7 +167,7 @@ impl AppStateBuilder {
         self
     }
 
-    /// Set the HyDE generator service.
+    /// Set the `HyDE` generator service.
     #[must_use]
     pub fn hyde_generator(mut self, hyde_generator: Arc<HydeGenerator>) -> Self {
         self.hyde_generator = Some(hyde_generator);
@@ -187,7 +188,7 @@ impl AppStateBuilder {
         self
     }
 
-    /// Build the AppState.
+    /// Build the `AppState`.
     ///
     /// # Errors
     ///
@@ -223,7 +224,7 @@ impl Default for AppStateBuilder {
     }
 }
 
-/// Error when building AppState.
+/// Error when building `AppState`.
 #[derive(Debug, Clone)]
 pub enum AppStateBuilderError {
     /// A required component is missing.

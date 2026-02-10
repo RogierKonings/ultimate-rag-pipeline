@@ -44,6 +44,7 @@ impl ContentFusionService {
     ///
     /// A vector of fused video chunks covering the entire video duration.
     #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn create_chunks(
         &self,
         video_id: Uuid,
@@ -124,7 +125,7 @@ impl ContentFusionService {
     ///
     /// # Returns
     ///
-    /// A vector of (start_ms, end_ms) tuples for each chunk.
+    /// A vector of (`start_ms`, `end_ms`) tuples for each chunk.
     #[must_use]
     pub fn generate_chunk_boundaries(&self, duration_ms: u64) -> Vec<(u64, u64)> {
         if duration_ms == 0 {
@@ -274,6 +275,7 @@ impl ContentFusionService {
     /// # Returns
     ///
     /// Deduplicated text joined with spaces.
+    #[allow(clippy::unused_self)]
     fn deduplicate_text(&self, texts: &[&str]) -> String {
         if texts.is_empty() {
             return String::new();
@@ -307,6 +309,7 @@ mod tests {
     use super::*;
     use crate::extraction::ExtractedKeyframe;
 
+    #[allow(clippy::cast_possible_truncation)]
     fn create_test_keyframe(timestamp_ms: u64, is_scene_boundary: bool) -> ExtractedKeyframe {
         ExtractedKeyframe {
             frame_index: (timestamp_ms / 1000) as u32,
@@ -315,7 +318,7 @@ mod tests {
             thumbnail_path: None,
             width: 1280,
             height: 720,
-            file_size_bytes: 50000,
+            file_size_bytes: 50_000,
             is_scene_boundary,
         }
     }

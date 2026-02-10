@@ -26,25 +26,22 @@ pub enum JobStatus {
 /// Job priority levels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum JobPriority {
     Low = 0,
+    #[default]
     Normal = 1,
     High = 2,
     Critical = 3,
 }
 
-impl Default for JobPriority {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
 
 /// A job to be processed by a worker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
     /// Unique job ID.
     pub id: Uuid,
-    /// Job type (e.g., "ingest_document", "reembed").
+    /// Job type (e.g., "`ingest_document`", "reembed").
     pub job_type: String,
     /// Tenant ID for multi-tenancy.
     pub tenant_id: String,

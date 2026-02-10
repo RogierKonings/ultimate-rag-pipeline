@@ -49,6 +49,7 @@ impl RetryPolicy {
     ///
     /// Uses exponential backoff: `min(base_ms * 2^attempt, max_ms)` with ±25% jitter.
     #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn backoff_duration(&self, attempt: u32) -> Duration {
         let base_backoff = self.base_wait_ms.saturating_mul(1u64 << attempt.min(10));
         let capped_backoff = base_backoff.min(self.max_wait_ms);
@@ -73,6 +74,7 @@ impl RetryPolicy {
     ///
     /// The `is_retryable` closure determines whether a failed attempt should be retried.
     /// Returns the first successful result, or the last error if all attempts fail.
+    #[allow(clippy::missing_panics_doc)]
     pub async fn execute<F, Fut, T, E>(
         &self,
         mut operation: F,

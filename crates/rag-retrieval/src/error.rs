@@ -36,7 +36,7 @@ pub enum RetrievalError {
     #[error("Cache error: {0}")]
     Cache(String),
 
-    /// LLM operation failed (e.g., HyDE generation).
+    /// LLM operation failed (e.g., `HyDE` generation).
     #[error("LLM error: {0}")]
     Llm(String),
 

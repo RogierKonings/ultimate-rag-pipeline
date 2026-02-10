@@ -160,7 +160,7 @@ pub async fn ingest_single_document(
     ))
 }
 
-/// GET /api/v1/ingest/{job_id} - Get job status.
+/// GET /`api/v1/ingest/{job_id`} - Get job status.
 pub async fn get_job_status(
     State(state): State<Arc<AppState>>,
     Path(job_id): Path<Uuid>,
@@ -195,7 +195,7 @@ pub async fn get_job_status(
     }))
 }
 
-/// DELETE /api/v1/ingest/{job_id} - Cancel a job.
+/// DELETE /`api/v1/ingest/{job_id`} - Cancel a job.
 pub async fn cancel_job(
     State(state): State<Arc<AppState>>,
     Path(job_id): Path<Uuid>,

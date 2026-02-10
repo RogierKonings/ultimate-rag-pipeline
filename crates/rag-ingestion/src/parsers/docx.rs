@@ -63,6 +63,7 @@ impl DocxParser {
     }
 
     /// Extract text content from DOCX document.
+    #[allow(clippy::type_complexity)] // return type is clear in context
     fn extract_content(
         &self,
         content: &[u8],
@@ -87,6 +88,7 @@ impl DocxParser {
     }
 
     /// Parse the document.xml content.
+    #[allow(clippy::type_complexity, clippy::too_many_lines)]
     fn parse_document_xml(
         &self,
         xml: &str,
@@ -212,7 +214,8 @@ impl DocxParser {
         Ok((paragraphs, blocks, tables))
     }
 
-    /// Convert rows to TableContent (first row as headers).
+    /// Convert rows to `TableContent` (first row as headers).
+    #[allow(clippy::unused_self)] // kept as method for API consistency
     fn rows_to_table(&self, rows: &[Vec<String>]) -> Option<TableContent> {
         if rows.is_empty() {
             return None;
@@ -233,6 +236,7 @@ impl DocxParser {
     }
 
     /// Convert table to plain text.
+    #[allow(clippy::unused_self)] // kept as method for API consistency
     fn table_to_text(&self, table: &TableContent) -> String {
         let mut lines = Vec::new();
 
@@ -249,6 +253,7 @@ impl DocxParser {
     }
 
     /// Extract core properties (metadata) from DOCX.
+    #[allow(clippy::unused_self)] // kept as method for API consistency
     fn extract_core_properties(
         &self,
         content: &[u8],
@@ -287,8 +292,7 @@ impl DocxParser {
                     Ok(Event::End(_)) => {
                         current_tag = None;
                     }
-                    Ok(Event::Eof) => break,
-                    Err(_) => break,
+                    Ok(Event::Eof) | Err(_) => break,
                     _ => {}
                 }
                 buf.clear();

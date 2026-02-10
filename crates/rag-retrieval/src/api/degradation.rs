@@ -10,7 +10,7 @@
 //!
 //! - `embedding` – query vectorisation (always required for semantic modes)
 //! - `semantic` – Qdrant vector search
-//! - `keyword`  – OpenSearch BM25 search
+//! - `keyword`  – `OpenSearch` BM25 search
 //! - `reranker`  – cross-encoder reranking
 //!
 //! # Degradation Modes

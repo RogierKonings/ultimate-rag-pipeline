@@ -3,7 +3,6 @@
 use async_trait::async_trait;
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::Client;
-use bytes::Bytes;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
@@ -18,14 +17,14 @@ pub struct S3Config {
     pub bucket: String,
     /// Optional prefix to filter objects.
     pub prefix: Option<String>,
-    /// Custom endpoint URL (for MinIO).
+    /// Custom endpoint URL (for `MinIO`).
     pub endpoint_url: Option<String>,
     /// AWS region.
     #[serde(default = "default_region")]
     pub region: String,
     /// File extensions to include.
     pub file_extensions: Option<Vec<String>>,
-    /// Force path-style URLs (required for MinIO).
+    /// Force path-style URLs (required for `MinIO`).
     #[serde(default)]
     pub force_path_style: bool,
 }
@@ -54,7 +53,7 @@ impl S3Config {
         self
     }
 
-    /// Set custom endpoint URL (for MinIO).
+    /// Set custom endpoint URL (for `MinIO`).
     #[must_use]
     pub fn with_endpoint(mut self, endpoint_url: impl Into<String>) -> Self {
         self.endpoint_url = Some(endpoint_url.into());
@@ -284,7 +283,7 @@ impl Connector for S3Connector {
             metadata = metadata.with_timestamps(None, Some(modified));
         }
 
-        Ok(RawDocument::new(Bytes::from(content), metadata))
+        Ok(RawDocument::new(content, metadata))
     }
 
     fn is_connected(&self) -> bool {

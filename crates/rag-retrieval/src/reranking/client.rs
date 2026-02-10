@@ -125,7 +125,7 @@ impl RerankerClient {
     /// Returns an error if the HTTP client cannot be created.
     pub fn new(config: RerankerConfig) -> Result<Self> {
         let client = build_http_client_with_timeout(config.timeout())
-            .map_err(|e| RetrievalError::config(e))?;
+            .map_err(RetrievalError::config)?;
 
         Ok(Self { client, config })
     }
@@ -148,7 +148,7 @@ impl RerankerClient {
     /// Rerank documents by relevance to a query.
     ///
     /// This is a convenience method that calls `rerank_with_options` with
-    /// default options (no top_k limit, no document text in response).
+    /// default options (no `top_k` limit, no document text in response).
     ///
     /// # Arguments
     ///

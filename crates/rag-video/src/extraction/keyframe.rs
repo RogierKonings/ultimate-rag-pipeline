@@ -1,4 +1,4 @@
-//! Keyframe extraction from video files using FFmpeg.
+//! Keyframe extraction from video files using `FFmpeg`.
 
 use crate::error::VideoError;
 use crate::extraction::{ExtractedKeyframe, KeyframeConfig};
@@ -8,7 +8,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 use tracing::{debug, instrument};
 
-/// Keyframe extractor using FFmpeg CLI.
+/// Keyframe extractor using `FFmpeg` CLI.
 pub struct KeyframeExtractor {
     pub(crate) config: KeyframeConfig,
 }
@@ -30,6 +30,7 @@ impl KeyframeExtractor {
     /// # Returns
     ///
     /// A vector of `ExtractedKeyframe` structs containing metadata about each extracted frame.
+    #[allow(clippy::cast_possible_truncation)]
     #[instrument(skip_all, fields(path = %video_path.as_ref().display(), num_timestamps = timestamps_ms.len()))]
     pub async fn extract(
         &self,
@@ -131,7 +132,7 @@ impl KeyframeExtractor {
         Ok(keyframes)
     }
 
-    /// Build FFmpeg command for frame extraction.
+    /// Build `FFmpeg` command for frame extraction.
     ///
     /// Command format:
     /// ```text
@@ -176,7 +177,7 @@ impl KeyframeExtractor {
         cmd
     }
 
-    /// Build FFmpeg command for thumbnail extraction.
+    /// Build `FFmpeg` command for thumbnail extraction.
     pub(crate) fn build_thumbnail_command(
         &self,
         video_path: &Path,
@@ -236,7 +237,7 @@ impl KeyframeExtractor {
         format!("{index:05}_{timestamp_ms}.jpg")
     }
 
-    /// Convert quality (1-100) to FFmpeg qscale (1-31, lower is better).
+    /// Convert quality (1-100) to `FFmpeg` qscale (1-31, lower is better).
     ///
     /// Formula: `qscale = 31 - (quality * 30 / 100)`
     ///
@@ -306,7 +307,7 @@ mod tests {
     #[test]
     fn test_timestamp_to_filename_large_index() {
         assert_eq!(
-            KeyframeExtractor::timestamp_to_filename(99999, 123456789),
+            KeyframeExtractor::timestamp_to_filename(99_999, 123_456_789),
             "99999_123456789.jpg"
         );
     }
@@ -335,11 +336,11 @@ mod tests {
             "00123_10000.jpg"
         );
         assert_eq!(
-            KeyframeExtractor::timestamp_to_filename(1234, 100000),
+            KeyframeExtractor::timestamp_to_filename(1234, 100_000),
             "01234_100000.jpg"
         );
         assert_eq!(
-            KeyframeExtractor::timestamp_to_filename(12345, 1000000),
+            KeyframeExtractor::timestamp_to_filename(12_345, 1_000_000),
             "12345_1000000.jpg"
         );
     }
@@ -627,7 +628,7 @@ mod tests {
         // Test that all quality values produce valid qscale values
         for quality in 1..=100 {
             let qscale = KeyframeExtractor::quality_to_qscale(quality);
-            assert!(qscale >= 1 && qscale <= 31, "qscale should be in range 1-31");
+            assert!((1..=31).contains(&qscale), "qscale should be in range 1-31");
         }
     }
 

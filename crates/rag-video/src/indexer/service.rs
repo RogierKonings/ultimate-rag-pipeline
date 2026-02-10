@@ -32,6 +32,7 @@ impl VideoQdrantIndexer {
     /// # Errors
     ///
     /// Returns an error if the Qdrant client fails to connect.
+    #[allow(clippy::unused_async)]
     pub async fn new(config: VideoIndexerConfig) -> Result<Self> {
         let client = Qdrant::from_url(&config.qdrant_url)
             .timeout(std::time::Duration::from_secs(config.timeout_seconds))
@@ -94,7 +95,7 @@ impl VideoQdrantIndexer {
     /// # Arguments
     ///
     /// * `chunks` - Video chunks to index.
-    /// * `embeddings` - Embeddings for each chunk (chunk_id -> vector).
+    /// * `embeddings` - Embeddings for each chunk (`chunk_id` -> vector).
     /// * `video_title` - Title of the video.
     /// * `visibility` - Visibility level.
     /// * `allowed_groups` - Groups with access.
@@ -147,7 +148,7 @@ impl VideoQdrantIndexer {
                     payload.video_title = video_title.to_string();
                     payload.visibility = visibility.to_string();
                     payload.allowed_groups = allowed_groups.to_vec();
-                    payload.source_modalities = chunk.source_modalities.clone();
+                    payload.source_modalities.clone_from(&chunk.source_modalities);
                     payload.keyframe_path = chunk
                         .keyframe_path
                         .as_ref()
@@ -522,6 +523,7 @@ impl VideoQdrantIndexer {
     }
 
     /// Converts a Qdrant payload map to a `VideoChunkPayload`.
+    #[allow(clippy::cast_possible_truncation)]
     fn map_to_payload(
         map: &HashMap<String, qdrant_client::qdrant::Value>,
     ) -> VideoChunkPayload {

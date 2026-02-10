@@ -95,6 +95,7 @@ impl HybridSearcher {
     /// # Errors
     ///
     /// Returns an error if either search fails or if fusion fails.
+    #[allow(clippy::too_many_lines)]
     #[instrument(skip(self, query_embedding, filters), fields(query_len = query.len()))]
     pub async fn search(
         &self,
@@ -108,8 +109,8 @@ impl HybridSearcher {
         let final_top_k = top_k.unwrap_or(self.config.top_k);
 
         // Convert unified filter to search-specific filters
-        let semantic_filters = filters.map(|f| convert_to_semantic_filters(f));
-        let keyword_filters = filters.map(|f| convert_to_keyword_filters(f));
+        let semantic_filters = filters.map(convert_to_semantic_filters);
+        let keyword_filters = filters.map(convert_to_keyword_filters);
 
         // Use provided user context, or fall back to admin context
         let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
@@ -130,7 +131,9 @@ impl HybridSearcher {
                 .search(query, ctx, keyword_filters, Some(self.config.keyword_top_k),),
         );
 
+        #[allow(clippy::cast_possible_truncation)]
         let semantic_time_ms = semantic_start.elapsed().as_millis() as u64;
+        #[allow(clippy::cast_possible_truncation)]
         let keyword_time_ms = keyword_start.elapsed().as_millis() as u64;
 
         // Handle results
@@ -179,6 +182,7 @@ impl HybridSearcher {
         let fused_results = fuse(&semantic_scored, &keyword_scored, &fusion_config)
             .map_err(|e| RetrievalError::internal(format!("Fusion failed: {e}")))?;
 
+        #[allow(clippy::cast_possible_truncation)]
         let fusion_time_ms = fusion_start.elapsed().as_millis() as u64;
 
         debug!(
@@ -279,6 +283,7 @@ impl HybridSearcher {
         // Apply final top_k limit
         enriched_results.truncate(final_top_k);
 
+        #[allow(clippy::cast_possible_truncation)]
         let search_time_ms = start_time.elapsed().as_millis() as u64;
 
         Ok(HybridSearchResponse::new(self.config.fusion_method)
@@ -312,7 +317,7 @@ impl HybridSearcher {
     ) -> Result<HybridSearchResponse> {
         let start_time = Instant::now();
 
-        let semantic_filters = filters.map(|f| convert_to_semantic_filters(f));
+        let semantic_filters = filters.map(convert_to_semantic_filters);
         let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
         let ctx = user_context.unwrap_or(&default_ctx);
 
@@ -321,6 +326,7 @@ impl HybridSearcher {
             .search(query_embedding, ctx, semantic_filters, Some(top_k))
             .await?;
 
+        #[allow(clippy::cast_possible_truncation)]
         let search_time_ms = start_time.elapsed().as_millis() as u64;
         let total_semantic = results.len();
 
@@ -378,7 +384,7 @@ impl HybridSearcher {
     ) -> Result<HybridSearchResponse> {
         let start_time = Instant::now();
 
-        let keyword_filters = filters.map(|f| convert_to_keyword_filters(f));
+        let keyword_filters = filters.map(convert_to_keyword_filters);
         let default_ctx = crate::types::UserContext::new(Uuid::nil(), Uuid::nil()).with_admin(true);
         let ctx = user_context.unwrap_or(&default_ctx);
 
@@ -387,6 +393,7 @@ impl HybridSearcher {
             .search(query, ctx, keyword_filters, Some(top_k))
             .await?;
 
+        #[allow(clippy::cast_possible_truncation)]
         let search_time_ms = start_time.elapsed().as_millis() as u64;
         let total_keyword = results.len();
 
@@ -459,7 +466,7 @@ impl HybridSearcher {
             .map_err(|e| RetrievalError::semantic_search(format!("Health check failed: {e}")))
     }
 
-    /// Check health of the keyword search backend (OpenSearch).
+    /// Check health of the keyword search backend (`OpenSearch`).
     ///
     /// # Errors
     ///
@@ -483,6 +490,7 @@ impl HybridSearcher {
     }
 
     /// Deduplicate results by document ID, keeping the highest-scored chunk per document.
+    #[allow(clippy::unused_self)]
     fn deduplicate(&self, results: Vec<HybridSearchResult>) -> Vec<HybridSearchResult> {
         let mut seen_docs: HashMap<Uuid, HybridSearchResult> = HashMap::new();
 

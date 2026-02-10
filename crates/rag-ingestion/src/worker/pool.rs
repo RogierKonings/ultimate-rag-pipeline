@@ -72,6 +72,7 @@ impl WorkerPool {
     /// # Errors
     ///
     /// Returns an error if workers fail to start.
+    #[allow(clippy::missing_panics_doc, clippy::too_many_lines, clippy::unused_async)]
     pub async fn start(&mut self, queue: JobQueue) -> Result<(), QueueError> {
         let queue = Arc::new(tokio::sync::Mutex::new(queue));
         let semaphore = Arc::new(Semaphore::new(self.config.concurrency));
@@ -123,6 +124,7 @@ impl WorkerPool {
                         let result =
                             tokio::time::timeout(config.job_timeout, handler.handle(&job)).await;
 
+                        #[allow(clippy::cast_possible_truncation)] // elapsed millis fits in u64
                         let duration_ms = start.elapsed().as_millis() as u64;
 
                         let mut queue = queue.lock().await;

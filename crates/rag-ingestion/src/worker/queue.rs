@@ -284,6 +284,7 @@ impl JobQueue {
     }
 
     /// Calculate exponential backoff with jitter.
+    #[allow(clippy::unused_self)] // kept as method for potential future config-based backoff
     fn calculate_backoff(&self, attempt: u32) -> u64 {
         let base_ms = 1000u64; // 1 second
         let max_ms = 600_000u64; // 10 minutes
@@ -292,8 +293,11 @@ impl JobQueue {
         let capped = backoff.min(max_ms);
 
         // Add ±25% jitter
-        let jitter = (capped as f64 * 0.25 * (rand_simple() * 2.0 - 1.0)) as i64;
-        (capped as i64 + jitter).max(0) as u64
+        #[allow(clippy::cast_possible_truncation)] // backoff jitter values fit in i64/u64
+        let jitter = (capped as f64 * 0.25 * rand_simple().mul_add(2.0, -1.0)) as i64;
+        #[allow(clippy::cast_possible_truncation)]
+        let result = (capped as i64 + jitter).max(0) as u64;
+        result
     }
 }
 
@@ -304,7 +308,7 @@ fn rand_simple() -> f64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
         .subsec_nanos();
-    (nanos % 1000) as f64 / 1000.0
+    f64::from(nanos % 1000) / 1000.0
 }
 
 #[cfg(test)]
@@ -349,6 +353,6 @@ mod tests {
     #[test]
     fn test_rand_simple() {
         let val = rand_simple();
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 }

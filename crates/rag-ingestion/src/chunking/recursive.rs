@@ -80,20 +80,23 @@ impl ChunkingStrategy for RecursiveCharacterSplitter {
         let chunks = merged
             .into_iter()
             .enumerate()
-            .map(|(i, (content, start, end))| Chunk {
-                chunk_id: ChunkId::new(),
-                document_id,
-                content: content.clone(),
+            .map(|(i, (content, start, end))| {
                 #[allow(clippy::cast_possible_truncation)]
-                chunk_index: i as u32,
-                start_char: start,
-                end_char: end,
-                token_count: self.count_tokens(&content),
-                parent_chunk_id: None,
-                child_chunk_ids: Vec::new(),
-                metadata: metadata.clone(),
-                source_page: None,
-                source_section: None,
+                let chunk_index = i as u32;
+                Chunk {
+                    chunk_id: ChunkId::new(),
+                    document_id,
+                    content: content.clone(),
+                    chunk_index,
+                    start_char: start,
+                    end_char: end,
+                    token_count: self.count_tokens(&content),
+                    parent_chunk_id: None,
+                    child_chunk_ids: Vec::new(),
+                    metadata: metadata.clone(),
+                    source_page: None,
+                    source_section: None,
+                }
             })
             .collect();
 
@@ -371,12 +374,9 @@ mod tests {
 
             // The second chunk should start with some content from the end of the first
             // (This is a rough check - overlap implementation may vary)
-            let first_words: Vec<&str> = first_end.split_whitespace().collect();
-            let second_words: Vec<&str> = second_start.split_whitespace().collect();
-
             // At least verify both chunks have content
-            assert!(!first_words.is_empty());
-            assert!(!second_words.is_empty());
+            assert!(first_end.split_whitespace().next().is_some());
+            assert!(second_start.split_whitespace().next().is_some());
         }
     }
 
@@ -448,7 +448,9 @@ mod tests {
 
         // Verify indices are sequential
         for (i, chunk) in chunks.iter().enumerate() {
-            assert_eq!(chunk.chunk_index, i as u32);
+            #[allow(clippy::cast_possible_truncation)]
+            let expected = i as u32;
+            assert_eq!(chunk.chunk_index, expected);
         }
     }
 

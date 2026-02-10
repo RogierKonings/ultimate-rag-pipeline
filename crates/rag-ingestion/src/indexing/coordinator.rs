@@ -46,6 +46,7 @@ pub struct IndexCoordinator {
 impl IndexCoordinator {
     /// Create a new index coordinator.
     #[must_use]
+    #[allow(clippy::needless_pass_by_value)] // DatabasePool is cheaply cloneable (Arc-wrapped)
     pub fn new(
         qdrant: VectorStoreClient,
         opensearch: SearchClient,
@@ -262,6 +263,7 @@ impl IndexCoordinator {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     async fn write_to_database(
         &self,
         document: &DocumentRecord,
@@ -295,7 +297,7 @@ impl IndexCoordinator {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
-            file_size: document.metadata.get("file_size").and_then(|v| v.as_i64()),
+            file_size: document.metadata.get("file_size").and_then(serde_json::Value::as_i64),
             visibility: Visibility::Private,
             allowed_groups: document
                 .metadata
@@ -317,6 +319,7 @@ impl IndexCoordinator {
         }
 
         // Convert IndexedChunks to NewChunks
+        #[allow(clippy::cast_possible_truncation)] // chunk fields fit within i32 range
         let new_chunks: Vec<NewChunk> = chunks
             .iter()
             .map(|c| {
@@ -332,7 +335,7 @@ impl IndexCoordinator {
                     token_count: c
                         .metadata
                         .get("token_count")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .unwrap_or(0) as i32,
                     char_count: c.content.len() as i32,
                     embedding_model: c
@@ -349,12 +352,12 @@ impl IndexCoordinator {
                     start_offset: c
                         .metadata
                         .get("start_char")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .map(|v| v as i32),
                     end_offset: c
                         .metadata
                         .get("end_char")
-                        .and_then(|v| v.as_i64())
+                        .and_then(serde_json::Value::as_i64)
                         .map(|v| v as i32),
                     metadata: serde_json::to_value(&c.metadata).unwrap_or(Value::Null),
                 }
@@ -371,9 +374,11 @@ impl IndexCoordinator {
         }
 
         // Update document chunk count
+        #[allow(clippy::cast_possible_truncation)] // chunk count fits in i32
+        let chunk_count_i32 = chunk_count as i32;
         if let Err(e) = self
             .document_repo
-            .update_chunk_count(doc_id, chunk_count as i32)
+            .update_chunk_count(doc_id, chunk_count_i32)
             .await
         {
             warn!(error = %e, "Failed to update document chunk count");
@@ -449,7 +454,8 @@ impl IndexCoordinator {
             Ok(deleted) => {
                 debug!(document_id = %document_id, deleted = deleted, "Deleted from OpenSearch");
                 #[allow(clippy::cast_possible_truncation)]
-                WriteResult::success(deleted as usize, start.elapsed())
+                let count = deleted as usize;
+                WriteResult::success(count, start.elapsed())
             }
             Err(e) => {
                 warn!(error = %e, "Failed to delete from OpenSearch");
@@ -491,11 +497,13 @@ impl IndexCoordinator {
                         "Deleted from PostgreSQL"
                     );
                     #[allow(clippy::cast_possible_truncation)]
-                    WriteResult::success(chunks_deleted as usize + 1, start.elapsed())
+                    let count = chunks_deleted as usize + 1;
+                    WriteResult::success(count, start.elapsed())
                 } else {
                     debug!(document_id = %document_id, "Document not found in PostgreSQL");
                     #[allow(clippy::cast_possible_truncation)]
-                    WriteResult::success(chunks_deleted as usize, start.elapsed())
+                    let count = chunks_deleted as usize;
+                    WriteResult::success(count, start.elapsed())
                 }
             }
             Err(e) => {

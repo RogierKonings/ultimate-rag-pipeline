@@ -4,8 +4,10 @@ use std::env;
 
 /// Supported embedding models.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ModelType {
     /// all-MiniLM-L6-v2 (384 dimensions)
+    #[default]
     AllMiniLmL6V2,
     /// BAAI/bge-small-en-v1.5 (384 dimensions)
     BgeSmallEnV15,
@@ -42,11 +44,6 @@ impl ModelType {
     }
 }
 
-impl Default for ModelType {
-    fn default() -> Self {
-        Self::AllMiniLmL6V2
-    }
-}
 
 /// Configuration for the embedding service.
 #[derive(Debug, Clone)]

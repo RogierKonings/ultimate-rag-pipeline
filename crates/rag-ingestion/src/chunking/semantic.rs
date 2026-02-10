@@ -95,11 +95,12 @@ impl SemanticChunker {
     }
 
     /// Split text into sentences using unicode segmentation.
+    #[allow(clippy::unused_self)] // kept as method for API consistency
     fn split_sentences<'a>(&self, text: &'a str) -> Vec<&'a str> {
         text.unicode_sentences().collect()
     }
 
-    /// Split a long sentence that exceeds max_tokens into smaller pieces.
+    /// Split a long sentence that exceeds `max_tokens` into smaller pieces.
     fn split_long_sentence(
         &self,
         sentence: &str,
@@ -126,6 +127,8 @@ impl SemanticChunker {
 
             let chunk_len = chunk_text.len();
 
+            #[allow(clippy::cast_possible_truncation)]
+            let token_count = chunk_tokens.len() as u32;
             chunks.push(Chunk {
                 chunk_id: ChunkId::new(),
                 document_id,
@@ -133,8 +136,7 @@ impl SemanticChunker {
                 chunk_index: base_index + sub_index,
                 start_char: char_offset,
                 end_char: char_offset + chunk_len,
-                #[allow(clippy::cast_possible_truncation)]
-                token_count: chunk_tokens.len() as u32,
+                token_count,
                 parent_chunk_id: None,
                 child_chunk_ids: Vec::new(),
                 metadata: metadata.clone(),
@@ -206,7 +208,7 @@ impl Default for SemanticChunker {
 }
 
 impl ChunkingStrategy for SemanticChunker {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "semantic_sentence"
     }
 
@@ -271,6 +273,7 @@ impl ChunkingStrategy for SemanticChunker {
                     chunk_index,
                     &metadata,
                 );
+                #[allow(clippy::cast_possible_truncation)] // sub-chunk count fits in u32
                 let sub_count = sub_chunks.len() as u32;
                 chunks.extend(sub_chunks);
                 chunk_index += sub_count;
@@ -404,7 +407,7 @@ mod tests {
         let doc_id = make_doc_id();
         // Create text with many sentences
         let text = (0..20)
-            .map(|i| format!("This is sentence number {}.", i))
+            .map(|i| format!("This is sentence number {i}."))
             .collect::<Vec<_>>()
             .join(" ");
 

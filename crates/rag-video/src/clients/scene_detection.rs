@@ -103,6 +103,7 @@ pub struct SceneDetectionClient {
 
 impl SceneDetectionClient {
     /// Creates a new scene detection client with the given configuration.
+    #[allow(clippy::missing_panics_doc)]
     pub fn new(config: SceneDetectionConfig) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.timeout_seconds))

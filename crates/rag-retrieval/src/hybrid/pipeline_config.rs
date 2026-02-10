@@ -11,12 +11,13 @@ use rag_types::SearchMode;
 
 /// Configuration for the search pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct PipelineConfig {
     /// Whether to enable query expansion.
     #[serde(default)]
     pub enable_query_expansion: bool,
 
-    /// Whether to enable HyDE (Hypothetical Document Embeddings).
+    /// Whether to enable `HyDE` (Hypothetical Document Embeddings).
     #[serde(default)]
     pub enable_hyde: bool,
 
@@ -98,7 +99,7 @@ impl PipelineConfig {
         self
     }
 
-    /// Enable HyDE.
+    /// Enable `HyDE`.
     #[must_use]
     pub const fn with_hyde(mut self, enable: bool) -> Self {
         self.enable_hyde = enable;
@@ -151,7 +152,7 @@ impl PipelineConfig {
     ///
     /// Environment variables:
     /// - `PIPELINE_ENABLE_EXPANSION`: Enable query expansion (default: false)
-    /// - `PIPELINE_ENABLE_HYDE`: Enable HyDE (default: false)
+    /// - `PIPELINE_ENABLE_HYDE`: Enable `HyDE` (default: false)
     /// - `PIPELINE_ENABLE_RERANKING`: Enable reranking (default: true)
     /// - `PIPELINE_ENABLE_CACHING`: Enable caching (default: true)
     /// - `PIPELINE_RERANK_TOP_K`: Rerank top-k (default: 20)
@@ -229,7 +230,7 @@ pub struct SearchOptions {
     #[serde(default)]
     pub rerank: Option<bool>,
 
-    /// Override for HyDE.
+    /// Override for `HyDE`.
     #[serde(default)]
     pub use_hyde: Option<bool>,
 
@@ -280,7 +281,7 @@ impl SearchOptions {
         self
     }
 
-    /// Override HyDE.
+    /// Override `HyDE`.
     #[must_use]
     pub const fn with_hyde(mut self, use_hyde: bool) -> Self {
         self.use_hyde = Some(use_hyde);

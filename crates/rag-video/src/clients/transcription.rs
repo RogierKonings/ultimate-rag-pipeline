@@ -93,6 +93,7 @@ pub struct TranscriptionClient {
 
 impl TranscriptionClient {
     /// Creates a new transcription client with the given configuration.
+    #[allow(clippy::missing_panics_doc)]
     pub fn new(config: TranscriptionConfig) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.timeout_seconds))

@@ -124,6 +124,7 @@ impl RetrievalCache {
         let start = Instant::now();
 
         let result = self.inner.get(key).await;
+        #[allow(clippy::cast_possible_truncation)]
         let latency_us = start.elapsed().as_micros() as u64;
 
         match &result {

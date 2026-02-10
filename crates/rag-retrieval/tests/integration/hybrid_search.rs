@@ -153,7 +153,7 @@ fn test_fusion_both_empty() {
     assert!(fused.is_empty());
 }
 
-/// Test fusion with top_k limiting.
+/// Test fusion with `top_k` limiting.
 #[test]
 fn test_fusion_with_top_k() {
     let (semantic_results, keyword_results) = generate_overlapping_results(20, 20, 10);
@@ -195,7 +195,7 @@ fn test_fusion_preserves_score_information() {
     assert!((shared_result.keyword_score.unwrap() - 10.0).abs() < f32::EPSILON);
 }
 
-/// Test HybridSearchResult creation and manipulation.
+/// Test `HybridSearchResult` creation and manipulation.
 #[test]
 fn test_hybrid_search_result_creation() {
     let chunk_id = Uuid::new_v4();
@@ -230,7 +230,7 @@ fn test_hybrid_search_result_creation() {
     assert_eq!(result.highlights, vec!["<em>Test</em> content"]);
 }
 
-/// Test HybridSearchResult ranking helpers.
+/// Test `HybridSearchResult` ranking helpers.
 #[test]
 fn test_hybrid_search_result_ranking() {
     // Result in both lists
@@ -258,7 +258,7 @@ fn test_hybrid_search_result_ranking() {
     assert_eq!(result_keyword.best_rank(), Some(2));
 }
 
-/// Test HybridSearchResponse creation and statistics.
+/// Test `HybridSearchResponse` creation and statistics.
 #[test]
 fn test_hybrid_search_response_statistics() {
     let results = vec![
@@ -289,7 +289,7 @@ fn test_hybrid_search_response_statistics() {
     assert_eq!(response.fusion_method, FusionMethod::Rrf);
 }
 
-/// Test HybridSearchConfig defaults.
+/// Test `HybridSearchConfig` defaults.
 #[test]
 fn test_hybrid_search_config_defaults() {
     let config = HybridSearchConfig::default();
@@ -305,7 +305,7 @@ fn test_hybrid_search_config_defaults() {
     assert!(config.deduplicate);
 }
 
-/// Test HybridSearchConfig builder pattern.
+/// Test `HybridSearchConfig` builder pattern.
 #[test]
 fn test_hybrid_search_config_builder() {
     let config = HybridSearchConfig::default()

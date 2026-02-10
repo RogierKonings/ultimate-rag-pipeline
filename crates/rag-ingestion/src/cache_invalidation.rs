@@ -217,7 +217,7 @@ impl std::fmt::Debug for CacheInvalidationPublisher {
         f.debug_struct("CacheInvalidationPublisher")
             .field("events_published", &self.metrics.published_count())
             .field("events_failed", &self.metrics.failed_count())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

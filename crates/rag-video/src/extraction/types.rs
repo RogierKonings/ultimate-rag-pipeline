@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(metadata.duration_ms, 0);
         assert_eq!(metadata.width, 0);
         assert_eq!(metadata.height, 0);
-        assert_eq!(metadata.fps, 0.0);
+        assert!(metadata.fps.abs() < f32::EPSILON);
         assert_eq!(metadata.codec, "");
         assert!(!metadata.has_audio);
     }
@@ -122,14 +122,14 @@ mod tests {
     #[test]
     fn test_video_metadata_with_values() {
         let metadata = VideoMetadata {
-            duration_ms: 120000,
+            duration_ms: 120_000,
             width: 1920,
             height: 1080,
             fps: 29.97,
             codec: "h264".to_string(),
             has_audio: true,
         };
-        assert_eq!(metadata.duration_ms, 120000);
+        assert_eq!(metadata.duration_ms, 120_000);
         assert_eq!(metadata.width, 1920);
         assert_eq!(metadata.height, 1080);
         assert!((metadata.fps - 29.97).abs() < 0.01);
@@ -146,7 +146,7 @@ mod tests {
             thumbnail_path: Some(PathBuf::from("/tmp/thumb_042.jpg")),
             width: 1280,
             height: 720,
-            file_size_bytes: 45678,
+            file_size_bytes: 45_678,
             is_scene_boundary: true,
         };
         assert_eq!(keyframe.frame_index, 42);
@@ -158,7 +158,7 @@ mod tests {
         );
         assert_eq!(keyframe.width, 1280);
         assert_eq!(keyframe.height, 720);
-        assert_eq!(keyframe.file_size_bytes, 45678);
+        assert_eq!(keyframe.file_size_bytes, 45_678);
         assert!(keyframe.is_scene_boundary);
     }
 
@@ -171,7 +171,7 @@ mod tests {
             thumbnail_path: None,
             width: 1920,
             height: 1080,
-            file_size_bytes: 123456,
+            file_size_bytes: 123_456,
             is_scene_boundary: false,
         };
         assert!(keyframe.thumbnail_path.is_none());
@@ -181,15 +181,15 @@ mod tests {
     #[test]
     fn test_audio_metadata_fields() {
         let metadata = AudioMetadata {
-            duration_ms: 60000,
-            sample_rate: 44100,
+            duration_ms: 60_000,
+            sample_rate: 44_100,
             channels: 2,
-            file_size_bytes: 5292000,
+            file_size_bytes: 5_292_000,
         };
-        assert_eq!(metadata.duration_ms, 60000);
-        assert_eq!(metadata.sample_rate, 44100);
+        assert_eq!(metadata.duration_ms, 60_000);
+        assert_eq!(metadata.sample_rate, 44_100);
         assert_eq!(metadata.channels, 2);
-        assert_eq!(metadata.file_size_bytes, 5292000);
+        assert_eq!(metadata.file_size_bytes, 5_292_000);
     }
 
     #[test]
@@ -277,9 +277,9 @@ mod tests {
     fn test_audio_metadata_clone() {
         let metadata = AudioMetadata {
             duration_ms: 5000,
-            sample_rate: 22050,
+            sample_rate: 22_050,
             channels: 1,
-            file_size_bytes: 110250,
+            file_size_bytes: 110_250,
         };
         let cloned = metadata.clone();
         assert_eq!(cloned.sample_rate, metadata.sample_rate);

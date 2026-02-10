@@ -11,7 +11,7 @@ use rag_retrieval::types::{
 };
 use rag_types::SearchMode;
 
-/// Test PipelineConfig defaults.
+/// Test `PipelineConfig` defaults.
 #[test]
 fn test_pipeline_config_defaults() {
     let config = PipelineConfig::default();
@@ -26,7 +26,7 @@ fn test_pipeline_config_defaults() {
     assert_eq!(config.total_timeout_ms, 30000);
 }
 
-/// Test PipelineConfig builder pattern.
+/// Test `PipelineConfig` builder pattern.
 #[test]
 fn test_pipeline_config_builder() {
     let config = PipelineConfig::new()
@@ -49,7 +49,7 @@ fn test_pipeline_config_builder() {
     assert_eq!(config.total_timeout_ms, 60000);
 }
 
-/// Test PipelineConfig serialization roundtrip.
+/// Test `PipelineConfig` serialization roundtrip.
 #[test]
 fn test_pipeline_config_serialization() {
     let config = PipelineConfig::new()
@@ -70,7 +70,7 @@ fn test_pipeline_config_serialization() {
     assert!(deserialized.enable_query_expansion);
 }
 
-/// Test SearchOptions defaults.
+/// Test `SearchOptions` defaults.
 #[test]
 fn test_search_options_defaults() {
     let options = SearchOptions::default();
@@ -84,7 +84,7 @@ fn test_search_options_defaults() {
     assert!(options.expand_query.is_none());
 }
 
-/// Test SearchOptions builder pattern.
+/// Test `SearchOptions` builder pattern.
 #[test]
 fn test_search_options_builder() {
     let options = SearchOptions::new()
@@ -115,7 +115,7 @@ fn test_search_mode_options() {
     assert_eq!(keyword.search_mode, SearchMode::Keyword);
 }
 
-/// Test SearchPipelineResponse construction.
+/// Test `SearchPipelineResponse` construction.
 #[test]
 fn test_pipeline_response_construction() {
     let results = vec![
@@ -163,7 +163,7 @@ fn test_pipeline_response_construction() {
     assert_eq!(response.debug.query_type, Some(QueryType::Question));
 }
 
-/// Test RetrievalMetrics calculation.
+/// Test `RetrievalMetrics` calculation.
 #[test]
 fn test_retrieval_metrics_calculation() {
     let mut metrics = RetrievalMetrics::new();
@@ -181,7 +181,7 @@ fn test_retrieval_metrics_calculation() {
     assert_eq!(metrics.total_ms, 250);
 }
 
-/// Test RetrievalDebug builder.
+/// Test `RetrievalDebug` builder.
 #[test]
 fn test_retrieval_debug_builder() {
     let debug = RetrievalDebug::new()
@@ -204,7 +204,7 @@ fn test_retrieval_debug_builder() {
     );
 }
 
-/// Test RetrievalResult construction with all fields.
+/// Test `RetrievalResult` construction with all fields.
 #[test]
 fn test_retrieval_result_full_construction() {
     let result = RetrievalResult::new(
@@ -233,7 +233,7 @@ fn test_retrieval_result_full_construction() {
     assert!((result.rerank_score.unwrap() - 0.95).abs() < f32::EPSILON);
 }
 
-/// Test UserContext creation and access control.
+/// Test `UserContext` creation and access control.
 #[test]
 fn test_user_context_creation() {
     let user_id = Uuid::new_v4();
@@ -254,7 +254,7 @@ fn test_user_context_creation() {
     assert!(!ctx.is_admin);
 }
 
-/// Test UserContext access control for different visibility levels.
+/// Test `UserContext` access control for different visibility levels.
 #[test]
 fn test_user_context_access_control() {
     let ctx =
@@ -294,7 +294,7 @@ fn test_admin_access_control() {
     assert!(admin_ctx.can_access(Visibility::Tenant, &[]));
 }
 
-/// Test QueryType recommended search modes.
+/// Test `QueryType` recommended search modes.
 #[test]
 fn test_query_type_recommended_modes() {
     assert_eq!(
@@ -324,7 +324,7 @@ fn test_visibility_acl_requirements() {
     assert!(Visibility::Tenant.requires_acl_check());
 }
 
-/// Test serialization of SearchOptions.
+/// Test serialization of `SearchOptions`.
 #[test]
 fn test_search_options_serialization() {
     let options = SearchOptions::new()
@@ -345,7 +345,7 @@ fn test_search_options_serialization() {
     assert!(deserialized.skip_cache);
 }
 
-/// Test RetrievalResult serialization.
+/// Test `RetrievalResult` serialization.
 #[test]
 fn test_retrieval_result_serialization() {
     let result = RetrievalResult::new("chunk_1".into(), "doc_1".into(), "Content".into(), 0.9)
@@ -364,7 +364,7 @@ fn test_retrieval_result_serialization() {
     assert_eq!(deserialized.title, Some("Title".into()));
 }
 
-/// Test UserContext serialization.
+/// Test `UserContext` serialization.
 #[test]
 fn test_user_context_serialization() {
     let user_id = Uuid::new_v4();

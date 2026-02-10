@@ -410,7 +410,7 @@ impl HydeGenerator {
         config.validate()?;
 
         let client = build_http_client_with_timeout(config.timeout())
-            .map_err(|e| RetrievalError::config(e))?;
+            .map_err(RetrievalError::config)?;
 
         Ok(Self { client, config })
     }
@@ -867,7 +867,7 @@ mod llm_integration_tests {
             .and(path("/v1/chat/completions"))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(&mock_completion_response(hypothetical_doc)),
+                    .set_body_json(mock_completion_response(hypothetical_doc)),
             )
             .mount(&mock_server)
             .await;
@@ -896,7 +896,7 @@ mod llm_integration_tests {
         Mock::given(method("POST"))
             .and(path("/v1/chat/completions"))
             .respond_with(
-                ResponseTemplate::new(200).set_body_json(&mock_completion_response(
+                ResponseTemplate::new(200).set_body_json(mock_completion_response(
                     "A hypothetical document about the topic.",
                 )),
             )
@@ -948,7 +948,7 @@ mod llm_integration_tests {
             .and(path("/v1/chat/completions"))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(&mock_completion_response("test"))
+                    .set_body_json(mock_completion_response("test"))
                     .set_delay(std::time::Duration::from_secs(10)),
             )
             .mount(&mock_server)
@@ -993,7 +993,7 @@ mod llm_integration_tests {
             .and(path("/v1/chat/completions"))
             .respond_with(
                 ResponseTemplate::new(200)
-                    .set_body_json(&mock_completion_response("A relevant passage.")),
+                    .set_body_json(mock_completion_response("A relevant passage.")),
             )
             .mount(&mock_server)
             .await;

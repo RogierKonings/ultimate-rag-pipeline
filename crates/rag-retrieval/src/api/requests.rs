@@ -119,9 +119,9 @@ impl RetrieveRequest {
     ///
     /// Returns an error if:
     /// - Query is empty or exceeds 2000 characters
-    /// - top_k is 0 or exceeds 100
-    /// - semantic_weight or keyword_weight is out of range
-    /// - min_score is out of range
+    /// - `top_k` is 0 or exceeds 100
+    /// - `semantic_weight` or `keyword_weight` is out of range
+    /// - `min_score` is out of range
     pub fn validate(&self) -> Result<(), ValidationError> {
         if self.query.is_empty() {
             return Err(ValidationError::new("query", "Query cannot be empty"));
@@ -188,14 +188,11 @@ impl RetrieveRequest {
     /// Returns a `ValidationError` if filters are not a JSON object or contain
     /// invalid value types.
     fn validate_filters(filters: &serde_json::Value) -> Result<(), ValidationError> {
-        let obj = match filters.as_object() {
-            Some(obj) => obj,
-            None => {
-                return Err(ValidationError::new(
-                    "filters",
-                    "filters must be a JSON object",
-                ));
-            }
+        let Some(obj) = filters.as_object() else {
+            return Err(ValidationError::new(
+                "filters",
+                "filters must be a JSON object",
+            ));
         };
 
         // Check for structured format
@@ -209,7 +206,7 @@ impl RetrieveRequest {
                     if !arr.is_array() {
                         return Err(ValidationError::new(
                             "filters",
-                            &format!("filters.{} must be an array", key),
+                            format!("filters.{key} must be an array"),
                         ));
                     }
                 }
@@ -224,7 +221,7 @@ impl RetrieveRequest {
                             if !item.is_string() {
                                 return Err(ValidationError::new(
                                     "filters",
-                                    &format!(
+                                    format!(
                                         "filters.{}[{}] must be a string, got {}",
                                         key,
                                         i,
@@ -237,7 +234,7 @@ impl RetrieveRequest {
                     _ => {
                         return Err(ValidationError::new(
                             "filters",
-                            &format!(
+                            format!(
                                 "filters.{} must be a string or array of strings, got {}",
                                 key,
                                 value_type_name(value)
@@ -320,7 +317,7 @@ impl MultiQueryRequest {
     /// - queries is empty or exceeds 5 queries
     /// - Any query is empty or exceeds 2000 characters
     /// - aggregation is not one of "max", "avg", "rrf"
-    /// - top_k is 0 or exceeds 100
+    /// - `top_k` is 0 or exceeds 100
     pub fn validate(&self) -> Result<(), ValidationError> {
         if self.queries.is_empty() {
             return Err(ValidationError::new(
@@ -337,14 +334,14 @@ impl MultiQueryRequest {
             if query.is_empty() {
                 return Err(ValidationError::new(
                     "queries",
-                    &format!("Query at index {} cannot be empty", i),
+                    format!("Query at index {i} cannot be empty"),
                 ));
             }
 
             if query.len() > 2000 {
                 return Err(ValidationError::new(
                     "queries",
-                    &format!("Query at index {} cannot exceed 2000 characters", i),
+                    format!("Query at index {i} cannot exceed 2000 characters"),
                 ));
             }
         }

@@ -365,7 +365,7 @@ fn build_score_rank_map<T: Clone + Eq + Hash>(items: &[ScoredItem<T>]) -> HashMa
         .collect()
 }
 
-/// Convert ScoredItems to FusedResults with rank information.
+/// Convert `ScoredItems` to `FusedResults` with rank information.
 fn convert_to_fused_results<T: Clone + Eq + Hash>(
     fused_items: Vec<ScoredItem<T>>,
     semantic_map: &HashMap<T, (f32, usize)>,

@@ -49,6 +49,7 @@ impl IngestionJobHandler {
         }
     }
 
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn extract_tracker_job_id(&self, payload: &Value) -> Result<Uuid, String> {
         payload
             .get("tracker_job_id")
@@ -57,6 +58,7 @@ impl IngestionJobHandler {
             .ok_or_else(|| "Missing or invalid tracker_job_id".to_string())
     }
 
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn infer_storage_type(&self, source_id: &str) -> Option<&'static str> {
         if source_id.starts_with("uploads/")
             || source_id.starts_with("videos/")
@@ -80,6 +82,7 @@ impl IngestionJobHandler {
     }
 
     /// Process a single document ingestion job.
+    #[allow(clippy::too_many_lines)]
     #[instrument(skip(self, job), fields(job_id = %job.id, job_type = %job.job_type))]
     async fn process_ingest_single(&self, job: &Job) -> Result<Value, String> {
         let payload = &job.payload;
@@ -151,25 +154,27 @@ impl IngestionJobHandler {
             .update_progress(&tracker_job_id, 1, 4, "chunking");
 
         // Chunk the content. Reindex payloads may provide settings at the top level.
+        #[allow(clippy::cast_possible_truncation)] // chunk size fits in u32
         let chunk_size = payload
             .get("chunk_size")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .or_else(|| {
                 payload
                     .get("processing")
                     .and_then(|p| p.get("chunk_size"))
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
             })
             .unwrap_or(512) as u32;
 
+        #[allow(clippy::cast_possible_truncation)] // chunk overlap fits in u32
         let chunk_overlap = payload
             .get("chunk_overlap")
-            .and_then(|v| v.as_u64())
+            .and_then(serde_json::Value::as_u64)
             .or_else(|| {
                 payload
                     .get("processing")
                     .and_then(|p| p.get("chunk_overlap"))
-                    .and_then(|v| v.as_u64())
+                    .and_then(serde_json::Value::as_u64)
             })
             .unwrap_or(50) as u32;
 
@@ -184,7 +189,7 @@ impl IngestionJobHandler {
 
         // Generate embeddings if client is available
         let embeddings = if let Some(ref client) = self.embedding_client {
-            let texts: Vec<String> = chunks.iter().map(|c| c.clone()).collect();
+            let texts: Vec<String> = chunks.clone();
             match client.embed_batch(&texts).await {
                 Ok((embeddings, _tokens)) => {
                     info!(embeddings = embeddings.len(), "Embeddings generated");
@@ -240,12 +245,14 @@ impl IngestionJobHandler {
                         .and_then(|e| e.get(i).cloned())
                         .unwrap_or_default();
 
+                    #[allow(clippy::cast_possible_truncation)]
+                    let chunk_idx = i as u32; // chunk index fits in u32
                     IndexedChunk {
                         chunk_id: ChunkId::new(),
                         document_id,
                         tenant_id: tenant_id_typed,
                         content: content.clone(),
-                        chunk_index: i as u32,
+                        chunk_index: chunk_idx,
                         embedding,
                         metadata: Self::json_object_to_map(payload.get("metadata")),
                     }
@@ -282,8 +289,10 @@ impl IngestionJobHandler {
         }
 
         // Mark job as complete
+        #[allow(clippy::cast_possible_truncation)] // chunk count fits in u32
+        let chunk_count_u32 = chunk_count as u32;
         self.job_tracker
-            .update_counts(&tracker_job_id, 1, chunk_count as u32);
+            .update_counts(&tracker_job_id, 1, chunk_count_u32);
         self.job_tracker.complete_job(&tracker_job_id);
 
         info!(
@@ -301,6 +310,7 @@ impl IngestionJobHandler {
     }
 
     /// Process a re-embedding job for existing indexed documents.
+    #[allow(clippy::too_many_lines)]
     #[instrument(skip(self, job), fields(job_id = %job.id, job_type = %job.job_type))]
     async fn process_reembed(&self, job: &Job) -> Result<Value, String> {
         let payload = &job.payload;
@@ -352,11 +362,11 @@ impl IngestionJobHandler {
             })
             .unwrap_or_default();
 
+        #[allow(clippy::cast_possible_truncation)] // batch size fits in usize
         let batch_size = payload
             .get("batch_size")
-            .and_then(|v| v.as_u64())
-            .map(|v| v as usize)
-            .unwrap_or(100)
+            .and_then(serde_json::Value::as_u64)
+            .map_or(100, |v| v as usize)
             .max(1);
 
         let embedding_model = payload
@@ -393,6 +403,7 @@ impl IngestionJobHandler {
             }));
         }
 
+        #[allow(clippy::cast_possible_truncation)] // document count fits in u32
         let total_docs = requested_document_ids.len() as u32;
         self.job_tracker
             .update_progress(&tracker_job_id, 0, total_docs, "reembedding");
@@ -404,6 +415,8 @@ impl IngestionJobHandler {
         let mut total_chunks = 0u32;
 
         for (index, document_uuid) in requested_document_ids.iter().enumerate() {
+            #[allow(clippy::cast_possible_truncation)] // index fits in u32
+            let progress = (index + 1) as u32;
             let document = match document_repo
                 .find_by_id_and_tenant(*document_uuid, &tenant_id)
                 .await
@@ -413,13 +426,12 @@ impl IngestionJobHandler {
                     self.job_tracker.add_error(
                         &tracker_job_id,
                         format!(
-                            "Document {} not found for tenant {}",
-                            document_uuid, tenant_id
+                            "Document {document_uuid} not found for tenant {tenant_id}"
                         ),
                     );
                     self.job_tracker.update_progress(
                         &tracker_job_id,
-                        (index + 1) as u32,
+                        progress,
                         total_docs,
                         "reembedding",
                     );
@@ -432,7 +444,7 @@ impl IngestionJobHandler {
                     );
                     self.job_tracker.update_progress(
                         &tracker_job_id,
-                        (index + 1) as u32,
+                        progress,
                         total_docs,
                         "reembedding",
                     );
@@ -449,7 +461,7 @@ impl IngestionJobHandler {
                     );
                     self.job_tracker.update_progress(
                         &tracker_job_id,
-                        (index + 1) as u32,
+                        progress,
                         total_docs,
                         "reembedding",
                     );
@@ -460,11 +472,11 @@ impl IngestionJobHandler {
             if chunks.is_empty() {
                 self.job_tracker.add_error(
                     &tracker_job_id,
-                    format!("Document {} has no chunks to reembed", document_uuid),
+                    format!("Document {document_uuid} has no chunks to reembed"),
                 );
                 self.job_tracker.update_progress(
                     &tracker_job_id,
-                    (index + 1) as u32,
+                    progress,
                     total_docs,
                     "reembedding",
                 );
@@ -496,7 +508,7 @@ impl IngestionJobHandler {
                     Err(e) => {
                         self.job_tracker.add_error(
                             &tracker_job_id,
-                            format!("Embedding failed for {}: {}", document_uuid, e),
+                            format!("Embedding failed for {document_uuid}: {e}"),
                         );
                         embeddings.clear();
                         break;
@@ -507,7 +519,7 @@ impl IngestionJobHandler {
             if embeddings.len() != chunks.len() {
                 self.job_tracker.update_progress(
                     &tracker_job_id,
-                    (index + 1) as u32,
+                    progress,
                     total_docs,
                     "reembedding",
                 );
@@ -558,11 +570,11 @@ impl IngestionJobHandler {
                 Err(e) => {
                     self.job_tracker.add_error(
                         &tracker_job_id,
-                        format!("Reindex failed for {}: {}", document_uuid, e),
+                        format!("Reindex failed for {document_uuid}: {e}"),
                     );
                     self.job_tracker.update_progress(
                         &tracker_job_id,
-                        (index + 1) as u32,
+                        progress,
                         total_docs,
                         "reembedding",
                     );
@@ -578,8 +590,7 @@ impl IngestionJobHandler {
                 self.job_tracker.add_error(
                     &tracker_job_id,
                     format!(
-                        "Failed to mark embeddings generated for {}: {}",
-                        document_uuid, e
+                        "Failed to mark embeddings generated for {document_uuid}: {e}"
                     ),
                 );
             }
@@ -590,15 +601,17 @@ impl IngestionJobHandler {
             {
                 self.job_tracker.add_error(
                     &tracker_job_id,
-                    format!("Failed to mark document {} completed: {}", document_uuid, e),
+                    format!("Failed to mark document {document_uuid} completed: {e}"),
                 );
             }
 
             processed_docs += 1;
-            total_chunks += chunks.len() as u32;
+            #[allow(clippy::cast_possible_truncation)] // chunk count fits in u32
+            let chunk_len = chunks.len() as u32;
+            total_chunks += chunk_len;
             self.job_tracker.update_progress(
                 &tracker_job_id,
-                (index + 1) as u32,
+                progress,
                 total_docs,
                 "reembedding",
             );
@@ -678,6 +691,7 @@ impl IngestionJobHandler {
     }
 
     /// Read document from local filesystem.
+    #[allow(clippy::unused_async)] // async for consistency with other read methods
     async fn read_local_document(&self, source_id: &str) -> Result<String, String> {
         let path = std::path::Path::new(source_id);
 
@@ -699,6 +713,7 @@ impl IngestionJobHandler {
     }
 
     /// Parse bytes into text based on file extension.
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn parse_bytes(&self, bytes: &[u8], extension: &str) -> Result<String, String> {
         match extension {
             "pdf" => {
@@ -716,7 +731,7 @@ impl IngestionJobHandler {
                 }
             }
             "md" | "markdown" => {
-                let parser = MarkdownParser::default();
+                let parser = MarkdownParser;
                 match parser.parse(bytes, None) {
                     Ok(doc) => Ok(doc.text),
                     Err(e) => Err(format!("Failed to parse Markdown: {e}")),
@@ -736,6 +751,7 @@ impl IngestionJobHandler {
     }
 
     /// Chunk content using the configured strategy.
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn chunk_content(
         &self,
         content: &str,

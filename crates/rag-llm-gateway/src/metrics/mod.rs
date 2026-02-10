@@ -88,6 +88,7 @@ pub static MODEL_LOADED: Lazy<GaugeVec> = Lazy::new(|| {
 });
 
 /// Get metrics as text for Prometheus scraping.
+#[allow(clippy::missing_panics_doc)]
 pub fn gather_metrics() -> String {
     use prometheus::Encoder;
     let encoder = prometheus::TextEncoder::new();

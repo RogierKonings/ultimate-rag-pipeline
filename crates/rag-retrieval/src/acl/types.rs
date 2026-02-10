@@ -1,7 +1,7 @@
 //! ACL filter primitive types.
 //!
 //! This module provides the core filter types used to build database-agnostic
-//! filters that can be converted to Qdrant or OpenSearch format.
+//! filters that can be converted to Qdrant or `OpenSearch` format.
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -64,7 +64,7 @@ impl FilterCondition {
     }
 }
 
-/// Unified filter format that can be converted to Qdrant or OpenSearch.
+/// Unified filter format that can be converted to Qdrant or `OpenSearch`.
 ///
 /// This provides a backend-agnostic filter structure that follows the
 /// bool query pattern:
@@ -122,7 +122,7 @@ impl UnifiedFilter {
         self
     }
 
-    /// Add a must_not condition.
+    /// Add a `must_not` condition.
     #[must_use]
     pub fn must_not(mut self, condition: FilterCondition) -> Self {
         self.must_not.push(condition);
@@ -143,7 +143,7 @@ impl UnifiedFilter {
         self
     }
 
-    /// Add multiple must_not conditions.
+    /// Add multiple `must_not` conditions.
     #[must_use]
     pub fn must_not_any(mut self, conditions: Vec<FilterCondition>) -> Self {
         self.must_not.extend(conditions);
@@ -160,7 +160,7 @@ impl UnifiedFilter {
     ///
     /// Conditions from `other` are appended to the corresponding lists.
     #[must_use]
-    pub fn merge(mut self, other: UnifiedFilter) -> Self {
+    pub fn merge(mut self, other: Self) -> Self {
         self.must.extend(other.must);
         self.should.extend(other.should);
         self.must_not.extend(other.must_not);

@@ -37,6 +37,7 @@ impl VideoPipeline {
     }
 
     /// Set the Qdrant indexer (pre-initialized).
+    #[must_use]
     pub fn with_indexer(mut self, indexer: Arc<VideoQdrantIndexer>) -> Self {
         self.indexer = Some(indexer);
         self
@@ -63,7 +64,7 @@ impl VideoPipeline {
     /// # Errors
     ///
     /// Returns an error if any pipeline stage fails.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::too_many_lines, clippy::missing_panics_doc)]
     pub async fn process(
         &self,
         video_path: impl AsRef<Path>,
@@ -345,6 +346,7 @@ impl VideoPipeline {
     }
 
     /// Report progress to the callback.
+    #[allow(clippy::unused_self, clippy::ref_option)]
     fn report_progress(
         &self,
         callback: &Option<ProgressCallback>,
@@ -358,6 +360,7 @@ impl VideoPipeline {
     }
 
     /// Extract keyframes from video.
+    #[allow(clippy::ref_option, clippy::cast_possible_truncation)]
     async fn extract_keyframes(
         &self,
         video_path: &Path,
@@ -379,6 +382,7 @@ impl VideoPipeline {
     }
 
     /// Extract audio from video.
+    #[allow(clippy::ref_option)]
     async fn extract_audio(
         &self,
         video_path: &Path,
@@ -458,7 +462,7 @@ impl VideoPipeline {
 
         let batch_size = self.config.embedding_batch_size;
         let mut embeddings = HashMap::with_capacity(chunks.len());
-        let total_batches = (chunks.len() + batch_size - 1) / batch_size;
+        let total_batches = chunks.len().div_ceil(batch_size);
 
         info!(
             chunk_count = chunks.len(),
@@ -477,22 +481,7 @@ impl VideoPipeline {
             match client.embed_batch(&texts).await {
                 Ok((batch_embeddings, token_count)) => {
                     // Validate that we got the right number of embeddings
-                    if batch_embeddings.len() != batch.len() {
-                        warn!(
-                            expected = batch.len(),
-                            got = batch_embeddings.len(),
-                            batch_idx,
-                            "Embedding count mismatch, falling back to placeholder for remaining chunks"
-                        );
-                        // Use what we got, fill rest with placeholders
-                        for (i, chunk) in batch.iter().enumerate() {
-                            if i < batch_embeddings.len() {
-                                embeddings.insert(chunk.id, batch_embeddings[i].clone());
-                            } else {
-                                embeddings.insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
-                            }
-                        }
-                    } else {
+                    if batch_embeddings.len() == batch.len() {
                         // Validate embedding dimensions on the first result
                         if let Some(first) = batch_embeddings.first() {
                             if first.len() != 384 {
@@ -506,6 +495,21 @@ impl VideoPipeline {
 
                         for (chunk, embedding) in batch.iter().zip(batch_embeddings.into_iter()) {
                             embeddings.insert(chunk.id, embedding);
+                        }
+                    } else {
+                        warn!(
+                            expected = batch.len(),
+                            got = batch_embeddings.len(),
+                            batch_idx,
+                            "Embedding count mismatch, falling back to placeholder for remaining chunks"
+                        );
+                        // Use what we got, fill rest with placeholders
+                        for (i, chunk) in batch.iter().enumerate() {
+                            if i < batch_embeddings.len() {
+                                embeddings.insert(chunk.id, batch_embeddings[i].clone());
+                            } else {
+                                embeddings.insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
+                            }
                         }
                     }
 
@@ -550,11 +554,12 @@ impl VideoPipeline {
     ///
     /// Produces a deterministic 384-dimensional vector based on the text length.
     /// This is NOT suitable for semantic search but provides a consistent fallback.
+    #[allow(clippy::cast_possible_truncation)]
     fn placeholder_vector(text: &str) -> Vec<f32> {
         (0..384)
             .map(|i| {
                 let hash = text.len() as f32 + i as f32;
-                (hash.sin() + 1.0) / 2.0
+                f32::midpoint(hash.sin(), 1.0)
             })
             .collect()
     }
@@ -605,6 +610,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn create_test_chunks(count: usize) -> Vec<VideoChunk> {
         let video_id = Uuid::new_v4();
         let tenant_id = Uuid::new_v4();
@@ -662,7 +668,7 @@ mod tests {
             .await;
 
         let config = PipelineConfig::default()
-            .with_embedding_url(&mock_server.uri())
+            .with_embedding_url(mock_server.uri())
             .with_embedding_batch_size(32);
         let pipeline = VideoPipeline::new(config);
 
@@ -695,7 +701,7 @@ mod tests {
             .await;
 
         let config = PipelineConfig::default()
-            .with_embedding_url(&mock_server.uri())
+            .with_embedding_url(mock_server.uri())
             .with_embedding_batch_size(2);
         let pipeline = VideoPipeline::new(config);
 
@@ -720,7 +726,7 @@ mod tests {
             .await;
 
         let config = PipelineConfig::default()
-            .with_embedding_url(&mock_server.uri())
+            .with_embedding_url(mock_server.uri())
             .with_embedding_batch_size(32);
         let pipeline = VideoPipeline::new(config);
 
@@ -751,7 +757,7 @@ mod tests {
             .await;
 
         let config = PipelineConfig::default()
-            .with_embedding_url(&mock_server.uri());
+            .with_embedding_url(mock_server.uri());
         let pipeline = VideoPipeline::new(config);
 
         let chunks = create_test_chunks(1);
@@ -789,7 +795,7 @@ mod tests {
             .await;
 
         let config = PipelineConfig::default()
-            .with_embedding_url(&mock_server.uri())
+            .with_embedding_url(mock_server.uri())
             .with_embedding_batch_size(2);
         let pipeline = VideoPipeline::new(config);
 

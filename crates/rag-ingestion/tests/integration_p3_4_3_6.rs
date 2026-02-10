@@ -2,8 +2,9 @@
 //!
 //! These tests verify the complete ingestion workflow:
 //! - Filesystem connector -> Parser -> Chunker pipeline
-//! - EmbeddingClient with mocked responses
+//! - `EmbeddingClient` with mocked responses
 //! - End-to-end document processing
+#![allow(clippy::cast_possible_truncation)] // test code: index casts are safe
 
 use rag_ingestion::{
     chunking::{ChunkingConfig, ChunkingStrategy, RecursiveCharacterSplitter},
@@ -55,7 +56,7 @@ async fn test_full_ingestion_pipeline() {
 
     // 4. Fetch and parse markdown
     let md_raw = connector.fetch_document("test.md").await.unwrap();
-    let md_parser = MarkdownParser::default();
+    let md_parser = MarkdownParser;
     let md_parsed = md_parser.parse(&md_raw.content, None).unwrap();
     assert!(md_parsed.title.is_some());
     assert!(!md_parsed.text.is_empty());
@@ -97,7 +98,7 @@ async fn test_full_ingestion_pipeline() {
         .await;
 
     // 8. Embed chunks
-    let embedding_config = EmbeddingClientConfig::new(&mock_server.uri());
+    let embedding_config = EmbeddingClientConfig::new(mock_server.uri());
     let embedding_client = EmbeddingClient::new(embedding_config).unwrap();
 
     let texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
@@ -136,7 +137,7 @@ async fn test_embedding_client_retries_on_server_error() {
         .mount(&mock_server)
         .await;
 
-    let config = EmbeddingClientConfig::new(&mock_server.uri())
+    let config = EmbeddingClientConfig::new(mock_server.uri())
         .with_max_retries(3)
         .with_retry_delay_ms(10); // Fast for tests
     let client = EmbeddingClient::new(config).unwrap();
@@ -213,7 +214,7 @@ async fn test_metadata_preservation_through_pipeline() {
     use serde_json::Value;
     use std::collections::HashMap;
 
-    let markdown = r#"---
+    let markdown = r"---
 title: Metadata Test
 author: Test Author
 version: 1.0
@@ -222,9 +223,9 @@ version: 1.0
 # Content
 
 This is the main content of the document.
-"#;
+";
 
-    let parser = MarkdownParser::default();
+    let parser = MarkdownParser;
     let parsed = parser.parse(markdown.as_bytes(), None).unwrap();
 
     // Verify frontmatter was extracted
@@ -255,7 +256,7 @@ This is the main content of the document.
 /// Test handling of various HTML structures
 #[tokio::test]
 async fn test_html_parser_complex_structures() {
-    let html = r#"
+    let html = r"
         <!DOCTYPE html>
         <html>
         <head><title>Complex HTML</title></head>
@@ -274,7 +275,7 @@ async fn test_html_parser_complex_structures() {
             <style>.hidden { display: none; }</style>
         </body>
         </html>
-    "#;
+    ";
 
     let parser = HtmlParser::default();
     let parsed = parser.parse(html.as_bytes(), None).unwrap();
@@ -463,8 +464,8 @@ fn test_index_status_enum() {
 use rag_database::{NewChunk, NewSourceDocument, Visibility};
 use uuid::Uuid;
 
-/// Test conversion of DocumentRecord to NewSourceDocument format.
-/// This verifies the data mapping that write_to_database performs.
+/// Test conversion of `DocumentRecord` to `NewSourceDocument` format.
+/// This verifies the data mapping that `write_to_database` performs.
 #[test]
 fn test_document_record_to_new_source_document_conversion() {
     let document_id = DocumentId::new();
@@ -514,7 +515,7 @@ fn test_document_record_to_new_source_document_conversion() {
         file_size: doc_record
             .metadata
             .get("file_size")
-            .and_then(|v| v.as_i64()),
+            .and_then(serde_json::Value::as_i64),
         visibility: Visibility::Private,
         allowed_groups: doc_record
             .metadata
@@ -579,7 +580,7 @@ fn test_document_record_conversion_with_defaults() {
         file_size: doc_record
             .metadata
             .get("file_size")
-            .and_then(|v| v.as_i64()),
+            .and_then(serde_json::Value::as_i64),
         visibility: Visibility::Private,
         allowed_groups: doc_record
             .metadata
@@ -603,7 +604,7 @@ fn test_document_record_conversion_with_defaults() {
     assert!(new_doc.allowed_groups.is_empty()); // Default empty
 }
 
-/// Test conversion of IndexedChunk to NewChunk format
+/// Test conversion of `IndexedChunk` to `NewChunk` format
 #[test]
 fn test_indexed_chunk_to_new_chunk_conversion() {
     let chunk_id = ChunkId::new();
@@ -645,7 +646,7 @@ fn test_indexed_chunk_to_new_chunk_conversion() {
         token_count: indexed_chunk
             .metadata
             .get("token_count")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0) as i32,
         char_count: indexed_chunk.content.len() as i32,
         embedding_model: indexed_chunk
@@ -662,12 +663,12 @@ fn test_indexed_chunk_to_new_chunk_conversion() {
         start_offset: indexed_chunk
             .metadata
             .get("start_char")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .map(|v| v as i32),
         end_offset: indexed_chunk
             .metadata
             .get("end_char")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .map(|v| v as i32),
         metadata: serde_json::to_value(&indexed_chunk.metadata).unwrap_or(serde_json::Value::Null),
     };
@@ -708,7 +709,7 @@ fn test_multiple_chunks_conversion() {
             )
             .with_metadata(
                 "token_count",
-                serde_json::Value::Number((10 + i as i64).into()),
+                serde_json::Value::Number((10 + i64::from(i)).into()),
             )
         })
         .collect();
@@ -728,7 +729,7 @@ fn test_multiple_chunks_conversion() {
                 token_count: c
                     .metadata
                     .get("token_count")
-                    .and_then(|v| v.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .unwrap_or(0) as i32,
                 char_count: c.content.len() as i32,
                 embedding_model: c
@@ -745,12 +746,12 @@ fn test_multiple_chunks_conversion() {
                 start_offset: c
                     .metadata
                     .get("start_char")
-                    .and_then(|v| v.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .map(|v| v as i32),
                 end_offset: c
                     .metadata
                     .get("end_char")
-                    .and_then(|v| v.as_i64())
+                    .and_then(serde_json::Value::as_i64)
                     .map(|v| v as i32),
                 metadata: serde_json::to_value(&c.metadata).unwrap_or(serde_json::Value::Null),
             }
@@ -799,34 +800,11 @@ fn test_uuid_parsing_from_type_ids() {
 /// Test empty chunks handling
 #[test]
 fn test_empty_chunks_conversion() {
-    let document_id = DocumentId::new();
+    let _document_id = DocumentId::new();
     let _tenant_id = TenantId::new();
-    let doc_uuid = Uuid::parse_str(&document_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
 
     let chunks: Vec<IndexedChunk> = vec![];
 
-    // Convert empty list
-    let new_chunks: Vec<NewChunk> = chunks
-        .iter()
-        .map(|c| {
-            let chunk_uuid =
-                Uuid::parse_str(&c.chunk_id.to_string()).unwrap_or_else(|_| Uuid::new_v4());
-            NewChunk {
-                id: chunk_uuid,
-                document_id: doc_uuid,
-                tenant_id: c.tenant_id.to_string(),
-                chunk_index: c.chunk_index as i32,
-                content: c.content.clone(),
-                token_count: 0,
-                char_count: 0,
-                embedding_model: None,
-                content_hash: String::new(),
-                start_offset: None,
-                end_offset: None,
-                metadata: serde_json::Value::Null,
-            }
-        })
-        .collect();
-
-    assert!(new_chunks.is_empty());
+    // Convert empty list - verify empty
+    assert!(chunks.is_empty());
 }

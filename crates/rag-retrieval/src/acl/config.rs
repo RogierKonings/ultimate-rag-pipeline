@@ -158,6 +158,7 @@ impl ACLFilterConfig {
 
 /// Builder for [`ACLFilterConfig`].
 #[derive(Debug, Clone, Default)]
+#[allow(clippy::option_option)]
 pub struct ACLFilterConfigBuilder {
     enabled: Option<bool>,
     admin_bypass: Option<bool>,

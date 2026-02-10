@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// Main gateway configuration.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Default)]
 pub struct GatewayConfig {
     /// Server configuration.
     #[serde(default)]
@@ -33,18 +34,6 @@ pub struct GatewayConfig {
     pub rate_limit: RateLimitConfig,
 }
 
-impl Default for GatewayConfig {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            embedding: EmbeddingServiceConfig::default(),
-            reranker: RerankerConfig::default(),
-            vllm: VllmConfig::default(),
-            auth: AuthConfig::default(),
-            rate_limit: RateLimitConfig::default(),
-        }
-    }
-}
 
 impl GatewayConfig {
     /// Load configuration from environment variables.

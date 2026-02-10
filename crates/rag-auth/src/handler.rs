@@ -390,7 +390,7 @@ impl JwtHandler {
         });
 
         // Don't block already expired tokens
-        if ttl.map_or(false, |t| t.is_zero()) {
+        if ttl.is_some_and(|t| t.is_zero()) {
             return Ok(true);
         }
 

@@ -25,7 +25,7 @@ use crate::api::types::{
 };
 use crate::worker::{Job, JobPriority};
 
-/// Query parameters for list_documents.
+/// Query parameters for `list_documents`.
 #[derive(Debug, Deserialize)]
 pub struct ListDocumentsQuery {
     /// Tenant ID for multi-tenancy (required).
@@ -46,7 +46,7 @@ fn default_page_size() -> i32 {
     20
 }
 
-/// Query parameters for sync_status.
+/// Query parameters for `sync_status`.
 #[derive(Debug, Deserialize)]
 pub struct SyncStatusQuery {
     /// Tenant ID for multi-tenancy (required).
@@ -64,14 +64,14 @@ fn default_limit() -> i32 {
     100
 }
 
-/// Query parameters for get_document.
+/// Query parameters for `get_document`.
 #[derive(Debug, Deserialize)]
 pub struct GetDocumentQuery {
     /// Tenant ID for multi-tenancy (required).
     pub tenant_id: String,
 }
 
-/// Query parameters for reindex_document.
+/// Query parameters for `reindex_document`.
 #[derive(Debug, Deserialize)]
 pub struct ReindexQuery {
     /// Tenant ID for multi-tenancy (required).
@@ -86,15 +86,15 @@ fn document_to_response(doc: rag_database::SourceDocument) -> DocumentResponse {
         .source_uri
         .rsplit('/')
         .next()
-        .and_then(|name| {
+        .map(|name| {
             // Remove timestamp prefix (digits followed by dash)
             if let Some(dash_pos) = name.find('-') {
                 let prefix = &name[..dash_pos];
                 if prefix.chars().all(|c| c.is_ascii_digit()) {
-                    return Some(name[dash_pos + 1..].to_string());
+                    return name[dash_pos + 1..].to_string();
                 }
             }
-            Some(name.to_string())
+            name.to_string()
         });
 
     DocumentResponse {
@@ -148,6 +148,7 @@ pub async fn list_documents(
     let document_responses: Vec<DocumentResponse> =
         documents.into_iter().map(document_to_response).collect();
 
+    #[allow(clippy::cast_possible_truncation)] // total row count fits in i32
     let pages = if total == 0 {
         0
     } else {
@@ -174,7 +175,7 @@ pub async fn list_documents(
 
 /// GET /api/v1/documents/sync-status - Get sync status.
 ///
-/// Queries documents from PostgreSQL and derives per-document sync status
+/// Queries documents from `PostgreSQL` and derives per-document sync status
 /// based on the document's processing status. A document with status
 /// "completed" is considered synced to all stores; "failed" indicates an
 /// indexing error; anything else is "pending".
@@ -273,9 +274,9 @@ pub async fn get_sync_status(
     }))
 }
 
-/// GET /api/v1/documents/{document_id} - Get document by ID.
+/// GET /`api/v1/documents/{document_id`} - Get document by ID.
 ///
-/// Retrieves a single document's metadata from PostgreSQL scoped to the
+/// Retrieves a single document's metadata from `PostgreSQL` scoped to the
 /// provided tenant.
 pub async fn get_document(
     State(state): State<Arc<AppState>>,
@@ -303,11 +304,11 @@ pub async fn get_document(
     Ok(Json(document_to_response(doc)))
 }
 
-/// DELETE /api/v1/documents/{document_id} - Delete document.
+/// DELETE /`api/v1/documents/{document_id`} - Delete document.
 ///
 /// When `hard_delete` is true (the default), the document and its chunks are
-/// removed from all stores: PostgreSQL, Qdrant, and OpenSearch via the index
-/// coordinator. When `hard_delete` is false, only the PostgreSQL record is
+/// removed from all stores: `PostgreSQL`, Qdrant, and `OpenSearch` via the index
+/// coordinator. When `hard_delete` is false, only the `PostgreSQL` record is
 /// removed (soft delete).
 pub async fn delete_document(
     State(state): State<Arc<AppState>>,
@@ -402,7 +403,7 @@ pub async fn delete_document(
     }))
 }
 
-/// Query parameters for delete_document.
+/// Query parameters for `delete_document`.
 #[derive(Debug, Deserialize)]
 pub struct DeleteDocumentQuery {
     /// Tenant ID for multi-tenancy (required).
@@ -421,6 +422,7 @@ fn default_hard_delete() -> bool {
 /// removed from all stores via the index coordinator. Failures on individual
 /// documents are captured in the per-document results rather than failing the
 /// entire batch.
+#[allow(clippy::too_many_lines)]
 pub async fn batch_delete_documents(
     State(state): State<Arc<AppState>>,
     Query(query): Query<DeleteDocumentQuery>,
@@ -447,7 +449,7 @@ pub async fn batch_delete_documents(
                     document_id: *document_id,
                     deleted: false,
                     chunks_deleted: 0,
-                    message: format!("Document {} not found", document_id),
+                    message: format!("Document {document_id} not found"),
                 });
                 continue;
             }
@@ -457,7 +459,7 @@ pub async fn batch_delete_documents(
                     document_id: *document_id,
                     deleted: false,
                     chunks_deleted: 0,
-                    message: format!("Failed to find document: {}", e),
+                    message: format!("Failed to find document: {e}"),
                 });
                 continue;
             }
@@ -475,7 +477,7 @@ pub async fn batch_delete_documents(
                             document_id: *document_id,
                             deleted: false,
                             chunks_deleted: 0,
-                            message: format!("Invalid tenant_id: {}", e),
+                            message: format!("Invalid tenant_id: {e}"),
                         });
                         continue;
                     }
@@ -504,7 +506,7 @@ pub async fn batch_delete_documents(
                             document_id: *document_id,
                             deleted: false,
                             chunks_deleted: 0,
-                            message: format!("Failed to delete: {}", e),
+                            message: format!("Failed to delete: {e}"),
                         });
                     }
                 }
@@ -526,7 +528,7 @@ pub async fn batch_delete_documents(
                             document_id: *document_id,
                             deleted: false,
                             chunks_deleted: 0,
-                            message: format!("Document {} not found", document_id),
+                            message: format!("Document {document_id} not found"),
                         });
                     }
                     Err(e) => {
@@ -535,7 +537,7 @@ pub async fn batch_delete_documents(
                             document_id: *document_id,
                             deleted: false,
                             chunks_deleted: 0,
-                            message: format!("Failed to delete document: {}", e),
+                            message: format!("Failed to delete document: {e}"),
                         });
                     }
                 }
@@ -558,7 +560,7 @@ pub async fn batch_delete_documents(
                         document_id: *document_id,
                         deleted: false,
                         chunks_deleted: 0,
-                        message: format!("Document {} not found", document_id),
+                        message: format!("Document {document_id} not found"),
                     });
                 }
                 Err(e) => {
@@ -567,7 +569,7 @@ pub async fn batch_delete_documents(
                         document_id: *document_id,
                         deleted: false,
                         chunks_deleted: 0,
-                        message: format!("Failed to delete document: {}", e),
+                        message: format!("Failed to delete document: {e}"),
                     });
                 }
             }
@@ -603,9 +605,9 @@ pub async fn batch_delete_documents(
     }))
 }
 
-/// POST /api/v1/documents/{document_id}/reindex - Reindex document.
+/// POST /`api/v1/documents/{document_id}/reindex` - Reindex document.
 ///
-/// Verifies the document exists in PostgreSQL, then enqueues a reindex job
+/// Verifies the document exists in `PostgreSQL`, then enqueues a reindex job
 /// to Redis for background processing by the worker pool. The job re-parses
 /// the document from its source, re-chunks, re-embeds, and re-indexes into
 /// all stores.

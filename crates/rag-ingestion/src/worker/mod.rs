@@ -5,9 +5,9 @@
 //!
 //! # Architecture
 //!
-//! - **JobQueue**: Redis-backed priority queue with DLQ support
-//! - **WorkerPool**: Tokio-based worker pool with configurable concurrency
-//! - **JobHandler**: Trait for implementing job processors
+//! - **`JobQueue`**: Redis-backed priority queue with DLQ support
+//! - **`WorkerPool`**: Tokio-based worker pool with configurable concurrency
+//! - **`JobHandler`**: Trait for implementing job processors
 //!
 //! # Example
 //!

@@ -109,6 +109,7 @@ impl PdfParser {
         let mut full_text_parts = Vec::new();
         let max_pages = self.config.max_pages.unwrap_or(page_count);
 
+        #[allow(clippy::cast_possible_truncation)] // page indices fit in u32
         for (idx, page_text) in pages.iter().take(max_pages).enumerate() {
             let trimmed = page_text.trim();
             if !trimmed.is_empty() {
@@ -139,6 +140,8 @@ impl PdfParser {
             full_text_parts.push(text.trim().to_string());
         }
 
+        #[allow(clippy::cast_possible_truncation)] // page count fits in u32
+        let page_count_u32 = page_count as u32;
         Ok(ParsedDocument {
             text: full_text_parts.join("\n\n"),
             blocks,
@@ -147,7 +150,7 @@ impl PdfParser {
             author: None,
             created_date: None,
             modified_date: None,
-            page_count: Some(page_count as u32),
+            page_count: Some(page_count_u32),
             language: None,
             metadata: HashMap::new(),
         })

@@ -48,7 +48,7 @@
 
 use super::rrf::ScoredItem;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use tracing::debug;
 
@@ -224,24 +224,24 @@ where
     );
 
     // Collect all unique IDs
-    let mut all_ids: HashMap<T, ()> = HashMap::new();
+    let mut all_ids: HashSet<T> = HashSet::new();
     for item in semantic_results {
-        all_ids.insert(item.id.clone(), ());
+        all_ids.insert(item.id.clone());
     }
     for item in keyword_results {
-        all_ids.insert(item.id.clone(), ());
+        all_ids.insert(item.id.clone());
     }
 
     // Compute fused scores
     let mut results: Vec<ScoredItem<T>> = all_ids
         .into_iter()
-        .map(|(id, _)| {
+        .map(|id| {
             // Use 0.0 (mean z-score) for missing values
             let semantic_z = semantic_zscores.get(&id).copied().unwrap_or(0.0);
             let keyword_z = keyword_zscores.get(&id).copied().unwrap_or(0.0);
 
             let fused_score =
-                config.semantic_weight * semantic_z + config.keyword_weight * keyword_z;
+                config.semantic_weight.mul_add(semantic_z, config.keyword_weight * keyword_z);
 
             ScoredItem::new(id, fused_score)
         })

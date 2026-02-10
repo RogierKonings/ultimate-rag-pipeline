@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Payload stored with each video chunk vector in Qdrant.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VideoChunkPayload {
     /// Tenant ID for multi-tenancy.
     pub tenant_id: String,
@@ -253,15 +253,17 @@ mod tests {
 
     #[test]
     fn test_video_chunk_payload_duration_ms() {
-        let payload = VideoChunkPayload::new(Uuid::new_v4(), Uuid::new_v4(), 0, 5000, 25000);
-        assert_eq!(payload.duration_ms(), 20000);
+        let payload = VideoChunkPayload::new(Uuid::new_v4(), Uuid::new_v4(), 0, 5000, 25_000);
+        assert_eq!(payload.duration_ms(), 20_000);
     }
 
     #[test]
     fn test_video_chunk_payload_duration_ms_saturating() {
-        let mut payload = VideoChunkPayload::default();
-        payload.start_time_ms = 30000;
-        payload.end_time_ms = 10000;
+        let payload = VideoChunkPayload {
+            start_time_ms: 30_000,
+            end_time_ms: 10_000,
+            ..VideoChunkPayload::default()
+        };
         assert_eq!(payload.duration_ms(), 0);
     }
 
@@ -388,7 +390,7 @@ mod tests {
         let hit = SearchHit::new("id", 0.9, VideoChunkPayload::default());
         let cloned = hit.clone();
         assert_eq!(hit.id, cloned.id);
-        assert_eq!(hit.score, cloned.score);
+        assert!((hit.score - cloned.score).abs() < f32::EPSILON);
     }
 
     #[test]

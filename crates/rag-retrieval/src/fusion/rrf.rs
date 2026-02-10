@@ -231,6 +231,7 @@ where
 /// * `k` - The k constant (default 60)
 /// * `top_k` - Maximum results to return
 #[must_use]
+#[allow(clippy::missing_panics_doc)]
 pub fn hybrid_fusion<T>(
     semantic_results: &[ScoredItem<T>],
     keyword_results: &[ScoredItem<T>],

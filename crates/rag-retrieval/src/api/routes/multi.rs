@@ -64,6 +64,7 @@ fn has_partial_component_degradation(outcomes: &[ComponentOutcome]) -> bool {
 /// # Response
 ///
 /// Returns a `RetrieveResponse` containing aggregated results from all queries.
+#[allow(clippy::too_many_lines)]
 #[instrument(skip(state, headers, request), fields(num_queries = request.queries.len()))]
 pub async fn retrieve_multi(
     State(state): State<Arc<AppState>>,
@@ -86,7 +87,7 @@ pub async fn retrieve_multi(
 
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id,
     // mirroring the single-query route behavior.
-    let tenant_id = extract_tenant_id(&headers, &request.filters);
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
 
     let user_context = extract_user_context(&headers, tenant_id);
 
@@ -167,7 +168,7 @@ pub async fn retrieve_multi(
     let aggregated = match request.aggregation.as_str() {
         "max" => aggregate_max(&all_results),
         "avg" => aggregate_avg(&all_results),
-        "rrf" | _ => aggregate_rrf(&all_results),
+        _ => aggregate_rrf(&all_results),
     };
 
     // Rerank aggregated results if enabled and reranker is available,
@@ -194,13 +195,13 @@ pub async fn retrieve_multi(
                     );
                     result.semantic_score = r.semantic_score;
                     result.keyword_score = r.keyword_score;
-                    result.title = r.title.clone();
-                    result.source_uri = r.source_uri.clone();
+                    result.title.clone_from(&r.title);
+                    result.source_uri.clone_from(&r.source_uri);
                     result.chunk_index = r.chunk_index;
-                    result.highlights = r.highlights.clone();
-                    result.metadata = r.metadata.clone();
+                    result.highlights.clone_from(&r.highlights);
+                    result.metadata.clone_from(&r.metadata);
                     result.visibility = r.visibility;
-                    result.allowed_groups = r.allowed_groups.clone();
+                    result.allowed_groups.clone_from(&r.allowed_groups);
                     result
                 })
                 .collect();
@@ -243,14 +244,12 @@ pub async fn retrieve_multi(
 
     outcome = outcome.with_rerank(rerank_requested, rerank_ok);
 
-    // Apply ACL filter
-    let filtered: Vec<_> = results_for_acl
+    // Apply ACL filter and top_k limit
+    let final_results: Vec<_> = results_for_acl
         .into_iter()
         .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+        .take(request.top_k)
         .collect();
-
-    // Apply top_k limit
-    let final_results: Vec<_> = filtered.into_iter().take(request.top_k).collect();
 
     // Convert to response format
     let response_results: Vec<RetrievedDocument> = final_results
@@ -303,6 +302,7 @@ pub async fn retrieve_multi(
 }
 
 /// Execute a single query against the hybrid searcher with filters and user context.
+#[allow(clippy::too_many_lines)]
 async fn execute_single_query(
     state: &AppState,
     query: &str,
@@ -700,13 +700,14 @@ mod tests {
 
         let aggregated = vec![r1, r2];
 
-        let filtered: Vec<_> = aggregated
-            .into_iter()
-            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
-            .collect();
-
         // Admin should see both
-        assert_eq!(filtered.len(), 2);
+        assert_eq!(
+            aggregated
+                .into_iter()
+                .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+                .count(),
+            2
+        );
     }
 
     #[test]

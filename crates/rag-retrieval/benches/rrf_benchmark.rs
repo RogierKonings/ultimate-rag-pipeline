@@ -20,6 +20,7 @@ fn generate_overlapping_results(
     overlap_ratio: f32,
 ) -> (Vec<ScoredItem<String>>, Vec<ScoredItem<String>>) {
     let mut rng = rand::thread_rng();
+    #[allow(clippy::cast_possible_truncation)]
     let overlap_count = (count as f32 * overlap_ratio) as usize;
     let unique_count = count - overlap_count;
 
@@ -50,7 +51,7 @@ fn generate_overlapping_results(
 fn rrf_basic_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("RRF Basic");
 
-    for size in [10, 50, 100, 500].iter() {
+    for size in &[10, 50, 100, 500] {
         group.throughput(Throughput::Elements(*size as u64));
 
         group.bench_with_input(BenchmarkId::new("single_list", size), size, |b, &size| {
@@ -75,9 +76,9 @@ fn rrf_basic_benchmark(c: &mut Criterion) {
 fn rrf_overlapping_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("RRF Overlapping");
 
-    for size in [50, 100, 500].iter() {
-        for overlap in [0.25, 0.5, 0.75].iter() {
-            let param = format!("size_{}_overlap_{}", size, overlap);
+    for size in &[50, 100, 500] {
+        for overlap in &[0.25, 0.5, 0.75] {
+            let param = format!("size_{size}_overlap_{overlap}");
             group.throughput(Throughput::Elements(*size as u64));
 
             group.bench_with_input(
@@ -139,7 +140,7 @@ fn hybrid_fusion_benchmark(c: &mut Criterion) {
 fn rrf_multilist_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("RRF Multi-List");
 
-    for num_lists in [2, 3, 5, 10].iter() {
+    for num_lists in &[2, 3, 5, 10] {
         group.bench_with_input(
             BenchmarkId::new("lists", num_lists),
             num_lists,

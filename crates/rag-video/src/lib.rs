@@ -41,6 +41,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unnecessary_literal_unwrap)]
     fn test_result_type_alias() {
         let ok_result: Result<i32> = Ok(42);
         assert_eq!(ok_result.unwrap(), 42);

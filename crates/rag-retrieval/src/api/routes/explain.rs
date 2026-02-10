@@ -37,13 +37,11 @@ fn extract_user_context(headers: &HeaderMap, tenant_id: Uuid) -> UserContext {
     let is_admin = headers
         .get("X-User-Role")
         .and_then(|v| v.to_str().ok())
-        .map(|role| role.eq_ignore_ascii_case("admin"))
-        .unwrap_or(false)
+        .is_some_and(|role| role.eq_ignore_ascii_case("admin"))
         || headers
             .get("X-User-Admin")
             .and_then(|v| v.to_str().ok())
-            .map(|v| v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+            .is_some_and(|v| v.eq_ignore_ascii_case("true"));
 
     let groups: Vec<String> = headers
         .get("X-User-Groups")
@@ -93,7 +91,7 @@ pub async fn explain(
     let query_id = Uuid::new_v4();
 
     // Extract tenant and user context
-    let tenant_id = extract_tenant_id(&headers, &request.filters);
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
     let user_context = extract_user_context(&headers, tenant_id);
 
     // Admin-only guard
@@ -169,6 +167,7 @@ pub async fn explain(
 /// Execute the retrieval pipeline, collecting stage-level diagnostic data.
 ///
 /// Returns the final results, ordered stage diagnostics, and component outcomes.
+#[allow(clippy::too_many_lines)]
 async fn execute_explain_pipeline(
     state: &AppState,
     request: &RetrieveRequest,
@@ -409,10 +408,7 @@ async fn execute_explain_pipeline(
     let acl_start = Instant::now();
     let before_acl = results.len();
 
-    results = results
-        .into_iter()
-        .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
-        .collect();
+    results.retain(|r| user_context.can_access(r.visibility, &r.allowed_groups));
 
     let acl_ms = acl_start.elapsed().as_secs_f64() * 1000.0;
     stages

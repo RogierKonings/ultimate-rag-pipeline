@@ -15,7 +15,7 @@ pub struct VideoIndexerConfig {
     pub timeout_seconds: u64,
     /// HNSW index parameter M (number of bi-directional links).
     pub hnsw_m: u64,
-    /// HNSW index parameter ef_construct (size of dynamic candidate list).
+    /// HNSW index parameter `ef_construct` (size of dynamic candidate list).
     pub hnsw_ef_construct: u64,
 }
 
@@ -82,7 +82,7 @@ impl VideoIndexerConfig {
         self
     }
 
-    /// Sets the HNSW ef_construct parameter.
+    /// Sets the HNSW `ef_construct` parameter.
     #[must_use]
     pub const fn with_hnsw_ef_construct(mut self, ef_construct: u64) -> Self {
         self.hnsw_ef_construct = ef_construct;

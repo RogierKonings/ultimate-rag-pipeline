@@ -548,7 +548,7 @@ impl KeywordSearcher {
         &self.config.index
     }
 
-    /// Check if the OpenSearch service is healthy.
+    /// Check if the `OpenSearch` service is healthy.
     ///
     /// # Errors
     ///
