@@ -235,13 +235,10 @@ async def query(
         usage=usage,
     )
 
-    # Reorder sources so cited documents appear first in the list
-    reordered_documents = query_service.reorder_sources_by_citations(response_text, documents)
-
     return query_service.build_query_response(
         request_id=request_id,
         response_text=response_text,
-        documents=reordered_documents,
+        documents=documents,
         session_id=query_request.session_id,
         model_used=model_used,
         usage=usage,
