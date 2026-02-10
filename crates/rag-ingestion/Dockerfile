@@ -75,6 +75,9 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     curl \
     poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-nld \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
