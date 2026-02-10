@@ -75,6 +75,17 @@ function createUploadStore() {
 			});
 		},
 
+		confirmRename(fileId: string, newName: string) {
+			update((state) => ({
+				...state,
+				queuedFiles: state.queuedFiles.map((f) =>
+					f.id === fileId
+						? { ...f, status: 'valid' as const, customName: newName, suggestedName: undefined }
+						: f
+				)
+			}));
+		},
+
 		removeQueuedFile(id: string) {
 			update((state) => ({
 				...state,
@@ -163,14 +174,14 @@ function createUploadStore() {
 			}
 		},
 
-		async uploadBatch(files: File[]) {
+		async uploadBatch(files: Array<{ file: File; customName?: string }>) {
 			if (files.length === 0) return;
 
 			// Create all jobs upfront with 'pending' status
-			const jobsToCreate: UploadJob[] = files.map((file) => ({
+			const jobsToCreate: UploadJob[] = files.map(({ file, customName }) => ({
 				id: crypto.randomUUID(),
 				jobId: '',
-				filename: file.name,
+				filename: customName || file.name,
 				status: 'pending' as const,
 				progress: 0,
 				error: null,
@@ -190,7 +201,7 @@ function createUploadStore() {
 
 			// Process files sequentially
 			for (let i = 0; i < files.length; i++) {
-				const file = files[i];
+				const { file, customName } = files[i];
 				const jobId = jobsToCreate[i].id;
 
 				update((state) => ({
@@ -204,6 +215,9 @@ function createUploadStore() {
 				try {
 					const formData = new FormData();
 					formData.append('file', file);
+					if (customName) {
+						formData.append('customName', customName);
+					}
 
 					const response = await fetch('/api/upload', {
 						method: 'POST',

@@ -138,8 +138,12 @@ export interface UploadResponse {
 export interface QueuedFile {
 	id: string;
 	file: File;
-	status: 'valid' | 'invalid';
+	status: 'valid' | 'invalid' | 'rename_pending';
 	error?: string;
+	/** When status is 'rename_pending', holds the suggested new filename */
+	suggestedName?: string;
+	/** When a file has been renamed by the user, holds the custom display name */
+	customName?: string;
 }
 
 // Delete types

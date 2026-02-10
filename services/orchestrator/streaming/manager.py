@@ -141,12 +141,10 @@ class StreamManager:
                 stream=True,
             )
 
-            # Stream tokens from gateway, accumulating full response for citation reordering
+            # Stream tokens from gateway
             token_count = 0
-            accumulated_tokens: list[str] = []
             async for token in active_gateway.chat_completion_stream(request):
                 token_count += 1
-                accumulated_tokens.append(token)
 
                 # Apply buffering if configured
                 if self._buffer is not None:
@@ -169,11 +167,10 @@ class StreamManager:
             usage["prompt_tokens"] = max(1, prompt_chars // 4)  # Rough estimate
             usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
 
-            # Emit citations if documents provided, reordered by citation usage
+            # Emit citations if documents provided (preserve original order to
+            # keep [N] markers in the response aligned with source positions)
             if documents:
-                full_response = "".join(accumulated_tokens)
-                reordered = self._reorder_documents_by_citations(full_response, documents)
-                yield self._create_citations_event(request_id, reordered)
+                yield self._create_citations_event(request_id, documents)
 
             # Emit done event (with quality metadata if provided)
             latency_ms = (time.perf_counter() - start_time) * 1000

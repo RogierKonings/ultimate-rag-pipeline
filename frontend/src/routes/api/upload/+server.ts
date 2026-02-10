@@ -41,10 +41,14 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const formData = await request.formData();
 		const file = formData.get('file') as File | null;
+		const customName = formData.get('customName') as string | null;
 
 		if (!file) {
 			throw error(400, { message: 'No file provided' });
 		}
+
+		// Use custom name if provided (from rename dialog), otherwise use original filename
+		const displayName = customName || file.name;
 
 		// Validate file type
 		const extension = '.' + file.name.split('.').pop()?.toLowerCase();
@@ -61,9 +65,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		// Generate unique filename
+		// Generate unique filename using the display name
 		const timestamp = Date.now();
-		const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+		const sanitizedName = displayName.replace(/[^a-zA-Z0-9.-]/g, '_');
 		const s3Key = `uploads/${TENANT_ID}/${timestamp}-${sanitizedName}`;
 
 		// Upload to MinIO
@@ -77,6 +81,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				ContentType: file.type || 'application/octet-stream',
 				Metadata: {
 					'original-filename': file.name,
+					'display-filename': displayName,
 					'uploaded-at': new Date().toISOString()
 				}
 			})
@@ -123,7 +128,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			document_id: ingestionResult.document_id,
 			job_id: ingestionResult.job_id,
-			filename: file.name,
+			filename: displayName,
 			s3_key: s3Key,
 			status: 'queued'
 		});
