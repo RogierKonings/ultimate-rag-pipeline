@@ -76,7 +76,7 @@ FROM python:3.11-slim AS model-downloader
 RUN pip install --no-cache-dir huggingface_hub
 
 # Download model to HF Hub cache format (same format fastembed expects)
-RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Qdrant/all-MiniLM-L6-v2-onnx', cache_dir='/model-cache')"
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Qdrant/bge-small-en-v1.5', cache_dir='/model-cache')"
 
 # ============ Runtime Stage ============
 FROM debian:bookworm-slim

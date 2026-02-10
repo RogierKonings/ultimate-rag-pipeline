@@ -209,7 +209,7 @@ class TestModelRouterFallback:
     @pytest.mark.asyncio
     async def test_fallback_from_any_model(self, router):
         """Test fallback works from any model."""
-        models = ["llama-3.1-70b", "llama-3.1-13b", "qwen2.5-7b", "unknown-model"]
+        models = ["llama-3.1-70b", "llama-3.1-8b", "qwen2.5-7b", "unknown-model"]
         for model in models:
             fallback = await router.get_fallback_model(model)
             assert fallback == MODEL_CONFIGS[ModelTier.SMALL].model_name

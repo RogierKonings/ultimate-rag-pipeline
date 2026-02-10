@@ -47,7 +47,7 @@ spec:
             - name: EMBEDDING_SERVICE_URL
               value: "http://embedding-service:8080"
             - name: EMBEDDING_MODEL
-              value: "all-MiniLM-L6-v2"
+              value: "bge-small-en-v1.5"
             - name: EMBEDDING_DIMENSIONS
               value: "384"
             - name: RERANKER_ENABLED

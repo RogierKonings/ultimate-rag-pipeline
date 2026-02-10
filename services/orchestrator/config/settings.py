@@ -42,7 +42,7 @@ class OrchestratorConfig(BaseSettings):
 
     # Model Tiering (US-10.5.2)
     small_model: str = "qwen2.5-7b"
-    medium_model: str = "llama-3.1-13b"
+    medium_model: str = "llama-3.1-8b"
     large_model: str = "llama-3.1-70b"
     enable_model_tiering: bool = True  # Feature flag for gradual rollout
 

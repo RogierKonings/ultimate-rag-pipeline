@@ -36,7 +36,7 @@ spec:
             - name: EMBEDDING_PORT
               value: "8080"
             - name: EMBEDDING_MODEL
-              value: "sentence-transformers/all-MiniLM-L6-v2"
+              value: "BAAI/bge-small-en-v1.5"
             - name: EMBEDDING_BATCH_SIZE
               value: "32"
           resources:

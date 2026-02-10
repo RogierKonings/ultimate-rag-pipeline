@@ -24,8 +24,8 @@ def _get_model_name(tier: str, default: str) -> str:
 class ModelTier(str, Enum):
     """Model tiers based on parameter count and capabilities."""
 
-    SMALL = "small"  # 7-8B models (Qwen2.5-7B, Llama-3.1-8B)
-    MEDIUM = "medium"  # 13-14B models
+    SMALL = "small"  # 3-7B models (Qwen2.5-7B, Llama-3.2-3B)
+    MEDIUM = "medium"  # 8B models (Llama-3.1-8B, Qwen2.5-7B)
     LARGE = "large"  # 70B+ models
 
 
@@ -48,7 +48,7 @@ def _get_model_configs() -> dict[ModelTier, ModelConfig]:
             cost_per_1k_tokens=0.001,
         ),
         ModelTier.MEDIUM: ModelConfig(
-            model_name=_get_model_name("medium", "llama-3.1-13b"),
+            model_name=_get_model_name("medium", "llama-3.1-8b"),
             max_tokens=4096,
             cost_per_1k_tokens=0.003,
         ),

@@ -45,13 +45,13 @@ class EmbeddingConfig(BaseModel):
     """Configuration for embedding model."""
 
     model_name: str = Field(
-        default="BAAI/bge-large-en-v1.5", description="Embedding model identifier"
+        default="BAAI/bge-small-en-v1.5", description="Embedding model identifier"
     )
-    dimensions: int = Field(default=1024, description="Embedding vector dimensions")
+    dimensions: int = Field(default=384, description="Embedding vector dimensions")
     batch_size: int = Field(default=32, ge=1, le=256, description="Batch size for embedding")
     normalize: bool = Field(default=True, description="Normalize embeddings for cosine similarity")
     query_prefix: str = Field(
-        default="Represent this sentence for searching relevant passages: ",
+        default="",
         description="Prefix added to queries (not documents)",
     )
     max_sequence_length: int = Field(
@@ -122,13 +122,13 @@ def get_embedding_config(**overrides: Any) -> EmbeddingConfig:
         EMBEDDING_NORMALIZE, EMBEDDING_QUERY_PREFIX
     """
     values = {
-        "model_name": _get_env("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5", str),
-        "dimensions": _get_env("EMBEDDING_DIMENSIONS", 1024, int),
+        "model_name": _get_env("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5", str),
+        "dimensions": _get_env("EMBEDDING_DIMENSIONS", 384, int),
         "batch_size": _get_env("EMBEDDING_BATCH_SIZE", 32, int),
         "normalize": _get_env("EMBEDDING_NORMALIZE", True, bool),
         "query_prefix": _get_env(
             "EMBEDDING_QUERY_PREFIX",
-            "Represent this sentence for searching relevant passages: ",
+            "",
             str,
         ),
     }

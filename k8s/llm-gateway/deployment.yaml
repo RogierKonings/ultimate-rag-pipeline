@@ -38,7 +38,7 @@ spec:
             - name: VLLM_URL
               value: "http://vllm:8000"
             - name: EMBEDDING_MODEL
-              value: "sentence-transformers/all-MiniLM-L6-v2"
+              value: "BAAI/bge-small-en-v1.5"
             - name: RERANKER_MODEL
               value: "BAAI/bge-reranker-v2-m3"
           resources:

@@ -44,7 +44,7 @@ fn default_url() -> String {
 }
 
 fn default_model() -> String {
-    "all-MiniLM-L6-v2".into()
+    "bge-small-en-v1.5".into()
 }
 
 const fn default_dimensions() -> usize {
@@ -164,7 +164,7 @@ impl EmbeddingConfig {
     ///
     /// Environment variables:
     /// - `EMBEDDING_SERVICE_URL`: Service URL (default: `http://localhost:8080`)
-    /// - `EMBEDDING_MODEL`: Model name (default: `all-MiniLM-L6-v2`)
+    /// - `EMBEDDING_MODEL`: Model name (default: `bge-small-en-v1.5`)
     /// - `EMBEDDING_DIMENSIONS`: Vector dimensions (default: 384)
     /// - `EMBEDDING_BATCH_SIZE`: Batch size (default: 32)
     /// - `EMBEDDING_TIMEOUT_MS`: Timeout in milliseconds (default: 5000)
@@ -222,7 +222,7 @@ mod tests {
     fn test_default_config() {
         let config = EmbeddingConfig::default();
         assert_eq!(config.url, "http://localhost:8080");
-        assert_eq!(config.model, "all-MiniLM-L6-v2");
+        assert_eq!(config.model, "bge-small-en-v1.5");
         assert_eq!(config.dimensions, 384);
         assert_eq!(config.batch_size, 32);
         assert_eq!(config.timeout_ms, 5000);

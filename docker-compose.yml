@@ -210,7 +210,7 @@ services:
       - OPENSEARCH_INDEX=documents
       # Embedding service
       - EMBEDDING_SERVICE_URL=http://embedding-service:8080
-      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - EMBEDDING_MODEL=bge-small-en-v1.5
       - EMBEDDING_DIMENSIONS=384
       # Reranker configuration
       - RERANKER_ENABLED=true
@@ -261,9 +261,9 @@ services:
     environment:
       # Service-specific overrides (model config)
       - ORCHESTRATOR_DEFAULT_MODEL=${LLM_MODEL:-qwen2.5:14b}
-      - ORCHESTRATOR_FALLBACK_MODEL=llama3.1:8b
+      - ORCHESTRATOR_FALLBACK_MODEL=llama3.2:3b
       - ORCHESTRATOR_SMALL_MODEL=llama3.2:3b
-      - ORCHESTRATOR_MEDIUM_MODEL=llama3.1:8b
+      - ORCHESTRATOR_MEDIUM_MODEL=qwen2.5:7b
       - ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
       - LOG_LEVEL=DEBUG
       - PYTHONPATH=/app:/app/shared:/packages
@@ -294,7 +294,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
       - EMBEDDING_BATCH_SIZE=32
       - TOKIO_WORKER_THREADS=8
       - EMBEDDING_HOST=0.0.0.0

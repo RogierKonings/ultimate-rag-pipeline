@@ -15,7 +15,7 @@ from qdrant_client.models import (
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION", "documents")
-EMBEDDING_DIM = 1024  # BGE-large-en-v1.5 dimension
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))  # bge-small-en-v1.5 default
 
 
 def init_collection() -> bool:
