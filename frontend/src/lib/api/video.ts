@@ -10,6 +10,7 @@ import type {
 } from './types';
 import { PUBLIC_DEMO_TENANT_ID } from '$env/static/public';
 import { VIDEO_ENABLED } from '$lib/config';
+import { isTransientError, PollingError, getPollingErrorMessage } from './ingestion';
 
 /**
  * Error thrown when video API functions are called while the feature is disabled.
@@ -201,22 +202,25 @@ export function getStreamUrl(videoId: string): string {
 }
 
 /**
- * Poll video status until complete or failed.
+ * Poll video status until complete or failed, with retry logic for transient errors.
  * Throws VideoFeatureDisabledError when VIDEO_ENABLED is false.
  */
 export async function pollVideoStatus(
 	videoId: string,
 	onProgress?: (status: VideoStatusResponse) => void,
 	intervalMs = 3000,
-	maxAttempts = 600 // 30 minutes max
+	maxAttempts = 600, // 30 minutes max
+	maxConsecutiveErrors = 5
 ): Promise<VideoStatusResponse> {
 	assertVideoEnabled();
 	let attempts = 0;
+	let consecutiveErrors = 0;
 
 	return new Promise((resolve, reject) => {
 		const poll = async () => {
 			try {
 				const status = await getVideoStatus(videoId);
+				consecutiveErrors = 0;
 				onProgress?.(status);
 
 				if (status.status === 'ready') {
@@ -231,13 +235,34 @@ export async function pollVideoStatus(
 
 				attempts++;
 				if (attempts >= maxAttempts) {
-					reject(new Error('Video processing timed out'));
+					reject(new Error('Video processing is taking longer than expected. It may still be processing in the background.'));
 					return;
 				}
 
 				setTimeout(poll, intervalMs);
 			} catch (error) {
-				reject(error);
+				if (!isTransientError(error)) {
+					reject(new PollingError(getPollingErrorMessage(error), 'fatal', error));
+					return;
+				}
+
+				consecutiveErrors++;
+				if (consecutiveErrors >= maxConsecutiveErrors) {
+					reject(new PollingError(
+						'The processing service appears to be unavailable. Please try again later.',
+						'transient_exhausted',
+						error
+					));
+					return;
+				}
+
+				attempts++;
+				if (attempts >= maxAttempts) {
+					reject(new Error('Video processing is taking longer than expected. It may still be processing in the background.'));
+					return;
+				}
+
+				setTimeout(poll, intervalMs);
 			}
 		};
 

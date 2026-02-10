@@ -8,8 +8,10 @@ This module contains the business logic extracted from query route handlers:
 - Quality metadata assembly
 - Business metrics recording
 - Token usage tracking
+- Source reordering by citation usage
 """
 
+import re
 import time
 from typing import Any
 
@@ -48,6 +50,49 @@ def transform_documents(documents: list[dict[str, Any]]) -> list[SourceDocument]
             ),
         )
     return sources
+
+
+def reorder_sources_by_citations(
+    response_text: str,
+    documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Reorder documents so that cited sources appear first.
+
+    Parses [N] citation markers from the LLM response and moves cited
+    documents to the front of the list (in order of first citation),
+    followed by uncited documents in their original order.
+
+    Args:
+        response_text: The generated LLM response text.
+        documents: List of raw document dictionaries in retrieval order.
+
+    Returns:
+        Reordered list of documents with cited ones first.
+    """
+    if not documents or not response_text:
+        return documents
+
+    # Parse all [N] citations from response text
+    citation_matches = re.findall(r"\[(\d+)\]", response_text)
+    # Convert to 0-indexed, deduplicate while preserving first-occurrence order
+    seen: set[int] = set()
+    cited_indices: list[int] = []
+    for match in citation_matches:
+        idx = int(match) - 1  # Convert 1-indexed to 0-indexed
+        if 0 <= idx < len(documents) and idx not in seen:
+            seen.add(idx)
+            cited_indices.append(idx)
+
+    if not cited_indices:
+        return documents
+
+    # Build reordered list: cited first, then uncited in original order
+    reordered = [documents[i] for i in cited_indices]
+    for i, doc in enumerate(documents):
+        if i not in seen:
+            reordered.append(doc)
+
+    return reordered
 
 
 async def execute_workflow(

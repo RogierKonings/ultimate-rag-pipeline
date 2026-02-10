@@ -16,7 +16,8 @@ SYSTEM_PROMPT = """You are a helpful AI assistant. Use the provided context to a
 
 Guidelines:
 - Be concise and direct in your responses
-- Cite sources when using information from the context
+- ALWAYS cite sources using bracket notation like [1], [2], etc. matching the document numbers in the context
+- Place citations inline immediately after the relevant claim, e.g. "The total was €500 [3]."
 - If you're uncertain, express that uncertainty
 - Do not make up information not present in the context"""
 
@@ -25,7 +26,7 @@ RAG_PROMPT_TEMPLATE = """Context:
 
 User Question: {query}
 
-Please provide a helpful response based on the context above."""
+Please provide a helpful response based on the context above. Cite each source you use with [N] notation matching the document numbers."""
 
 NO_CONTEXT_PROMPT_TEMPLATE = """User Question: {query}
 
@@ -37,7 +38,8 @@ MULTI_HOP_SYSTEM_PROMPT = """You are a helpful AI assistant answering a complex 
 Guidelines:
 - Address all aspects of the original question
 - Synthesize information from multiple sub-question contexts
-- Cite sources using document references when available
+- ALWAYS cite sources using bracket notation like [1], [2], etc. matching the document numbers in the context
+- Place citations inline immediately after the relevant claim
 - If some sub-questions couldn't be fully answered, acknowledge this
 - Be concise and direct in your responses
 - Do not make up information not present in the context"""

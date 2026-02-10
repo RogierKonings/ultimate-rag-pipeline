@@ -4,6 +4,7 @@ This module provides the StreamManager class that coordinates streaming
 LLM responses with proper event sequencing and error handling.
 """
 
+import re
 import time
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -140,10 +141,12 @@ class StreamManager:
                 stream=True,
             )
 
-            # Stream tokens from gateway
+            # Stream tokens from gateway, accumulating full response for citation reordering
             token_count = 0
+            accumulated_tokens: list[str] = []
             async for token in active_gateway.chat_completion_stream(request):
                 token_count += 1
+                accumulated_tokens.append(token)
 
                 # Apply buffering if configured
                 if self._buffer is not None:
@@ -166,9 +169,11 @@ class StreamManager:
             usage["prompt_tokens"] = max(1, prompt_chars // 4)  # Rough estimate
             usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
 
-            # Emit citations if documents provided
+            # Emit citations if documents provided, reordered by citation usage
             if documents:
-                yield self._create_citations_event(request_id, documents)
+                full_response = "".join(accumulated_tokens)
+                reordered = self._reorder_documents_by_citations(full_response, documents)
+                yield self._create_citations_event(request_id, reordered)
 
             # Emit done event (with quality metadata if provided)
             latency_ms = (time.perf_counter() - start_time) * 1000
@@ -260,6 +265,44 @@ class StreamManager:
             sources.append(source)
 
         return StreamEvent.citations(request_id, sources)
+
+    @staticmethod
+    def _reorder_documents_by_citations(
+        response_text: str,
+        documents: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Reorder documents so cited sources appear first.
+
+        Parses [N] citation markers from the response and moves cited
+        documents to the front (in order of first citation).
+
+        Args:
+            response_text: The full generated response text.
+            documents: Source documents in retrieval order.
+
+        Returns:
+            Reordered documents with cited ones first.
+        """
+        if not documents or not response_text:
+            return documents
+
+        citation_matches = re.findall(r"\[(\d+)\]", response_text)
+        seen: set[int] = set()
+        cited_indices: list[int] = []
+        for match in citation_matches:
+            idx = int(match) - 1
+            if 0 <= idx < len(documents) and idx not in seen:
+                seen.add(idx)
+                cited_indices.append(idx)
+
+        if not cited_indices:
+            return documents
+
+        reordered = [documents[i] for i in cited_indices]
+        for i, doc in enumerate(documents):
+            if i not in seen:
+                reordered.append(doc)
+        return reordered
 
     def _create_done_event(
         self,

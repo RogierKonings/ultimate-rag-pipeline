@@ -1,4 +1,4 @@
-import { ApiClient } from './client';
+import { ApiClient, isApiError } from './client';
 import type { Document, DocumentListResponse, DocumentDeleteResponse, BatchDeleteResponse, JobStatusResponse } from './types';
 import { PUBLIC_DEMO_TENANT_ID } from '$env/static/public';
 
@@ -12,6 +12,54 @@ function getClient(): ApiClient {
 }
 
 const TENANT_ID = PUBLIC_DEMO_TENANT_ID || '00000000-0000-0000-0000-000000000001';
+
+/**
+ * Determine whether an API error is transient (retryable) or fatal.
+ * 5xx errors and network failures are transient; 4xx errors are fatal.
+ */
+export function isTransientError(error: unknown): boolean {
+	if (isApiError(error)) {
+		return error.status >= 500;
+	}
+	// Non-ApiClientError (e.g., network failure) is assumed transient
+	return true;
+}
+
+/**
+ * Convert a polling error into a user-friendly message.
+ */
+export function getPollingErrorMessage(error: unknown): string {
+	if (isApiError(error)) {
+		switch (error.status) {
+			case 404:
+				return 'Job not found. The server may have restarted. Please try uploading again.';
+			case 502:
+			case 503:
+			case 504:
+				return 'The processing service is temporarily unavailable. Please try again later.';
+			default:
+				return error.error?.message || `Processing failed (error ${error.status})`;
+		}
+	}
+	if (error instanceof Error) {
+		return error.message;
+	}
+	return 'Processing failed unexpectedly';
+}
+
+export type PollingErrorKind = 'fatal' | 'transient_exhausted';
+
+export class PollingError extends Error {
+	public readonly kind: PollingErrorKind;
+	public readonly cause: unknown;
+
+	constructor(message: string, kind: PollingErrorKind, cause?: unknown) {
+		super(message);
+		this.name = 'PollingError';
+		this.kind = kind;
+		this.cause = cause;
+	}
+}
 
 /**
  * List all documents for the demo tenant
@@ -66,20 +114,26 @@ export async function batchDeleteDocuments(documentIds: string[]): Promise<Batch
 }
 
 /**
- * Poll job status until complete
+ * Poll job status until complete, with retry logic for transient errors.
+ *
+ * Transient errors (5xx, network failures) are retried up to maxConsecutiveErrors
+ * times before giving up. Fatal errors (4xx like 404) fail immediately.
  */
 export async function pollJobStatus(
 	jobId: string,
 	onProgress?: (status: JobStatusResponse) => void,
 	intervalMs = 2000,
-	maxAttempts = 300 // 10 minutes max
+	maxAttempts = 300, // 10 minutes max
+	maxConsecutiveErrors = 5
 ): Promise<JobStatusResponse> {
 	let attempts = 0;
+	let consecutiveErrors = 0;
 
 	return new Promise((resolve, reject) => {
 		const poll = async () => {
 			try {
 				const status = await getJobStatus(jobId);
+				consecutiveErrors = 0;
 				onProgress?.(status);
 
 				if (status.status === 'success') {
@@ -94,13 +148,34 @@ export async function pollJobStatus(
 
 				attempts++;
 				if (attempts >= maxAttempts) {
-					reject(new Error('Job polling timed out'));
+					reject(new Error('Processing is taking longer than expected. The document may still be processing in the background.'));
 					return;
 				}
 
 				setTimeout(poll, intervalMs);
 			} catch (error) {
-				reject(error);
+				if (!isTransientError(error)) {
+					reject(new PollingError(getPollingErrorMessage(error), 'fatal', error));
+					return;
+				}
+
+				consecutiveErrors++;
+				if (consecutiveErrors >= maxConsecutiveErrors) {
+					reject(new PollingError(
+						'The processing service appears to be unavailable. Please try again later.',
+						'transient_exhausted',
+						error
+					));
+					return;
+				}
+
+				attempts++;
+				if (attempts >= maxAttempts) {
+					reject(new Error('Processing is taking longer than expected. The document may still be processing in the background.'));
+					return;
+				}
+
+				setTimeout(poll, intervalMs);
 			}
 		};
 

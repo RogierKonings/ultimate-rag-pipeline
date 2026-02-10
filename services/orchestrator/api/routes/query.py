@@ -235,10 +235,13 @@ async def query(
         usage=usage,
     )
 
+    # Reorder sources so cited documents appear first in the list
+    reordered_documents = query_service.reorder_sources_by_citations(response_text, documents)
+
     return query_service.build_query_response(
         request_id=request_id,
         response_text=response_text,
-        documents=documents,
+        documents=reordered_documents,
         session_id=query_request.session_id,
         model_used=model_used,
         usage=usage,
@@ -427,14 +430,25 @@ async def query_stream(
 
         # If we have documents, add context
         if documents:
-            context = "\n\n".join(
-                [f"[{i + 1}] {doc.get('content', '')}" for i, doc in enumerate(documents)],
-            )
+            context_parts = []
+            for i, doc in enumerate(documents, 1):
+                content = doc.get("content", "")
+                source = doc.get("source") or doc.get("metadata", {}).get("source_uri", "")
+                title = doc.get("title") or doc.get("metadata", {}).get("title", "")
+                # Build a descriptive label: prefer title, then filename from source
+                label = title
+                if not label and source:
+                    label = source.rsplit("/", 1)[-1] if "/" in source else source
+                label = label or f"Document {i}"
+                context_parts.append(f"[Document {i}: {label}]\n{content}")
+            context = "\n\n".join(context_parts)
+
             context_message = (
                 "You are a helpful assistant that answers questions based on the provided documents. "
                 "When comparing values (amounts, dates, quantities), carefully extract the relevant "
                 "value from EACH document before making comparisons. "
-                "Always cite the specific document number and exact value in your answer.\n\n"
+                "ALWAYS cite sources using bracket notation like [1], [2], etc. matching the document numbers. "
+                "Place citations inline immediately after the relevant claim, e.g. 'The total was €500 [3].'\n\n"
                 f"Documents:\n\n{context}"
             )
             messages.insert(0, {"role": "system", "content": context_message})
