@@ -2,16 +2,21 @@
 	import { X, Upload, FileText, AlertCircle, Loader2, AlertTriangle, Pencil } from 'lucide-svelte';
 	import { upload } from '$lib/stores/upload';
 	import { documents } from '$lib/stores/documents';
-	import type { QueuedFile } from '$lib/api/types';
+	import {
+		ALLOWED_UPLOAD_EXTENSIONS,
+		MAX_UPLOAD_FILE_SIZE_MB,
+		buildQueuedFilesForUpload,
+		collectFinalizedFilenames,
+		formatFileSize,
+		generateSuggestedFilename,
+		getFileExtension,
+		stripFileExtension
+	} from '$lib/utils/uploadQueue';
 
 	let dragOver = $state(false);
 	let inputElement: HTMLInputElement;
 	let renameInputElement: HTMLInputElement | undefined = $state(undefined);
 
-	const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
-	const MAX_SIZE_MB = 50;
-
-	// Get existing filenames from the documents store
 	const existingFilenames = $derived(new Set($documents.documents.map((doc) => doc.filename)));
 
 	const validFiles = $derived($upload.queuedFiles.filter((f) => f.status === 'valid'));
@@ -73,78 +78,15 @@
 		target.value = '';
 	}
 
-	/**
-	 * Generate a suggested name for a duplicate file.
-	 * e.g. "report.pdf" → "report (2).pdf", "report (2).pdf" → "report (3).pdf"
-	 */
-	function generateSuggestedName(filename: string, allNames: Set<string>): string {
-		const dotIndex = filename.lastIndexOf('.');
-		const baseName = dotIndex > 0 ? filename.substring(0, dotIndex) : filename;
-		const extension = dotIndex > 0 ? filename.substring(dotIndex) : '';
-
-		// Check if the name already has a copy suffix like " (2)"
-		const copyMatch = baseName.match(/^(.+)\s\((\d+)\)$/);
-		let rootName = copyMatch ? copyMatch[1] : baseName;
-		let counter = copyMatch ? parseInt(copyMatch[2], 10) + 1 : 2;
-
-		let suggested = `${rootName} (${counter})${extension}`;
-		while (allNames.has(suggested)) {
-			counter++;
-			suggested = `${rootName} (${counter})${extension}`;
-		}
-
-		return suggested;
-	}
-
 	function processFiles(files: File[]) {
-		// Track filenames within this batch to detect duplicates within the same upload
-		const batchFilenames = new Set<string>();
-		// Combine existing + already queued valid/renamed files for duplicate checking
-		const allKnownNames = new Set([
-			...existingFilenames,
-			...$upload.queuedFiles
-				.filter((f) => f.status === 'valid')
-				.map((f) => f.customName || f.file.name)
-		]);
-
-		const queuedFiles: QueuedFile[] = files.map((file) => {
-			const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-			let status: 'valid' | 'invalid' | 'rename_pending' = 'valid';
-			let error: string | undefined;
-			let suggestedName: string | undefined;
-
-			if (!ALLOWED_EXTENSIONS.includes(extension)) {
-				status = 'invalid';
-				error = 'Invalid file type';
-			} else if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-				status = 'invalid';
-				error = `Exceeds ${MAX_SIZE_MB}MB limit`;
-			} else if (allKnownNames.has(file.name) || batchFilenames.has(file.name)) {
-				status = 'rename_pending';
-				suggestedName = generateSuggestedName(file.name, allKnownNames);
-				// Also add the suggested name to known names so subsequent duplicates get unique suggestions
-				allKnownNames.add(suggestedName);
-			}
-
-			// Track this filename for batch duplicate detection
-			batchFilenames.add(file.name);
-			if (status === 'valid') {
-				allKnownNames.add(file.name);
-			}
-
-			return {
-				id: crypto.randomUUID(),
-				file,
-				status,
-				error,
-				suggestedName
-			};
+		const { queuedFiles, firstRename } = buildQueuedFilesForUpload({
+			files,
+			existingFilenames,
+			queuedFiles: $upload.queuedFiles
 		});
 
 		upload.addFiles(queuedFiles);
 
-		// Auto-open rename dialog for the first rename_pending file
-		const firstRename = queuedFiles.find((f) => f.status === 'rename_pending');
 		if (firstRename) {
 			openRenameDialog(firstRename.id, firstRename.suggestedName || firstRename.file.name);
 		}
@@ -152,66 +94,48 @@
 
 	function openRenameDialog(fileId: string, suggested: string) {
 		renamingFileId = fileId;
-		// Pre-fill with suggested name but without extension for easier editing
-		const dotIndex = suggested.lastIndexOf('.');
-		renameValue = dotIndex > 0 ? suggested.substring(0, dotIndex) : suggested;
-		// Focus input after render
+		renameValue = stripFileExtension(suggested);
 		setTimeout(() => renameInputElement?.focus(), 50);
+	}
+
+	function openNextRenameDialog(skipFileId?: string) {
+		const nextRename = $upload.queuedFiles.find(
+			(file) => file.status === 'rename_pending' && file.id !== skipFileId
+		);
+		if (nextRename) {
+			openRenameDialog(nextRename.id, nextRename.suggestedName || nextRename.file.name);
+		}
 	}
 
 	function handleConfirmRename(fileId: string) {
 		const qf = $upload.queuedFiles.find((f) => f.id === fileId);
 		if (!qf) return;
 
-		const extension =
-			'.' + qf.file.name.split('.').pop()?.toLowerCase();
-		const newName = renameValue.trim() + extension;
+		const renameBase = renameValue.trim();
+		if (!renameBase) return;
 
-		if (!newName || newName === extension) return;
+		const extension = getFileExtension(qf.file.name);
+		const newName = `${renameBase}${extension}`;
 
-		// Check the new name isn't also a duplicate
-		const allKnownNames = new Set([
-			...existingFilenames,
-			...$upload.queuedFiles
-				.filter((f) => f.status === 'valid' && f.id !== fileId)
-				.map((f) => f.customName || f.file.name)
-		]);
+		const allKnownNames = collectFinalizedFilenames(existingFilenames, $upload.queuedFiles, fileId);
 
 		if (allKnownNames.has(newName)) {
-			// Still a duplicate - regenerate suggestion
-			const better = generateSuggestedName(newName, allKnownNames);
-			const betterDot = better.lastIndexOf('.');
-			renameValue = betterDot > 0 ? better.substring(0, betterDot) : better;
+			const better = generateSuggestedFilename(newName, allKnownNames);
+			renameValue = stripFileExtension(better);
 			return;
 		}
 
-		// Accept the rename
 		upload.confirmRename(fileId, newName);
 		renamingFileId = null;
 		renameValue = '';
-
-		// Check if there are more files pending rename
-		const nextRename = $upload.queuedFiles.find(
-			(f) => f.id !== fileId && f.status === 'rename_pending'
-		);
-		if (nextRename) {
-			openRenameDialog(nextRename.id, nextRename.suggestedName || nextRename.file.name);
-		}
+		openNextRenameDialog(fileId);
 	}
 
 	function handleCancelRename(fileId: string) {
-		// Remove the file from the queue
 		upload.removeQueuedFile(fileId);
 		renamingFileId = null;
 		renameValue = '';
-
-		// Check if there are more files pending rename
-		const nextRename = $upload.queuedFiles.find(
-			(f) => f.status === 'rename_pending'
-		);
-		if (nextRename) {
-			openRenameDialog(nextRename.id, nextRename.suggestedName || nextRename.file.name);
-		}
+		openNextRenameDialog();
 	}
 
 	function handleRenameKeydown(e: KeyboardEvent, fileId: string) {
@@ -234,12 +158,6 @@
 
 	function handleBrowseClick() {
 		inputElement?.click();
-	}
-
-	function formatFileSize(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	}
 </script>
 
@@ -349,7 +267,7 @@
 												aria-label="New filename"
 											/>
 											<span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--color-text-secondary)]">
-												.{queuedFile.file.name.split('.').pop()?.toLowerCase()}
+												{getFileExtension(queuedFile.file.name)}
 											</span>
 										</div>
 									</div>
@@ -390,7 +308,7 @@
 				<input
 					bind:this={inputElement}
 					type="file"
-					accept={ALLOWED_EXTENSIONS.join(',')}
+					accept={ALLOWED_UPLOAD_EXTENSIONS.join(',')}
 					multiple
 					onchange={handleFileSelect}
 					class="hidden"
@@ -410,7 +328,7 @@
 						{' '}or drag and drop
 					</p>
 					<p class="mt-1 text-xs text-[var(--color-text-secondary)]">
-						PDF, DOCX, TXT, or MD (max {MAX_SIZE_MB}MB each)
+						PDF, DOCX, TXT, or MD (max {MAX_UPLOAD_FILE_SIZE_MB}MB each)
 					</p>
 				</div>
 			</div>

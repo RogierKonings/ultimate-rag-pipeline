@@ -12,7 +12,8 @@ services:
       QDRANT__SERVICE__GRPC_PORT: 6334
       QDRANT__STORAGE__PATH: /qdrant/storage
     healthcheck:
-      test: [ "CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/6333' || exit 1" ]
+      test:
+        ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/6333' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +34,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-raguser} -d ${POSTGRES_DB:-ragpipeline}" ]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-raguser} -d ${POSTGRES_DB:-ragpipeline}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +70,11 @@ services:
     volumes:
       - opensearch_data:/usr/share/opensearch/data
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -98,7 +107,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ragredis}", "ping" ]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ragredis}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -119,7 +128,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: [ "CMD-SHELL", "mc ready local || exit 1" ]
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -167,7 +176,7 @@ services:
       embedding-service:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8001/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -204,7 +213,7 @@ services:
       - EMBEDDING_MODEL=all-MiniLM-L6-v2
       - EMBEDDING_DIMENSIONS=384
       # Reranker configuration
-      - RERANKER_ENABLED=false
+      - RERANKER_ENABLED=true
       - RERANKER_GATEWAY_URL=http://host.docker.internal:8004
       # Server configuration
       - RETRIEVAL_HOST=0.0.0.0
@@ -221,7 +230,7 @@ services:
       opensearch:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8002/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3

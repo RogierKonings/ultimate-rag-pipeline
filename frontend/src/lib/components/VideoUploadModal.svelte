@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { X, Upload, Video, AlertCircle, Loader2, AlertTriangle } from 'lucide-svelte';
 	import { videoUpload, videos } from '$lib/stores/videos';
-	import type { QueuedVideoFile } from '$lib/api/types';
+	import {
+		ALLOWED_VIDEO_UPLOAD_EXTENSIONS,
+		MAX_VIDEO_UPLOAD_SIZE_GB,
+		buildQueuedVideoFilesForUpload,
+		formatVideoFileSize
+	} from '$lib/utils/videoUploadQueue';
 
 	let dragOver = $state(false);
 	let inputElement: HTMLInputElement;
-
-	const ALLOWED_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
-	const MAX_SIZE_GB = 5;
 
 	const existingFilenames = $derived(new Set($videos.videos.map((v) => v.filename)));
 
@@ -60,37 +62,11 @@
 	}
 
 	function processFiles(files: File[]) {
-		const batchFilenames = new Set<string>();
-
-		const queuedFiles: QueuedVideoFile[] = files.map((file) => {
-			const extension = '.' + file.name.split('.').pop()?.toLowerCase();
-			let status: 'valid' | 'invalid' = 'valid';
-			let error: string | undefined;
-
-			if (!ALLOWED_EXTENSIONS.includes(extension)) {
-				status = 'invalid';
-				error = 'Invalid file type';
-			} else if (file.size > MAX_SIZE_GB * 1024 * 1024 * 1024) {
-				status = 'invalid';
-				error = `Exceeds ${MAX_SIZE_GB}GB limit`;
-			} else if (existingFilenames.has(file.name)) {
-				status = 'invalid';
-				error = 'Video already exists';
-			} else if (batchFilenames.has(file.name)) {
-				status = 'invalid';
-				error = 'Duplicate in batch';
-			}
-
-			batchFilenames.add(file.name);
-
-			return {
-				id: crypto.randomUUID(),
-				file,
-				status,
-				error
-			};
+		const queuedFiles = buildQueuedVideoFilesForUpload({
+			files,
+			existingFilenames,
+			queuedFiles: $videoUpload.queuedFiles
 		});
-
 		videoUpload.addFiles(queuedFiles);
 	}
 
@@ -103,12 +79,6 @@
 		inputElement?.click();
 	}
 
-	function formatFileSize(bytes: number): string {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-		return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-	}
 </script>
 
 <div
@@ -162,7 +132,7 @@
 									<p class="text-xs text-amber-600">{queuedFile.error}</p>
 								{:else}
 									<p class="text-xs text-[var(--color-text-secondary)]">
-										{formatFileSize(queuedFile.file.size)}
+										{formatVideoFileSize(queuedFile.file.size)}
 									</p>
 								{/if}
 							</div>
@@ -195,7 +165,7 @@
 				<input
 					bind:this={inputElement}
 					type="file"
-					accept={ALLOWED_EXTENSIONS.join(',')}
+					accept={ALLOWED_VIDEO_UPLOAD_EXTENSIONS.join(',')}
 					multiple
 					onchange={handleFileSelect}
 					class="hidden"
@@ -215,7 +185,7 @@
 						{' '}or drag and drop
 					</p>
 					<p class="mt-1 text-xs text-[var(--color-text-secondary)]">
-						MP4, MOV, AVI, MKV, or WebM (max {MAX_SIZE_GB}GB)
+						MP4, MOV, AVI, MKV, or WebM (max {MAX_VIDEO_UPLOAD_SIZE_GB}GB)
 					</p>
 					<p class="mt-0.5 text-xs text-[var(--color-text-secondary)]">
 						Duration: 10 seconds - 60 minutes

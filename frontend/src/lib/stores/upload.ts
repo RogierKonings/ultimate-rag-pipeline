@@ -3,6 +3,15 @@ import type { JobStatusResponse, QueuedFile } from '$lib/api/types';
 import { pollJobStatus } from '$lib/api/ingestion';
 import { documents } from './documents';
 
+type UploadApiResponse = {
+	job_id: string;
+};
+
+type UploadQueueItem = {
+	file: File;
+	customName?: string;
+};
+
 export interface UploadJob {
 	id: string;
 	jobId: string;
@@ -24,8 +33,58 @@ interface UploadState {
 	uploadError: string | null;
 }
 
+function updateJobById(
+	jobs: UploadJob[],
+	jobId: string,
+	updater: (job: UploadJob) => UploadJob
+): UploadJob[] {
+	return jobs.map((job) => (job.id === jobId ? updater(job) : job));
+}
+
+function createUploadJob(
+	jobId: string,
+	file: File,
+	customName?: string,
+	status: UploadJob['status'] = 'pending'
+): UploadJob {
+	return {
+		id: jobId,
+		jobId: '',
+		filename: customName || file.name,
+		status,
+		progress: 0,
+		error: null,
+		startedAt: new Date(),
+		completedAt: null
+	};
+}
+
+function parseErrorMessage(error: unknown, fallback: string): string {
+	return error instanceof Error ? error.message : fallback;
+}
+
+async function uploadToApi(file: File, customName?: string): Promise<UploadApiResponse> {
+	const formData = new FormData();
+	formData.append('file', file);
+	if (customName) {
+		formData.append('customName', customName);
+	}
+
+	const response = await fetch('/api/upload', {
+		method: 'POST',
+		body: formData
+	});
+
+	if (!response.ok) {
+		const body = (await response.json().catch(() => ({}))) as { message?: string };
+		throw new Error(body.message || 'Upload failed');
+	}
+
+	return (await response.json()) as UploadApiResponse;
+}
+
 function createUploadStore() {
-	const { subscribe, set, update } = writable<UploadState>({
+	const { subscribe, update } = writable<UploadState>({
 		jobs: [],
 		modalOpen: false,
 		currentFile: null,
@@ -34,6 +93,49 @@ function createUploadStore() {
 		uploadingIndex: -1,
 		uploadError: null
 	});
+
+	const patchJob = (jobId: string, patch: Partial<UploadJob>) => {
+		update((state) => ({
+			...state,
+			jobs: updateJobById(state.jobs, jobId, (job) => ({ ...job, ...patch }))
+		}));
+	};
+
+	const failJob = (jobId: string, message: string) => {
+		patchJob(jobId, { status: 'failed', error: message });
+	};
+
+	const beginProcessing = (jobId: string, serverJobId: string) => {
+		patchJob(jobId, { jobId: serverJobId, status: 'processing', progress: 10 });
+	};
+
+	const pollJob = async (localId: string, serverJobId: string) => {
+		try {
+			await pollJobStatus(
+				serverJobId,
+				(status: JobStatusResponse) => {
+					const progress = status.progress?.percentage ?? 50;
+					patchJob(localId, { progress: Math.max(10, progress) });
+				},
+				2000
+			);
+
+			patchJob(localId, {
+				status: 'completed',
+				progress: 100,
+				completedAt: new Date()
+			});
+			documents.fetch();
+		} catch (error) {
+			failJob(localId, parseErrorMessage(error, 'Processing failed'));
+		}
+	};
+
+	const startUpload = async (localId: string, item: UploadQueueItem) => {
+		const result = await uploadToApi(item.file, item.customName);
+		beginProcessing(localId, result.job_id);
+		void pollJob(localId, result.job_id);
+	};
 
 	return {
 		subscribe,
@@ -63,25 +165,20 @@ function createUploadStore() {
 		},
 
 		addFiles(files: QueuedFile[]) {
-			update((state) => {
-				// Filter out duplicates by filename
-				const existingNames = new Set(state.queuedFiles.map((f) => f.file.name));
-				const newFiles = files.filter((f) => !existingNames.has(f.file.name));
-				return {
-					...state,
-					queuedFiles: [...state.queuedFiles, ...newFiles],
-					uploadError: null
-				};
-			});
+			update((state) => ({
+				...state,
+				queuedFiles: [...state.queuedFiles, ...files],
+				uploadError: null
+			}));
 		},
 
 		confirmRename(fileId: string, newName: string) {
 			update((state) => ({
 				...state,
-				queuedFiles: state.queuedFiles.map((f) =>
-					f.id === fileId
-						? { ...f, status: 'valid' as const, customName: newName, suggestedName: undefined }
-						: f
+				queuedFiles: state.queuedFiles.map((file) =>
+					file.id === fileId
+						? { ...file, status: 'valid', customName: newName, suggestedName: undefined }
+						: file
 				)
 			}));
 		},
@@ -89,7 +186,7 @@ function createUploadStore() {
 		removeQueuedFile(id: string) {
 			update((state) => ({
 				...state,
-				queuedFiles: state.queuedFiles.filter((f) => f.id !== id)
+				queuedFiles: state.queuedFiles.filter((file) => file.id !== id)
 			}));
 		},
 
@@ -100,96 +197,43 @@ function createUploadStore() {
 		async upload(file: File) {
 			update((state) => ({ ...state, uploading: true, uploadError: null }));
 
-			const jobId = crypto.randomUUID();
-			const uploadJob: UploadJob = {
-				id: jobId,
-				jobId: '',
-				filename: file.name,
-				status: 'uploading',
-				progress: 0,
-				error: null,
-				startedAt: new Date(),
-				completedAt: null
-			};
-
-			// Add job to list
+			const localId = crypto.randomUUID();
+			const uploadJob = createUploadJob(localId, file, undefined, 'uploading');
 			update((state) => ({
 				...state,
 				jobs: [uploadJob, ...state.jobs]
 			}));
 
 			try {
-				// Upload file to our SvelteKit API route
-				const formData = new FormData();
-				formData.append('file', file);
-
-				const response = await fetch('/api/upload', {
-					method: 'POST',
-					body: formData
-				});
-
-				if (!response.ok) {
-					const error = await response.json();
-					throw new Error(error.message || 'Upload failed');
-				}
-
-				const result = await response.json();
-
-				// Update job with server response
+				await startUpload(localId, { file });
 				update((state) => ({
 					...state,
 					uploading: false,
 					modalOpen: false,
-					currentFile: null,
-					jobs: state.jobs.map((job) =>
-						job.id === jobId
-							? {
-									...job,
-									jobId: result.job_id,
-									status: 'processing' as const,
-									progress: 10
-								}
-							: job
-					)
+					currentFile: null
 				}));
-
-				// Start polling for job status
-				this.pollJob(jobId, result.job_id);
 			} catch (error) {
-				const message = error instanceof Error ? error.message : 'Upload failed';
+				const message = parseErrorMessage(error, 'Upload failed');
 				update((state) => ({
 					...state,
 					uploading: false,
 					uploadError: message,
-					jobs: state.jobs.map((job) =>
-						job.id === jobId
-							? {
-									...job,
-									status: 'failed' as const,
-									error: message
-								}
-							: job
-					)
+					jobs: updateJobById(state.jobs, localId, (job) => ({
+						...job,
+						status: 'failed',
+						error: message
+					}))
 				}));
 			}
 		},
 
-		async uploadBatch(files: Array<{ file: File; customName?: string }>) {
+		async uploadBatch(files: UploadQueueItem[]) {
 			if (files.length === 0) return;
 
-			// Create all jobs upfront with 'pending' status
-			const jobsToCreate: UploadJob[] = files.map(({ file, customName }) => ({
-				id: crypto.randomUUID(),
-				jobId: '',
-				filename: customName || file.name,
-				status: 'pending' as const,
-				progress: 0,
-				error: null,
-				startedAt: new Date(),
-				completedAt: null
-			}));
+			const jobsToCreate = files.map(({ file, customName }) =>
+				createUploadJob(crypto.randomUUID(), file, customName)
+			);
 
-			// Add all jobs to the list
 			update((state) => ({
 				...state,
 				uploading: true,
@@ -199,73 +243,25 @@ function createUploadStore() {
 				jobs: [...jobsToCreate, ...state.jobs]
 			}));
 
-			// Process files sequentially
-			for (let i = 0; i < files.length; i++) {
-				const { file, customName } = files[i];
-				const jobId = jobsToCreate[i].id;
+			for (const [index, item] of files.entries()) {
+				const localId = jobsToCreate[index].id;
 
 				update((state) => ({
 					...state,
-					uploadingIndex: i,
-					jobs: state.jobs.map((job) =>
-						job.id === jobId ? { ...job, status: 'uploading' as const } : job
-					)
+					uploadingIndex: index,
+					jobs: updateJobById(state.jobs, localId, (job) => ({
+						...job,
+						status: 'uploading'
+					}))
 				}));
 
 				try {
-					const formData = new FormData();
-					formData.append('file', file);
-					if (customName) {
-						formData.append('customName', customName);
-					}
-
-					const response = await fetch('/api/upload', {
-						method: 'POST',
-						body: formData
-					});
-
-					if (!response.ok) {
-						const error = await response.json();
-						throw new Error(error.message || 'Upload failed');
-					}
-
-					const result = await response.json();
-
-					// Update job with server response
-					update((state) => ({
-						...state,
-						jobs: state.jobs.map((job) =>
-							job.id === jobId
-								? {
-										...job,
-										jobId: result.job_id,
-										status: 'processing' as const,
-										progress: 10
-									}
-								: job
-						)
-					}));
-
-					// Start polling for job status (don't await - let it run in background)
-					this.pollJob(jobId, result.job_id);
+					await startUpload(localId, item);
 				} catch (error) {
-					const message = error instanceof Error ? error.message : 'Upload failed';
-					update((state) => ({
-						...state,
-						jobs: state.jobs.map((job) =>
-							job.id === jobId
-								? {
-										...job,
-										status: 'failed' as const,
-										error: message
-									}
-								: job
-						)
-					}));
+					failJob(localId, parseErrorMessage(error, 'Upload failed'));
 				}
 			}
 
-			// All uploads initiated
 			update((state) => ({
 				...state,
 				uploading: false,
@@ -273,60 +269,7 @@ function createUploadStore() {
 			}));
 		},
 
-		async pollJob(localId: string, serverJobId: string) {
-			try {
-				await pollJobStatus(
-					serverJobId,
-					(status: JobStatusResponse) => {
-						const progress = status.progress?.percentage ?? 50;
-						update((state) => ({
-							...state,
-							jobs: state.jobs.map((job) =>
-								job.id === localId
-									? {
-											...job,
-											progress: Math.max(10, progress)
-										}
-									: job
-							)
-						}));
-					},
-					2000
-				);
-
-				// Job completed successfully
-				update((state) => ({
-					...state,
-					jobs: state.jobs.map((job) =>
-						job.id === localId
-							? {
-									...job,
-									status: 'completed' as const,
-									progress: 100,
-									completedAt: new Date()
-								}
-							: job
-					)
-				}));
-
-				// Refresh documents list
-				documents.fetch();
-			} catch (error) {
-				const message = error instanceof Error ? error.message : 'Processing failed';
-				update((state) => ({
-					...state,
-					jobs: state.jobs.map((job) =>
-						job.id === localId
-							? {
-									...job,
-									status: 'failed' as const,
-									error: message
-								}
-							: job
-					)
-				}));
-			}
-		},
+		pollJob,
 
 		removeJob(id: string) {
 			update((state) => ({
@@ -346,14 +289,12 @@ function createUploadStore() {
 
 export const upload = createUploadStore();
 
-// Derived store for active jobs
 export const activeJobs = derived(upload, ($upload) =>
 	$upload.jobs.filter(
 		(job) => job.status === 'pending' || job.status === 'uploading' || job.status === 'processing'
 	)
 );
 
-// Derived store for recent jobs (last hour)
 export const recentJobs = derived(upload, ($upload) => {
 	const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 	return $upload.jobs.filter((job) => job.startedAt > oneHourAgo);
