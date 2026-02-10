@@ -52,9 +52,8 @@ pub async fn create_rerank(
     let response = tokio::task::spawn_blocking(move || model.rerank(&request))
         .await
         .map_err(|e| GatewayError::Internal(format!("Rerank task failed: {e}")))?
-        .map_err(|e| {
+        .inspect_err(|_| {
             metrics::record_request("reranker", "/v1/rerank", "error", 0.0);
-            e
         })?;
 
     info!(

@@ -1,13 +1,14 @@
 //! Prometheus metrics for the gateway.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use prometheus::{Counter, CounterVec, GaugeVec, HistogramOpts, HistogramVec, Opts, Registry};
 
 /// Global metrics registry.
-pub static REGISTRY: Lazy<Registry> = Lazy::new(Registry::new);
+pub static REGISTRY: LazyLock<Registry> = LazyLock::new(Registry::new);
 
 /// Request counter.
-pub static REQUEST_TOTAL: Lazy<CounterVec> = Lazy::new(|| {
+pub static REQUEST_TOTAL: LazyLock<CounterVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_requests_total", "Total requests")
         .namespace("rag")
         .subsystem("gateway");
@@ -17,7 +18,7 @@ pub static REQUEST_TOTAL: Lazy<CounterVec> = Lazy::new(|| {
 });
 
 /// Request latency histogram.
-pub static REQUEST_LATENCY: Lazy<HistogramVec> = Lazy::new(|| {
+pub static REQUEST_LATENCY: LazyLock<HistogramVec> = LazyLock::new(|| {
     let opts = HistogramOpts::new("llm_gateway_request_latency_seconds", "Request latency")
         .namespace("rag")
         .subsystem("gateway")
@@ -28,7 +29,7 @@ pub static REQUEST_LATENCY: Lazy<HistogramVec> = Lazy::new(|| {
 });
 
 /// Active requests gauge.
-pub static ACTIVE_REQUESTS: Lazy<GaugeVec> = Lazy::new(|| {
+pub static ACTIVE_REQUESTS: LazyLock<GaugeVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_active_requests", "Active requests")
         .namespace("rag")
         .subsystem("gateway");
@@ -38,7 +39,7 @@ pub static ACTIVE_REQUESTS: Lazy<GaugeVec> = Lazy::new(|| {
 });
 
 /// Tokens processed counter.
-pub static TOKENS_PROCESSED: Lazy<CounterVec> = Lazy::new(|| {
+pub static TOKENS_PROCESSED: LazyLock<CounterVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_tokens_total", "Tokens processed")
         .namespace("rag")
         .subsystem("gateway");
@@ -48,7 +49,7 @@ pub static TOKENS_PROCESSED: Lazy<CounterVec> = Lazy::new(|| {
 });
 
 /// Embeddings generated counter.
-pub static EMBEDDINGS_GENERATED: Lazy<Counter> = Lazy::new(|| {
+pub static EMBEDDINGS_GENERATED: LazyLock<Counter> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_embeddings_total", "Embeddings generated")
         .namespace("rag")
         .subsystem("gateway");
@@ -58,7 +59,7 @@ pub static EMBEDDINGS_GENERATED: Lazy<Counter> = Lazy::new(|| {
 });
 
 /// Rate limit hits counter.
-pub static RATE_LIMIT_HITS: Lazy<CounterVec> = Lazy::new(|| {
+pub static RATE_LIMIT_HITS: LazyLock<CounterVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_rate_limit_hits_total", "Rate limit hits")
         .namespace("rag")
         .subsystem("gateway");
@@ -68,7 +69,7 @@ pub static RATE_LIMIT_HITS: Lazy<CounterVec> = Lazy::new(|| {
 });
 
 /// Auth failures counter.
-pub static AUTH_FAILURES: Lazy<CounterVec> = Lazy::new(|| {
+pub static AUTH_FAILURES: LazyLock<CounterVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_auth_failures_total", "Authentication failures")
         .namespace("rag")
         .subsystem("gateway");
@@ -78,7 +79,7 @@ pub static AUTH_FAILURES: Lazy<CounterVec> = Lazy::new(|| {
 });
 
 /// Model loaded gauge.
-pub static MODEL_LOADED: Lazy<GaugeVec> = Lazy::new(|| {
+pub static MODEL_LOADED: LazyLock<GaugeVec> = LazyLock::new(|| {
     let opts = Opts::new("llm_gateway_model_loaded", "Model loaded status")
         .namespace("rag")
         .subsystem("gateway");
