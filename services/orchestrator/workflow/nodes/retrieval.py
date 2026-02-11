@@ -42,12 +42,22 @@ def _extract_display_name(source: str, title: str | None, default: str) -> str:
     return title or default
 
 
-def _format_context(documents: list[dict]) -> str:
+def _format_context(
+    documents: list[dict],
+    max_context_chars: int = 16384,
+    max_docs: int = 10,
+) -> str:
     """
-    Format retrieved documents into a context string.
+    Format retrieved documents into a context string with budget limits.
+
+    Applies character-based budgeting to prevent excessive context from
+    inflating token usage and latency. Uses ~4 chars/token heuristic,
+    so the default 16384 chars corresponds to roughly 4096 tokens.
 
     Args:
         documents: List of retrieved documents
+        max_context_chars: Maximum total characters for the context string (default 16384)
+        max_docs: Maximum number of documents to include (default 10)
 
     Returns:
         Formatted context string for prompt building
@@ -55,14 +65,30 @@ def _format_context(documents: list[dict]) -> str:
     if not documents:
         return ""
 
+    docs_to_use = documents[:max_docs]
+    per_doc_budget = max_context_chars // len(docs_to_use)
+
     context_parts = []
-    for i, doc in enumerate(documents, 1):
+    total_chars = 0
+    for i, doc in enumerate(docs_to_use, 1):
         content = doc.get("content", "")
         source = doc.get("source", doc.get("metadata", {}).get("source_uri", "unknown"))
         title = doc.get("metadata", {}).get("title", "")
         # For S3 uploads, prefer filename over auto-extracted title
         source_label = _extract_display_name(source, title, f"Document {i}")
-        context_parts.append(f"[Document {i}: {source_label}]\n{content}")
+
+        # Truncate content to per-doc budget
+        if len(content) > per_doc_budget:
+            content = content[:per_doc_budget] + "..."
+
+        part = f"[Document {i}: {source_label}]\n{content}"
+
+        # Check total budget (always include at least the first document)
+        if total_chars + len(part) > max_context_chars and context_parts:
+            break
+
+        context_parts.append(part)
+        total_chars += len(part) + 2  # +2 for "\n\n" separator
 
     return "\n\n".join(context_parts)
 

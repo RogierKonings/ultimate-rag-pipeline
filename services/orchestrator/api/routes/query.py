@@ -39,6 +39,7 @@ from routing import QueryRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_config
+from workflow.nodes.retrieval import _format_context
 
 from . import query_service
 
@@ -428,20 +429,9 @@ async def query_stream(
         # Build messages for LLM
         messages = [{"role": "user", "content": query_request.query}]
 
-        # If we have documents, add context
+        # If we have documents, add context (with budget limits)
         if documents:
-            context_parts = []
-            for i, doc in enumerate(documents, 1):
-                content = doc.get("content", "")
-                source = doc.get("source") or doc.get("metadata", {}).get("source_uri", "")
-                title = doc.get("title") or doc.get("metadata", {}).get("title", "")
-                # Build a descriptive label: prefer title, then filename from source
-                label = title
-                if not label and source:
-                    label = source.rsplit("/", 1)[-1] if "/" in source else source
-                label = label or f"Document {i}"
-                context_parts.append(f"[Document {i}: {label}]\n{content}")
-            context = "\n\n".join(context_parts)
+            context = _format_context(documents)
 
             context_message = (
                 "You are a helpful assistant that answers questions based on the provided documents. "
