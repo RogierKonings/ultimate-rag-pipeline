@@ -7,6 +7,7 @@
 use std::sync::Arc;
 
 use crate::acl::ACLFilter;
+use crate::cache::RetrievalCache;
 use crate::embedding::EmbeddingClient;
 use crate::hybrid::HybridSearcher;
 use crate::query::{HydeGenerator, QueryExpander};
@@ -54,6 +55,9 @@ pub struct AppState {
     /// The ACL filter for access control.
     pub acl_filter: Arc<ACLFilter>,
 
+    /// The retrieval cache for caching search results (optional).
+    pub retrieval_cache: Option<Arc<RetrievalCache>>,
+
     /// Service version string.
     pub version: String,
 }
@@ -88,6 +92,12 @@ impl AppState {
     pub fn has_hyde_generator(&self) -> bool {
         self.hyde_generator.is_some()
     }
+
+    /// Check if the retrieval cache is available.
+    #[must_use]
+    pub fn has_retrieval_cache(&self) -> bool {
+        self.retrieval_cache.is_some()
+    }
 }
 
 #[allow(clippy::missing_fields_in_debug)]
@@ -97,6 +107,7 @@ impl std::fmt::Debug for AppState {
             .field("has_reranker", &self.reranker.is_some())
             .field("has_query_expander", &self.query_expander.is_some())
             .field("has_hyde_generator", &self.hyde_generator.is_some())
+            .field("has_retrieval_cache", &self.retrieval_cache.is_some())
             .field("version", &self.version)
             .finish_non_exhaustive()
     }
@@ -121,6 +132,7 @@ pub struct AppStateBuilder {
     query_expander: Option<Arc<QueryExpander>>,
     hyde_generator: Option<Arc<HydeGenerator>>,
     acl_filter: Option<Arc<ACLFilter>>,
+    retrieval_cache: Option<Arc<RetrievalCache>>,
     version: String,
 }
 
@@ -135,6 +147,7 @@ impl AppStateBuilder {
             query_expander: None,
             hyde_generator: None,
             acl_filter: None,
+            retrieval_cache: None,
             version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
@@ -181,6 +194,13 @@ impl AppStateBuilder {
         self
     }
 
+    /// Set the retrieval cache.
+    #[must_use]
+    pub fn retrieval_cache(mut self, retrieval_cache: Arc<RetrievalCache>) -> Self {
+        self.retrieval_cache = Some(retrieval_cache);
+        self
+    }
+
     /// Set the service version.
     #[must_use]
     pub fn version(mut self, version: impl Into<String>) -> Self {
@@ -213,6 +233,7 @@ impl AppStateBuilder {
             query_expander: self.query_expander,
             hyde_generator: self.hyde_generator,
             acl_filter,
+            retrieval_cache: self.retrieval_cache,
             version: self.version,
         })
     }
@@ -259,6 +280,7 @@ mod tests {
         assert!(builder.query_expander.is_none());
         assert!(builder.hyde_generator.is_none());
         assert!(builder.acl_filter.is_none());
+        assert!(builder.retrieval_cache.is_none());
     }
 
     #[test]

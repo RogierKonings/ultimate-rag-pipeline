@@ -23,11 +23,15 @@ use tokio::signal;
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
+use rag_cache::{CacheClient, CacheConfig};
 use rag_retrieval::acl::{ACLFilter, ACLFilterConfig};
 use rag_retrieval::api::{run_server_with_config, AppState, ServerConfig};
+use rag_retrieval::cache::RetrievalCache;
 use rag_retrieval::embedding::{EmbeddingClient, EmbeddingConfig};
 use rag_retrieval::hybrid::{HybridSearchConfig, HybridSearcher};
-use rag_retrieval::query::{HydeConfig, HydeGenerator, QueryExpander, QueryExpanderConfig};
+use rag_retrieval::query::{
+    HydeConfig, HydeGenerator, QueryCacheConfig, QueryExpander, QueryExpanderConfig,
+};
 use rag_retrieval::reranking::{RerankerConfig, RerankerService};
 use rag_retrieval::search::{
     KeywordSearchConfig, KeywordSearcher, SemanticSearchConfig, SemanticSearcher,
@@ -223,6 +227,42 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
     // Initialize ACL filter
     let acl_filter = ACLFilter::new(acl_config);
 
+    // Initialize retrieval cache (optional, opt-in)
+    let retrieval_cache = {
+        let cache_url =
+            std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string());
+        let cache_enabled = std::env::var("RETRIEVAL_CACHE_ENABLED")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
+
+        if cache_enabled {
+            info!("Initializing retrieval cache");
+            let cache_config = CacheConfig {
+                url: cache_url,
+                ..CacheConfig::default()
+            };
+            match CacheClient::connect(&cache_config).await {
+                Ok(client) => {
+                    let query_cache_config = QueryCacheConfig::default();
+                    Some(Arc::new(RetrievalCache::new(
+                        query_cache_config,
+                        Arc::new(client),
+                    )))
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to initialize retrieval cache, continuing without it: {}",
+                        e
+                    );
+                    None
+                }
+            }
+        } else {
+            info!("Retrieval cache disabled (set RETRIEVAL_CACHE_ENABLED=true to enable)");
+            None
+        }
+    };
+
     // Build application state
     let mut builder = AppState::builder()
         .hybrid(Arc::new(hybrid))
@@ -238,6 +278,9 @@ async fn initialize_app_state() -> Result<AppState, Box<dyn std::error::Error + 
     }
     if let Some(hyde_generator) = hyde_generator {
         builder = builder.hyde_generator(hyde_generator);
+    }
+    if let Some(retrieval_cache) = retrieval_cache {
+        builder = builder.retrieval_cache(retrieval_cache);
     }
 
     let state = builder.build()?;

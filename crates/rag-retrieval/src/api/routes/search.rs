@@ -19,6 +19,7 @@ use crate::api::types::{
     DebugInfo, RetrieveRequest, RetrieveResponse, RetrievedDocument, SearchMetrics,
 };
 use crate::hybrid::HybridSearchResponse;
+use crate::query::QueryCacheKey;
 use crate::types::{RetrievalResult, UserContext};
 use rag_types::SearchMode;
 
@@ -353,6 +354,28 @@ async fn execute_search(
         None => None,
     };
 
+    // Check retrieval cache
+    if let Some(ref cache) = state.retrieval_cache {
+        if cache.is_enabled() {
+            let cache_key = QueryCacheKey::new(
+                &request.query,
+                user_context.tenant_id,
+                request.mode,
+                request.top_k,
+            );
+
+            if let Ok(Some(cached_results)) = cache.get(&cache_key).await {
+                debug!(
+                    result_count = cached_results.len(),
+                    "Retrieval cache hit"
+                );
+                metrics.total_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+                metrics.cache_hit = true;
+                return Ok((cached_results, metrics, debug_info, outcome));
+            }
+        }
+    }
+
     // Step 2: Configure search
     let search_top_k = if request.rerank {
         request.rerank_top_k
@@ -568,6 +591,22 @@ async fn execute_search(
     metrics.final_results_count = results.len();
 
     debug_info.total_latency_ms = start_time.elapsed().as_secs_f64() * 1000.0;
+
+    // Cache the results
+    if let Some(ref cache) = state.retrieval_cache {
+        if cache.is_enabled() {
+            let cache_key = QueryCacheKey::new(
+                &request.query,
+                user_context.tenant_id,
+                request.mode,
+                request.top_k,
+            );
+
+            if let Err(e) = cache.set(&cache_key, &results).await {
+                warn!("Failed to cache retrieval results: {}", e);
+            }
+        }
+    }
 
     Ok((results, metrics, debug_info, outcome))
 }

@@ -168,6 +168,10 @@ pub struct SearchMetrics {
     /// Final number of results returned.
     #[serde(default)]
     pub final_results_count: usize,
+
+    /// Whether this result was served from the retrieval cache.
+    #[serde(default)]
+    pub cache_hit: bool,
 }
 
 /// Debug information for the retrieval pipeline.

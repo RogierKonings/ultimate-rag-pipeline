@@ -298,6 +298,7 @@ fn test_search_metrics_serialization() {
         keyword_results_count: 45,
         fused_results_count: 30,
         final_results_count: 10,
+        cache_hit: false,
     };
 
     let json = serde_json::to_string(&metrics).unwrap();
