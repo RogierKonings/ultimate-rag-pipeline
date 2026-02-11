@@ -25,7 +25,7 @@
 //! assert!(expansions.len() > 1);
 //! ```
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
@@ -322,9 +322,11 @@ impl QueryExpander {
         }
 
         let mut expansions = Vec::new();
+        let mut seen = HashSet::new();
 
         // Include original query first if configured
         if self.config.include_original {
+            seen.insert(query.to_string());
             expansions.push(query.to_string());
         }
 
@@ -332,7 +334,7 @@ impl QueryExpander {
         if self.config.use_synonyms {
             let synonym_expansions = self.expand_with_synonyms(query);
             for expansion in synonym_expansions {
-                if expansion != query && !expansions.contains(&expansion) {
+                if expansion != query && seen.insert(expansion.clone()) {
                     expansions.push(expansion);
                 }
             }
@@ -343,7 +345,7 @@ impl QueryExpander {
             match self.expand_with_llm(query).await {
                 Ok(llm_expansions) => {
                     for expansion in llm_expansions {
-                        if !expansions.contains(&expansion) {
+                        if seen.insert(expansion.clone()) {
                             expansions.push(expansion);
                         }
                     }
@@ -354,7 +356,7 @@ impl QueryExpander {
             }
         }
 
-        // Deduplicate and limit results
+        // Limit results
         expansions.truncate(self.config.max_expansions);
 
         debug!(
@@ -381,6 +383,8 @@ impl QueryExpander {
     #[must_use]
     pub fn expand_with_synonyms(&self, query: &str) -> Vec<String> {
         let mut expansions = vec![query.to_string()];
+        let mut seen = HashSet::new();
+        seen.insert(query.to_string());
 
         let words: Vec<&str> = query.split_whitespace().collect();
 
@@ -395,7 +399,7 @@ impl QueryExpander {
                     new_words[i] = syn.as_str();
                     let expansion = new_words.join(" ");
 
-                    if !expansions.contains(&expansion) {
+                    if seen.insert(expansion.clone()) {
                         expansions.push(expansion);
                     }
                 }

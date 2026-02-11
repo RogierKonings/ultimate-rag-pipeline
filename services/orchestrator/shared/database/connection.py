@@ -258,6 +258,27 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+async def get_db_readonly() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency for read-only FastAPI endpoints. Does not auto-commit.
+
+    Use this instead of get_db for endpoints that only perform SELECT queries,
+    avoiding the overhead of an unnecessary COMMIT round-trip.
+
+    Usage:
+        @app.get("/items")
+        async def get_items(db: AsyncSession = Depends(get_db_readonly)):
+            result = await db.execute(select(Item))
+            ...
+    """
+    session_factory = get_session_factory()
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        await session.close()
+
+
 async def check_database_health() -> dict:
     """
     Check database connectivity and return health status.

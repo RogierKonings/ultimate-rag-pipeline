@@ -184,9 +184,10 @@ fn parse_csv_header(headers: &HeaderMap, name: &str) -> Vec<String> {
 }
 
 fn dedupe_values(values: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
     let mut deduped = Vec::new();
     for value in values {
-        if !deduped.contains(&value) {
+        if seen.insert(value.clone()) {
             deduped.push(value);
         }
     }
@@ -856,6 +857,7 @@ fn apply_instruction_prefix(inputs: &[String], prefix: Option<&str>) -> Vec<Stri
 }
 
 fn dedupe_non_empty(inputs: Vec<String>) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
     let mut unique = Vec::new();
     for input in inputs {
         let trimmed = input.trim();
@@ -864,7 +866,7 @@ fn dedupe_non_empty(inputs: Vec<String>) -> Vec<String> {
         }
 
         let candidate = trimmed.to_string();
-        if !unique.contains(&candidate) {
+        if seen.insert(candidate.clone()) {
             unique.push(candidate);
         }
     }
