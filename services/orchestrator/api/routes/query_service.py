@@ -103,6 +103,7 @@ async def execute_workflow(
     user_id: str | None,
     tenant_id: str | None,
     options: dict[str, Any] | None,
+    answer_cache: Any | None = None,
 ) -> dict[str, Any]:
     """Execute the RAG workflow pipeline.
 
@@ -114,12 +115,19 @@ async def execute_workflow(
         user_id: Optional user identifier.
         tenant_id: Optional tenant identifier.
         options: Optional query options.
+        answer_cache: Optional server-managed AnswerCache instance.
 
     Returns:
         Dictionary with workflow results including response, documents,
         model_used, usage, strategy_used, verification_result, and
         quality metadata.
     """
+    # Merge server-managed answer cache into workflow options
+    merged_options = dict(options or {})
+    if answer_cache is not None:
+        merged_options.setdefault("answer_cache", answer_cache)
+        merged_options.setdefault("enable_answer_cache", True)
+
     result = await workflow.ainvoke(
         {
             "request_id": request_id,
@@ -127,7 +135,7 @@ async def execute_workflow(
             "session_id": session_id,
             "user_id": user_id,
             "tenant_id": tenant_id,
-            "options": options or {},
+            "options": merged_options,
         },
     )
 

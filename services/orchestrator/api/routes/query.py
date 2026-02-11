@@ -148,6 +148,7 @@ async def query(
 
     if workflow is not None:
         try:
+            answer_cache = getattr(request.app.state, "answer_cache", None)
             result = await query_service.execute_workflow(
                 workflow=workflow,
                 request_id=request_id,
@@ -156,6 +157,7 @@ async def query(
                 user_id=str(query_request.user_id) if query_request.user_id else None,
                 tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
                 options=query_request.options,
+                answer_cache=answer_cache,
             )
         except Exception as e:
             raise HTTPException(

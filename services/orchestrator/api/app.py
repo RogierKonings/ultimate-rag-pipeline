@@ -65,6 +65,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"Failed to initialize session manager: {e}")
         app.state.session_manager = None
 
+    # Initialize answer cache (US-10.5.3)
+    app.state.answer_cache = None
+    try:
+        from cache.answer_cache import AnswerCache, AnswerCacheConfig
+
+        answer_cache_config = AnswerCacheConfig(
+            enabled=config.answer_cache_enabled,
+            redis_url=config.redis_url,
+            default_ttl_seconds=config.answer_cache_ttl,
+            prompt_version=config.answer_cache_prompt_version,
+        )
+        answer_cache = AnswerCache(answer_cache_config)
+        await answer_cache.connect()
+        app.state.answer_cache = answer_cache
+        logger.info("Answer cache initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize answer cache: {e}")
+
     try:
         # Initialize model gateway
         from gateway import ModelGateway
@@ -205,6 +223,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.info("Session store disconnected")
         except Exception as e:
             logger.warning(f"Error closing session store: {e}")
+
+    # Close answer cache (US-10.5.3)
+    if app.state.answer_cache is not None:
+        try:
+            await app.state.answer_cache.disconnect()
+            logger.info("Answer cache disconnected")
+        except Exception as e:
+            logger.warning(f"Error closing answer cache: {e}")
 
     # Shutdown usage scheduler and flush remaining data (US-10.5.4)
     if app.state.usage_scheduler is not None:
