@@ -117,8 +117,15 @@ async def verification_node(state: "RAGState") -> "RAGState":
         for i, doc in enumerate(documents[:10])  # Limit context size
     )
 
-    # Initialize components
-    gateway = ModelGateway(config)
+    # Try to reuse shared ModelGateway from options, fall back to creating new one
+    shared_gateway = options.get("model_gateway")
+    if shared_gateway is not None:
+        gateway = shared_gateway
+        _gateway_is_owned = False
+    else:
+        gateway = ModelGateway(config)
+        _gateway_is_owned = True
+
     verification_model = select_verification_model(
         config=config,
         tenant_tier=options.get("tenant_tier", "standard"),
@@ -157,7 +164,8 @@ async def verification_node(state: "RAGState") -> "RAGState":
             )
             timing["verification"] = (time.perf_counter() - start) * 1000
             record_verification_metrics(result, tenant_id)
-            await gateway.close()
+            if _gateway_is_owned:
+                await gateway.close()
             return {
                 **state,
                 "verification_result": result.model_dump(),
@@ -227,7 +235,8 @@ async def verification_node(state: "RAGState") -> "RAGState":
         record_verification_metrics(result, tenant_id)
 
         timing["verification"] = verification_time_ms
-        await gateway.close()
+        if _gateway_is_owned:
+            await gateway.close()
 
         return {
             **state,
@@ -242,7 +251,8 @@ async def verification_node(state: "RAGState") -> "RAGState":
         result = _create_skipped_result(f"error: {str(e)}")
         timing["verification"] = (time.perf_counter() - start) * 1000
         record_verification_metrics(result, tenant_id)
-        await gateway.close()
+        if _gateway_is_owned:
+            await gateway.close()
         return {
             **state,
             "verification_result": result.model_dump(),

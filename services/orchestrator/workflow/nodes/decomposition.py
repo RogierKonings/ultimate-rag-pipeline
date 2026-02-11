@@ -115,11 +115,13 @@ class QueryDecomposer:
         model: str,
         max_sub_questions: int = 5,
         timeout: float = 10.0,
+        http_client: httpx.AsyncClient | None = None,
     ):
         self.llm_gateway_url = llm_gateway_url
         self.model = model
         self.max_sub_questions = max_sub_questions
         self.timeout = timeout
+        self._shared_client = http_client
 
     async def decompose(
         self,
@@ -143,27 +145,38 @@ class QueryDecomposer:
         )
         prompt = prompt_template.format(query=query)
 
+        request_json = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0,  # Deterministic for decomposition
+            "max_tokens": 500,
+        }
+
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.llm_gateway_url}/v1/chat/completions",
-                    json={
-                        "model": self.model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.0,  # Deterministic for decomposition
-                        "max_tokens": 500,
-                    },
+            if self._shared_client is not None:
+                # Use shared client (base_url already set) with relative path
+                response = await self._shared_client.post(
+                    "/v1/chat/completions",
+                    json=request_json,
                 )
-                response.raise_for_status()
+            else:
+                # Fallback: create a new client per call
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        f"{self.llm_gateway_url}/v1/chat/completions",
+                        json=request_json,
+                    )
 
-                result = response.json()
-                content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            response.raise_for_status()
 
-                # Parse JSON array from response
-                sub_questions = self._parse_sub_questions(content)
+            result = response.json()
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-                # Limit to max sub-questions
-                return sub_questions[: self.max_sub_questions]
+            # Parse JSON array from response
+            sub_questions = self._parse_sub_questions(content)
+
+            # Limit to max sub-questions
+            return sub_questions[: self.max_sub_questions]
 
         except (httpx.HTTPError, json.JSONDecodeError) as e:
             logger.warning(
@@ -278,11 +291,21 @@ async def decomposition_node(state: "RAGState") -> "RAGState":
         span.set_attribute("orchestrator.decomposition_model", model_selection.model)
         span.set_attribute("orchestrator.decomposition_model_tier", model_selection.tier)
 
+        # Try to use the shared LLM HTTP client for connection pooling
+        shared_llm_client: httpx.AsyncClient | None = None
+        try:
+            from shared.http_clients import get_llm_client
+
+            shared_llm_client = get_llm_client()
+        except (ImportError, RuntimeError):
+            pass  # Fall back to creating a new client per call
+
         decomposer = QueryDecomposer(
             llm_gateway_url=config.llm_gateway_url,
             model=model_selection.model,
             max_sub_questions=5,
             timeout=config.retrieval_timeout,
+            http_client=shared_llm_client,
         )
 
         sub_questions = await decomposer.decompose(query, multi_hop_type)

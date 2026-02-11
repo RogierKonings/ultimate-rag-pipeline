@@ -158,6 +158,7 @@ async def query(
                 tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
                 options=query_request.options,
                 answer_cache=answer_cache,
+                model_gateway=model_gateway,
             )
         except Exception as e:
             raise HTTPException(
