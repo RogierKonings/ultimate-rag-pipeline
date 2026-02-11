@@ -214,23 +214,26 @@ pub async fn retrieve_multi(
                 .await
             {
                 Ok(reranked) => {
-                    // Build a lookup from chunk_id -> original HybridSearchResult,
-                    // consuming the vec to avoid cloning.
-                    let mut result_map: HashMap<String, HybridSearchResult> = results_for_acl
-                        .into_iter()
-                        .map(|r| (r.chunk_id.to_string(), r))
+                    // Build index lookup from chunk_id -> position in results_for_acl
+                    let index_map: HashMap<String, usize> = results_for_acl
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| (r.chunk_id.to_string(), i))
                         .collect();
 
-                    // Reorder based on reranker output, updating scores
-                    results_for_acl = reranked
-                        .into_iter()
-                        .filter_map(|rr| {
-                            result_map.remove(&rr.chunk_id).map(|mut r| {
-                                r.fused_score = rr.score;
-                                r
-                            })
-                        })
-                        .collect();
+                    // Build reordered vec using indices; avoids cloning full results into a HashMap
+                    let mut taken = vec![false; results_for_acl.len()];
+                    let mut reordered = Vec::with_capacity(reranked.len());
+                    for rr in &reranked {
+                        if let Some(&idx) = index_map.get(&rr.chunk_id) {
+                            if !taken[idx] {
+                                taken[idx] = true;
+                                results_for_acl[idx].fused_score = rr.score;
+                                reordered.push(results_for_acl[idx].clone());
+                            }
+                        }
+                    }
+                    results_for_acl = reordered;
 
                     rerank_ok = true;
                 }
