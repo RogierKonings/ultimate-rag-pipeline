@@ -755,44 +755,61 @@ async fn build_semantic_embedding(
     let preprocess_start = Instant::now();
     let mut embedding_inputs = vec![query.to_string()];
 
-    // Optional query expansion
-    if let Some(ref expander) = state.query_expander {
-        match expander.expand(query).await {
-            Ok(expanded) => {
-                let mut deduped = dedupe_non_empty(expanded);
-                if !deduped.iter().any(|candidate| candidate == query) {
-                    deduped.insert(0, query.to_string());
+    // Run expansion and HyDE concurrently since both only depend on the original query
+    let expansion_fut = async {
+        if let Some(ref expander) = state.query_expander {
+            match expander.expand(query).await {
+                Ok(expanded) => Some(expanded),
+                Err(e) => {
+                    warn!("Query expansion failed, continuing with original query: {e}");
+                    None
                 }
-
-                debug_info.expanded_queries = deduped
-                    .iter()
-                    .filter(|candidate| candidate.as_str() != query)
-                    .cloned()
-                    .collect();
-                embedding_inputs = deduped;
             }
-            Err(e) => {
-                warn!("Query expansion failed, continuing with original query: {e}");
-            }
+        } else {
+            None
         }
+    };
+
+    let hyde_fut = async {
+        if let Some(ref hyde) = state.hyde_generator {
+            match hyde.generate(query).await {
+                Ok(result) => Some(result),
+                Err(e) => {
+                    warn!("HyDE generation failed, continuing without hypothetical docs: {e}");
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    };
+
+    let (expansion_result, hyde_result) = tokio::join!(expansion_fut, hyde_fut);
+
+    // Process expansion results
+    if let Some(expanded) = expansion_result {
+        let mut deduped = dedupe_non_empty(expanded);
+        if !deduped.iter().any(|candidate| candidate == query) {
+            deduped.insert(0, query.to_string());
+        }
+
+        debug_info.expanded_queries = deduped
+            .iter()
+            .filter(|candidate| candidate.as_str() != query)
+            .cloned()
+            .collect();
+        embedding_inputs = deduped;
     }
 
-    // Optional HyDE generation
-    if let Some(ref hyde) = state.hyde_generator {
-        match hyde.generate(query).await {
-            Ok(result) => {
-                debug_info.hyde_latency_ms = result.generation_time_ms as f64;
-                if result.success {
-                    let docs = dedupe_non_empty(result.hypothetical_docs);
-                    if !docs.is_empty() {
-                        debug_info.hyde_used = true;
-                        debug_info.hyde_generated_docs = docs.len();
-                        embedding_inputs.extend(docs);
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("HyDE generation failed, continuing without hypothetical docs: {e}");
+    // Process HyDE results
+    if let Some(result) = hyde_result {
+        debug_info.hyde_latency_ms = result.generation_time_ms as f64;
+        if result.success {
+            let docs = dedupe_non_empty(result.hypothetical_docs);
+            if !docs.is_empty() {
+                debug_info.hyde_used = true;
+                debug_info.hyde_generated_docs = docs.len();
+                embedding_inputs.extend(docs);
             }
         }
     }
