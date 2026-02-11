@@ -12,6 +12,9 @@ __pycache__/
 CLAUDE.md
 AGENTS.md
 
+# Worktrees
+.worktrees/
+
 # VSCode
 .vscode/
 
