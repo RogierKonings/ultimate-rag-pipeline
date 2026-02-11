@@ -249,7 +249,7 @@ impl RerankerService {
     /// # Arguments
     ///
     /// * `query` - The search query
-    /// * `results` - Retrieval results to rerank
+    /// * `results` - Retrieval results to rerank (borrowed; only selected results are cloned)
     /// * `top_k` - Optional limit on number of results to return
     ///
     /// # Returns
@@ -285,7 +285,7 @@ impl RerankerService {
     ///         ),
     ///     ];
     ///
-    ///     let reranked = service.rerank_results("What is ML?", results, Some(10)).await?;
+    ///     let reranked = service.rerank_results("What is ML?", &results, Some(10)).await?;
     ///
     ///     for r in &reranked {
     ///         println!("Chunk {}: score {} (rerank: {:?})",
@@ -303,7 +303,7 @@ impl RerankerService {
     pub async fn rerank_results(
         &self,
         query: &str,
-        results: Vec<RetrievalResult>,
+        results: &[RetrievalResult],
         top_k: Option<usize>,
     ) -> Result<Vec<RetrievalResult>> {
         if results.is_empty() {
@@ -522,7 +522,7 @@ mod tests {
         let results: Vec<RetrievalResult> = vec![];
 
         let reranked = service
-            .rerank_results("test query", results, None)
+            .rerank_results("test query", &results, None)
             .await
             .unwrap();
 

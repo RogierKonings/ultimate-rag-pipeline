@@ -354,26 +354,13 @@ async fn execute_explain_pipeline(
 
         if let Some(ref reranker) = state.reranker {
             match reranker
-                .rerank_results(&request.query, results.clone(), Some(request.top_k))
+                .rerank_results(&request.query, &results, Some(request.top_k))
                 .await
             {
                 Ok(reranked) => {
-                    let mut result_map: std::collections::HashMap<String, RetrievalResult> =
-                        results
-                            .into_iter()
-                            .map(|r| (r.chunk_id.clone(), r))
-                            .collect();
-
-                    results = reranked
-                        .into_iter()
-                        .filter_map(|rr| {
-                            result_map.remove(&rr.chunk_id).map(|mut r| {
-                                r.score = rr.score;
-                                r.rerank_score = Some(rr.score);
-                                r
-                            })
-                        })
-                        .collect();
+                    // rerank_results already returns results with updated scores
+                    // and original_score preserved in metadata, so use directly.
+                    results = reranked;
 
                     rerank_ok = true;
 

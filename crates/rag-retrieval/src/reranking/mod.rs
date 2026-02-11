@@ -60,7 +60,7 @@
 //!         ),
 //!     ];
 //!
-//!     let reranked = service.rerank_results("What is ML?", results, Some(10)).await?;
+//!     let reranked = service.rerank_results("What is ML?", &results, Some(10)).await?;
 //!
 //!     for r in &reranked {
 //!         println!("{}: {:.3}", r.chunk_id, r.score);

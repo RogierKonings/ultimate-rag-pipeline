@@ -210,11 +210,12 @@ pub async fn retrieve_multi(
             let rerank_query = &request.queries[0];
 
             match reranker
-                .rerank_results(rerank_query, retrieval_results, Some(request.top_k))
+                .rerank_results(rerank_query, &retrieval_results, Some(request.top_k))
                 .await
             {
                 Ok(reranked) => {
-                    // Build a lookup from chunk_id -> original HybridSearchResult
+                    // Build a lookup from chunk_id -> original HybridSearchResult,
+                    // consuming the vec to avoid cloning.
                     let mut result_map: HashMap<String, HybridSearchResult> = results_for_acl
                         .into_iter()
                         .map(|r| (r.chunk_id.to_string(), r))
