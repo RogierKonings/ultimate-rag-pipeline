@@ -440,6 +440,8 @@ impl HydeGenerator {
     /// Generate hypothetical documents for the given query.
     ///
     /// If `HyDE` is disabled, returns an empty result immediately.
+    /// When `num_hypothetical_docs > 1`, documents are generated concurrently
+    /// using `futures::future::join_all` for improved latency.
     ///
     /// # Arguments
     ///
@@ -461,25 +463,13 @@ impl HydeGenerator {
             ));
         }
 
-        let mut hypothetical_docs = Vec::with_capacity(self.config.num_hypothetical_docs);
+        // Generate hypothetical documents concurrently
+        let futures: Vec<_> = (0..self.config.num_hypothetical_docs)
+            .map(|i| self.generate_single_with_logging(query, i))
+            .collect();
 
-        for i in 0..self.config.num_hypothetical_docs {
-            debug!(doc_index = i, "Generating hypothetical document");
-
-            match self.generate_single(query).await {
-                Ok(doc) => {
-                    hypothetical_docs.push(doc);
-                }
-                Err(e) => {
-                    warn!(
-                        doc_index = i,
-                        error = %e,
-                        "Failed to generate hypothetical document"
-                    );
-                    // Continue trying to generate remaining documents
-                }
-            }
-        }
+        let results = futures::future::join_all(futures).await;
+        let hypothetical_docs: Vec<String> = results.into_iter().flatten().collect();
 
         let generation_time_ms = start.elapsed().as_millis() as u64;
 
@@ -514,6 +504,24 @@ impl HydeGenerator {
     async fn generate_single(&self, query: &str) -> Result<String> {
         let prompt = self.build_prompt(query);
         self.call_llm(&prompt).await
+    }
+
+    /// Generate a single hypothetical document with structured logging.
+    ///
+    /// Returns `Some(doc)` on success or `None` on failure (with a warning log).
+    async fn generate_single_with_logging(&self, query: &str, doc_index: usize) -> Option<String> {
+        debug!(doc_index, "Generating hypothetical document");
+        match self.generate_single(query).await {
+            Ok(doc) => Some(doc),
+            Err(e) => {
+                warn!(
+                    doc_index,
+                    error = %e,
+                    "Failed to generate hypothetical document"
+                );
+                None
+            }
+        }
     }
 
     /// Call the LLM gateway to generate text.
