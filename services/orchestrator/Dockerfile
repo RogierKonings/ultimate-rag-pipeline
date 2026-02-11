@@ -34,4 +34,7 @@ ENV PYTHONPATH=/app:/app/shared:/packages
 
 EXPOSE 8003
 
-CMD ["uvicorn", "api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8003"]
+# Use environment variable for worker count (default: 1 for backward compatibility)
+ENV UVICORN_WORKERS=1
+
+CMD uvicorn api.app:create_app --factory --host 0.0.0.0 --port 8003 --workers ${UVICORN_WORKERS}

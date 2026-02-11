@@ -267,6 +267,7 @@ services:
       - ORCHESTRATOR_LARGE_MODEL=qwen2.5:14b
       - LOG_LEVEL=DEBUG
       - PYTHONPATH=/app:/app/shared:/packages
+      - UVICORN_WORKERS=1
     volumes:
       - ./services/orchestrator:/app
       - ./services/orchestrator:/packages/orchestrator

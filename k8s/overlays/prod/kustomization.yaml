@@ -21,3 +21,4 @@ configMapGenerator:
       - LOG_LEVEL=INFO
       - OPENSEARCH_SECURITY_ENABLED=true
       - REDIS_SENTINEL_ENABLED=true
+      - UVICORN_WORKERS=4
