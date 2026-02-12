@@ -72,7 +72,11 @@ impl WorkerPool {
     /// # Errors
     ///
     /// Returns an error if workers fail to start.
-    #[allow(clippy::missing_panics_doc, clippy::too_many_lines, clippy::unused_async)]
+    #[allow(
+        clippy::missing_panics_doc,
+        clippy::too_many_lines,
+        clippy::unused_async
+    )]
     pub async fn start(&mut self, queue: JobQueue) -> Result<(), QueueError> {
         let queue = Arc::new(tokio::sync::Mutex::new(queue));
         let semaphore = Arc::new(Semaphore::new(self.config.concurrency));

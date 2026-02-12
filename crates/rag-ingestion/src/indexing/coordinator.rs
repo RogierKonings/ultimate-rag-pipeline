@@ -149,7 +149,11 @@ impl IndexCoordinator {
         self.index_document(document, chunks).await
     }
 
-    async fn write_to_qdrant(&self, document: &DocumentRecord, chunks: &[IndexedChunk]) -> WriteResult {
+    async fn write_to_qdrant(
+        &self,
+        document: &DocumentRecord,
+        chunks: &[IndexedChunk],
+    ) -> WriteResult {
         let start = Instant::now();
 
         if chunks.is_empty() {
@@ -163,10 +167,14 @@ impl IndexCoordinator {
             .iter()
             .map(|c| {
                 // Extract visibility and allowed_groups from metadata, default to public/empty
-                let visibility = c.metadata.get("visibility")
+                let visibility = c
+                    .metadata
+                    .get("visibility")
                     .and_then(|v| v.as_str())
                     .unwrap_or("public");
-                let allowed_groups = c.metadata.get("allowed_groups")
+                let allowed_groups = c
+                    .metadata
+                    .get("allowed_groups")
                     .cloned()
                     .unwrap_or_else(|| json!([]));
 
@@ -297,7 +305,10 @@ impl IndexCoordinator {
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
-            file_size: document.metadata.get("file_size").and_then(serde_json::Value::as_i64),
+            file_size: document
+                .metadata
+                .get("file_size")
+                .and_then(serde_json::Value::as_i64),
             visibility: Visibility::Private,
             allowed_groups: document
                 .metadata

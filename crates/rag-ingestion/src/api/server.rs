@@ -47,7 +47,10 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
                 .on_request(DefaultOnRequest::new().level(Level::INFO))
                 .on_response(DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::REQUEST_TIMEOUT, Duration::from_secs(config.timeout_secs)));
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(config.timeout_secs),
+        ));
 
     // Build the router
     let router = Router::new()
@@ -101,9 +104,7 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
     };
 
     // Apply base middleware and state
-    router
-        .layer(base)
-        .with_state(state)
+    router.layer(base).with_state(state)
 }
 
 /// Run the HTTP server.
@@ -624,9 +625,15 @@ mod tests {
         assert_eq!(config.timeout_secs, 45);
         assert!(!config.cors_enabled);
         assert_eq!(config.environment, "production");
-        assert_eq!(config.allowed_origins, vec!["https://a.com", "https://b.com"]);
+        assert_eq!(
+            config.allowed_origins,
+            vec!["https://a.com", "https://b.com"]
+        );
         assert_eq!(config.allowed_methods, vec!["GET", "POST"]);
-        assert_eq!(config.allowed_headers, vec!["Content-Type", "Authorization"]);
+        assert_eq!(
+            config.allowed_headers,
+            vec!["Content-Type", "Authorization"]
+        );
 
         // Clean up
         std::env::remove_var("INGESTION_HOST");

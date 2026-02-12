@@ -176,8 +176,11 @@ impl CacheInvalidationPublisher {
 
     /// Publish a document deletion invalidation event.
     pub async fn publish_document_deleted(&self, tenant_id: &str, document_id: &str) {
-        let event =
-            InvalidationEvent::document(InvalidationEventType::DocumentDeleted, tenant_id, document_id);
+        let event = InvalidationEvent::document(
+            InvalidationEventType::DocumentDeleted,
+            tenant_id,
+            document_id,
+        );
         self.publish(event).await;
     }
 
@@ -239,10 +242,8 @@ mod tests {
 
     #[test]
     fn test_invalidation_event_batch() {
-        let event = InvalidationEvent::batch(
-            "tenant-1",
-            vec!["doc-1".to_string(), "doc-2".to_string()],
-        );
+        let event =
+            InvalidationEvent::batch("tenant-1", vec!["doc-1".to_string(), "doc-2".to_string()]);
         assert_eq!(event.document_ids.len(), 2);
     }
 

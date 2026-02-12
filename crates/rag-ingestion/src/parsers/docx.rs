@@ -401,9 +401,8 @@ mod tests {
     #[test]
     fn test_can_parse() {
         let parser = DocxParser::new();
-        assert!(parser.can_parse(
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ));
+        assert!(parser
+            .can_parse("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
         assert!(!parser.can_parse("text/html"));
     }
 }

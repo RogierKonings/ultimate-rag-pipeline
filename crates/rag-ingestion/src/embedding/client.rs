@@ -53,8 +53,7 @@ impl EmbeddingClient {
     ///
     /// Returns an error if the HTTP client fails to build.
     pub fn new(config: EmbeddingClientConfig) -> Result<Self> {
-        let client = build_http_client_with_timeout(config.timeout())
-            .map_err(Error::Embedding)?;
+        let client = build_http_client_with_timeout(config.timeout()).map_err(Error::Embedding)?;
 
         Ok(Self { client, config })
     }
@@ -78,11 +77,7 @@ impl EmbeddingClient {
 
         #[allow(clippy::cast_possible_truncation)] // retry delay millis fits in u64
         let retry_delay_ms = self.config.retry_delay().as_millis() as u64;
-        let retry_policy = RetryPolicy::new(
-            self.config.max_retries,
-            retry_delay_ms,
-            30_000,
-        );
+        let retry_policy = RetryPolicy::new(self.config.max_retries, retry_delay_ms, 30_000);
 
         retry_policy
             .execute(

@@ -82,20 +82,16 @@ pub struct ReindexQuery {
 fn document_to_response(doc: rag_database::SourceDocument) -> DocumentResponse {
     // Extract clean filename from source_uri
     // source_uri format: uploads/{tenant_id}/{timestamp}-{filename}
-    let filename = doc
-        .source_uri
-        .rsplit('/')
-        .next()
-        .map(|name| {
-            // Remove timestamp prefix (digits followed by dash)
-            if let Some(dash_pos) = name.find('-') {
-                let prefix = &name[..dash_pos];
-                if prefix.chars().all(|c| c.is_ascii_digit()) {
-                    return name[dash_pos + 1..].to_string();
-                }
+    let filename = doc.source_uri.rsplit('/').next().map(|name| {
+        // Remove timestamp prefix (digits followed by dash)
+        if let Some(dash_pos) = name.find('-') {
+            let prefix = &name[..dash_pos];
+            if prefix.chars().all(|c| c.is_ascii_digit()) {
+                return name[dash_pos + 1..].to_string();
             }
-            name.to_string()
-        });
+        }
+        name.to_string()
+    });
 
     DocumentResponse {
         document_id: doc.id,
@@ -126,9 +122,10 @@ pub async fn list_documents(
     let offset = (page - 1) * page_size;
 
     // Check if database is available
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
@@ -183,15 +180,20 @@ pub async fn get_sync_status(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SyncStatusQuery>,
 ) -> ApiResult<Json<SyncStatusResponse>> {
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
     // Count documents by status for the summary
     let all_docs = repo
-        .list(&query.tenant_id, i64::from(query.limit), i64::from(query.offset))
+        .list(
+            &query.tenant_id,
+            i64::from(query.limit),
+            i64::from(query.offset),
+        )
         .await
         .map_err(|e| ApiError::internal(format!("Failed to list documents: {e}")))?;
 
@@ -283,9 +285,10 @@ pub async fn get_document(
     Path(document_id): Path<Uuid>,
     Query(query): Query<GetDocumentQuery>,
 ) -> ApiResult<Json<DocumentResponse>> {
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
@@ -316,9 +319,10 @@ pub async fn delete_document(
     Query(query): Query<DeleteDocumentQuery>,
 ) -> ApiResult<Json<DocumentDeleteResponse>> {
     // Check if database is available
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
@@ -333,9 +337,8 @@ pub async fn delete_document(
         // Use the index coordinator to delete from all stores in parallel
         if let Some(coordinator) = &state.index_coordinator {
             let doc_id = DocumentId::from_uuid(document_id);
-            let tenant_id = TenantId::parse_str(&query.tenant_id).map_err(|e| {
-                ApiError::bad_request(format!("Invalid tenant_id format: {e}"))
-            })?;
+            let tenant_id = TenantId::parse_str(&query.tenant_id)
+                .map_err(|e| ApiError::bad_request(format!("Invalid tenant_id format: {e}")))?;
 
             let results = coordinator
                 .delete_document(doc_id, tenant_id)
@@ -429,9 +432,10 @@ pub async fn batch_delete_documents(
     Json(request): Json<BatchDeleteRequest>,
 ) -> ApiResult<Json<BatchDeleteResponse>> {
     // Check if database is available
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
@@ -441,7 +445,10 @@ pub async fn batch_delete_documents(
 
     for document_id in &request.document_ids {
         // Try to find the document first to get chunk_count
-        let document = match repo.find_by_id_and_tenant(*document_id, &query.tenant_id).await {
+        let document = match repo
+            .find_by_id_and_tenant(*document_id, &query.tenant_id)
+            .await
+        {
             Ok(Some(doc)) => doc,
             Ok(None) => {
                 failed_count += 1;
@@ -618,9 +625,10 @@ pub async fn reindex_document(
     Json(request): Json<Option<ReindexRequest>>,
 ) -> ApiResult<(StatusCode, Json<IngestResponse>)> {
     // Verify the document exists
-    let database = state.database.as_ref().ok_or_else(|| {
-        ApiError::internal("Database not configured")
-    })?;
+    let database = state
+        .database
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Database not configured"))?;
 
     let repo = DocumentRepository::new(database.inner().clone());
 
@@ -660,7 +668,9 @@ pub async fn reindex_document(
             state
                 .job_tracker
                 .fail_job(&job_id, format!("Failed to enqueue: {e}"));
-            return Err(ApiError::internal(format!("Failed to queue reindex job: {e}")));
+            return Err(ApiError::internal(format!(
+                "Failed to queue reindex job: {e}"
+            )));
         }
 
         tracing::info!(

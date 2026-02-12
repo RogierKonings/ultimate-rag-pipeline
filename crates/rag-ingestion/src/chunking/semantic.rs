@@ -123,7 +123,10 @@ impl SemanticChunker {
                 .copied()
                 .collect();
 
-            let chunk_text = self.tokenizer.decode(chunk_tokens.clone()).unwrap_or_default();
+            let chunk_text = self
+                .tokenizer
+                .decode(chunk_tokens.clone())
+                .unwrap_or_default();
 
             let chunk_len = chunk_text.len();
 

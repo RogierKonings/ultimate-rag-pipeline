@@ -96,9 +96,7 @@ impl PdfParser {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(PdfError::ParseError(format!(
-                "pdftotext failed: {stderr}"
-            )));
+            return Err(PdfError::ParseError(format!("pdftotext failed: {stderr}")));
         }
 
         let text = String::from_utf8_lossy(&output.stdout).into_owned();

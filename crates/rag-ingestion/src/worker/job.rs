@@ -35,7 +35,6 @@ pub enum JobPriority {
     Critical = 3,
 }
 
-
 /// A job to be processed by a worker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
@@ -71,11 +70,7 @@ pub struct Job {
 
 impl Job {
     /// Create a new job.
-    pub fn new(
-        job_type: impl Into<String>,
-        tenant_id: impl Into<String>,
-        payload: Value,
-    ) -> Self {
+    pub fn new(job_type: impl Into<String>, tenant_id: impl Into<String>, payload: Value) -> Self {
         Self {
             id: Uuid::new_v4(),
             job_type: job_type.into(),
@@ -184,7 +179,8 @@ mod tests {
 
     #[test]
     fn test_job_with_priority() {
-        let job = Job::new("test", "tenant1", serde_json::json!({})).with_priority(JobPriority::High);
+        let job =
+            Job::new("test", "tenant1", serde_json::json!({})).with_priority(JobPriority::High);
 
         assert_eq!(job.priority, JobPriority::High);
     }

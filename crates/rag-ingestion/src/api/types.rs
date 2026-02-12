@@ -361,9 +361,7 @@ pub struct SyncStatusResponse {
 // Health Types (re-exported from rag-types)
 // ============================================================================
 
-pub use rag_types::{
-    ComponentHealth, HealthResponse, LivenessResponse, ReadinessResponse,
-};
+pub use rag_types::{ComponentHealth, HealthResponse, LivenessResponse, ReadinessResponse};
 
 #[cfg(test)]
 mod tests {

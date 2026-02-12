@@ -67,7 +67,9 @@ pub async fn start_ingestion(
         let mut queue = job_queue.lock().await;
         if let Err(e) = queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
-            state.job_tracker.fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            state
+                .job_tracker
+                .fail_job(&job_id, format!("Failed to enqueue: {e}"));
             return Err(ApiError::internal(format!("Failed to queue job: {e}")));
         }
 
@@ -136,7 +138,9 @@ pub async fn ingest_single_document(
         let mut queue = job_queue.lock().await;
         if let Err(e) = queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
-            state.job_tracker.fail_job(&job_id, format!("Failed to enqueue: {e}"));
+            state
+                .job_tracker
+                .fail_job(&job_id, format!("Failed to enqueue: {e}"));
             return Err(ApiError::internal(format!("Failed to queue job: {e}")));
         }
 

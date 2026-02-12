@@ -8,6 +8,7 @@
 //!
 //! - **Chunking** ([`chunking`]): Split text into chunks for embedding
 //!   - [`chunking::RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words
+//!   - [`chunking::HierarchicalChunker`]: Split by detected document sections
 //!
 //! - **Embedding** ([`embedding`]): Generate vector embeddings
 //!   - [`embedding::EmbeddingClient`]: HTTP client for embedding service
@@ -93,7 +94,10 @@ pub use indexing::{
 pub use parsers::{HtmlParser, MarkdownParser, ParsedDocument, Parser};
 
 // Chunking (commonly used)
-pub use chunking::{Chunk, ChunkingConfig, ChunkingStrategy, RecursiveCharacterSplitter};
+pub use chunking::{
+    Chunk, ChunkingConfig, ChunkingStrategy, HierarchicalChunker, RecursiveCharacterSplitter,
+    SemanticChunker,
+};
 
 // Cache invalidation
 pub use cache_invalidation::{CacheInvalidationPublisher, InvalidationEvent, INVALIDATION_CHANNEL};

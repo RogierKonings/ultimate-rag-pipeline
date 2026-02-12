@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use rag_database::{ChunkRepository, DatabasePool, DocumentRepository};
-use rag_types::{ChunkId, DocumentId, TenantId};
+use rag_types::{ChunkId, ChunkingStrategy as ChunkingStrategyType, DocumentId, TenantId};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -11,7 +11,10 @@ use uuid::Uuid;
 
 use crate::api::jobs::JobTracker;
 use crate::api::types::JobStatus;
-use crate::chunking::{ChunkingConfig, ChunkingStrategy, RecursiveCharacterSplitter};
+use crate::chunking::{
+    Chunk as TextChunk, ChunkingConfig, ChunkingStrategy, HierarchicalChunker,
+    RecursiveCharacterSplitter, SemanticChunker, SemanticChunkerConfig,
+};
 use crate::connectors::{Connector, S3Config, S3Connector};
 use crate::embedding::EmbeddingClient;
 use crate::indexing::{DocumentRecord, IndexCoordinator, IndexedChunk};
@@ -178,10 +181,11 @@ impl IngestionJobHandler {
             })
             .unwrap_or(50) as u32;
 
-        let chunks = self.chunk_content(&content, chunk_size, chunk_overlap)?;
+        let chunking_strategy = self.extract_chunking_strategy(payload);
+        let chunks = self.chunk_content(&content, chunking_strategy, chunk_size, chunk_overlap)?;
         let chunk_count = chunks.len();
 
-        info!(chunks = chunk_count, "Document chunked");
+        info!(chunks = chunk_count, strategy = ?chunking_strategy, "Document chunked");
 
         // Update progress: embedding
         self.job_tracker
@@ -189,7 +193,7 @@ impl IngestionJobHandler {
 
         // Generate embeddings if client is available
         let embeddings = if let Some(ref client) = self.embedding_client {
-            let texts: Vec<String> = chunks.clone();
+            let texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
             match client.embed_batch(&texts).await {
                 Ok((embeddings, _tokens)) => {
                     info!(embeddings = embeddings.len(), "Embeddings generated");
@@ -236,25 +240,51 @@ impl IngestionJobHandler {
                 metadata: Self::json_object_to_map(payload.get("metadata")),
             };
 
+            let base_chunk_metadata = Self::json_object_to_map(payload.get("metadata"));
             let indexed_chunks: Vec<IndexedChunk> = chunks
                 .iter()
                 .enumerate()
-                .map(|(i, content)| {
+                .map(|(i, chunk)| {
                     let embedding = embeddings
                         .as_ref()
                         .and_then(|e| e.get(i).cloned())
                         .unwrap_or_default();
 
-                    #[allow(clippy::cast_possible_truncation)]
-                    let chunk_idx = i as u32; // chunk index fits in u32
+                    let mut metadata = base_chunk_metadata.clone();
+                    metadata.insert(
+                        "chunking_strategy".to_string(),
+                        Value::String(
+                            match chunking_strategy {
+                                ChunkingStrategyType::Recursive => "recursive",
+                                ChunkingStrategyType::Semantic => "semantic",
+                                ChunkingStrategyType::Hierarchical => "hierarchical",
+                            }
+                            .to_string(),
+                        ),
+                    );
+                    metadata.insert(
+                        "token_count".to_string(),
+                        Value::Number(serde_json::Number::from(chunk.token_count)),
+                    );
+                    #[allow(clippy::cast_possible_truncation)] // start offsets fit in u64
+                    metadata.insert(
+                        "start_char".to_string(),
+                        Value::Number(serde_json::Number::from(chunk.start_char as u64)),
+                    );
+                    #[allow(clippy::cast_possible_truncation)] // end offsets fit in u64
+                    metadata.insert(
+                        "end_char".to_string(),
+                        Value::Number(serde_json::Number::from(chunk.end_char as u64)),
+                    );
+
                     IndexedChunk {
                         chunk_id: ChunkId::new(),
                         document_id,
                         tenant_id: tenant_id_typed,
-                        content: content.clone(),
-                        chunk_index: chunk_idx,
+                        content: chunk.content.clone(),
+                        chunk_index: chunk.chunk_index,
                         embedding,
-                        metadata: Self::json_object_to_map(payload.get("metadata")),
+                        metadata,
                     }
                 })
                 .collect();
@@ -425,9 +455,7 @@ impl IngestionJobHandler {
                 Ok(None) => {
                     self.job_tracker.add_error(
                         &tracker_job_id,
-                        format!(
-                            "Document {document_uuid} not found for tenant {tenant_id}"
-                        ),
+                        format!("Document {document_uuid} not found for tenant {tenant_id}"),
                     );
                     self.job_tracker.update_progress(
                         &tracker_job_id,
@@ -589,9 +617,7 @@ impl IngestionJobHandler {
             {
                 self.job_tracker.add_error(
                     &tracker_job_id,
-                    format!(
-                        "Failed to mark embeddings generated for {document_uuid}: {e}"
-                    ),
+                    format!("Failed to mark embeddings generated for {document_uuid}: {e}"),
                 );
             }
 
@@ -609,12 +635,8 @@ impl IngestionJobHandler {
             #[allow(clippy::cast_possible_truncation)] // chunk count fits in u32
             let chunk_len = chunks.len() as u32;
             total_chunks += chunk_len;
-            self.job_tracker.update_progress(
-                &tracker_job_id,
-                progress,
-                total_docs,
-                "reembedding",
-            );
+            self.job_tracker
+                .update_progress(&tracker_job_id, progress, total_docs, "reembedding");
         }
 
         if processed_docs == 0 {
@@ -750,28 +772,79 @@ impl IngestionJobHandler {
         }
     }
 
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
+    fn extract_chunking_strategy(&self, payload: &Value) -> ChunkingStrategyType {
+        let strategy_value = payload.get("chunking_strategy").or_else(|| {
+            payload
+                .get("processing")
+                .and_then(|processing| processing.get("chunking_strategy"))
+        });
+
+        let Some(value) = strategy_value else {
+            return ChunkingStrategyType::Recursive;
+        };
+
+        let Some(raw) = value.as_str() else {
+            return serde_json::from_value::<ChunkingStrategyType>(value.clone())
+                .unwrap_or(ChunkingStrategyType::Recursive);
+        };
+
+        match raw.to_ascii_lowercase().as_str() {
+            "recursive" => ChunkingStrategyType::Recursive,
+            "semantic" => ChunkingStrategyType::Semantic,
+            "hierarchical" | "document_structure" => ChunkingStrategyType::Hierarchical,
+            other => {
+                warn!(
+                    strategy = other,
+                    "Unknown chunking strategy in payload; defaulting to recursive"
+                );
+                ChunkingStrategyType::Recursive
+            }
+        }
+    }
+
     /// Chunk content using the configured strategy.
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn chunk_content(
         &self,
         content: &str,
+        strategy: ChunkingStrategyType,
         chunk_size: u32,
         chunk_overlap: u32,
-    ) -> Result<Vec<String>, String> {
+    ) -> Result<Vec<TextChunk>, String> {
+        let max_tokens = chunk_size.max(1);
+        let target_tokens = max_tokens.saturating_sub(100).max(1);
         let config = ChunkingConfig {
-            target_tokens: chunk_size.saturating_sub(100),
-            max_tokens: chunk_size,
+            target_tokens,
+            max_tokens,
             chunk_overlap,
             min_chunk_size: 50,
             tokenizer: "cl100k_base".to_string(),
         };
 
-        let splitter = RecursiveCharacterSplitter::new(config)
-            .map_err(|e| format!("Failed to create splitter: {e}"))?;
         let document_id = rag_types::DocumentId::new();
 
-        match splitter.chunk(content, document_id, None) {
-            Ok(chunks) => Ok(chunks.into_iter().map(|c| c.content).collect()),
+        let result = match strategy {
+            ChunkingStrategyType::Recursive => {
+                let splitter = RecursiveCharacterSplitter::new(config)
+                    .map_err(|e| format!("Failed to create recursive splitter: {e}"))?;
+                splitter.chunk(content, document_id, None)
+            }
+            ChunkingStrategyType::Semantic => {
+                let semantic_config = SemanticChunkerConfig::from(config);
+                let chunker = SemanticChunker::with_config(semantic_config)
+                    .map_err(|e| format!("Failed to create semantic chunker: {e}"))?;
+                chunker.chunk(content, document_id, None)
+            }
+            ChunkingStrategyType::Hierarchical => {
+                let chunker = HierarchicalChunker::with_config(config)
+                    .map_err(|e| format!("Failed to create hierarchical chunker: {e}"))?;
+                chunker.chunk(content, document_id, None)
+            }
+        };
+
+        match result {
+            Ok(chunks) => Ok(chunks),
             Err(e) => Err(format!("Chunking failed: {e}")),
         }
     }
@@ -841,6 +914,71 @@ mod tests {
         let map = IngestionJobHandler::json_object_to_map(Some(&payload));
         assert_eq!(map.get("a").and_then(Value::as_i64), Some(1));
         assert_eq!(map.get("b").and_then(Value::as_str), Some("two"));
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_from_processing_payload() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({
+            "processing": {
+                "chunking_strategy": "semantic"
+            }
+        });
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Semantic);
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_from_top_level_payload() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({
+            "chunking_strategy": "hierarchical"
+        });
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Hierarchical);
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_unknown_defaults_to_recursive() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({
+            "processing": {
+                "chunking_strategy": "unknown_strategy"
+            }
+        });
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Recursive);
+    }
+
+    #[test]
+    fn test_chunk_content_supports_semantic_strategy() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let content = "Sentence one. Sentence two. Sentence three.";
+
+        let chunks = handler
+            .chunk_content(content, ChunkingStrategyType::Semantic, 128, 10)
+            .unwrap();
+        assert!(!chunks.is_empty());
+    }
+
+    #[test]
+    fn test_chunk_content_supports_hierarchical_strategy() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let content = "# Overview\nFirst section.\n\n## Details\nSecond section.";
+
+        let chunks = handler
+            .chunk_content(content, ChunkingStrategyType::Hierarchical, 128, 10)
+            .unwrap();
+        assert!(!chunks.is_empty());
+        assert!(chunks.iter().any(|c| c.source_section.is_some()));
     }
 
     #[tokio::test]

@@ -55,10 +55,7 @@ impl PIIType {
     pub fn is_high_sensitivity(&self) -> bool {
         matches!(
             self,
-            Self::SocialSecurityNumber
-                | Self::CreditCard
-                | Self::BankAccount
-                | Self::MedicalRecord
+            Self::SocialSecurityNumber | Self::CreditCard | Self::BankAccount | Self::MedicalRecord
         )
     }
 

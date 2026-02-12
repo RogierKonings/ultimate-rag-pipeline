@@ -85,7 +85,10 @@ impl JobQueue {
 
         // Add to queue (sorted by created_at for FIFO within priority)
         let score = job.created_at as f64;
-        let _: () = self.conn.zadd(&queue_key, job.id.to_string(), score).await?;
+        let _: () = self
+            .conn
+            .zadd(&queue_key, job.id.to_string(), score)
+            .await?;
 
         Ok(())
     }
@@ -199,7 +202,10 @@ impl JobQueue {
             let delay_ms = self.calculate_backoff(job.attempts);
             let queue_key = self.queue_key(job.priority);
             let score = chrono::Utc::now().timestamp_millis() as f64 + delay_ms as f64;
-            let _: () = self.conn.zadd(&queue_key, job.id.to_string(), score).await?;
+            let _: () = self
+                .conn
+                .zadd(&queue_key, job.id.to_string(), score)
+                .await?;
         } else {
             // Move to DLQ
             let job_key = self.job_key(job.id);
