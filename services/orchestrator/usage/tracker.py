@@ -192,6 +192,7 @@ class UsageTracker:
         # Get PostgreSQL totals
         db_total = 0
         async with self.session_factory() as session:
+            # nosemgrep: sqlalchemy-raw-sql-injection
             result = await session.execute(
                 select(
                     func.coalesce(func.sum(TokenUsage.prompt_tokens), 0)

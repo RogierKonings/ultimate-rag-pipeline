@@ -335,7 +335,8 @@ class JWTHandler:
         """Check if token is from external IdP based on issuer."""
         try:
             # Decode without verification to check issuer
-            unverified = jwt.decode(  # nosemgrep
+            # nosemgrep: jwt-verify-disabled
+            unverified = jwt.decode(
                 token, options={"verify_signature": False},
             )
             return unverified.get("iss") == self.settings.idp_issuer
@@ -497,7 +498,8 @@ class JWTHandler:
 
         try:
             # Decode without full verification to get JTI and expiration
-            claims = jwt.decode(  # nosemgrep
+            # nosemgrep: jwt-verify-disabled
+            claims = jwt.decode(
                 token,
                 options={"verify_signature": False, "verify_exp": False},
             )
@@ -534,7 +536,8 @@ class JWTHandler:
         Returns:
             Decoded payload dictionary
         """
-        return jwt.decode(  # nosemgrep
+        # nosemgrep: jwt-verify-disabled
+        return jwt.decode(
             token,
             options={"verify_signature": False, "verify_exp": False},
         )

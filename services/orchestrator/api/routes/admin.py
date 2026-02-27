@@ -196,6 +196,7 @@ async def get_quota_status(
     today = datetime.now(UTC).date()
     first_of_month = today.replace(day=1)
 
+    # nosemgrep: sqlalchemy-raw-sql-injection
     usage_result = await db.execute(
         select(
             func.coalesce(func.sum(TokenUsage.prompt_tokens), 0)

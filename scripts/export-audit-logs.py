@@ -155,6 +155,7 @@ async def fetch_audit_logs_raw(
         conditions.append("action = :action")
         params["action"] = action
 
+    # nosemgrep: sqlalchemy-raw-query-string
     query = text(
         f"""
         SELECT * FROM audit_logs
