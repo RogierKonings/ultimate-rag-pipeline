@@ -514,7 +514,7 @@ class TestStreamingQuery:
         assert response.status_code == 200
         assert "event: start" in response.text
 
-    def test_stream_query_enables_rerank_for_analytical_strategy(
+    def test_stream_query_with_options(
         self,
         client,
         app,
@@ -523,7 +523,59 @@ class TestStreamingQuery:
         mock_model_gateway,
         mock_stream_manager,
     ):
-        """Streaming retrieval should enable rerank for analytical strategies."""
+        """Test streaming query works when QueryOptions are provided."""
+        app.state.session_manager = mock_session_manager
+        app.state.guardrail_pipeline = mock_guardrail_pipeline
+        app.state.model_gateway = mock_model_gateway
+        app.state.stream_manager = mock_stream_manager
+
+        retrieval_client = AsyncMock()
+        retrieval_client.search = AsyncMock(
+            return_value={
+                "documents": [
+                    {"content": "Python is great.", "score": 0.9, "id": "doc-1"},
+                ],
+                "degradation_mode": "hybrid_full",
+                "components_used": ["qdrant", "opensearch"],
+                "components_skipped": [],
+            },
+        )
+        app.state.retrieval_client = retrieval_client
+
+        response = client.post(
+            "/api/v1/query/stream",
+            json={
+                "query": "What is Python?",
+                "options": {"rerank": True, "top_k": 5},
+            },
+        )
+
+        assert response.status_code == 200
+        assert "event: start" in response.text
+        call_kwargs = retrieval_client.search.call_args.kwargs
+        assert call_kwargs["rerank"] is True
+        assert call_kwargs["top_k"] == 5
+
+    @pytest.mark.parametrize(
+        "strategy,intent,expected_rerank",
+        [
+            ("comparison", "analytical", True),
+            ("simple", "factual", False),
+        ],
+    )
+    def test_stream_query_enables_rerank_for_analytical_strategy(
+        self,
+        client,
+        app,
+        mock_session_manager,
+        mock_guardrail_pipeline,
+        mock_model_gateway,
+        mock_stream_manager,
+        strategy,
+        intent,
+        expected_rerank,
+    ):
+        """Streaming retrieval should enable rerank based on routed strategy/intent."""
         app.state.session_manager = mock_session_manager
         app.state.guardrail_pipeline = mock_guardrail_pipeline
         app.state.model_gateway = mock_model_gateway
@@ -540,17 +592,32 @@ class TestStreamingQuery:
         )
         app.state.retrieval_client = retrieval_client
 
-        response = client.post(
-            "/api/v1/query/stream",
-            json={
-                "query": "What is Python?",
-                "options": {"strategy": "comparison", "intent": "ANALYTICAL"},
-            },
+        from routing.models import QueryIntent, RoutingResult, RoutingStrategy
+
+        mock_routing_result = RoutingResult(
+            strategy=RoutingStrategy(strategy),
+            intent=QueryIntent(intent),
+            confidence=0.9,
+            complexity_score=0.8,
+            reasoning="test",
         )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mock_router = AsyncMock()
+            mock_router.route = AsyncMock(return_value=mock_routing_result)
+            mp.setattr(
+                "api.routes.query._stream_query_router",
+                mock_router,
+            )
+
+            response = client.post(
+                "/api/v1/query/stream",
+                json={"query": "Compare Python and Rust performance"},
+            )
 
         assert response.status_code == 200
         call_kwargs = retrieval_client.search.call_args.kwargs
-        assert call_kwargs["rerank"] is True
+        assert call_kwargs["rerank"] is expected_rerank
 
     def test_stream_query_without_retrieval_client(self, client, configured_app):
         """Test streaming works when retrieval_client is None."""
