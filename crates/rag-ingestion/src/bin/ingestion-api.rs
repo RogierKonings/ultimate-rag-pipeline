@@ -14,7 +14,6 @@
 //! ```
 
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use rag_database::{DatabaseConfig, DatabasePool};
 use rag_ingestion::api::{run_server_with_config, AppState, JobTracker, ServerConfig};
@@ -64,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_job_queue = match JobQueue::new(&redis_url, "ingestion").await {
         Ok(queue) => {
             tracing::info!("Connected to Redis for API job queue");
-            Some(Arc::new(Mutex::new(queue)))
+            Some(Arc::new(queue))
         }
         Err(e) => {
             tracing::warn!(error = %e, "Failed to connect to Redis - jobs will not be enqueued");

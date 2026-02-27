@@ -646,46 +646,41 @@ pub async fn reindex_document(
     let job_id = state.job_tracker.create_job(query.tenant_id.clone());
 
     // Enqueue a real reindex job to Redis
-    if let Some(job_queue) = &state.job_queue {
-        let payload = json!({
-            "tracker_job_id": job_id.to_string(),
-            "document_id": document_id.to_string(),
-            "source_uri": document.source_uri,
-            "source_type": document.source_type,
-            "tenant_id": query.tenant_id,
-            "chunking_strategy": request.as_ref().and_then(|r| r.chunking_strategy.clone()),
-            "chunk_size": request.as_ref().and_then(|r| r.chunk_size),
-            "chunk_overlap": request.as_ref().and_then(|r| r.chunk_overlap),
-        });
+    let job_queue = state.job_queue.as_ref().ok_or_else(|| {
+        ApiError::internal("Job queue not configured; reindex unavailable")
+    })?;
 
-        let worker_job = Job::new("reindex_document", &query.tenant_id, payload)
-            .with_priority(JobPriority::Normal)
-            .with_metadata("tracker_job_id", json!(job_id.to_string()));
+    let payload = json!({
+        "tracker_job_id": job_id.to_string(),
+        "document_id": document_id.to_string(),
+        "source_uri": document.source_uri,
+        "source_type": document.source_type,
+        "tenant_id": query.tenant_id,
+        "chunking_strategy": request.as_ref().and_then(|r| r.chunking_strategy.clone()),
+        "chunk_size": request.as_ref().and_then(|r| r.chunk_size),
+        "chunk_overlap": request.as_ref().and_then(|r| r.chunk_overlap),
+    });
 
-        let mut queue = job_queue.lock().await;
-        if let Err(e) = queue.enqueue(&worker_job).await {
-            tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue reindex job to Redis");
-            state
-                .job_tracker
-                .fail_job(&job_id, format!("Failed to enqueue: {e}"));
-            return Err(ApiError::internal(format!(
-                "Failed to queue reindex job: {e}"
-            )));
-        }
+    let worker_job = Job::new("reindex_document", &query.tenant_id, payload)
+        .with_priority(JobPriority::Normal)
+        .with_metadata("tracker_job_id", json!(job_id.to_string()));
 
-        tracing::info!(
-            job_id = %job_id,
-            worker_job_id = %worker_job.id,
-            document_id = %document_id,
-            "Reindex job enqueued to Redis"
-        );
-    } else {
-        tracing::warn!(
-            job_id = %job_id,
-            document_id = %document_id,
-            "No job queue configured - reindex job will remain pending"
-        );
+    if let Err(e) = job_queue.enqueue(&worker_job).await {
+        tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue reindex job to Redis");
+        state
+            .job_tracker
+            .fail_job(&job_id, format!("Failed to enqueue: {e}"));
+        return Err(ApiError::internal(format!(
+            "Failed to queue reindex job: {e}"
+        )));
     }
+
+    tracing::info!(
+        job_id = %job_id,
+        worker_job_id = %worker_job.id,
+        document_id = %document_id,
+        "Reindex job enqueued to Redis"
+    );
 
     // Publish cache invalidation for reindexed document (fire-and-forget)
     if let Some(publisher) = &state.cache_invalidation {

@@ -64,8 +64,7 @@ pub async fn start_ingestion(
         .with_priority(JobPriority::Normal)
         .with_metadata("tracker_job_id", json!(job_id.to_string()));
 
-        let mut queue = job_queue.lock().await;
-        if let Err(e) = queue.enqueue(&worker_job).await {
+        if let Err(e) = job_queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
             state
                 .job_tracker
@@ -135,8 +134,7 @@ pub async fn ingest_single_document(
         .with_priority(JobPriority::Normal)
         .with_metadata("tracker_job_id", json!(job_id.to_string()));
 
-        let mut queue = job_queue.lock().await;
-        if let Err(e) = queue.enqueue(&worker_job).await {
+        if let Err(e) = job_queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue job to Redis");
             state
                 .job_tracker
@@ -289,8 +287,7 @@ pub async fn start_sync(
         .with_priority(JobPriority::Normal)
         .with_metadata("tracker_job_id", json!(job_id.to_string()));
 
-        let mut queue = job_queue.lock().await;
-        if let Err(e) = queue.enqueue(&worker_job).await {
+        if let Err(e) = job_queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue sync job to Redis");
             state
                 .job_tracker
@@ -366,8 +363,7 @@ pub async fn start_reembed(
         .with_metadata("tracker_job_id", json!(job_id.to_string()))
         .with_metadata("embedding_job_id", json!(embedding_job_id.to_string()));
 
-        let mut queue = job_queue.lock().await;
-        if let Err(e) = queue.enqueue(&worker_job).await {
+        if let Err(e) = job_queue.enqueue(&worker_job).await {
             tracing::error!(error = %e, job_id = %job_id, "Failed to enqueue reembed job to Redis");
             state
                 .job_tracker

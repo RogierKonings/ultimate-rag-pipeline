@@ -1,7 +1,6 @@
 //! Application state for the ingestion service.
 
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use rag_database::DatabasePool;
 
@@ -23,7 +22,7 @@ pub struct AppState {
     pub embedding_client: Option<Arc<EmbeddingClient>>,
 
     /// Job queue for async processing (optional for tests).
-    pub job_queue: Option<Arc<Mutex<JobQueue>>>,
+    pub job_queue: Option<Arc<JobQueue>>,
 
     /// Database pool for `PostgreSQL` queries (optional for tests).
     pub database: Option<DatabasePool>,
@@ -98,7 +97,7 @@ pub struct AppStateBuilder {
     job_tracker: Option<Arc<JobTracker>>,
     index_coordinator: Option<Arc<IndexCoordinator>>,
     embedding_client: Option<Arc<EmbeddingClient>>,
-    job_queue: Option<Arc<Mutex<JobQueue>>>,
+    job_queue: Option<Arc<JobQueue>>,
     database: Option<DatabasePool>,
     cache_invalidation: Option<Arc<CacheInvalidationPublisher>>,
     version: String,
@@ -142,7 +141,7 @@ impl AppStateBuilder {
 
     /// Set the job queue.
     #[must_use]
-    pub fn job_queue(mut self, queue: Arc<Mutex<JobQueue>>) -> Self {
+    pub fn job_queue(mut self, queue: Arc<JobQueue>) -> Self {
         self.job_queue = Some(queue);
         self
     }
@@ -243,11 +242,10 @@ mod tests {
         let result = AppStateBuilder::new().build();
         assert!(result.is_err());
 
-        if let Err(AppStateBuilderError::MissingComponent(name)) = result {
-            assert_eq!(name, "job_tracker");
-        } else {
-            panic!("Expected MissingComponent error");
-        }
+        let Err(AppStateBuilderError::MissingComponent(name)) = result else {
+            panic!("Expected MissingComponent error, got: {result:?}");
+        };
+        assert_eq!(name, "job_tracker");
     }
 
     #[test]

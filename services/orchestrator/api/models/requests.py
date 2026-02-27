@@ -5,6 +5,56 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class QueryOptions(BaseModel):
+    """Typed configuration overrides for a query request.
+
+    All fields are optional; omitted fields fall back to service defaults.
+    """
+
+    model: str | None = Field(
+        default=None,
+        description="LLM model name to use for answer generation",
+    )
+    temperature: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=2.0,
+        description="Sampling temperature (0.0–2.0)",
+    )
+    top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=100,
+        description="Maximum number of retrieved chunks (1–100)",
+    )
+    semantic_weight: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Weight for semantic search in hybrid fusion (0.0–1.0)",
+    )
+    keyword_weight: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Weight for keyword search in hybrid fusion (0.0–1.0)",
+    )
+    rerank: bool | None = Field(
+        default=None,
+        description="Whether to enable cross-encoder reranking",
+    )
+    answer_cache: bool | None = Field(
+        default=None,
+        description="Whether to use the answer cache",
+    )
+    max_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        le=8192,
+        description="Maximum tokens in the generated answer (1–8192)",
+    )
+
+
 class QueryRequest(BaseModel):
     """Request model for synchronous RAG query.
 
@@ -34,7 +84,7 @@ class QueryRequest(BaseModel):
         default=None,
         description="Tenant identifier for multi-tenancy",
     )
-    options: dict | None = Field(
+    options: QueryOptions | None = Field(
         default=None,
         description="Optional configuration overrides (model, temperature, etc.)",
     )
@@ -69,7 +119,7 @@ class StreamQueryRequest(BaseModel):
         default=None,
         description="Tenant identifier for multi-tenancy",
     )
-    options: dict | None = Field(
+    options: QueryOptions | None = Field(
         default=None,
         description="Optional configuration overrides",
     )

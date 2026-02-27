@@ -288,11 +288,10 @@ mod tests {
         let result = AppStateBuilder::new().build();
         assert!(result.is_err());
 
-        if let Err(AppStateBuilderError::MissingComponent(name)) = result {
-            assert_eq!(name, "hybrid");
-        } else {
-            panic!("Expected MissingComponent error");
-        }
+        let Err(AppStateBuilderError::MissingComponent(name)) = result else {
+            panic!("Expected MissingComponent error, got: {result:?}");
+        };
+        assert_eq!(name, "hybrid");
     }
 
     #[test]

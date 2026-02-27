@@ -87,7 +87,7 @@ pub async fn retrieve_multi(
 
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id,
     // mirroring the single-query route behavior.
-    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref())?;
 
     let user_context = extract_user_context(&headers, tenant_id);
 

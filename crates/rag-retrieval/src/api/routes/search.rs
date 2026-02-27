@@ -63,7 +63,7 @@ pub async fn retrieve(
     );
 
     // Extract tenant_id from X-Tenant-Id header or filters.tenant_id
-    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref())?;
 
     let user_context = extract_user_context(&headers, tenant_id);
 
@@ -112,8 +112,8 @@ pub async fn retrieve(
 
 /// Extract `tenant_id` from the `X-Tenant-Id` header or the `filters.tenant_id` field.
 ///
-/// Falls back to `Uuid::nil()` if neither is present.
-pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json::Value>) -> Uuid {
+/// Returns an error if neither is present or valid.
+pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json::Value>) -> Result<Uuid, ApiError> {
     headers
         .get("X-Tenant-Id")
         .and_then(|v| v.to_str().ok())
@@ -124,7 +124,7 @@ pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
         })
-        .unwrap_or_else(Uuid::nil)
+        .ok_or_else(|| ApiError::bad_request("Missing or invalid tenant ID: X-Tenant-Id header or filters.tenant_id is required"))
 }
 
 /// Build user context from request headers plus tenant scope.
@@ -1153,7 +1153,7 @@ mod tests {
                     &vec!["engineering".to_string(), "product".to_string()]
                 );
             }
-            MatchType::Value(_) => panic!("Expected MatchType::Any"),
+            MatchType::Value(v) => panic!("Expected MatchType::Any, got Value({v:?})"),
         }
     }
 
@@ -1257,7 +1257,7 @@ mod tests {
         assert_eq!(result.must[0].key, "document_id");
         match &result.must[0].match_type {
             MatchType::Value(v) => assert_eq!(v, &doc_id.to_string()),
-            MatchType::Any(_) => panic!("Expected MatchType::Value"),
+            MatchType::Any(v) => panic!("Expected MatchType::Value, got Any({v:?})"),
         }
     }
 

@@ -78,7 +78,7 @@ impl WorkerPool {
         clippy::unused_async
     )]
     pub async fn start(&mut self, queue: JobQueue) -> Result<(), QueueError> {
-        let queue = Arc::new(tokio::sync::Mutex::new(queue));
+        let queue = Arc::new(queue);
         let semaphore = Arc::new(Semaphore::new(self.config.concurrency));
 
         info!(
@@ -106,7 +106,6 @@ impl WorkerPool {
 
                     // Try to dequeue a job
                     let job = {
-                        let mut queue = queue.lock().await;
                         match queue.dequeue(config.dequeue_timeout).await {
                             Ok(job) => job,
                             Err(e) => {
@@ -130,8 +129,6 @@ impl WorkerPool {
 
                         #[allow(clippy::cast_possible_truncation)] // elapsed millis fits in u64
                         let duration_ms = start.elapsed().as_millis() as u64;
-
-                        let mut queue = queue.lock().await;
 
                         match result {
                             Ok(Ok(_data)) => {

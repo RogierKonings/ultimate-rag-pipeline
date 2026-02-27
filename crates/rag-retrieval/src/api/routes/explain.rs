@@ -91,7 +91,7 @@ pub async fn explain(
     let query_id = Uuid::new_v4();
 
     // Extract tenant and user context
-    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref());
+    let tenant_id = extract_tenant_id(&headers, request.filters.as_ref())?;
     let user_context = extract_user_context(&headers, tenant_id);
 
     // Admin-only guard

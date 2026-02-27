@@ -274,21 +274,25 @@ mod tests {
 
         // Verify the condition contains Keywords match
         let condition = &qdrant_filter.must[0];
-        if let Some(ConditionOneOf::Field(field_condition)) = &condition.condition_one_of {
-            assert_eq!(field_condition.key, "allowed_groups");
-            if let Some(Match {
-                match_value: Some(MatchValue::Keywords(keywords)),
-            }) = &field_condition.r#match
-            {
-                assert_eq!(keywords.strings.len(), 2);
-                assert!(keywords.strings.contains(&"engineering".to_string()));
-                assert!(keywords.strings.contains(&"product".to_string()));
-            } else {
-                panic!("Expected Keywords match value");
-            }
-        } else {
-            panic!("Expected Field condition");
-        }
+        let Some(ConditionOneOf::Field(field_condition)) = &condition.condition_one_of else {
+            panic!(
+                "Expected Field condition, got: {:?}",
+                condition.condition_one_of
+            );
+        };
+        assert_eq!(field_condition.key, "allowed_groups");
+        let Some(Match {
+            match_value: Some(MatchValue::Keywords(keywords)),
+        }) = &field_condition.r#match
+        else {
+            panic!(
+                "Expected Keywords match value, got: {:?}",
+                field_condition.r#match
+            );
+        };
+        assert_eq!(keywords.strings.len(), 2);
+        assert!(keywords.strings.contains(&"engineering".to_string()));
+        assert!(keywords.strings.contains(&"product".to_string()));
     }
 
     #[test]

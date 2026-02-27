@@ -16,12 +16,25 @@ from api.models.usage import (
 from database.connection import get_db
 from database.models.usage import TenantQuota, TokenUsage
 from fastapi import APIRouter, Depends, HTTPException, status
+from shared.security.jwt.middleware import JWTAuthMiddleware, require_roles
+from shared.security.jwt.models import TokenClaims
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+_auth = JWTAuthMiddleware()
+
+
+async def _require_admin(
+    claims: Annotated[TokenClaims, Depends(_auth.get_current_user)],
+) -> TokenClaims:
+    """Require admin or service_account role for admin endpoints."""
+    return await require_roles("admin", "service_account")(claims)
+
+AdminAuthDep = Annotated[TokenClaims, Depends(_require_admin)]
 
 
 @router.get(
@@ -33,6 +46,7 @@ DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 async def get_usage_stats(
     tenant_id: str,
     period: Literal["day", "week", "month"] = "month",
+    _: AdminAuthDep = None,
     db: DbSessionDep = None,
 ) -> UsageStatsResponse:
     """Get token usage statistics for a tenant.
@@ -117,6 +131,7 @@ async def get_usage_stats(
 )
 async def get_quota_status(
     tenant_id: str,
+    _: AdminAuthDep = None,
     db: DbSessionDep = None,
 ) -> QuotaStatusResponse:
     """Get current quota status for a tenant.
@@ -191,6 +206,7 @@ async def get_quota_status(
 async def set_quota(
     tenant_id: str,
     request: QuotaUpdateRequest,
+    _: AdminAuthDep = None,
     db: DbSessionDep = None,
 ) -> QuotaUpdateResponse:
     """Set or update quota configuration for a tenant.
@@ -241,6 +257,7 @@ async def set_quota(
 )
 async def delete_quota(
     tenant_id: str,
+    _: AdminAuthDep = None,
     db: DbSessionDep = None,
 ) -> dict:
     """Delete quota configuration for a tenant.

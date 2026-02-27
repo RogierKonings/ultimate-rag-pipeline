@@ -286,6 +286,47 @@ impl CacheClient {
         Ok(())
     }
 
+    /// Delete all keys matching a glob pattern using Redis SCAN + DEL.
+    ///
+    /// Iterates with a cursor loop so it never blocks the Redis server.
+    /// Returns the total number of keys deleted.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the SCAN or DEL commands fail.
+    #[instrument(skip(self), fields(pattern = %pattern))]
+    pub async fn scan_delete(&self, pattern: &str) -> Result<u64> {
+        let mut conn = self.conn.clone();
+        let full_pattern = self.prefixed_key(pattern);
+        let mut cursor: u64 = 0;
+        let mut total_deleted: u64 = 0;
+
+        loop {
+            let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&full_pattern)
+                .arg("COUNT")
+                .arg(100u64)
+                .query_async(&mut conn)
+                .await
+                .map_err(CacheError::Redis)?;
+
+            if !keys.is_empty() {
+                let deleted: i64 = conn.del(keys.as_slice()).await?;
+                total_deleted += deleted as u64;
+            }
+
+            cursor = next_cursor;
+            if cursor == 0 {
+                break;
+            }
+        }
+
+        debug!(pattern = %pattern, total_deleted = total_deleted, "SCAN-based key deletion complete");
+        Ok(total_deleted)
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────

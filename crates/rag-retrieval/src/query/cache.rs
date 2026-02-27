@@ -381,24 +381,16 @@ impl QueryCache {
             return Ok(());
         }
 
-        // Build pattern for tenant keys
-        // Note: This requires scanning keys which can be expensive
-        // A production implementation might use a different strategy like
-        // storing tenant key sets or using Redis key expiration
         let pattern = format!("{}:{}:*", self.config.key_prefix, tenant_id);
         debug!(pattern = %pattern, "Invalidating all query cache entries for tenant");
 
-        // For now, we log a warning that this operation is not fully implemented
-        // A complete implementation would require Redis SCAN command support
-        warn!(
-            tenant_id = %tenant_id,
-            "Tenant-wide cache invalidation not fully implemented; \
-             individual keys will expire based on TTL"
-        );
+        let deleted = self
+            .cache_client
+            .scan_delete(&pattern)
+            .await
+            .map_err(|e| RetrievalError::cache(format!("Failed to scan-delete tenant cache: {e}")))?;
 
-        // TODO: Implement SCAN-based key deletion when CacheClient supports it
-        // For now, rely on TTL expiration
-
+        debug!(tenant_id = %tenant_id, deleted = deleted, "Tenant cache invalidation complete");
         Ok(())
     }
 
