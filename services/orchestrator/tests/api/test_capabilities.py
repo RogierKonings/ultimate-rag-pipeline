@@ -257,7 +257,7 @@ class TestCapabilitiesEndpoint:
 
         assert response.json()["features"]["workflow"] is False
 
-    @patch("api.routes.capabilities.get_config")
+    @patch("config.get_config")
     def test_answer_verification_reflects_config(self, mock_get_config, client, app):
         """answer_verification mirrors the config flag."""
         mock_config = MagicMock()

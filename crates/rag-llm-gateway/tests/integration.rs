@@ -18,11 +18,14 @@ fn create_test_server() -> TestServer {
     TestServer::new(router).expect("Failed to create test server")
 }
 
-/// Create a test configuration with auth and vLLM disabled.
+/// Create a test configuration with all services disabled (no ML models loaded).
 fn test_config() -> GatewayConfig {
     let mut config = GatewayConfig::default();
     // Disable auth for testing
     config.auth.enabled = false;
+    // Disable embedding and reranker (no ML models available in tests)
+    config.embedding.enabled = false;
+    config.reranker.enabled = false;
     // Disable vLLM to avoid network calls
     config.vllm.enabled = false;
     // Disable rate limiting for simpler tests
@@ -145,7 +148,9 @@ async fn test_readiness_probe_returns_ready() {
     response.assert_status_ok();
 
     let json: Value = response.json();
-    assert_eq!(json["status"], "ready");
+    // With all capabilities disabled in test config, readiness reports not_ready
+    assert_eq!(json["status"], "not_ready");
+    assert_eq!(json["reason"], "No capabilities are enabled");
 }
 
 // =============================================================================

@@ -185,7 +185,8 @@ class TestConnectionAndReconnection:
             mock_client = AsyncMock()
             mock_client.ping = AsyncMock(return_value=True)
             mock_pubsub = AsyncMock()
-            mock_client.pubsub.return_value = mock_pubsub
+            # pubsub() is a sync call on the real redis client, so use MagicMock
+            mock_client.pubsub = MagicMock(return_value=mock_pubsub)
             mock_redis_mod.from_url.return_value = mock_client
 
             result = await listener._connect()

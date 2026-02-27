@@ -44,7 +44,7 @@ def fast_retry(monkeypatch):
     async def fast_sleep(delay):
         pass  # Skip the delay in tests
 
-    monkeypatch.setattr("gateway.client.asyncio.sleep", fast_sleep)
+    monkeypatch.setattr("gateway.retry.asyncio.sleep", fast_sleep)
 
 
 @pytest.fixture

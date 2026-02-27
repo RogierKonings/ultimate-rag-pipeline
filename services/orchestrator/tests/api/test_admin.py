@@ -37,11 +37,19 @@ def mock_db_session():
     return session
 
 
+@pytest.fixture
+def mock_request():
+    """Create mock FastAPI Request (no Redis available)."""
+    req = MagicMock()
+    req.app.state = MagicMock(spec=[])  # empty spec → no session_manager
+    return req
+
+
 class TestGetUsageStats:
     """Tests for GET /admin/usage/{tenant_id}."""
 
     @pytest.mark.asyncio
-    async def test_get_usage_stats_empty(self, mock_db_session):
+    async def test_get_usage_stats_empty(self, mock_db_session, mock_request):
         """Test getting usage stats when no data exists."""
         from api.routes.admin import get_usage_stats
 
@@ -52,6 +60,7 @@ class TestGetUsageStats:
 
         response = await get_usage_stats(
             tenant_id="tenant-123",
+            request=mock_request,
             period="month",
             db=mock_db_session,
         )
@@ -62,7 +71,7 @@ class TestGetUsageStats:
         assert response.total_tokens == 0
 
     @pytest.mark.asyncio
-    async def test_get_usage_stats_with_data(self, mock_db_session):
+    async def test_get_usage_stats_with_data(self, mock_db_session, mock_request):
         """Test getting usage stats with existing data."""
         from api.routes.admin import get_usage_stats
 
@@ -85,6 +94,7 @@ class TestGetUsageStats:
 
         response = await get_usage_stats(
             tenant_id="tenant-123",
+            request=mock_request,
             period="month",
             db=mock_db_session,
         )
@@ -97,7 +107,7 @@ class TestGetUsageStats:
         assert response.total_tokens == 4500
 
     @pytest.mark.asyncio
-    async def test_get_usage_stats_day_period(self, mock_db_session):
+    async def test_get_usage_stats_day_period(self, mock_db_session, mock_request):
         """Test getting usage stats for day period."""
         from api.routes.admin import get_usage_stats
 
@@ -107,6 +117,7 @@ class TestGetUsageStats:
 
         response = await get_usage_stats(
             tenant_id="tenant-123",
+            request=mock_request,
             period="day",
             db=mock_db_session,
         )
@@ -115,7 +126,7 @@ class TestGetUsageStats:
         assert response.start_date == response.end_date
 
     @pytest.mark.asyncio
-    async def test_get_usage_stats_week_period(self, mock_db_session):
+    async def test_get_usage_stats_week_period(self, mock_db_session, mock_request):
         """Test getting usage stats for week period."""
         from api.routes.admin import get_usage_stats
 
@@ -125,6 +136,7 @@ class TestGetUsageStats:
 
         response = await get_usage_stats(
             tenant_id="tenant-123",
+            request=mock_request,
             period="week",
             db=mock_db_session,
         )
@@ -137,7 +149,7 @@ class TestGetQuotaStatus:
     """Tests for GET /admin/usage/{tenant_id}/quota."""
 
     @pytest.mark.asyncio
-    async def test_get_quota_status_no_config(self, mock_db_session):
+    async def test_get_quota_status_no_config(self, mock_db_session, mock_request):
         """Test getting quota status when no config exists."""
         from api.routes.admin import get_quota_status
 
@@ -153,6 +165,7 @@ class TestGetQuotaStatus:
 
         response = await get_quota_status(
             tenant_id="tenant-123",
+            request=mock_request,
             db=mock_db_session,
         )
 
@@ -164,7 +177,7 @@ class TestGetQuotaStatus:
         assert response.is_over_limit is False
 
     @pytest.mark.asyncio
-    async def test_get_quota_status_with_limit(self, mock_db_session):
+    async def test_get_quota_status_with_limit(self, mock_db_session, mock_request):
         """Test getting quota status with limit configured."""
         from api.routes.admin import get_quota_status
 
@@ -185,6 +198,7 @@ class TestGetQuotaStatus:
 
         response = await get_quota_status(
             tenant_id="tenant-123",
+            request=mock_request,
             db=mock_db_session,
         )
 
@@ -196,7 +210,7 @@ class TestGetQuotaStatus:
         assert response.is_over_limit is False
 
     @pytest.mark.asyncio
-    async def test_get_quota_status_over_limit(self, mock_db_session):
+    async def test_get_quota_status_over_limit(self, mock_db_session, mock_request):
         """Test getting quota status when over limit."""
         from api.routes.admin import get_quota_status
 
@@ -217,6 +231,7 @@ class TestGetQuotaStatus:
 
         response = await get_quota_status(
             tenant_id="tenant-123",
+            request=mock_request,
             db=mock_db_session,
         )
 

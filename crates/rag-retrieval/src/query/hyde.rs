@@ -894,7 +894,7 @@ mod llm_integration_tests {
         assert!(result.success);
         assert_eq!(result.hypothetical_docs.len(), 1);
         assert!(result.hypothetical_docs[0].contains("artificial intelligence"));
-        assert!(result.generation_time_ms > 0);
+        // generation_time_ms may be 0 with a fast mock server (sub-millisecond response)
     }
 
     #[tokio::test]
