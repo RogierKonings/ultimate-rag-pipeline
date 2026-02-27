@@ -380,6 +380,14 @@ impl IndexCoordinator {
         if !new_chunks.is_empty() {
             if let Err(e) = self.chunk_repo.create_many(&new_chunks).await {
                 warn!(error = %e, "Failed to write chunks to PostgreSQL");
+                // Mark document as failed so it doesn't stay stuck in "processing"
+                if let Err(status_err) = self
+                    .document_repo
+                    .update_status(doc_id, "failed", Some(&format!("Chunk insert failed: {e}")))
+                    .await
+                {
+                    warn!(error = %status_err, "Failed to update document status to failed");
+                }
                 return WriteResult::failure(format!("Chunk insert failed: {e}"), start.elapsed());
             }
         }

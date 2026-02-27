@@ -744,8 +744,19 @@ impl IngestionJobHandler {
     }
 
     /// Parse bytes into text based on file extension.
-    #[allow(clippy::unused_self)] // kept as method for handler API consistency
+    ///
+    /// Sanitizes the output by stripping null bytes (`\0`) which can appear in
+    /// PDF-extracted text and are rejected by `PostgreSQL` text columns.
     fn parse_bytes(&self, bytes: &[u8], extension: &str) -> Result<String, String> {
+        let text = self.parse_bytes_raw(bytes, extension)?;
+        // Strip null bytes that PDF parsers can produce — PostgreSQL text columns
+        // reject them with "invalid byte sequence for encoding UTF8: 0x00".
+        Ok(text.replace('\0', ""))
+    }
+
+    /// Parse bytes into text without sanitization.
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
+    fn parse_bytes_raw(&self, bytes: &[u8], extension: &str) -> Result<String, String> {
         match extension {
             "pdf" => {
                 let parser = PdfParser::default();
