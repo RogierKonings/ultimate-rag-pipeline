@@ -432,4 +432,238 @@ mod tests {
             })
         );
     }
+
+    // =========================================================================
+    // Error-path and edge-case tests (TEST-001)
+    // =========================================================================
+
+    #[test]
+    fn test_qdrant_builder_empty_any_of_values() {
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::any_of("allowed_groups", Vec::new()));
+
+        let result = QdrantFilterBuilder::build(&filter);
+        assert!(result.is_some());
+
+        let qdrant_filter = result.unwrap();
+        assert_eq!(qdrant_filter.must.len(), 1);
+
+        // Verify it produces a Keywords match with empty strings list
+        let condition = &qdrant_filter.must[0];
+        let Some(ConditionOneOf::Field(field_condition)) = &condition.condition_one_of else {
+            panic!(
+                "Expected Field condition, got: {:?}",
+                condition.condition_one_of
+            );
+        };
+        assert_eq!(field_condition.key, "allowed_groups");
+        let Some(Match {
+            match_value: Some(MatchValue::Keywords(keywords)),
+        }) = &field_condition.r#match
+        else {
+            panic!(
+                "Expected Keywords match value, got: {:?}",
+                field_condition.r#match
+            );
+        };
+        assert!(keywords.strings.is_empty());
+    }
+
+    #[test]
+    fn test_opensearch_builder_empty_any_of_values() {
+        let filter =
+            UnifiedFilter::new().must(FilterCondition::any_of("allowed_groups", Vec::new()));
+
+        let clauses = OpenSearchFilterBuilder::build(&filter);
+        assert_eq!(clauses.len(), 1);
+
+        // Should produce a terms clause with an empty array
+        assert_eq!(
+            clauses[0],
+            json!({
+                "terms": {
+                    "allowed_groups": []
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_qdrant_builder_empty_string_values() {
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["".into(), " ".into(), "engineering".into()],
+        ));
+
+        let result = QdrantFilterBuilder::build(&filter);
+        assert!(result.is_some());
+
+        let qdrant_filter = result.unwrap();
+        let Some(ConditionOneOf::Field(field_condition)) =
+            &qdrant_filter.must[0].condition_one_of
+        else {
+            panic!(
+                "Expected Field condition, got: {:?}",
+                qdrant_filter.must[0].condition_one_of
+            );
+        };
+        let Some(Match {
+            match_value: Some(MatchValue::Keywords(keywords)),
+        }) = &field_condition.r#match
+        else {
+            panic!(
+                "Expected Keywords match value, got: {:?}",
+                field_condition.r#match
+            );
+        };
+        // Empty/whitespace strings are passed through unchanged
+        assert_eq!(keywords.strings.len(), 3);
+        assert!(keywords.strings.contains(&String::new()));
+        assert!(keywords.strings.contains(&" ".to_string()));
+        assert!(keywords.strings.contains(&"engineering".to_string()));
+    }
+
+    #[test]
+    fn test_opensearch_builder_empty_string_values() {
+        let filter = UnifiedFilter::new().must(FilterCondition::any_of(
+            "allowed_groups",
+            vec!["".into(), " ".into(), "engineering".into()],
+        ));
+
+        let clauses = OpenSearchFilterBuilder::build(&filter);
+        assert_eq!(clauses.len(), 1);
+
+        assert_eq!(
+            clauses[0],
+            json!({
+                "terms": {
+                    "allowed_groups": ["", " ", "engineering"]
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_qdrant_builder_should_only() {
+        let filter = UnifiedFilter::new()
+            .should(FilterCondition::value("visibility", "public"))
+            .should(FilterCondition::value("visibility", "tenant"));
+
+        let result = QdrantFilterBuilder::build(&filter);
+        assert!(result.is_some());
+
+        let qdrant_filter = result.unwrap();
+        assert!(qdrant_filter.must.is_empty());
+        assert_eq!(qdrant_filter.should.len(), 2);
+        assert!(qdrant_filter.must_not.is_empty());
+    }
+
+    #[test]
+    fn test_qdrant_builder_must_not_only() {
+        let filter = UnifiedFilter::new()
+            .must_not(FilterCondition::value("status", "deleted"))
+            .must_not(FilterCondition::any_of("denied_users", vec!["u1".into()]));
+
+        let result = QdrantFilterBuilder::build(&filter);
+        assert!(result.is_some());
+
+        let qdrant_filter = result.unwrap();
+        assert!(qdrant_filter.must.is_empty());
+        assert!(qdrant_filter.should.is_empty());
+        assert_eq!(qdrant_filter.must_not.len(), 2);
+    }
+
+    #[test]
+    fn test_qdrant_builder_special_chars_in_key() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("tenant_id", "550e8400-e29b-41d4-a716-446655440000"));
+
+        let result = QdrantFilterBuilder::build(&filter);
+        assert!(result.is_some());
+
+        let qdrant_filter = result.unwrap();
+        let Some(ConditionOneOf::Field(field_condition)) =
+            &qdrant_filter.must[0].condition_one_of
+        else {
+            panic!(
+                "Expected Field condition, got: {:?}",
+                qdrant_filter.must[0].condition_one_of
+            );
+        };
+        assert_eq!(field_condition.key, "tenant_id");
+
+        let Some(Match {
+            match_value: Some(MatchValue::Keyword(value)),
+        }) = &field_condition.r#match
+        else {
+            panic!(
+                "Expected Keyword match value, got: {:?}",
+                field_condition.r#match
+            );
+        };
+        assert_eq!(value, "550e8400-e29b-41d4-a716-446655440000");
+    }
+
+    #[test]
+    fn test_opensearch_builder_special_chars_in_key() {
+        let filter = UnifiedFilter::new()
+            .must(FilterCondition::value("tenant_id", "550e8400-e29b-41d4-a716-446655440000"));
+
+        let clauses = OpenSearchFilterBuilder::build(&filter);
+        assert_eq!(clauses.len(), 1);
+        assert_eq!(
+            clauses[0],
+            json!({
+                "term": {
+                    "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn test_filter_condition_value_match_produces_keyword() {
+        let filter = UnifiedFilter::new().must(FilterCondition::value("status", "active"));
+
+        let result = QdrantFilterBuilder::build(&filter).unwrap();
+        let Some(ConditionOneOf::Field(field_condition)) = &result.must[0].condition_one_of
+        else {
+            panic!(
+                "Expected Field condition, got: {:?}",
+                result.must[0].condition_one_of
+            );
+        };
+
+        // Value match should produce Keyword (not Keywords)
+        let Some(Match {
+            match_value: Some(MatchValue::Keyword(kw)),
+        }) = &field_condition.r#match
+        else {
+            panic!(
+                "Expected Keyword match value, got: {:?}",
+                field_condition.r#match
+            );
+        };
+        assert_eq!(kw, "active");
+    }
+
+    #[test]
+    fn test_opensearch_builder_only_must_not() {
+        let filter =
+            UnifiedFilter::new().must_not(FilterCondition::value("status", "deleted"));
+
+        let clauses = OpenSearchFilterBuilder::build(&filter);
+        assert_eq!(clauses.len(), 1);
+
+        assert_eq!(
+            clauses[0],
+            json!({
+                "bool": {
+                    "must_not": [
+                        { "term": { "status": "deleted" } }
+                    ]
+                }
+            })
+        );
+    }
 }

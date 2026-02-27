@@ -3,6 +3,7 @@
 Reference: US-10.5.4 - Token Usage Accounting
 """
 
+import json as _json
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
@@ -15,11 +16,14 @@ from api.models.usage import (
 )
 from database.connection import get_db
 from database.models.usage import TenantQuota, TokenUsage
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from shared.security.jwt.middleware import JWTAuthMiddleware, require_roles
 from shared.security.jwt.models import TokenClaims
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Cache TTL for admin usage aggregation queries (seconds)
+_USAGE_CACHE_TTL = 120
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -37,6 +41,14 @@ async def _require_admin(
 AdminAuthDep = Annotated[TokenClaims, Depends(_require_admin)]
 
 
+def _get_redis(request: Request):
+    """Extract the Redis client from app state (session manager), if available."""
+    sm = getattr(request.app.state, "session_manager", None)
+    if sm and hasattr(sm, "store") and hasattr(sm.store, "_redis"):
+        return sm.store._redis
+    return None
+
+
 @router.get(
     "/usage/{tenant_id}",
     response_model=UsageStatsResponse,
@@ -45,6 +57,7 @@ AdminAuthDep = Annotated[TokenClaims, Depends(_require_admin)]
 )
 async def get_usage_stats(
     tenant_id: str,
+    request: Request,
     period: Literal["day", "week", "month"] = "month",
     _: AdminAuthDep = None,
     db: DbSessionDep = None,
@@ -59,6 +72,17 @@ async def get_usage_stats(
     Returns:
         Usage statistics breakdown by model.
     """
+    # Try Redis cache first
+    redis = _get_redis(request)
+    cache_key = f"admin:usage:{tenant_id}:{period}"
+    if redis:
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return UsageStatsResponse(**_json.loads(cached))
+        except Exception:
+            pass  # Fall through to DB on cache errors
+
     end_date = datetime.now(UTC).date()
 
     if period == "day":
@@ -110,7 +134,7 @@ async def get_usage_stats(
         total_completion += completion
         total_embedding += embedding
 
-    return UsageStatsResponse(
+    response = UsageStatsResponse(
         tenant_id=tenant_id,
         period=period,
         start_date=start_date,
@@ -122,6 +146,15 @@ async def get_usage_stats(
         total_tokens=total_prompt + total_completion + total_embedding,
     )
 
+    # Cache the result in Redis
+    if redis:
+        try:
+            await redis.setex(cache_key, _USAGE_CACHE_TTL, response.model_dump_json())
+        except Exception:
+            pass  # Non-critical; DB result is still returned
+
+    return response
+
 
 @router.get(
     "/usage/{tenant_id}/quota",
@@ -131,6 +164,7 @@ async def get_usage_stats(
 )
 async def get_quota_status(
     tenant_id: str,
+    request: Request,
     _: AdminAuthDep = None,
     db: DbSessionDep = None,
 ) -> QuotaStatusResponse:
@@ -143,6 +177,17 @@ async def get_quota_status(
     Returns:
         Current quota configuration and usage status.
     """
+    # Try Redis cache first
+    redis = _get_redis(request)
+    cache_key = f"admin:quota:{tenant_id}"
+    if redis:
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return QuotaStatusResponse(**_json.loads(cached))
+        except Exception:
+            pass
+
     # Get quota configuration
     quota_result = await db.execute(select(TenantQuota).where(TenantQuota.tenant_id == tenant_id))
     quota_config = quota_result.scalar_one_or_none()
@@ -165,7 +210,7 @@ async def get_quota_status(
 
     # Build response
     if quota_config is None:
-        return QuotaStatusResponse(
+        response = QuotaStatusResponse(
             tenant_id=tenant_id,
             quota_enabled=False,
             monthly_limit=None,
@@ -175,26 +220,35 @@ async def get_quota_status(
             alert_threshold_percent=80,
             is_over_limit=False,
         )
+    else:
+        remaining = None
+        usage_percent = None
+        is_over_limit = False
 
-    remaining = None
-    usage_percent = None
-    is_over_limit = False
+        if quota_config.quota_enabled and quota_config.monthly_token_limit is not None:
+            remaining = max(0, quota_config.monthly_token_limit - current_usage)
+            usage_percent = (current_usage / quota_config.monthly_token_limit) * 100
+            is_over_limit = current_usage > quota_config.monthly_token_limit
 
-    if quota_config.quota_enabled and quota_config.monthly_token_limit is not None:
-        remaining = max(0, quota_config.monthly_token_limit - current_usage)
-        usage_percent = (current_usage / quota_config.monthly_token_limit) * 100
-        is_over_limit = current_usage > quota_config.monthly_token_limit
+        response = QuotaStatusResponse(
+            tenant_id=tenant_id,
+            quota_enabled=quota_config.quota_enabled,
+            monthly_limit=quota_config.monthly_token_limit,
+            current_usage=current_usage,
+            remaining=remaining,
+            usage_percent=round(usage_percent, 2) if usage_percent is not None else None,
+            alert_threshold_percent=quota_config.alert_threshold_percent,
+            is_over_limit=is_over_limit,
+        )
 
-    return QuotaStatusResponse(
-        tenant_id=tenant_id,
-        quota_enabled=quota_config.quota_enabled,
-        monthly_limit=quota_config.monthly_token_limit,
-        current_usage=current_usage,
-        remaining=remaining,
-        usage_percent=round(usage_percent, 2) if usage_percent is not None else None,
-        alert_threshold_percent=quota_config.alert_threshold_percent,
-        is_over_limit=is_over_limit,
-    )
+    # Cache the result in Redis
+    if redis:
+        try:
+            await redis.setex(cache_key, _USAGE_CACHE_TTL, response.model_dump_json())
+        except Exception:
+            pass
+
+    return response
 
 
 @router.put(

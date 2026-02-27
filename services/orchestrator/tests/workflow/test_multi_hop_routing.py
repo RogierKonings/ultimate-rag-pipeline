@@ -486,3 +486,137 @@ class TestPatternCoverage:
 
         for pattern in SEQUENTIAL_PATTERNS:
             re.compile(pattern)
+
+
+# =============================================================================
+# Edge-Case and Regex Safety Tests (TEST-003)
+# =============================================================================
+
+
+class TestRoutingEdgeCases:
+    """Edge-case tests for routing classification."""
+
+    def test_empty_string_returns_simple(self):
+        """Empty query should return simple strategy, not crash."""
+        strategy, multi_hop_type = _classify_query("")
+        assert strategy == "simple"
+        assert multi_hop_type is None
+
+    def test_whitespace_only_returns_simple(self):
+        """Whitespace-only query should return simple strategy."""
+        strategy, _ = _classify_query("   ")
+        assert strategy == "simple"
+
+    def test_uppercase_query_still_matches(self):
+        """All-uppercase query should still be classified correctly."""
+        strategy, multi_hop_type = _classify_query("COMPARE PYTHON AND JAVA")
+        assert strategy == "comparison"
+        assert multi_hop_type == "comparison"
+
+    def test_mixed_case_query(self):
+        """Mixed case should not affect classification."""
+        strategy, _ = _classify_query("List All The API Endpoints")
+        assert strategy == "aggregation"
+
+
+class TestNoRetrievalPriorityFix:
+    """Tests verifying that no_retrieval doesn't swallow retrieval queries (CQ-005)."""
+
+    @pytest.mark.parametrize(
+        "query,expected_strategy",
+        [
+            # Greeting + comparison: comparison should win
+            ("Hi, what is the difference between X and Y?", "comparison"),
+            # Greeting + aggregation: aggregation should win
+            ("Hey, can you list all configuration options?", "aggregation"),
+            # Greeting + sequential: multi_hop should win
+            ("Hello, first configure the DB, then deploy", "multi_hop"),
+            # Thanks + comparison: comparison should win
+            ("Thanks, can you compare A and B?", "comparison"),
+            # Pure greeting should still be no_retrieval
+            ("Hello!", "no_retrieval"),
+            ("Thanks!", "no_retrieval"),
+            ("Hi, how are you?", "no_retrieval"),
+        ],
+    )
+    def test_retrieval_patterns_take_priority(self, query: str, expected_strategy: str):
+        """Retrieval-needed patterns must take priority over no_retrieval."""
+        strategy, _ = _classify_query(query)
+        assert strategy == expected_strategy
+
+    def test_greeting_only_still_no_retrieval(self):
+        """A pure greeting with no retrieval indicators stays no_retrieval."""
+        strategy, _ = _classify_query("Hello there!")
+        assert strategy == "no_retrieval"
+
+    def test_bye_with_question(self):
+        """'Bye, but what about X vs Y?' should route to comparison."""
+        strategy, _ = _classify_query("Bye, but what is the difference between REST and gRPC?")
+        assert strategy == "comparison"
+
+
+class TestMultiplePatternConflicts:
+    """Tests for queries matching multiple pattern groups simultaneously."""
+
+    def test_comparison_and_aggregation_overlap(self):
+        """Query with both comparison and aggregation keywords classifies as comparison."""
+        # Comparison patterns are checked before aggregation in _detect_multi_hop_type
+        strategy, multi_hop_type = _classify_query(
+            "Compare and list all differences between Python and Java"
+        )
+        assert strategy == "comparison"
+        assert multi_hop_type == "comparison"
+
+    def test_aggregation_and_complex_overlap(self):
+        """Aggregation patterns take priority over complex indicators."""
+        strategy, multi_hop_type = _classify_query(
+            "Summarize the relationship between all modules"
+        )
+        assert strategy == "aggregation"
+        assert multi_hop_type == "aggregation"
+
+
+class TestRegexSafety:
+    """Tests for regex performance and safety."""
+
+    def test_long_query_does_not_hang(self):
+        """Verify classification of a long query completes quickly."""
+        import time
+
+        # 2000-char query with no pattern matches
+        long_query = "What is the meaning of " + "word " * 400
+
+        start = time.monotonic()
+        strategy, _ = _classify_query(long_query)
+        elapsed = time.monotonic() - start
+
+        assert strategy == "simple"
+        assert elapsed < 1.0, f"Classification took {elapsed:.2f}s for a long query"
+
+    def test_multi_entity_pattern_on_long_input(self):
+        """The multi-entity regex should not cause catastrophic backtracking."""
+        import time
+
+        # Worst case for greedy patterns: many commas and "and" keywords
+        adversarial = ", ".join(f"item{i}" for i in range(100)) + " and final"
+        query = f"Tell me about {adversarial}"
+
+        start = time.monotonic()
+        _classify_query(query)
+        elapsed = time.monotonic() - start
+
+        assert elapsed < 1.0, f"Multi-entity pattern took {elapsed:.2f}s"
+
+    def test_both_and_pattern_on_long_input(self):
+        """The 'both ... and ...' regex should complete quickly on long input."""
+        import time
+
+        # "both X and Y" with lots of words between
+        filler = " ".join(f"w{i}" for i in range(200))
+        query = f"both {filler} and something"
+
+        start = time.monotonic()
+        _classify_query(query)
+        elapsed = time.monotonic() - start
+
+        assert elapsed < 1.0, f"'Both...and' pattern took {elapsed:.2f}s"

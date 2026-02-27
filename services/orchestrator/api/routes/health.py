@@ -114,6 +114,22 @@ async def health_check(request: Request) -> HealthResponse:
             ),
         )
 
+    # Check cache invalidation listener
+    cache_invalidation_listener = getattr(
+        request.app.state, "cache_invalidation_listener", None
+    )
+    if cache_invalidation_listener is not None:
+        listener_running = cache_invalidation_listener.is_running
+        components.append(
+            ComponentHealth(
+                name="cache_invalidation_listener",
+                status="healthy" if listener_running else "degraded",
+                message="Listening" if listener_running else "Task not running",
+            ),
+        )
+        if not listener_running:
+            overall_healthy = False
+
     # Determine overall status
     if overall_healthy:
         overall_status = "healthy"

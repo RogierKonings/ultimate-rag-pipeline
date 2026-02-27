@@ -133,12 +133,9 @@ def _classify_query(query: str) -> tuple[str, str | None]:
     """
     query_lower = query.lower().strip()
 
-    # Check for no_retrieval patterns (greetings, etc.) - word boundary matching
-    for pattern in NO_RETRIEVAL_PATTERNS:
-        if re.search(pattern, query_lower):
-            return ("no_retrieval", None)
-
-    # Check for multi-hop patterns first (US-10.4.3)
+    # Detect retrieval-needed patterns first so they take priority over greetings.
+    # This prevents queries like "Hi, compare X and Y" from being classified as
+    # no_retrieval just because "hi" appears in the text.
     multi_hop_type = _detect_multi_hop_type(query_lower)
     if multi_hop_type == "comparison":
         return ("comparison", "comparison")
@@ -147,10 +144,15 @@ def _classify_query(query: str) -> tuple[str, str | None]:
     if multi_hop_type == "sequential":
         return ("multi_hop", "sequential")
 
-    # Check for general complex query indicators - word boundary matching
+    # Check for general complex query indicators
     for indicator in COMPLEX_INDICATORS:
         if re.search(indicator, query_lower):
             return ("complex", None)
+
+    # Only classify as no_retrieval when no retrieval-needed pattern matched
+    for pattern in NO_RETRIEVAL_PATTERNS:
+        if re.search(pattern, query_lower):
+            return ("no_retrieval", None)
 
     # Default to simple retrieval
     return ("simple", None)
