@@ -2,10 +2,9 @@
 
 from unittest.mock import patch
 
-import pytest
 from api.app import _parse_cors_list, create_app
+
 from config import OrchestratorConfig
-from fastapi.testclient import TestClient
 
 
 class TestParseCORSList:

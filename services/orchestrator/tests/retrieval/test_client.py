@@ -77,7 +77,8 @@ def mock_http_client(_mock_retrieval_response):
 class TestRetrievalClientSearch:
     """Tests for RetrievalClient.search()."""
 
-    async def test_search_returns_documents(self, mock_http_client, _mock_retrieval_response):
+    @pytest.mark.usefixtures("_mock_retrieval_response")
+    async def test_search_returns_documents(self, mock_http_client):
         """Test that search() returns normalised documents."""
         with patch("retrieval.client._get_http_client", return_value=mock_http_client):
             client = RetrievalClient(top_k=10)
@@ -175,7 +176,8 @@ class TestRetrievalClientSearch:
             with pytest.raises(httpx.ConnectError):
                 await client.search("test")
 
-    async def test_search_with_degraded_response(self, _mock_degraded_response):
+    @pytest.mark.usefixtures("_mock_degraded_response")
+    async def test_search_with_degraded_response(self):
         """Test that search() correctly parses degraded retrieval response."""
         degraded_client = AsyncMock(spec=httpx.AsyncClient)
         response = MagicMock(spec=httpx.Response)

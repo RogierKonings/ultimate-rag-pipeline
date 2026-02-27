@@ -79,11 +79,14 @@ impl RerankerModel {
         let fastembed_model = resolve_reranker_model(&config.model)?;
         let model_id = fastembed_model.to_string();
 
-        let init_options = RerankInitOptions::new(fastembed_model)
-            .with_show_download_progress(true);
+        let init_options =
+            RerankInitOptions::new(fastembed_model).with_show_download_progress(true);
 
         let text_rerank = TextRerank::try_new(init_options).map_err(|e| {
-            GatewayError::Reranker(format!("Failed to load reranker model '{}': {e}", config.model))
+            GatewayError::Reranker(format!(
+                "Failed to load reranker model '{}': {e}",
+                config.model
+            ))
         })?;
 
         let elapsed = start.elapsed();
@@ -203,10 +206,7 @@ mod tests {
     fn test_resolve_reranker_model_bge_base() {
         let result = resolve_reranker_model("BAAI/bge-reranker-base");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            fastembed::RerankerModel::BGERerankerBase
-        );
+        assert_eq!(result.unwrap(), fastembed::RerankerModel::BGERerankerBase);
     }
 
     #[test]
@@ -214,10 +214,7 @@ mod tests {
         // The fastembed model code for BGERerankerV2M3 is "rozgo/bge-reranker-v2-m3"
         let result = resolve_reranker_model("rozgo/bge-reranker-v2-m3");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            fastembed::RerankerModel::BGERerankerV2M3
-        );
+        assert_eq!(result.unwrap(), fastembed::RerankerModel::BGERerankerV2M3);
     }
 
     #[test]
@@ -225,10 +222,7 @@ mod tests {
         // Users commonly use the BAAI/ prefix
         let result = resolve_reranker_model("BAAI/bge-reranker-v2-m3");
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            fastembed::RerankerModel::BGERerankerV2M3
-        );
+        assert_eq!(result.unwrap(), fastembed::RerankerModel::BGERerankerV2M3);
     }
 
     #[test]

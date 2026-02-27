@@ -102,10 +102,9 @@ pub async fn create_embeddings(
     State(state): State<Arc<AppState>>,
     Json(request): Json<EmbeddingRequest>,
 ) -> Result<Json<EmbeddingResponse>> {
-    let model = state
-        .embedding_model
-        .as_ref()
-        .ok_or_else(|| GatewayError::ServiceUnavailable("Embedding service not available".into()))?;
+    let model = state.embedding_model.as_ref().ok_or_else(|| {
+        GatewayError::ServiceUnavailable("Embedding service not available".into())
+    })?;
 
     let texts = request.input.into_vec();
     let num_texts = texts.len();
@@ -134,7 +133,12 @@ pub async fn create_embeddings(
         "Generated embeddings"
     );
 
-    metrics::record_request("embedding", "/v1/embeddings", "success", elapsed.as_secs_f64());
+    metrics::record_request(
+        "embedding",
+        "/v1/embeddings",
+        "success",
+        elapsed.as_secs_f64(),
+    );
     #[allow(clippy::cast_precision_loss)]
     metrics::EMBEDDINGS_GENERATED.inc_by(num_texts as f64);
 

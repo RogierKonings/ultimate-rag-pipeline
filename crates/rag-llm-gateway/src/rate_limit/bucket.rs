@@ -121,7 +121,8 @@ impl RateLimiter {
             }
         } else {
             let tokens_needed = 1.0 - bucket.tokens;
-            let retry_after = ((tokens_needed / f64::from(limit)) * window.as_secs_f64()).ceil() as u64;
+            let retry_after =
+                ((tokens_needed / f64::from(limit)) * window.as_secs_f64()).ceil() as u64;
 
             debug!(
                 remaining = 0,

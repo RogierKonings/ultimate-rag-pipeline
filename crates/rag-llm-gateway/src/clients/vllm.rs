@@ -21,8 +21,8 @@ pub struct VllmClient {
 impl VllmClient {
     /// Create a new vLLM client.
     pub fn new(config: VllmConfig) -> Result<Self> {
-        let client = build_http_client_with_timeout(config.timeout())
-            .map_err(GatewayError::Internal)?;
+        let client =
+            build_http_client_with_timeout(config.timeout()).map_err(GatewayError::Internal)?;
 
         Ok(Self { client, config })
     }
@@ -127,9 +127,10 @@ impl VllmClient {
             req_builder = req_builder.header(name, value);
         }
 
-        let response = req_builder.send().await.map_err(|e| {
-            GatewayError::UpstreamError(format!("vLLM stream request failed: {e}"))
-        })?;
+        let response = req_builder
+            .send()
+            .await
+            .map_err(|e| GatewayError::UpstreamError(format!("vLLM stream request failed: {e}")))?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -158,7 +159,9 @@ impl VllmClient {
                     }
                     None
                 }
-                Err(e) => Some(Err(GatewayError::UpstreamError(format!("Stream error: {e}")))),
+                Err(e) => Some(Err(GatewayError::UpstreamError(format!(
+                    "Stream error: {e}"
+                )))),
             }
         });
 

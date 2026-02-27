@@ -1,9 +1,9 @@
 """Tests for shared HTTP client lifecycle and configuration."""
 
-from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
 from shared.http_clients import (
     _create_llm_client,
     _create_retrieval_client,
@@ -119,12 +119,12 @@ class TestClientConfiguration:
     def test_retrieval_client_has_user_agent_header(self):
         """Test retrieval client sends User-Agent header."""
         client = _create_retrieval_client()
-        assert "user-agent" in {k.lower() for k in client.headers.keys()}
+        assert "user-agent" in {k.lower() for k in client.headers}
 
     def test_llm_client_has_user_agent_header(self):
         """Test LLM client sends User-Agent header."""
         client = _create_llm_client()
-        assert "user-agent" in {k.lower() for k in client.headers.keys()}
+        assert "user-agent" in {k.lower() for k in client.headers}
 
     def test_retrieval_client_has_connection_limits(self):
         """Test retrieval client has connection pool limits configured."""

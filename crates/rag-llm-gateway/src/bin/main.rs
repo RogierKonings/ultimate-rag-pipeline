@@ -68,8 +68,7 @@ async fn main() -> anyhow::Result<()> {
     let app = api::create_router(state).layer(TraceLayer::new_for_http());
 
     // Start server
-    let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
-        .parse()?;
+    let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port).parse()?;
 
     info!("Listening on http://{}", addr);
 

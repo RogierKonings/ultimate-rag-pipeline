@@ -231,14 +231,14 @@ class CacheInvalidationListener:
                     try:
                         await self._pubsub.close()
                     except Exception:
-                        pass
+                        logger.debug("Failed to close pubsub during cleanup", exc_info=True)
                     self._pubsub = None
 
                 if self._redis:
                     try:
                         await self._redis.close()
                     except Exception:
-                        pass
+                        logger.debug("Failed to close redis during cleanup", exc_info=True)
                     self._redis = None
 
                 if self._running:

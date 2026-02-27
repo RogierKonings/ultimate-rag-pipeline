@@ -12,10 +12,12 @@ tasks:
   # Testing
   test-all:
     command: 'moon run :test'
+    local: true
 
   # Linting
   lint-all:
     command: 'moon run :lint'
+    local: true
 
   # Formatting
   format-all:
@@ -24,15 +26,19 @@ tasks:
 
   format-check-all:
     command: 'moon run :format-check'
+    local: true
 
   # Type checking
   check-all:
     command: 'moon run :check'
+    local: true
 
   # CI pipeline
   ci:
     command: 'moon ci'
+    local: true
 
   # Build everything
   build-all:
     command: 'moon run :build'
+    local: true

@@ -200,8 +200,9 @@ pub async fn readiness(State(state): State<Arc<AppState>>) -> Json<ReadinessResp
     let vllm_ok = !state.config.vllm.enabled || state.vllm_client.is_some();
 
     // At least one service must be enabled
-    let any_enabled =
-        state.config.embedding.enabled || state.config.reranker.enabled || state.config.vllm.enabled;
+    let any_enabled = state.config.embedding.enabled
+        || state.config.reranker.enabled
+        || state.config.vllm.enabled;
 
     if !any_enabled {
         return Json(ReadinessResponse {
@@ -229,10 +230,7 @@ pub async fn readiness(State(state): State<Arc<AppState>>) -> Json<ReadinessResp
         }
         Json(ReadinessResponse {
             status: "not_ready",
-            reason: Some(format!(
-                "Enabled but unavailable: {}",
-                failures.join(", ")
-            )),
+            reason: Some(format!("Enabled but unavailable: {}", failures.join(", "))),
         })
     }
 }

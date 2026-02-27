@@ -22,21 +22,17 @@ pub async fn create_rerank(
     State(state): State<Arc<AppState>>,
     Json(request): Json<RerankRequest>,
 ) -> Result<Json<RerankResponse>> {
-    let model = state
-        .reranker_model
-        .as_ref()
-        .ok_or_else(|| {
-            if state.config.reranker.enabled {
-                GatewayError::ServiceUnavailable(
-                    "Reranker model failed to load at startup. Check service logs for details."
-                        .into(),
-                )
-            } else {
-                GatewayError::ServiceUnavailable(
-                    "Reranker is disabled by configuration (RERANKER_ENABLED=false).".into(),
-                )
-            }
-        })?;
+    let model = state.reranker_model.as_ref().ok_or_else(|| {
+        if state.config.reranker.enabled {
+            GatewayError::ServiceUnavailable(
+                "Reranker model failed to load at startup. Check service logs for details.".into(),
+            )
+        } else {
+            GatewayError::ServiceUnavailable(
+                "Reranker is disabled by configuration (RERANKER_ENABLED=false).".into(),
+            )
+        }
+    })?;
 
     if request.documents.is_empty() {
         return Err(GatewayError::BadRequest(

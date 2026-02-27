@@ -58,9 +58,7 @@ def is_retryable_http_error(error: httpx.HTTPStatusError) -> bool:
         True if the error should be retried.
     """
     status_code = error.response.status_code
-    if 400 <= status_code < 500 and status_code != 429:
-        return False
-    return True
+    return not (400 <= status_code < 500 and status_code != 429)
 
 
 async def sleep_with_backoff(

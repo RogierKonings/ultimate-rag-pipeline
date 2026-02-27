@@ -234,9 +234,7 @@ class TestConnectionAndReconnection:
         async def mock_connect():
             nonlocal call_count
             call_count += 1
-            if call_count == 1:
-                return False  # Fail first
-            return True  # Succeed second
+            return call_count != 1
 
         listener._running = True
 

@@ -19,13 +19,13 @@ from __future__ import annotations
 
 import httpx
 import structlog
-
-from config import get_config
 from orchestrator.config.timeouts import (
     HTTP_CONNECTION_TIMEOUT,
     ORCHESTRATOR_LLM_TIMEOUT,
     ORCHESTRATOR_RETRIEVAL_TIMEOUT,
 )
+
+from config import get_config
 
 logger = structlog.get_logger(__name__)
 

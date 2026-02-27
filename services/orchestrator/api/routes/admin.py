@@ -4,6 +4,7 @@ Reference: US-10.5.4 - Token Usage Accounting
 """
 
 import json as _json
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
@@ -17,10 +18,13 @@ from api.models.usage import (
 from database.connection import get_db
 from database.models.usage import TenantQuota, TokenUsage
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from shared.security.jwt.middleware import JWTAuthMiddleware, require_roles
-from shared.security.jwt.models import TokenClaims
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from shared.security.jwt.middleware import JWTAuthMiddleware, require_roles
+from shared.security.jwt.models import TokenClaims
+
+logger = logging.getLogger(__name__)
 
 # Cache TTL for admin usage aggregation queries (seconds)
 _USAGE_CACHE_TTL = 120
@@ -81,7 +85,7 @@ async def get_usage_stats(
             if cached:
                 return UsageStatsResponse(**_json.loads(cached))
         except Exception:
-            pass  # Fall through to DB on cache errors
+            logger.debug("Redis cache read failed for %s", cache_key, exc_info=True)
 
     end_date = datetime.now(UTC).date()
 
@@ -151,7 +155,7 @@ async def get_usage_stats(
         try:
             await redis.setex(cache_key, _USAGE_CACHE_TTL, response.model_dump_json())
         except Exception:
-            pass  # Non-critical; DB result is still returned
+            logger.debug("Redis cache write failed for %s", cache_key, exc_info=True)
 
     return response
 
@@ -186,7 +190,7 @@ async def get_quota_status(
             if cached:
                 return QuotaStatusResponse(**_json.loads(cached))
         except Exception:
-            pass
+            logger.debug("Redis cache read failed for %s", cache_key, exc_info=True)
 
     # Get quota configuration
     quota_result = await db.execute(select(TenantQuota).where(TenantQuota.tenant_id == tenant_id))
@@ -247,7 +251,7 @@ async def get_quota_status(
         try:
             await redis.setex(cache_key, _USAGE_CACHE_TTL, response.model_dump_json())
         except Exception:
-            pass
+            logger.debug("Redis cache write failed for %s", cache_key, exc_info=True)
 
     return response
 

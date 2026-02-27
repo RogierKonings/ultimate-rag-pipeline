@@ -6,8 +6,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 /// Main gateway configuration.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct GatewayConfig {
     /// Server configuration.
     #[serde(default)]
@@ -33,7 +32,6 @@ pub struct GatewayConfig {
     #[serde(default)]
     pub rate_limit: RateLimitConfig,
 }
-
 
 impl GatewayConfig {
     /// Load configuration from environment variables.
@@ -111,8 +109,7 @@ impl EmbeddingServiceConfig {
             enabled: std::env::var("EMBEDDING_ENABLED")
                 .map(|v| v != "false")
                 .unwrap_or(true),
-            model: std::env::var("EMBEDDING_MODEL")
-                .unwrap_or_else(|_| "all-MiniLM-L6-v2".into()),
+            model: std::env::var("EMBEDDING_MODEL").unwrap_or_else(|_| "all-MiniLM-L6-v2".into()),
             max_batch_size: std::env::var("EMBEDDING_MAX_BATCH_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())

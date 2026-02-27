@@ -13,9 +13,9 @@ import re
 import time
 from typing import TYPE_CHECKING
 
+from model_policy import infer_intent_from_strategy, strategy_to_complexity
 from opentelemetry import trace
 
-from model_policy import infer_intent_from_strategy, strategy_to_complexity
 from orchestrator.observability.otel.span_names import SpanNames
 
 if TYPE_CHECKING:

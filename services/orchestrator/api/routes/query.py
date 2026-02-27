@@ -37,9 +37,9 @@ from observability.business_metrics import rag_feedback_total
 from retrieval.policy import coerce_positive_int, get_retrieval_option, should_enable_rerank
 from routing import QueryRouter
 from sqlalchemy.ext.asyncio import AsyncSession
+from workflow.nodes.retrieval import _format_context
 
 from config import get_config
-from workflow.nodes.retrieval import _format_context
 
 from . import query_service
 

@@ -1,5 +1,5 @@
 name: Setup Toolchain
-description: Install Moon, Rust, Python, and uv for CI
+description: Install Moon, Rust, Python, Node.js, and uv for CI
 
 runs:
   using: composite
@@ -14,6 +14,15 @@ runs:
       with:
         toolchain: '1.93.0'
         components: clippy, rustfmt
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install pnpm
+      shell: bash
+      run: npm install -g pnpm@9.15.0
 
     - name: Setup Python
       uses: actions/setup-python@v5

@@ -103,10 +103,9 @@ impl IntoResponse for GatewayError {
 
         // Add Retry-After header for rate limit errors
         if let Self::RateLimitExceeded { retry_after_secs } = &self {
-            response.headers_mut().insert(
-                "Retry-After",
-                retry_after_secs.to_string().parse().unwrap(),
-            );
+            response
+                .headers_mut()
+                .insert("Retry-After", retry_after_secs.to_string().parse().unwrap());
         }
 
         response
