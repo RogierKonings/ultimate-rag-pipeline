@@ -99,7 +99,7 @@ impl Default for EmbeddingServiceConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            model: "bge-small-en-v1.5".into(),
+            model: "all-MiniLM-L6-v2".into(),
             max_batch_size: 32,
         }
     }
@@ -112,7 +112,7 @@ impl EmbeddingServiceConfig {
                 .map(|v| v != "false")
                 .unwrap_or(true),
             model: std::env::var("EMBEDDING_MODEL")
-                .unwrap_or_else(|_| "bge-small-en-v1.5".into()),
+                .unwrap_or_else(|_| "all-MiniLM-L6-v2".into()),
             max_batch_size: std::env::var("EMBEDDING_MAX_BATCH_SIZE")
                 .ok()
                 .and_then(|s| s.parse().ok())

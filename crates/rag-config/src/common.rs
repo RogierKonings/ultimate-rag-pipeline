@@ -462,7 +462,7 @@ pub struct EmbeddingConfig {
 }
 
 fn default_embedding_model() -> String {
-    "bge-small-en-v1.5".to_string()
+    "all-MiniLM-L6-v2".to_string()
 }
 
 const fn default_embedding_dimensions() -> u32 {

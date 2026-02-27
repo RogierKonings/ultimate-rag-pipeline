@@ -17,7 +17,7 @@ pub struct EmbeddingClientConfig {
     #[serde(default = "default_endpoint")]
     pub endpoint: String,
 
-    /// Model name to use (default: "bge-small-en-v1.5").
+    /// Model name to use (default: "all-MiniLM-L6-v2").
     #[serde(default = "default_model")]
     pub model: String,
 
@@ -43,7 +43,7 @@ fn default_endpoint() -> String {
 }
 
 fn default_model() -> String {
-    "bge-small-en-v1.5".into()
+    "all-MiniLM-L6-v2".into()
 }
 
 const fn default_timeout_ms() -> u64 {
@@ -160,7 +160,7 @@ mod tests {
         let config = EmbeddingClientConfig::default();
         assert_eq!(config.url, "http://localhost:8080");
         assert_eq!(config.endpoint, "/v1/embeddings");
-        assert_eq!(config.model, "bge-small-en-v1.5");
+        assert_eq!(config.model, "all-MiniLM-L6-v2");
         assert_eq!(config.timeout_ms, 30_000);
         assert_eq!(config.max_retries, 3);
         assert_eq!(config.retry_delay_ms, 1000);
@@ -171,7 +171,7 @@ mod tests {
         let config = EmbeddingClientConfig::new("http://embed:8080");
         assert_eq!(config.url, "http://embed:8080");
         assert_eq!(config.endpoint, "/v1/embeddings");
-        assert_eq!(config.model, "bge-small-en-v1.5");
+        assert_eq!(config.model, "all-MiniLM-L6-v2");
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(config.url, "http://custom:9000");
         // Defaults should be applied
         assert_eq!(config.endpoint, "/v1/embeddings");
-        assert_eq!(config.model, "bge-small-en-v1.5");
+        assert_eq!(config.model, "all-MiniLM-L6-v2");
         assert_eq!(config.timeout_ms, 30_000);
         assert_eq!(config.max_retries, 3);
         assert_eq!(config.retry_delay_ms, 1000);

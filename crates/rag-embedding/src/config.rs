@@ -7,9 +7,9 @@ use std::env;
 #[derive(Default)]
 pub enum ModelType {
     /// all-MiniLM-L6-v2 (384 dimensions)
+    #[default]
     AllMiniLmL6V2,
     /// BAAI/bge-small-en-v1.5 (384 dimensions)
-    #[default]
     BgeSmallEnV15,
 }
 
@@ -62,14 +62,14 @@ impl EmbeddingConfig {
     /// Create configuration from environment variables.
     ///
     /// Environment variables:
-    /// - `EMBEDDING_MODEL`: Model ID (default: "BAAI/bge-small-en-v1.5")
+    /// - `EMBEDDING_MODEL`: Model ID (default: "all-MiniLM-L6-v2")
     /// - `EMBEDDING_BATCH_SIZE`: Max batch size (default: 32)
     /// - `EMBEDDING_HOST`: Server host (default: "0.0.0.0")
     /// - `EMBEDDING_PORT`: Server port (default: 8080)
     #[must_use]
     pub fn from_env() -> Self {
         let model_id = env::var("EMBEDDING_MODEL")
-            .unwrap_or_else(|_| "BAAI/bge-small-en-v1.5".into());
+            .unwrap_or_else(|_| "all-MiniLM-L6-v2".into());
 
         let model = ModelType::from_model_id(&model_id).unwrap_or_default();
 
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = EmbeddingConfig::default();
-        assert_eq!(config.model, ModelType::BgeSmallEnV15);
+        assert_eq!(config.model, ModelType::AllMiniLmL6V2);
         assert_eq!(config.max_batch_size, 32);
         assert_eq!(config.port, 8080);
     }

@@ -24,7 +24,7 @@ impl Default for VideoIndexerConfig {
         Self {
             qdrant_url: "http://localhost:6333".to_string(),
             collection_name: "video_chunks".to_string(),
-            vector_size: 384, // bge-small-en-v1.5
+            vector_size: 384, // all-MiniLM-L6-v2
             batch_size: 100,
             timeout_seconds: 60,
             hnsw_m: 16,
