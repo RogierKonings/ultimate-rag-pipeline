@@ -1,0 +1,13 @@
+# cargo-audit configuration
+# Ignore advisories for transitive dependencies we cannot directly control.
+
+[advisories]
+ignore = [
+    # rustls-pemfile 2.2.0 (unmaintained) - transitive via qdrant-client and kube.
+    # No replacement available yet; upstream crates need to migrate.
+    "RUSTSEC-2025-0134",
+
+    # lru 0.12.5 (unsound IterMut) - transitive via aws-sdk-s3.
+    # We don't use IterMut on lru directly; waiting for aws-sdk-s3 to update.
+    "RUSTSEC-2026-0002",
+]

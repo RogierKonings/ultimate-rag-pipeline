@@ -220,6 +220,26 @@ export interface DeleteSessionResponse {
 	message: string;
 }
 
+/** Typed configuration overrides for a query request. */
+export interface QueryOptions {
+	/** LLM model name to use for answer generation */
+	model?: string | null;
+	/** Sampling temperature (0.0–2.0) */
+	temperature?: number | null;
+	/** Maximum number of retrieved chunks (1–100) */
+	top_k?: number | null;
+	/** Weight for semantic search in hybrid fusion (0.0–1.0) */
+	semantic_weight?: number | null;
+	/** Weight for keyword search in hybrid fusion (0.0–1.0) */
+	keyword_weight?: number | null;
+	/** Whether to enable cross-encoder reranking */
+	rerank?: boolean | null;
+	/** Whether to use the answer cache */
+	answer_cache?: boolean | null;
+	/** Maximum tokens in the generated answer (1–8192) */
+	max_tokens?: number | null;
+}
+
 /** Request model for synchronous RAG query. */
 export interface QueryRequest {
 	/** The user's query text */
@@ -231,7 +251,7 @@ export interface QueryRequest {
 	/** Tenant identifier for multi-tenancy */
 	tenant_id?: string | null;
 	/** Optional configuration overrides (model, temperature, etc.) */
-	options?: Record<string, unknown> | null;
+	options?: QueryOptions | null;
 }
 
 /** Request model for streaming RAG query. */
@@ -245,7 +265,7 @@ export interface StreamQueryRequest {
 	/** Tenant identifier for multi-tenancy */
 	tenant_id?: string | null;
 	/** Optional configuration overrides */
-	options?: Record<string, unknown> | null;
+	options?: QueryOptions | null;
 }
 
 /** Request model for submitting user feedback. */

@@ -1155,6 +1155,129 @@
     "type": "object"
   },
   "QueryRequest": {
+    "$defs": {
+      "QueryOptions": {
+        "description": "Typed configuration overrides for a query request.\n\nAll fields are optional; omitted fields fall back to service defaults.",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "LLM model name to use for answer generation",
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sampling temperature (0.0\u20132.0)",
+            "title": "Temperature"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum number of retrieved chunks (1\u2013100)",
+            "title": "Top K"
+          },
+          "semantic_weight": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Weight for semantic search in hybrid fusion (0.0\u20131.0)",
+            "title": "Semantic Weight"
+          },
+          "keyword_weight": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Weight for keyword search in hybrid fusion (0.0\u20131.0)",
+            "title": "Keyword Weight"
+          },
+          "rerank": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether to enable cross-encoder reranking",
+            "title": "Rerank"
+          },
+          "answer_cache": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether to use the answer cache",
+            "title": "Answer Cache"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum tokens in the generated answer (1\u20138192)",
+            "title": "Max Tokens"
+          }
+        },
+        "title": "QueryOptions",
+        "type": "object"
+      }
+    },
     "description": "Request model for synchronous RAG query.\n\nAttributes:\n    query: The user's query text.\n    session_id: Optional session ID for conversation continuity.\n    user_id: Optional user identifier for ACL filtering.\n    tenant_id: Optional tenant identifier for multi-tenancy.\n    options: Optional configuration overrides.",
     "properties": {
       "query": {
@@ -1209,16 +1332,14 @@
       "options": {
         "anyOf": [
           {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/$defs/QueryOptions"
           },
           {
             "type": "null"
           }
         ],
         "default": null,
-        "description": "Optional configuration overrides (model, temperature, etc.)",
-        "title": "Options"
+        "description": "Optional configuration overrides (model, temperature, etc.)"
       }
     },
     "required": [
@@ -1228,6 +1349,129 @@
     "type": "object"
   },
   "StreamQueryRequest": {
+    "$defs": {
+      "QueryOptions": {
+        "description": "Typed configuration overrides for a query request.\n\nAll fields are optional; omitted fields fall back to service defaults.",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "LLM model name to use for answer generation",
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sampling temperature (0.0\u20132.0)",
+            "title": "Temperature"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "maximum": 100,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum number of retrieved chunks (1\u2013100)",
+            "title": "Top K"
+          },
+          "semantic_weight": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Weight for semantic search in hybrid fusion (0.0\u20131.0)",
+            "title": "Semantic Weight"
+          },
+          "keyword_weight": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Weight for keyword search in hybrid fusion (0.0\u20131.0)",
+            "title": "Keyword Weight"
+          },
+          "rerank": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether to enable cross-encoder reranking",
+            "title": "Rerank"
+          },
+          "answer_cache": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whether to use the answer cache",
+            "title": "Answer Cache"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 8192,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Maximum tokens in the generated answer (1\u20138192)",
+            "title": "Max Tokens"
+          }
+        },
+        "title": "QueryOptions",
+        "type": "object"
+      }
+    },
     "description": "Request model for streaming RAG query.\n\nAttributes:\n    query: The user's query text.\n    session_id: Optional session ID for conversation continuity.\n    user_id: Optional user identifier for ACL filtering.\n    tenant_id: Optional tenant identifier for multi-tenancy.\n    options: Optional configuration overrides.",
     "properties": {
       "query": {
@@ -1282,16 +1526,14 @@
       "options": {
         "anyOf": [
           {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/$defs/QueryOptions"
           },
           {
             "type": "null"
           }
         ],
         "default": null,
-        "description": "Optional configuration overrides",
-        "title": "Options"
+        "description": "Optional configuration overrides"
       }
     },
     "required": [

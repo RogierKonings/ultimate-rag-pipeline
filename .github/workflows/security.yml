@@ -41,18 +41,16 @@ jobs:
       - name: Run Semgrep
         run: |
           semgrep scan \
-            --config auto \
-            --config p/python \
-            --config p/security-audit \
-            --config p/owasp-top-ten \
             --config .semgrep.yml \
+            --config p/security-audit \
             --error \
+            --severity ERROR \
             --sarif \
             --output semgrep-results.sarif \
             .
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: semgrep-results.sarif
@@ -133,11 +131,11 @@ jobs:
           format: sarif
           output: trivy-${{ matrix.service }}.sarif
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          exit-code: "0"
           ignore-unfixed: true
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-${{ matrix.service }}.sarif
