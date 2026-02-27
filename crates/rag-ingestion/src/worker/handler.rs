@@ -61,6 +61,15 @@ impl IngestionJobHandler {
             .ok_or_else(|| "Missing or invalid tracker_job_id".to_string())
     }
 
+    /// Extract `document_id` from a job payload, if present and valid.
+    #[allow(clippy::unused_self)] // kept as method for handler API consistency
+    fn extract_document_id(&self, payload: &Value) -> Option<Uuid> {
+        payload
+            .get("document_id")
+            .and_then(|v| v.as_str())
+            .and_then(|s| Uuid::parse_str(s).ok())
+    }
+
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn infer_storage_type(&self, source_id: &str) -> Option<&'static str> {
         if source_id.starts_with("uploads/")
@@ -868,6 +877,24 @@ impl JobHandler for IngestionJobHandler {
             if let Ok(tracker_job_id) = self.extract_tracker_job_id(&job.payload) {
                 self.job_tracker.fail_job(&tracker_job_id, error.clone());
             }
+
+            // Also update the PostgreSQL document status to "failed" so the
+            // document doesn't stay stuck in "pending" forever.
+            if let Some(ref database) = self.database {
+                if let Some(doc_id) = self.extract_document_id(&job.payload) {
+                    let repo = DocumentRepository::new(database.inner().clone());
+                    if let Err(db_err) = repo
+                        .update_status(doc_id, "failed", Some(error.as_str()))
+                        .await
+                    {
+                        warn!(
+                            error = %db_err,
+                            document_id = %doc_id,
+                            "Failed to update document status to 'failed' in PostgreSQL"
+                        );
+                    }
+                }
+            }
         }
 
         result
@@ -1052,5 +1079,50 @@ mod tests {
 
         let result = handler.handle(&job).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_failed_ingest_job_updates_tracker_to_failure() {
+        // When an ingest job fails (e.g., source file doesn't exist),
+        // the in-memory tracker should reflect Failure status.
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(Arc::clone(&tracker), None, None, None);
+        let tracker_job_id = tracker.create_job("tenant-1".to_string());
+
+        let job = Job::new(
+            "ingest_single",
+            "tenant-1",
+            json!({
+                "tracker_job_id": tracker_job_id.to_string(),
+                "source_id": "/nonexistent/path/to/document.pdf",
+                "document_id": Uuid::new_v4().to_string(),
+            }),
+        );
+
+        let result = handler.handle(&job).await;
+        assert!(result.is_err());
+
+        // The in-memory tracker must show Failure, not stuck at Pending/Started
+        let job_state = tracker.get_job(&tracker_job_id).unwrap();
+        assert_eq!(job_state.status, JobStatus::Failure);
+        assert!(job_state.error_message.is_some());
+    }
+
+    #[test]
+    fn test_extract_document_id_from_payload() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+
+        let doc_id = Uuid::new_v4();
+        let payload = json!({ "document_id": doc_id.to_string() });
+        assert_eq!(handler.extract_document_id(&payload), Some(doc_id));
+
+        // Missing document_id returns None
+        let payload = json!({ "source_id": "test.pdf" });
+        assert_eq!(handler.extract_document_id(&payload), None);
+
+        // Invalid UUID returns None
+        let payload = json!({ "document_id": "not-a-uuid" });
+        assert_eq!(handler.extract_document_id(&payload), None);
     }
 }
