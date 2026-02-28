@@ -5259,6 +5259,7 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.18",
  "tokio-test",
+ "utoipa",
  "uuid",
  "validator",
 ]
@@ -7549,6 +7550,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+ "uuid",
 ]
 
 [[package]]

@@ -2,7 +2,7 @@
 
 use crate::{config::K8sConfig, Result, SecretsError, SecretsProvider};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+
 use k8s_openapi::api::core::v1::Secret;
 use kube::{api::Api, Client};
 use tracing::{debug, instrument};

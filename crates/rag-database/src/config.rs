@@ -5,7 +5,7 @@ use std::time::Duration;
 /// Database configuration.
 #[derive(Debug, Clone)]
 pub struct DatabaseConfig {
-    /// Database URL (postgres://user:pass@host:port/database).
+    /// Database URL (e.g. `postgres://host:port/database`).
     pub url: String,
     /// Maximum number of connections in the pool.
     pub max_connections: u32,
@@ -60,8 +60,7 @@ impl DatabaseConfig {
         // Load .env file if present (ignore errors — may not exist in containers)
         let _ = dotenvy::dotenv();
 
-        let url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set (e.g. postgres://user:pass@host:5432/db)");
+        let url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
         let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
             .ok()

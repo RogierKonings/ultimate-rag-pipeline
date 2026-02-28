@@ -64,14 +64,14 @@ once_cell = "1.19"
 opentelemetry = { version = "0.31", features = ["trace"] }
 
 # OpenAPI schema generation (optional)
-utoipa = { version = "5", optional = true }
+utoipa = { version = "5", optional = true, features = ["uuid", "chrono"] }
 
 # Memory profiling (optional)
 dhat = { version = "0.3", optional = true }
 
 [features]
 default = []
-openapi = ["utoipa"]
+openapi = ["utoipa", "rag-types/openapi"]
 memory-profiling = ["dhat"]
 
 [dev-dependencies]

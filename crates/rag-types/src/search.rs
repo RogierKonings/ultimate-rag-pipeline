@@ -12,6 +12,7 @@ use validator::Validate;
 ///
 /// This is the canonical definition used by both rag-types and rag-retrieval.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum SearchMode {
     /// Combine semantic and keyword search with RRF fusion.
