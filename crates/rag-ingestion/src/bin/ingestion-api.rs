@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get Redis URL from environment
     let redis_url = std::env::var("REDIS_URL")
-        .unwrap_or_else(|_| "redis://:ragredis@localhost:6379".to_string());
+        .unwrap_or_else(|_| "redis://:ragredis@localhost:6379".to_string()); // gitleaks:allow (dev default)
 
     tracing::info!(redis_url = %redis_url, "Connecting to Redis");
 
@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect to PostgreSQL for document queries
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string());
+        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string()); // gitleaks:allow (dev default)
 
     let db_config = DatabaseConfig::new(&database_url);
     let database = match DatabasePool::connect(&db_config).await {
@@ -224,7 +224,7 @@ async fn create_index_coordinator() -> Option<IndexCoordinator> {
     let opensearch_url =
         std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string());
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string());
+        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string()); // gitleaks:allow (dev default)
 
     tracing::info!(
         qdrant_url = %qdrant_url,

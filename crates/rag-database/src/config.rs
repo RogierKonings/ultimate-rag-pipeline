@@ -52,7 +52,7 @@ impl DatabaseConfig {
     #[must_use]
     pub fn from_env() -> Self {
         let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-            "postgres://raguser:ragpassword@localhost:5432/ragpipeline".to_string()
+            "postgres://raguser:ragpassword@localhost:5432/ragpipeline".to_string() // gitleaks:allow (dev default)
         });
 
         let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
