@@ -6,6 +6,11 @@
 #   docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml run e2e-tests
 
 services:
+  # Override retrieval-service to disable reranker (LLM Gateway not available in E2E)
+  retrieval-service:
+    environment:
+      RERANKER_ENABLED: "false"
+
   e2e-tests:
     build:
       context: ../..
