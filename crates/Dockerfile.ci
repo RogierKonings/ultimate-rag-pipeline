@@ -1,0 +1,182 @@
+# Unified CI Dockerfile for all Rust services
+# Builds all binaries in a single cargo build, then provides
+# separate runtime targets. This eliminates redundant dependency
+# compilation (3x cargo chef cook → 1x).
+#
+# Usage:
+#   docker buildx build --target embedding-runtime -t rag-embedding:latest .
+#   docker buildx build --target ingestion-runtime -t rag-ingestion:latest .
+#   docker buildx build --target retrieval-runtime -t rag-retrieval:latest .
+#
+# Build context: ./crates (the Rust workspace root)
+
+# ============ Chef Stage ============
+FROM rust:1.93-slim-bookworm AS chef
+RUN cargo install cargo-chef
+WORKDIR /app
+
+# ============ Planner Stage ============
+FROM chef AS planner
+
+COPY Cargo.toml Cargo.lock ./
+COPY rag-types ./rag-types
+COPY rag-config ./rag-config
+COPY rag-cache ./rag-cache
+COPY rag-auth ./rag-auth
+COPY rag-telemetry ./rag-telemetry
+COPY rag-search ./rag-search
+COPY rag-vectorstore ./rag-vectorstore
+COPY rag-database ./rag-database
+COPY rag-storage ./rag-storage
+COPY rag-retrieval ./rag-retrieval
+COPY rag-ingestion ./rag-ingestion
+COPY rag-video ./rag-video
+COPY rag-embedding ./rag-embedding
+COPY rag-tenant ./rag-tenant
+COPY rag-secrets ./rag-secrets
+COPY rag-encryption ./rag-encryption
+COPY rag-llm-gateway ./rag-llm-gateway
+
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ============ Builder Stage ============
+FROM chef AS builder
+
+# Install all build dependencies (superset of all services)
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cook dependencies ONCE for all services
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Copy full source
+COPY Cargo.toml Cargo.lock ./
+COPY rag-types ./rag-types
+COPY rag-config ./rag-config
+COPY rag-cache ./rag-cache
+COPY rag-auth ./rag-auth
+COPY rag-telemetry ./rag-telemetry
+COPY rag-search ./rag-search
+COPY rag-vectorstore ./rag-vectorstore
+COPY rag-database ./rag-database
+COPY rag-storage ./rag-storage
+COPY rag-retrieval ./rag-retrieval
+COPY rag-ingestion ./rag-ingestion
+COPY rag-video ./rag-video
+COPY rag-embedding ./rag-embedding
+COPY rag-tenant ./rag-tenant
+COPY rag-secrets ./rag-secrets
+COPY rag-encryption ./rag-encryption
+COPY rag-llm-gateway ./rag-llm-gateway
+
+# Build ALL service binaries in one compilation pass
+RUN cargo build --release \
+    -p rag-embedding \
+    -p rag-ingestion \
+    -p rag-retrieval
+
+# ============ Model Download Stage ============
+# Runs in parallel with builder (BuildKit builds independent stages concurrently)
+FROM python:3.11-slim AS model-downloader
+
+RUN pip install --no-cache-dir huggingface_hub
+
+RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('Qdrant/all-MiniLM-L6-v2-onnx', cache_dir='/model-cache')"
+
+# ============ Embedding Runtime ============
+FROM debian:bookworm-slim AS embedding-runtime
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    libstdc++6 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -r -s /bin/false embedding
+
+COPY --from=builder /app/target/release/embedding-service /app/embedding-service
+COPY --from=model-downloader /model-cache /app/.fastembed_cache
+
+RUN chown -R embedding:embedding /app
+USER embedding
+
+ENV EMBEDDING_HOST=0.0.0.0
+ENV EMBEDDING_PORT=8080
+ENV RUST_LOG=info
+ENV FASTEMBED_CACHE_DIR=/app/.fastembed_cache
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["/app/embedding-service"]
+
+# ============ Ingestion Runtime ============
+FROM debian:bookworm-slim AS ingestion-runtime
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-nld \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -r -s /bin/false ingestion
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/ingestion-api /app/ingestion-api
+
+RUN chown -R ingestion:ingestion /app
+USER ingestion
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health/live || exit 1
+
+ENV RUST_LOG=info
+ENV INGESTION_HOST=0.0.0.0
+ENV INGESTION_PORT=8001
+
+CMD ["/app/ingestion-api"]
+
+# ============ Retrieval Runtime ============
+FROM debian:bookworm-slim AS retrieval-runtime
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -r -s /bin/false retrieval
+
+WORKDIR /app
+
+COPY --from=builder /app/target/release/retrieval-service /app/retrieval-service
+
+RUN chown -R retrieval:retrieval /app
+USER retrieval
+
+EXPOSE 8002
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8002/health/live || exit 1
+
+ENV RUST_LOG=info
+ENV RETRIEVAL_HOST=0.0.0.0
+ENV RETRIEVAL_PORT=8002
+
+CMD ["/app/retrieval-service"]

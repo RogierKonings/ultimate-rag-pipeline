@@ -44,39 +44,44 @@ jobs:
       - name: Start infrastructure
         run: docker compose up -d
 
-      # Build application images with GHA cache (parallel with infra startup)
-      - name: Build embedding service
+      # Build all 3 Rust services from a single unified Dockerfile.
+      # This runs cargo chef cook + cargo build ONCE instead of 3x.
+      # The first target (embedding) does the heavy build; the 2nd and 3rd
+      # reuse all cached builder layers via GHA cache and only run the
+      # lightweight runtime stage.
+      - name: Build Rust services (embedding)
         uses: docker/build-push-action@v6
         with:
           context: ./crates
-          file: ./crates/rag-embedding/Dockerfile
+          file: ./crates/Dockerfile.ci
           push: false
           load: true
+          target: embedding-runtime
           tags: rag-embedding:latest
-          cache-from: type=gha,scope=embedding
-          cache-to: type=gha,scope=embedding,mode=max
+          cache-from: type=gha,scope=rust-ci
+          cache-to: type=gha,scope=rust-ci,mode=max
 
-      - name: Build ingestion service
+      - name: Build Rust services (ingestion)
         uses: docker/build-push-action@v6
         with:
           context: ./crates
-          file: ./crates/rag-ingestion/Dockerfile
+          file: ./crates/Dockerfile.ci
           push: false
           load: true
+          target: ingestion-runtime
           tags: rag-ingestion:latest
-          cache-from: type=gha,scope=ingestion
-          cache-to: type=gha,scope=ingestion,mode=max
+          cache-from: type=gha,scope=rust-ci
 
-      - name: Build retrieval service
+      - name: Build Rust services (retrieval)
         uses: docker/build-push-action@v6
         with:
           context: ./crates
-          file: ./crates/rag-retrieval/Dockerfile
+          file: ./crates/Dockerfile.ci
           push: false
           load: true
+          target: retrieval-runtime
           tags: rag-retrieval:latest
-          cache-from: type=gha,scope=retrieval
-          cache-to: type=gha,scope=retrieval,mode=max
+          cache-from: type=gha,scope=rust-ci
 
       - name: Build orchestrator service
         uses: docker/build-push-action@v6
@@ -98,7 +103,7 @@ jobs:
               break
             fi
             echo "Waiting for PostgreSQL... ($i/30)"
-            sleep 5
+            sleep 2
           done
 
       - name: Start application services
