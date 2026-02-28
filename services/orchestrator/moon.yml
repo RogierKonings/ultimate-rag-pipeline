@@ -39,6 +39,7 @@ tasks:
       - '@group(tests)'
     deps:
       - '~:install'
+    toolchain: 'system'
 
   lint:
     command: 'ruff check .'
@@ -59,3 +60,4 @@ tasks:
       - '@group(sources)'
     deps:
       - '~:install'
+    toolchain: 'system'
