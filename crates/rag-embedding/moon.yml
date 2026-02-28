@@ -22,19 +22,21 @@ tasks:
       - 'rag-types:build'
       - 'rag-config:build'
       - 'rag-telemetry:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-embedding'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-embedding'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-embedding -- -D warnings'

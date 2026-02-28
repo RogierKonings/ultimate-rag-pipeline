@@ -118,11 +118,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build image
-        run: |
-          docker build \
-            -t rag-${{ matrix.service }}:scan \
-            -f ${{ matrix.dockerfile }} \
-            ${{ matrix.context }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          tags: rag-${{ matrix.service }}:scan
+          cache-from: type=gha,scope=security-${{ matrix.service }}
+          cache-to: type=gha,scope=security-${{ matrix.service }},mode=max
 
       - name: Trivy scan
         uses: aquasecurity/trivy-action@master

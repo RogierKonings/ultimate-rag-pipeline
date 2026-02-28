@@ -25,19 +25,21 @@ tasks:
     command: 'cargo build -p rag-types'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-types'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-types'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-types -- -D warnings'

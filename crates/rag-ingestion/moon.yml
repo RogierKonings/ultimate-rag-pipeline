@@ -26,19 +26,21 @@ tasks:
       - 'rag-search:build'
       - 'rag-storage:build'
       - 'rag-database:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-ingestion'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-ingestion'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-ingestion -- -D warnings'

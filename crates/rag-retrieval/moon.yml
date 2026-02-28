@@ -26,19 +26,21 @@ tasks:
       - 'rag-search:build'
       - 'rag-cache:build'
       - 'rag-auth:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-retrieval'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-retrieval'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-retrieval -- -D warnings'

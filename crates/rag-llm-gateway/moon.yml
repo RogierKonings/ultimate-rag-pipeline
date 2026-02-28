@@ -22,19 +22,21 @@ tasks:
       - 'rag-embedding:build'
       - 'rag-config:build'
       - 'rag-telemetry:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-llm-gateway'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-llm-gateway'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-llm-gateway -- -D warnings'

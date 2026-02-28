@@ -25,19 +25,21 @@ tasks:
       - 'rag-vectorstore:build'
       - 'rag-search:build'
       - 'rag-storage:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-video'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-video'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-video -- -D warnings'

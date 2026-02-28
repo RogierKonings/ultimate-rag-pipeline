@@ -22,19 +22,21 @@ tasks:
       - 'rag-types:build'
       - 'rag-config:build'
       - 'rag-encryption:build'
+    options:
+      runInCI: false
 
   check:
     command: 'cargo check -p rag-secrets'
     inputs:
       - '@group(sources)'
+    options:
+      runInCI: false
 
   test:
     command: 'cargo test -p rag-secrets'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
-    deps:
-      - '~:build'
 
   lint:
     command: 'cargo clippy -p rag-secrets -- -D warnings'
