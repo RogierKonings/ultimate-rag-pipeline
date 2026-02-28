@@ -34,6 +34,8 @@ paths = [
     '''.*\.sarif''',
     # Git directory
     '''\.git/.*''',
+    # Gitleaks ignore file (contains fingerprints, not secrets)
+    '''\.gitleaksignore''',
 ]
 
 # Regex patterns to ignore (for commit messages, etc.)

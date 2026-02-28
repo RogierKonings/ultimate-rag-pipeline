@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 /// Full health check response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct HealthResponse {
     /// Overall health status: "healthy", "degraded", or "unhealthy".
     pub status: String,
@@ -38,6 +39,7 @@ pub struct HealthResponse {
 
 /// Detailed health information for a single component.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ComponentHealth {
     /// Component name.
     pub name: String,
@@ -134,6 +136,7 @@ impl HealthResponse {
 
 /// Kubernetes liveness probe response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct LivenessResponse {
     /// Status: "alive".
     pub status: String,
@@ -149,6 +152,7 @@ impl Default for LivenessResponse {
 
 /// Kubernetes readiness probe response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 pub struct ReadinessResponse {
     /// Status: "ready".
     pub status: String,

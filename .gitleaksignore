@@ -1,6 +1,8 @@
 # Gitleaks false positives - placeholder connection strings in expect() messages
-# These were example URLs (e.g. postgres://user:pass@host:5432/db) in error messages,
-# not real credentials. The example strings were removed in commit 7cf76d6.
+# These were example URLs in error messages, not real credentials.
+# The example strings were removed in commit 7cf76d6.
+# Comment in .gitleaksignore itself that mentioned example postgres URL format
+c83d3298f95d5fb2eebb57325ceebd1d7c67bb99:.gitleaksignore:postgres-connection:2
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-database/src/config.rs:postgres-connection:64
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-ingestion/src/bin/ingestion-api.rs:redis-password:58
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-ingestion/src/bin/ingestion-api.rs:postgres-connection:97
