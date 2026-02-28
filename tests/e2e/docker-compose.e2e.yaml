@@ -13,7 +13,7 @@ services:
 
   e2e-tests:
     build:
-      context: ../..
+      context: .
       dockerfile: tests/e2e/Dockerfile
     container_name: rag-e2e-tests
     depends_on:

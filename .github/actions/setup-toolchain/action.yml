@@ -35,4 +35,4 @@ runs:
 
     - name: Install Python tools
       shell: bash
-      run: uv pip install --system ruff
+      run: uv pip install --system ruff mypy
