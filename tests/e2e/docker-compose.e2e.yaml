@@ -31,7 +31,7 @@ services:
       - E2E_INGESTION_TIMEOUT=60
       - E2E_QUERY_TIMEOUT=30
     volumes:
-      - ../../tests:/tests:ro
+      - ./tests:/tests:ro
     networks:
       - rag-network
     profiles:
