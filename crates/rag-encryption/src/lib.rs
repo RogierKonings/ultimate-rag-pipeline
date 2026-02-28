@@ -45,4 +45,4 @@ pub use key_management::{DerivedKey, KeyManager, KeyVersion};
 mod secrets_key_provider;
 
 #[cfg(feature = "secrets-integration")]
-pub use secrets_key_provider::SecretsKeyProvider;
+pub use secrets_key_provider::{AsyncKeyProvider, SecretsKeyProvider};
