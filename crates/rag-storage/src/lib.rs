@@ -36,4 +36,4 @@ mod error;
 
 pub use client::StorageClient;
 pub use config::StorageConfig;
-pub use error::{StorageError, Result};
+pub use error::{Result, StorageError};

@@ -24,9 +24,11 @@ use rag_embedding::model::EmbeddingModelWrapper;
 async fn main() {
     // Initialize tracing
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-            "embedding_service=info,rag_embedding=info,tower_http=info".into()
-        }))
+        .with(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                "embedding_service=info,rag_embedding=info,tower_http=info".into()
+            }),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -53,10 +55,7 @@ async fn main() {
         }
     };
 
-    info!(
-        "Model loaded. Embedding dimension: {}",
-        model.dimensions()
-    );
+    info!("Model loaded. Embedding dimension: {}", model.dimensions());
 
     // Create application state
     let state = Arc::new(AppState::new(model, config.clone()));

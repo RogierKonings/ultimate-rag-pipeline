@@ -209,10 +209,9 @@ impl SceneDetectionClient {
             return Ok(false);
         }
 
-        let health_response: HealthResponse = response
-            .json()
-            .await
-            .map_err(|e| VideoError::SceneDetection(format!("Failed to parse health response: {e}")))?;
+        let health_response: HealthResponse = response.json().await.map_err(|e| {
+            VideoError::SceneDetection(format!("Failed to parse health response: {e}"))
+        })?;
 
         Ok(health_response.status == "healthy")
     }

@@ -176,7 +176,9 @@ class TestRoutingNodeTracing:
         attributes = dict(routing_span.attributes)
 
         assert "orchestrator.strategy" in attributes
-        assert attributes["orchestrator.strategy"] == "comparison"  # "compare" triggers comparison strategy
+        assert (
+            attributes["orchestrator.strategy"] == "comparison"
+        )  # "compare" triggers comparison strategy
 
 
 class TestGenerationNodeTracing:

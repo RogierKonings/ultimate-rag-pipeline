@@ -324,10 +324,7 @@ impl MockEmbeddingClient {
 
         // Generate deterministic values based on seed
         (0..self.dimension)
-            .map(|i| {
-                
-                ((seed.wrapping_add(i as u64) % 1000) as f32 / 1000.0).mul_add(2.0, -1.0)
-            })
+            .map(|i| ((seed.wrapping_add(i as u64) % 1000) as f32 / 1000.0).mul_add(2.0, -1.0))
             .collect()
     }
 }

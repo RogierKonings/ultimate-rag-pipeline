@@ -157,7 +157,9 @@ async def query(
                 session_id=str(query_request.session_id) if query_request.session_id else None,
                 user_id=str(query_request.user_id) if query_request.user_id else None,
                 tenant_id=str(query_request.tenant_id) if query_request.tenant_id else None,
-                options=query_request.options.model_dump(exclude_none=True) if query_request.options else None,
+                options=query_request.options.model_dump(exclude_none=True)
+                if query_request.options
+                else None,
                 answer_cache=answer_cache,
                 model_gateway=model_gateway,
             )
@@ -217,7 +219,9 @@ async def query(
     components_available = query_service.build_components_available(retrieval_quality)
 
     # Record business metrics (US-10.3.3)
-    options_dict = query_request.options.model_dump(exclude_none=True) if query_request.options else None
+    options_dict = (
+        query_request.options.model_dump(exclude_none=True) if query_request.options else None
+    )
     query_service.record_query_metrics(
         request_id=request_id,
         tenant_id=tenant_id,
@@ -318,7 +322,9 @@ async def query_stream(
 
     async def generate_stream() -> AsyncGenerator[str, None]:
         """Generate SSE stream."""
-        options = query_request.options.model_dump(exclude_none=True) if query_request.options else {}
+        options = (
+            query_request.options.model_dump(exclude_none=True) if query_request.options else {}
+        )
         stage_models = options.get("stage_models", {})
 
         # Infer strategy/intent for stream model selection, unless explicitly provided.

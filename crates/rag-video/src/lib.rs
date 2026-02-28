@@ -26,8 +26,8 @@ pub use extraction::{
 };
 pub use fusion::{ContentFusionService, FusionConfig, KeyframeWithContent, VideoChunk};
 pub use indexer::{
-    CollectionInfo, IndexResult, SearchFilters, SearchHit, VideoChunkPayload,
-    VideoIndexerConfig, VideoQdrantIndexer,
+    CollectionInfo, IndexResult, SearchFilters, SearchHit, VideoChunkPayload, VideoIndexerConfig,
+    VideoQdrantIndexer,
 };
 pub use pipeline::{
     PipelineConfig, PipelineProgress, PipelineResult, PipelineStage, StageResult, VideoPipeline,

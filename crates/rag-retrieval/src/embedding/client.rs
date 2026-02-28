@@ -94,8 +94,8 @@ impl EmbeddingClient {
     ///
     /// Returns an error if the HTTP client cannot be created.
     pub fn new(config: EmbeddingConfig) -> Result<Self> {
-        let client = build_http_client_with_timeout(config.timeout())
-            .map_err(RetrievalError::config)?;
+        let client =
+            build_http_client_with_timeout(config.timeout()).map_err(RetrievalError::config)?;
 
         Ok(Self { client, config })
     }

@@ -159,10 +159,7 @@ impl JwtConfig {
 
     /// Create a new config with RSA keys (for production).
     #[must_use]
-    pub fn with_rsa_keys(
-        private_key: impl Into<String>,
-        public_key: impl Into<String>,
-    ) -> Self {
+    pub fn with_rsa_keys(private_key: impl Into<String>, public_key: impl Into<String>) -> Self {
         Self {
             secret_key: Some(private_key.into()),
             public_key: Some(public_key.into()),

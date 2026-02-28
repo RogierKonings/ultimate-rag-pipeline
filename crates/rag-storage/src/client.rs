@@ -67,9 +67,9 @@ impl StorageClient {
     }
 
     fn resolve_bucket<'a>(&'a self, bucket: Option<&'a str>) -> Result<&'a str> {
-        bucket
-            .or(self.default_bucket.as_deref())
-            .ok_or_else(|| StorageError::Config("No bucket specified and no default bucket set".into()))
+        bucket.or(self.default_bucket.as_deref()).ok_or_else(|| {
+            StorageError::Config("No bucket specified and no default bucket set".into())
+        })
     }
 
     /// Create a bucket.
@@ -79,11 +79,7 @@ impl StorageClient {
     /// Returns an error if bucket creation fails.
     #[instrument(skip(self))]
     pub async fn create_bucket(&self, bucket: &str) -> Result<()> {
-        self.client
-            .create_bucket()
-            .bucket(bucket)
-            .send()
-            .await?;
+        self.client.create_bucket().bucket(bucket).send().await?;
 
         tracing::info!(bucket, "Created bucket");
         Ok(())
@@ -96,11 +92,7 @@ impl StorageClient {
     /// Returns an error if bucket deletion fails.
     #[instrument(skip(self))]
     pub async fn delete_bucket(&self, bucket: &str) -> Result<()> {
-        self.client
-            .delete_bucket()
-            .bucket(bucket)
-            .send()
-            .await?;
+        self.client.delete_bucket().bucket(bucket).send().await?;
 
         tracing::info!(bucket, "Deleted bucket");
         Ok(())
@@ -150,12 +142,7 @@ impl StorageClient {
     ///
     /// Returns an error if upload fails.
     #[instrument(skip(self, data), fields(data_len = data.len()))]
-    pub async fn put_object(
-        &self,
-        bucket: Option<&str>,
-        key: &str,
-        data: Vec<u8>,
-    ) -> Result<()> {
+    pub async fn put_object(&self, bucket: Option<&str>, key: &str, data: Vec<u8>) -> Result<()> {
         let bucket = self.resolve_bucket(bucket)?;
         let content_type = mime_guess::from_path(key)
             .first_or_octet_stream()

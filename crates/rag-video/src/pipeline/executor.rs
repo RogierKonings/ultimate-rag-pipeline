@@ -64,7 +64,11 @@ impl VideoPipeline {
     /// # Errors
     ///
     /// Returns an error if any pipeline stage fails.
-    #[allow(clippy::too_many_arguments, clippy::too_many_lines, clippy::missing_panics_doc)]
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::too_many_lines,
+        clippy::missing_panics_doc
+    )]
     pub async fn process(
         &self,
         video_path: impl AsRef<Path>,
@@ -95,7 +99,12 @@ impl VideoPipeline {
         tokio::fs::create_dir_all(&work_dir).await?;
 
         // Stage 1: Metadata Probe
-        self.report_progress(&progress, PipelineStage::MetadataProbe, 0.0, "Starting metadata probe");
+        self.report_progress(
+            &progress,
+            PipelineStage::MetadataProbe,
+            0.0,
+            "Starting metadata probe",
+        );
         let stage_start = Instant::now();
         match MetadataProbe::probe(video_path).await {
             Ok(metadata) => {
@@ -117,7 +126,12 @@ impl VideoPipeline {
         }
 
         // Stage 2 & 3: Keyframe and Audio Extraction (can run in parallel)
-        self.report_progress(&progress, PipelineStage::KeyframeExtraction, 0.0, "Starting extraction");
+        self.report_progress(
+            &progress,
+            PipelineStage::KeyframeExtraction,
+            0.0,
+            "Starting extraction",
+        );
 
         let keyframes_dir = self.config.keyframes_dir(&video_id.to_string());
         let audio_path = self.config.audio_path(&video_id.to_string());
@@ -132,43 +146,77 @@ impl VideoPipeline {
             match keyframe_result {
                 Ok((keyframes, duration)) => {
                     result.keyframes = keyframes;
-                    result.add_stage_result(StageResult::success(PipelineStage::KeyframeExtraction, duration));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::KeyframeExtraction,
+                        duration,
+                    ));
                 }
                 Err((e, duration)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::KeyframeExtraction, duration, e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::KeyframeExtraction,
+                        duration,
+                        e,
+                    ));
                 }
             }
 
             match audio_result {
                 Ok((path, duration)) => {
                     result.audio_path = Some(path);
-                    result.add_stage_result(StageResult::success(PipelineStage::AudioExtraction, duration));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::AudioExtraction,
+                        duration,
+                    ));
                 }
                 Err((e, duration)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::AudioExtraction, duration, e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::AudioExtraction,
+                        duration,
+                        e,
+                    ));
                 }
             }
         } else {
             // Run sequentially
             let stage_start = Instant::now();
-            match self.extract_keyframes(video_path, &keyframes_dir, &result.metadata).await {
+            match self
+                .extract_keyframes(video_path, &keyframes_dir, &result.metadata)
+                .await
+            {
                 Ok((keyframes, _)) => {
                     result.keyframes = keyframes;
-                    result.add_stage_result(StageResult::success(PipelineStage::KeyframeExtraction, stage_start.elapsed()));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::KeyframeExtraction,
+                        stage_start.elapsed(),
+                    ));
                 }
                 Err((e, _)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::KeyframeExtraction, stage_start.elapsed(), e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::KeyframeExtraction,
+                        stage_start.elapsed(),
+                        e,
+                    ));
                 }
             }
 
             let stage_start = Instant::now();
-            match self.extract_audio(video_path, &audio_path, &result.metadata).await {
+            match self
+                .extract_audio(video_path, &audio_path, &result.metadata)
+                .await
+            {
                 Ok((path, _)) => {
                     result.audio_path = Some(path);
-                    result.add_stage_result(StageResult::success(PipelineStage::AudioExtraction, stage_start.elapsed()));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::AudioExtraction,
+                        stage_start.elapsed(),
+                    ));
                 }
                 Err((e, _)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::AudioExtraction, stage_start.elapsed(), e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::AudioExtraction,
+                        stage_start.elapsed(),
+                        e,
+                    ));
                 }
             }
         }
@@ -180,10 +228,16 @@ impl VideoPipeline {
         }
 
         // Stage 4 & 5: Scene Detection and Transcription (can run in parallel if inputs available)
-        self.report_progress(&progress, PipelineStage::SceneDetection, 0.0, "Starting scene detection");
+        self.report_progress(
+            &progress,
+            PipelineStage::SceneDetection,
+            0.0,
+            "Starting scene detection",
+        );
 
         let scene_client = SceneDetectionClient::new(self.config.scene_detection_config.clone());
-        let transcription_client = TranscriptionClient::new(self.config.transcription_config.clone());
+        let transcription_client =
+            TranscriptionClient::new(self.config.transcription_config.clone());
 
         if self.config.enable_parallelism && result.audio_path.is_some() {
             let (scene_result, transcription_result) = tokio::join!(
@@ -194,20 +248,34 @@ impl VideoPipeline {
             match scene_result {
                 Ok((scene, duration)) => {
                     result.scene_result = Some(scene);
-                    result.add_stage_result(StageResult::success(PipelineStage::SceneDetection, duration));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::SceneDetection,
+                        duration,
+                    ));
                 }
                 Err((e, duration)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::SceneDetection, duration, e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::SceneDetection,
+                        duration,
+                        e,
+                    ));
                 }
             }
 
             match transcription_result {
                 Ok((transcription, duration)) => {
                     result.transcription_result = Some(transcription);
-                    result.add_stage_result(StageResult::success(PipelineStage::Transcription, duration));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::Transcription,
+                        duration,
+                    ));
                 }
                 Err((e, duration)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::Transcription, duration, e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::Transcription,
+                        duration,
+                        e,
+                    ));
                 }
             }
         } else {
@@ -216,30 +284,54 @@ impl VideoPipeline {
             match self.run_scene_detection(&scene_client, video_path).await {
                 Ok((scene, _)) => {
                     result.scene_result = Some(scene);
-                    result.add_stage_result(StageResult::success(PipelineStage::SceneDetection, stage_start.elapsed()));
+                    result.add_stage_result(StageResult::success(
+                        PipelineStage::SceneDetection,
+                        stage_start.elapsed(),
+                    ));
                 }
                 Err((e, _)) => {
-                    result.add_stage_result(StageResult::failure(PipelineStage::SceneDetection, stage_start.elapsed(), e));
+                    result.add_stage_result(StageResult::failure(
+                        PipelineStage::SceneDetection,
+                        stage_start.elapsed(),
+                        e,
+                    ));
                 }
             }
 
             if let Some(ref audio) = result.audio_path {
-                self.report_progress(&progress, PipelineStage::Transcription, 0.0, "Starting transcription");
+                self.report_progress(
+                    &progress,
+                    PipelineStage::Transcription,
+                    0.0,
+                    "Starting transcription",
+                );
                 let stage_start = Instant::now();
                 match self.run_transcription(&transcription_client, audio).await {
                     Ok((transcription, _)) => {
                         result.transcription_result = Some(transcription);
-                        result.add_stage_result(StageResult::success(PipelineStage::Transcription, stage_start.elapsed()));
+                        result.add_stage_result(StageResult::success(
+                            PipelineStage::Transcription,
+                            stage_start.elapsed(),
+                        ));
                     }
                     Err((e, _)) => {
-                        result.add_stage_result(StageResult::failure(PipelineStage::Transcription, stage_start.elapsed(), e));
+                        result.add_stage_result(StageResult::failure(
+                            PipelineStage::Transcription,
+                            stage_start.elapsed(),
+                            e,
+                        ));
                     }
                 }
             }
         }
 
         // Stage 6: Content Fusion
-        self.report_progress(&progress, PipelineStage::ContentFusion, 0.0, "Fusing content");
+        self.report_progress(
+            &progress,
+            PipelineStage::ContentFusion,
+            0.0,
+            "Fusing content",
+        );
         let stage_start = Instant::now();
         let fusion_service = ContentFusionService::new(self.config.fusion_config.clone());
 
@@ -270,7 +362,12 @@ impl VideoPipeline {
         ));
 
         // Stage 7: Embedding Generation
-        self.report_progress(&progress, PipelineStage::EmbeddingGeneration, 0.0, "Generating embeddings");
+        self.report_progress(
+            &progress,
+            PipelineStage::EmbeddingGeneration,
+            0.0,
+            "Generating embeddings",
+        );
         let stage_start = Instant::now();
         match self.generate_embeddings(&result.chunks).await {
             Ok(embeddings) => {
@@ -292,7 +389,12 @@ impl VideoPipeline {
         }
 
         // Stage 8: Qdrant Indexing
-        self.report_progress(&progress, PipelineStage::QdrantIndexing, 0.0, "Indexing in Qdrant");
+        self.report_progress(
+            &progress,
+            PipelineStage::QdrantIndexing,
+            0.0,
+            "Indexing in Qdrant",
+        );
         let stage_start = Instant::now();
 
         if let Some(ref indexer) = self.indexer {
@@ -366,7 +468,13 @@ impl VideoPipeline {
         video_path: &Path,
         output_dir: &Path,
         metadata: &Option<crate::extraction::VideoMetadata>,
-    ) -> std::result::Result<(Vec<crate::extraction::ExtractedKeyframe>, std::time::Duration), (String, std::time::Duration)> {
+    ) -> std::result::Result<
+        (
+            Vec<crate::extraction::ExtractedKeyframe>,
+            std::time::Duration,
+        ),
+        (String, std::time::Duration),
+    > {
         let start = Instant::now();
         let extractor = KeyframeExtractor::new(self.config.keyframe_config.clone());
 
@@ -388,7 +496,8 @@ impl VideoPipeline {
         video_path: &Path,
         output_path: &Path,
         metadata: &Option<crate::extraction::VideoMetadata>,
-    ) -> std::result::Result<(std::path::PathBuf, std::time::Duration), (String, std::time::Duration)> {
+    ) -> std::result::Result<(std::path::PathBuf, std::time::Duration), (String, std::time::Duration)>
+    {
         let start = Instant::now();
 
         // Check if video has audio
@@ -410,7 +519,10 @@ impl VideoPipeline {
         &self,
         client: &SceneDetectionClient,
         video_path: &Path,
-    ) -> std::result::Result<(crate::clients::SceneDetectionResult, std::time::Duration), (String, std::time::Duration)> {
+    ) -> std::result::Result<
+        (crate::clients::SceneDetectionResult, std::time::Duration),
+        (String, std::time::Duration),
+    > {
         let start = Instant::now();
         match client.detect(video_path).await {
             Ok(result) => Ok((result, start.elapsed())),
@@ -423,7 +535,10 @@ impl VideoPipeline {
         &self,
         client: &TranscriptionClient,
         audio_path: &Path,
-    ) -> std::result::Result<(crate::clients::TranscriptionResult, std::time::Duration), (String, std::time::Duration)> {
+    ) -> std::result::Result<
+        (crate::clients::TranscriptionResult, std::time::Duration),
+        (String, std::time::Duration),
+    > {
         let start = Instant::now();
         match client.transcribe(audio_path).await {
             Ok(result) => Ok((result, start.elapsed())),
@@ -473,10 +588,7 @@ impl VideoPipeline {
         );
 
         for (batch_idx, batch) in chunks.chunks(batch_size).enumerate() {
-            let texts: Vec<String> = batch
-                .iter()
-                .map(|chunk| chunk.fused_text.clone())
-                .collect();
+            let texts: Vec<String> = batch.iter().map(|chunk| chunk.fused_text.clone()).collect();
 
             match client.embed_batch(&texts).await {
                 Ok((batch_embeddings, token_count)) => {
@@ -508,16 +620,15 @@ impl VideoPipeline {
                             if i < batch_embeddings.len() {
                                 embeddings.insert(chunk.id, batch_embeddings[i].clone());
                             } else {
-                                embeddings.insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
+                                embeddings
+                                    .insert(chunk.id, Self::placeholder_vector(&chunk.fused_text));
                             }
                         }
                     }
 
                     info!(
                         batch = batch_idx + 1,
-                        total_batches,
-                        token_count,
-                        "Embedded batch successfully"
+                        total_batches, token_count, "Embedded batch successfully"
                     );
                 }
                 Err(e) => {
@@ -623,7 +734,8 @@ mod tests {
                     (i as u64) * 10000,
                     ((i + 1) as u64) * 10000,
                 );
-                chunk.fused_text = format!("This is test chunk number {i} with some content for embedding");
+                chunk.fused_text =
+                    format!("This is test chunk number {i} with some content for embedding");
                 chunk
             })
             .collect()
@@ -632,7 +744,8 @@ mod tests {
     fn mock_embedding_response(count: usize, dims: usize) -> serde_json::Value {
         let data: Vec<serde_json::Value> = (0..count)
             .map(|i| {
-                let embedding: Vec<f32> = (0..dims).map(|d| (d as f32 + i as f32) * 0.001).collect();
+                let embedding: Vec<f32> =
+                    (0..dims).map(|d| (d as f32 + i as f32) * 0.001).collect();
                 json!({
                     "embedding": embedding,
                     "index": i
@@ -660,10 +773,7 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path("/v1/embeddings"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(mock_embedding_response(3, 384)),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(mock_embedding_response(3, 384)))
             .mount(&mock_server)
             .await;
 
@@ -693,8 +803,7 @@ mod tests {
                 let body: serde_json::Value = req.body_json().unwrap();
                 let input = body["input"].as_array().unwrap();
                 let count = input.len();
-                ResponseTemplate::new(200)
-                    .set_body_json(mock_embedding_response(count, 384))
+                ResponseTemplate::new(200).set_body_json(mock_embedding_response(count, 384))
             })
             .expect(3)
             .mount(&mock_server)
@@ -749,15 +858,11 @@ mod tests {
         // Return embeddings with correct dimensions
         Mock::given(method("POST"))
             .and(path("/v1/embeddings"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(mock_embedding_response(1, 384)),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(mock_embedding_response(1, 384)))
             .mount(&mock_server)
             .await;
 
-        let config = PipelineConfig::default()
-            .with_embedding_url(mock_server.uri());
+        let config = PipelineConfig::default().with_embedding_url(mock_server.uri());
         let pipeline = VideoPipeline::new(config);
 
         let chunks = create_test_chunks(1);
@@ -784,11 +889,9 @@ mod tests {
                     let body: serde_json::Value = req.body_json().unwrap();
                     let input = body["input"].as_array().unwrap();
                     let count = input.len();
-                    ResponseTemplate::new(200)
-                        .set_body_json(mock_embedding_response(count, 384))
+                    ResponseTemplate::new(200).set_body_json(mock_embedding_response(count, 384))
                 } else {
-                    ResponseTemplate::new(500)
-                        .set_body_string("Internal Server Error")
+                    ResponseTemplate::new(500).set_body_string("Internal Server Error")
                 }
             })
             .mount(&mock_server)
@@ -822,7 +925,10 @@ mod tests {
     fn test_placeholder_vector_different_for_different_text() {
         let vec1 = VideoPipeline::placeholder_vector("hello");
         let vec2 = VideoPipeline::placeholder_vector("hello world");
-        assert_ne!(vec1, vec2, "Different texts should produce different placeholder vectors");
+        assert_ne!(
+            vec1, vec2,
+            "Different texts should produce different placeholder vectors"
+        );
     }
 
     #[test]

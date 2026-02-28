@@ -47,20 +47,29 @@ impl InMemoryCache {
 impl TenantConfigCache for InMemoryCache {
     #[instrument(skip(self))]
     async fn get(&self, tenant_id: Uuid) -> Result<Option<TenantIndexConfig>> {
-        let cache = self.cache.read().map_err(|e| TenantError::Cache(e.to_string()))?;
+        let cache = self
+            .cache
+            .read()
+            .map_err(|e| TenantError::Cache(e.to_string()))?;
         Ok(cache.get(&tenant_id).cloned())
     }
 
     #[instrument(skip(self))]
     async fn set(&self, config: &TenantIndexConfig, _ttl: Option<Duration>) -> Result<()> {
-        let mut cache = self.cache.write().map_err(|e| TenantError::Cache(e.to_string()))?;
+        let mut cache = self
+            .cache
+            .write()
+            .map_err(|e| TenantError::Cache(e.to_string()))?;
         cache.insert(config.tenant_id, config.clone());
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn invalidate(&self, tenant_id: Uuid) -> Result<()> {
-        let mut cache = self.cache.write().map_err(|e| TenantError::Cache(e.to_string()))?;
+        let mut cache = self
+            .cache
+            .write()
+            .map_err(|e| TenantError::Cache(e.to_string()))?;
         cache.remove(&tenant_id);
         Ok(())
     }

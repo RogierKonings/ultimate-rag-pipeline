@@ -1,17 +1,12 @@
 //! Telemetry initialization.
 
 use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
     trace::{Sampler, SdkTracerProvider},
     Resource,
 };
-use opentelemetry_otlp::WithExportConfig;
-use tracing_subscriber::{
-    fmt,
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    EnvFilter, Layer,
-};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 use crate::{LogFormat, Result, TelemetryConfig, TelemetryError};
 
@@ -84,11 +79,7 @@ where
                 .with_current_span(true)
                 .with_target(true),
         ),
-        LogFormat::Compact => Box::new(
-            fmt::layer()
-                .compact()
-                .with_target(true),
-        ),
+        LogFormat::Compact => Box::new(fmt::layer().compact().with_target(true)),
         LogFormat::Pretty => Box::new(
             fmt::layer()
                 .pretty()
@@ -109,16 +100,23 @@ where
     S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {
     // Build resource attributes
-    let mut resource_attrs = vec![
-        opentelemetry::KeyValue::new("service.name", config.service_name.clone()),
-    ];
+    let mut resource_attrs = vec![opentelemetry::KeyValue::new(
+        "service.name",
+        config.service_name.clone(),
+    )];
 
     if let Some(version) = &config.service_version {
-        resource_attrs.push(opentelemetry::KeyValue::new("service.version", version.clone()));
+        resource_attrs.push(opentelemetry::KeyValue::new(
+            "service.version",
+            version.clone(),
+        ));
     }
 
     if let Some(env) = &config.environment {
-        resource_attrs.push(opentelemetry::KeyValue::new("deployment.environment", env.clone()));
+        resource_attrs.push(opentelemetry::KeyValue::new(
+            "deployment.environment",
+            env.clone(),
+        ));
     }
 
     let resource = Resource::builder_empty()
@@ -151,7 +149,10 @@ where
     opentelemetry::global::set_tracer_provider(tracer_provider.clone());
     let tracer = tracer_provider.tracer(config.service_name.clone());
 
-    Ok((tracing_opentelemetry::layer().with_tracer(tracer), tracer_provider))
+    Ok((
+        tracing_opentelemetry::layer().with_tracer(tracer),
+        tracer_provider,
+    ))
 }
 
 /// Initialize telemetry from environment variables.

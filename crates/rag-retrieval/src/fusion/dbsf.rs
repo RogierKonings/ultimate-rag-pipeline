@@ -240,8 +240,9 @@ where
             let semantic_z = semantic_zscores.get(&id).copied().unwrap_or(0.0);
             let keyword_z = keyword_zscores.get(&id).copied().unwrap_or(0.0);
 
-            let fused_score =
-                config.semantic_weight.mul_add(semantic_z, config.keyword_weight * keyword_z);
+            let fused_score = config
+                .semantic_weight
+                .mul_add(semantic_z, config.keyword_weight * keyword_z);
 
             ScoredItem::new(id, fused_score)
         })

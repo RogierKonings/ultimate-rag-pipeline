@@ -27,14 +27,14 @@
 
 mod config;
 mod error;
-mod pool;
 mod models;
+mod pool;
 mod repositories;
 
 pub use config::DatabaseConfig;
 pub use error::{DatabaseError, Result};
-pub use pool::DatabasePool;
 pub use models::*;
+pub use pool::DatabasePool;
 pub use repositories::*;
 
 // Re-export sqlx types for convenience

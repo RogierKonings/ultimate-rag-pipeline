@@ -97,9 +97,7 @@ impl SearchClient {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SearchError::Index(format!(
-                "Index creation failed: {body}"
-            )));
+            return Err(SearchError::Index(format!("Index creation failed: {body}")));
         }
 
         Ok(())
@@ -208,11 +206,7 @@ impl SearchClient {
     /// # Errors
     ///
     /// Returns an error if bulk indexing fails.
-    pub async fn bulk_index(
-        &self,
-        index: &str,
-        documents: Vec<(String, Value)>,
-    ) -> Result<usize> {
+    pub async fn bulk_index(&self, index: &str, documents: Vec<(String, Value)>) -> Result<usize> {
         if documents.is_empty() {
             return Ok(0);
         }

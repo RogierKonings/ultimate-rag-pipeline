@@ -46,8 +46,8 @@ impl VaultProvider {
     ///
     /// Returns an error if required environment variables are not set.
     pub fn from_env() -> Result<Self> {
-        let config =
-            VaultConfig::from_env().ok_or_else(|| SecretsError::ConfigError("VAULT_ADDR not set".into()))?;
+        let config = VaultConfig::from_env()
+            .ok_or_else(|| SecretsError::ConfigError("VAULT_ADDR not set".into()))?;
         Self::new(config)
     }
 

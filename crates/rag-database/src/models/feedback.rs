@@ -35,7 +35,6 @@ impl FeedbackType {
     }
 }
 
-
 impl std::fmt::Display for FeedbackType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
@@ -185,7 +184,9 @@ impl QueryFeedbackBuilder {
             request_id: self.request_id.ok_or("request_id is required")?,
             tenant_id: self.tenant_id,
             rating: self.rating.ok_or("rating is required")?,
-            feedback_type: self.feedback_type.or(Some(FeedbackType::General.to_string())),
+            feedback_type: self
+                .feedback_type
+                .or(Some(FeedbackType::General.to_string())),
             comment: self.comment,
             session_id: self.session_id,
         })

@@ -102,13 +102,12 @@ impl<C: TenantConfigCache> TenantConfigService<C> {
 
     /// Load configuration from database.
     async fn load_from_database(&self, tenant_id: Uuid) -> Result<TenantIndexConfig> {
-        let tenant: Option<Tenant> = sqlx::query_as(
-            "SELECT * FROM tenants WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(tenant_id)
-        .fetch_optional(self.pool.inner())
-        .await
-        .map_err(|e| TenantError::Database(e.to_string()))?;
+        let tenant: Option<Tenant> =
+            sqlx::query_as("SELECT * FROM tenants WHERE id = $1 AND deleted_at IS NULL")
+                .bind(tenant_id)
+                .fetch_optional(self.pool.inner())
+                .await
+                .map_err(|e| TenantError::Database(e.to_string()))?;
 
         match tenant {
             Some(t) => Ok(self.build_config_from_tenant(&t)),

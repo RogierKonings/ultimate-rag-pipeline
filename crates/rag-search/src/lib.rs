@@ -42,6 +42,6 @@ mod query;
 
 pub use client::SearchClient;
 pub use config::SearchConfig;
-pub use error::{SearchError, Result};
+pub use error::{Result, SearchError};
 pub use models::{BM25Request, SearchHit, SearchResponse};
 pub use query::{HighlightBuilder, QueryBuilder};

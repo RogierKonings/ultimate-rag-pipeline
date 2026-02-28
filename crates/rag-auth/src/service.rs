@@ -88,9 +88,8 @@ impl ServiceTokenClaims {
     /// Get the expiration time as a DateTime.
     #[must_use]
     pub fn expiration(&self) -> Option<DateTime<Utc>> {
-        self.exp.map(|ts| {
-            DateTime::from_timestamp(ts, 0).unwrap_or(DateTime::UNIX_EPOCH)
-        })
+        self.exp
+            .map(|ts| DateTime::from_timestamp(ts, 0).unwrap_or(DateTime::UNIX_EPOCH))
     }
 
     /// Check if the token is expired.

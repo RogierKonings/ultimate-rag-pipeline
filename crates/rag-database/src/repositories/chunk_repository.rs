@@ -3,10 +3,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{
-    Chunk, NewChunk,
-    DatabaseError, Result,
-};
+use crate::{Chunk, DatabaseError, NewChunk, Result};
 
 /// Repository for chunk operations.
 #[derive(Clone)]
@@ -242,11 +239,7 @@ impl ChunkRepository {
     /// # Errors
     ///
     /// Returns an error if the query fails.
-    pub async fn find_without_embeddings(
-        &self,
-        tenant_id: &str,
-        limit: i64,
-    ) -> Result<Vec<Chunk>> {
+    pub async fn find_without_embeddings(&self, tenant_id: &str, limit: i64) -> Result<Vec<Chunk>> {
         sqlx::query_as::<_, Chunk>(
             r#"
             SELECT * FROM chunks

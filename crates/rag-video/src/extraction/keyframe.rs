@@ -127,7 +127,10 @@ impl KeyframeExtractor {
             });
         }
 
-        debug!(num_keyframes = keyframes.len(), "Keyframe extraction complete");
+        debug!(
+            num_keyframes = keyframes.len(),
+            "Keyframe extraction complete"
+        );
 
         Ok(keyframes)
     }
@@ -530,9 +533,7 @@ mod tests {
         let cmd = extractor.build_extract_command(video_path, 10.123, output_path);
         let args: Vec<&OsStr> = cmd.as_std().get_args().collect();
 
-        let has_precise_ss = args
-            .windows(2)
-            .any(|w| w[0] == "-ss" && w[1] == "10.123");
+        let has_precise_ss = args.windows(2).any(|w| w[0] == "-ss" && w[1] == "10.123");
         assert!(
             has_precise_ss,
             "Command should have timestamp with 3 decimal places"
@@ -571,11 +572,7 @@ mod tests {
         let extractor = KeyframeExtractor::new(config);
 
         let result = extractor
-            .extract(
-                "/nonexistent/video.mp4",
-                &[0, 1000, 2000],
-                "/tmp/output",
-            )
+            .extract("/nonexistent/video.mp4", &[0, 1000, 2000], "/tmp/output")
             .await;
 
         assert!(result.is_err());
@@ -593,9 +590,7 @@ mod tests {
         let cmd = extractor.build_extract_command(video_path, 0.0, output_path);
         let args: Vec<&OsStr> = cmd.as_std().get_args().collect();
 
-        let has_ss = args
-            .windows(2)
-            .any(|w| w[0] == "-ss" && w[1] == "0.000");
+        let has_ss = args.windows(2).any(|w| w[0] == "-ss" && w[1] == "0.000");
         assert!(has_ss, "Command should contain -ss 0.000");
     }
 

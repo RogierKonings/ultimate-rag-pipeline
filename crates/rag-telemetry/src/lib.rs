@@ -32,12 +32,12 @@ mod metrics;
 mod tracing_layer;
 
 pub use config::{LogFormat, TelemetryConfig};
-pub use error::{TelemetryError, Result};
+pub use error::{Result, TelemetryError};
 pub use init::{init_telemetry, TelemetryGuard};
 pub use metrics::{Metrics, MetricsRegistry};
 pub use tracing_layer::request_id_layer;
 
+pub use tracing::instrument;
 /// Re-export tracing macros for convenience.
 pub use tracing::{debug, error, info, trace, warn};
-pub use tracing::{debug_span, error_span, info_span, trace_span, warn_span, span, Span};
-pub use tracing::instrument;
+pub use tracing::{debug_span, error_span, info_span, span, trace_span, warn_span, Span};

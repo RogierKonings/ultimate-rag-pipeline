@@ -295,7 +295,9 @@ impl QdrantConfig {
     /// Get the API key if configured (exposes secret).
     #[must_use]
     pub fn api_key(&self) -> Option<&str> {
-        self.api_key.as_ref().map(secrecy::ExposeSecret::expose_secret)
+        self.api_key
+            .as_ref()
+            .map(secrecy::ExposeSecret::expose_secret)
     }
 }
 
@@ -352,13 +354,17 @@ impl OpenSearchConfig {
     /// Get the username if configured (exposes secret).
     #[must_use]
     pub fn username(&self) -> Option<&str> {
-        self.username.as_ref().map(secrecy::ExposeSecret::expose_secret)
+        self.username
+            .as_ref()
+            .map(secrecy::ExposeSecret::expose_secret)
     }
 
     /// Get the password if configured (exposes secret).
     #[must_use]
     pub fn password(&self) -> Option<&str> {
-        self.password.as_ref().map(secrecy::ExposeSecret::expose_secret)
+        self.password
+            .as_ref()
+            .map(secrecy::ExposeSecret::expose_secret)
     }
 }
 

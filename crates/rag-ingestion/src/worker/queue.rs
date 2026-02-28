@@ -133,9 +133,7 @@ impl JobQueue {
                         // Move to processing set
                         let processing_key = self.processing_key();
                         let now = chrono::Utc::now().timestamp_millis() as f64;
-                        let _: () = conn
-                            .zadd(&processing_key, job_id.to_string(), now)
-                            .await?;
+                        let _: () = conn.zadd(&processing_key, job_id.to_string(), now).await?;
 
                         // Update job status
                         job.mark_started();

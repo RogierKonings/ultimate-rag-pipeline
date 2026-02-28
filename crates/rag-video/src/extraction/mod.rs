@@ -11,6 +11,4 @@ mod types;
 pub use audio::AudioExtractor;
 pub use keyframe::KeyframeExtractor;
 pub use metadata::MetadataProbe;
-pub use types::{
-    AudioConfig, AudioMetadata, ExtractedKeyframe, KeyframeConfig, VideoMetadata,
-};
+pub use types::{AudioConfig, AudioMetadata, ExtractedKeyframe, KeyframeConfig, VideoMetadata};

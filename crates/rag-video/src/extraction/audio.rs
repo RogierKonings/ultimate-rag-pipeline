@@ -409,7 +409,10 @@ mod tests {
         );
 
         // -y should come before output (last)
-        assert!(y_pos.unwrap() < args.len() - 1, "-y should come before output");
+        assert!(
+            y_pos.unwrap() < args.len() - 1,
+            "-y should come before output"
+        );
     }
 
     #[test]

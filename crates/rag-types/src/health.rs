@@ -112,8 +112,7 @@ impl HealthResponse {
     /// Add detailed component health.
     #[must_use]
     pub fn with_component_detail(mut self, detail: ComponentHealth) -> Self {
-        self.components
-            .insert(detail.name.clone(), detail.healthy);
+        self.components.insert(detail.name.clone(), detail.healthy);
         self.component_details.push(detail);
         self
     }

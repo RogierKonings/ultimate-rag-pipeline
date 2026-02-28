@@ -3,13 +3,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{
-    point_id::PointIdOptions, CreateCollectionBuilder, DeletePointsBuilder,
-    Distance, FieldCondition, Filter, Match, PointId, PointStruct,
-    ScrollPointsBuilder, SearchPointsBuilder, UpsertPointsBuilder,
-    VectorParamsBuilder,
+    point_id::PointIdOptions, CreateCollectionBuilder, DeletePointsBuilder, Distance,
+    FieldCondition, Filter, Match, PointId, PointStruct, ScrollPointsBuilder, SearchPointsBuilder,
+    UpsertPointsBuilder, VectorParamsBuilder,
 };
+use qdrant_client::Qdrant;
 use uuid::Uuid;
 
 use super::config::VideoIndexerConfig;
@@ -72,12 +71,14 @@ impl VideoQdrantIndexer {
         }
 
         // Create collection with vector params
-        let vectors_config = VectorParamsBuilder::new(self.config.vector_size as u64, Distance::Cosine)
-            .hnsw_config(qdrant_client::qdrant::HnswConfigDiff {
-                m: Some(self.config.hnsw_m),
-                ef_construct: Some(self.config.hnsw_ef_construct),
-                ..Default::default()
-            });
+        let vectors_config =
+            VectorParamsBuilder::new(self.config.vector_size as u64, Distance::Cosine).hnsw_config(
+                qdrant_client::qdrant::HnswConfigDiff {
+                    m: Some(self.config.hnsw_m),
+                    ef_construct: Some(self.config.hnsw_ef_construct),
+                    ..Default::default()
+                },
+            );
 
         self.client
             .create_collection(
@@ -148,7 +149,9 @@ impl VideoQdrantIndexer {
                     payload.video_title = video_title.to_string();
                     payload.visibility = visibility.to_string();
                     payload.allowed_groups = allowed_groups.to_vec();
-                    payload.source_modalities.clone_from(&chunk.source_modalities);
+                    payload
+                        .source_modalities
+                        .clone_from(&chunk.source_modalities);
                     payload.keyframe_path = chunk
                         .keyframe_path
                         .as_ref()
@@ -169,8 +172,7 @@ impl VideoQdrantIndexer {
             if !points.is_empty() {
                 self.client
                     .upsert_points(
-                        UpsertPointsBuilder::new(&self.config.collection_name, points)
-                            .wait(true),
+                        UpsertPointsBuilder::new(&self.config.collection_name, points).wait(true),
                     )
                     .await
                     .map_err(|e| VideoError::Qdrant(format!("Failed to upsert points: {e}")))?;
@@ -182,12 +184,7 @@ impl VideoQdrantIndexer {
                 cb(
                     indexed,
                     total,
-                    &format!(
-                        "Indexed batch {} ({} of {})",
-                        batch_idx + 1,
-                        indexed,
-                        total
-                    ),
+                    &format!("Indexed batch {} ({} of {})", batch_idx + 1, indexed, total),
                 );
             }
         }
@@ -215,8 +212,8 @@ impl VideoQdrantIndexer {
     pub async fn delete_by_video_id(&self, video_id: Uuid) -> Result<u64> {
         let filter = Filter {
             must: vec![qdrant_client::qdrant::Condition {
-                condition_one_of: Some(
-                    qdrant_client::qdrant::condition::ConditionOneOf::Field(FieldCondition {
+                condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                    FieldCondition {
                         key: "video_id".to_string(),
                         r#match: Some(Match {
                             match_value: Some(qdrant_client::qdrant::r#match::MatchValue::Keyword(
@@ -224,8 +221,8 @@ impl VideoQdrantIndexer {
                             )),
                         }),
                         ..Default::default()
-                    }),
-                ),
+                    },
+                )),
             }],
             ..Default::default()
         };
@@ -277,8 +274,8 @@ impl VideoQdrantIndexer {
         filters: SearchFilters,
     ) -> Result<Vec<SearchHit>> {
         let mut must_conditions = vec![qdrant_client::qdrant::Condition {
-            condition_one_of: Some(
-                qdrant_client::qdrant::condition::ConditionOneOf::Field(FieldCondition {
+            condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                FieldCondition {
                     key: "tenant_id".to_string(),
                     r#match: Some(Match {
                         match_value: Some(qdrant_client::qdrant::r#match::MatchValue::Keyword(
@@ -286,26 +283,24 @@ impl VideoQdrantIndexer {
                         )),
                     }),
                     ..Default::default()
-                }),
-            ),
+                },
+            )),
         }];
 
         // Add video_id filter
         if let Some(video_id) = filters.video_id {
             must_conditions.push(qdrant_client::qdrant::Condition {
-                condition_one_of: Some(
-                    qdrant_client::qdrant::condition::ConditionOneOf::Field(FieldCondition {
+                condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                    FieldCondition {
                         key: "video_id".to_string(),
                         r#match: Some(Match {
-                            match_value: Some(
-                                qdrant_client::qdrant::r#match::MatchValue::Keyword(
-                                    video_id.to_string(),
-                                ),
-                            ),
+                            match_value: Some(qdrant_client::qdrant::r#match::MatchValue::Keyword(
+                                video_id.to_string(),
+                            )),
                         }),
                         ..Default::default()
-                    }),
-                ),
+                    },
+                )),
             });
         }
 
@@ -314,17 +309,17 @@ impl VideoQdrantIndexer {
         let mut should_conditions = Vec::new();
         for group in &filters.allowed_groups {
             should_conditions.push(qdrant_client::qdrant::Condition {
-                condition_one_of: Some(
-                    qdrant_client::qdrant::condition::ConditionOneOf::Field(FieldCondition {
+                condition_one_of: Some(qdrant_client::qdrant::condition::ConditionOneOf::Field(
+                    FieldCondition {
                         key: "allowed_groups".to_string(),
                         r#match: Some(Match {
-                            match_value: Some(
-                                qdrant_client::qdrant::r#match::MatchValue::Keyword(group.clone()),
-                            ),
+                            match_value: Some(qdrant_client::qdrant::r#match::MatchValue::Keyword(
+                                group.clone(),
+                            )),
                         }),
                         ..Default::default()
-                    }),
-                ),
+                    },
+                )),
             });
         }
 
@@ -398,11 +393,15 @@ impl VideoQdrantIndexer {
             return Ok(None);
         }
 
-        match self.client.collection_info(&self.config.collection_name).await {
+        match self
+            .client
+            .collection_info(&self.config.collection_name)
+            .await
+        {
             Ok(response) => {
-                let r = response.result.ok_or_else(|| {
-                    VideoError::Qdrant("Collection info result was empty".into())
-                })?;
+                let r = response
+                    .result
+                    .ok_or_else(|| VideoError::Qdrant("Collection info result was empty".into()))?;
                 let info = CollectionInfo::new(
                     &self.config.collection_name,
                     r.indexed_vectors_count.unwrap_or(0),
@@ -411,11 +410,9 @@ impl VideoQdrantIndexer {
                 );
                 Ok(Some(info))
             }
-            Err(e) => {
-                Err(VideoError::Qdrant(format!(
-                    "Failed to get collection info: {e}"
-                )))
-            }
+            Err(e) => Err(VideoError::Qdrant(format!(
+                "Failed to get collection info: {e}"
+            ))),
         }
     }
 
@@ -524,9 +521,7 @@ impl VideoQdrantIndexer {
 
     /// Converts a Qdrant payload map to a `VideoChunkPayload`.
     #[allow(clippy::cast_possible_truncation)]
-    fn map_to_payload(
-        map: &HashMap<String, qdrant_client::qdrant::Value>,
-    ) -> VideoChunkPayload {
+    fn map_to_payload(map: &HashMap<String, qdrant_client::qdrant::Value>) -> VideoChunkPayload {
         let get_string = |key: &str| -> String {
             map.get(key)
                 .and_then(|v| v.kind.as_ref())

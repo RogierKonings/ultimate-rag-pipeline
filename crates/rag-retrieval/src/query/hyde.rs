@@ -409,8 +409,8 @@ impl HydeGenerator {
     pub fn new(config: HydeConfig) -> Result<Self> {
         config.validate()?;
 
-        let client = build_http_client_with_timeout(config.timeout())
-            .map_err(RetrievalError::config)?;
+        let client =
+            build_http_client_with_timeout(config.timeout()).map_err(RetrievalError::config)?;
 
         Ok(Self { client, config })
     }

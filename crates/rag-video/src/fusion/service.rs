@@ -59,13 +59,8 @@ impl ContentFusionService {
             .iter()
             .enumerate()
             .map(|(index, &(start_ms, end_ms))| {
-                let mut chunk = VideoChunk::new(
-                    video_id,
-                    tenant_id,
-                    index as u32,
-                    start_ms,
-                    end_ms,
-                );
+                let mut chunk =
+                    VideoChunk::new(video_id, tenant_id, index as u32, start_ms, end_ms);
 
                 // Extract transcript text for this time range
                 chunk.transcript_text = self.get_transcript_in_range(transcript, start_ms, end_ms);
@@ -289,9 +284,9 @@ impl ContentFusionService {
             }
 
             // Check if similar text already exists
-            let is_duplicate = unique.iter().any(|existing: &&str| {
-                existing.contains(trimmed) || trimmed.contains(*existing)
-            });
+            let is_duplicate = unique
+                .iter()
+                .any(|existing: &&str| existing.contains(trimmed) || trimmed.contains(*existing));
 
             if !is_duplicate {
                 unique.push(trimmed);
@@ -566,9 +561,12 @@ mod tests {
         let video_id = Uuid::new_v4();
         let tenant_id = Uuid::new_v4();
 
-        let keyframes = vec![
-            create_keyframe_with_content(5_000, true, "A person speaking", "TITLE"),
-        ];
+        let keyframes = vec![create_keyframe_with_content(
+            5_000,
+            true,
+            "A person speaking",
+            "TITLE",
+        )];
 
         let chunks = service.create_chunks(video_id, tenant_id, 10_000, &[], &keyframes);
 
@@ -615,8 +613,7 @@ mod tests {
             create_keyframe_with_content(15_000, true, "Second chunk", ""),
         ];
 
-        let chunks =
-            service.create_chunks(Uuid::new_v4(), Uuid::new_v4(), 20_000, &[], &keyframes);
+        let chunks = service.create_chunks(Uuid::new_v4(), Uuid::new_v4(), 20_000, &[], &keyframes);
 
         assert_eq!(chunks.len(), 2);
         assert_eq!(chunks[0].scene_description, "First chunk");

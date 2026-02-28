@@ -80,10 +80,12 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_handles_unknown_event_type(self, listener):
         """Unknown event_type is logged as error, not processed."""
-        event = json.dumps({
-            "event_type": "unknown_event",
-            "tenant_id": "t1",
-        })
+        event = json.dumps(
+            {
+                "event_type": "unknown_event",
+                "tenant_id": "t1",
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
         assert listener.stats.errors == 1
         assert listener.stats.events_processed == 0
@@ -91,10 +93,12 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_processes_tenant_invalidation(self, listener, mock_answer_cache):
         """tenant_invalidation event calls invalidate_for_tenant."""
-        event = json.dumps({
-            "event_type": "tenant_invalidation",
-            "tenant_id": "tenant-1",
-        })
+        event = json.dumps(
+            {
+                "event_type": "tenant_invalidation",
+                "tenant_id": "tenant-1",
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         mock_answer_cache.invalidate_for_tenant.assert_awaited_once_with("tenant-1")
@@ -104,11 +108,13 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_processes_document_deleted(self, listener, mock_answer_cache):
         """document_deleted event calls invalidate_for_document per doc."""
-        event = json.dumps({
-            "event_type": "document_deleted",
-            "tenant_id": "tenant-1",
-            "document_ids": ["doc-1", "doc-2"],
-        })
+        event = json.dumps(
+            {
+                "event_type": "document_deleted",
+                "tenant_id": "tenant-1",
+                "document_ids": ["doc-1", "doc-2"],
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         assert mock_answer_cache.invalidate_for_document.await_count == 2
@@ -118,11 +124,13 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_processes_document_reindexed(self, listener, mock_answer_cache):
         """document_reindexed event calls invalidate_for_document."""
-        event = json.dumps({
-            "event_type": "document_reindexed",
-            "tenant_id": "tenant-1",
-            "document_ids": ["doc-1"],
-        })
+        event = json.dumps(
+            {
+                "event_type": "document_reindexed",
+                "tenant_id": "tenant-1",
+                "document_ids": ["doc-1"],
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         mock_answer_cache.invalidate_for_document.assert_awaited_once_with("tenant-1", "doc-1")
@@ -131,11 +139,13 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_processes_batch_deleted(self, listener, mock_answer_cache):
         """batch_deleted event calls invalidate_for_document for each doc."""
-        event = json.dumps({
-            "event_type": "batch_deleted",
-            "tenant_id": "tenant-1",
-            "document_ids": ["d1", "d2", "d3"],
-        })
+        event = json.dumps(
+            {
+                "event_type": "batch_deleted",
+                "tenant_id": "tenant-1",
+                "document_ids": ["d1", "d2", "d3"],
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         assert mock_answer_cache.invalidate_for_document.await_count == 3
@@ -146,10 +156,12 @@ class TestHandleMessage:
         """Exception from answer_cache is caught and counted as error."""
         mock_answer_cache.invalidate_for_tenant.side_effect = Exception("Redis down")
 
-        event = json.dumps({
-            "event_type": "tenant_invalidation",
-            "tenant_id": "tenant-1",
-        })
+        event = json.dumps(
+            {
+                "event_type": "tenant_invalidation",
+                "tenant_id": "tenant-1",
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         assert listener.stats.errors == 1
@@ -158,11 +170,13 @@ class TestHandleMessage:
     @pytest.mark.asyncio
     async def test_empty_document_ids_list(self, listener, mock_answer_cache):
         """document_deleted with empty document_ids still counts as processed."""
-        event = json.dumps({
-            "event_type": "document_deleted",
-            "tenant_id": "tenant-1",
-            "document_ids": [],
-        })
+        event = json.dumps(
+            {
+                "event_type": "document_deleted",
+                "tenant_id": "tenant-1",
+                "document_ids": [],
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         mock_answer_cache.invalidate_for_document.assert_not_awaited()
@@ -366,10 +380,12 @@ class TestMetrics:
     @pytest.mark.asyncio
     async def test_get_metrics_after_events(self, listener, mock_answer_cache):
         """Metrics reflect processed events."""
-        event = json.dumps({
-            "event_type": "tenant_invalidation",
-            "tenant_id": "t1",
-        })
+        event = json.dumps(
+            {
+                "event_type": "tenant_invalidation",
+                "tenant_id": "t1",
+            }
+        )
         await listener._handle_message({"type": "message", "data": event})
 
         metrics = listener.get_metrics()

@@ -46,7 +46,11 @@ impl K8sProvider {
             Some((secret_name, data_key)) => (secret_name.into(), data_key.into()),
             None => {
                 // Use prefix + key as secret name, "value" as data key
-                let secret_name = format!("{}{}", self.config.secret_prefix, key.to_lowercase().replace('_', "-"));
+                let secret_name = format!(
+                    "{}{}",
+                    self.config.secret_prefix,
+                    key.to_lowercase().replace('_', "-")
+                );
                 (secret_name, "value".into())
             }
         }
@@ -67,15 +71,12 @@ impl SecretsProvider for K8sProvider {
 
         let secrets: Api<Secret> = Api::namespaced(self.client.clone(), &self.config.namespace);
 
-        let secret = secrets
-            .get(&secret_name)
-            .await
-            .map_err(|e| match e {
-                kube::Error::Api(ref ae) if ae.code == 404 => {
-                    SecretsError::NotFound(format!("{}/{}", secret_name, data_key))
-                }
-                _ => SecretsError::from(e),
-            })?;
+        let secret = secrets.get(&secret_name).await.map_err(|e| match e {
+            kube::Error::Api(ref ae) if ae.code == 404 => {
+                SecretsError::NotFound(format!("{}/{}", secret_name, data_key))
+            }
+            _ => SecretsError::from(e),
+        })?;
 
         let data = secret
             .data

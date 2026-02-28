@@ -98,7 +98,8 @@ async def _retrieve_for_sub_question(
                 "document_id": item.get("document_id"),
                 "metadata": item.get("metadata", {}),
                 "title": item.get("title") or item.get("metadata", {}).get("title"),
-                "source": item.get("source") or item.get("metadata", {}).get("source_uri", "unknown"),
+                "source": item.get("source")
+                or item.get("metadata", {}).get("source_uri", "unknown"),
             }
             documents.append(doc)
 

@@ -384,11 +384,9 @@ impl QueryCache {
         let pattern = format!("{}:{}:*", self.config.key_prefix, tenant_id);
         debug!(pattern = %pattern, "Invalidating all query cache entries for tenant");
 
-        let deleted = self
-            .cache_client
-            .scan_delete(&pattern)
-            .await
-            .map_err(|e| RetrievalError::cache(format!("Failed to scan-delete tenant cache: {e}")))?;
+        let deleted = self.cache_client.scan_delete(&pattern).await.map_err(|e| {
+            RetrievalError::cache(format!("Failed to scan-delete tenant cache: {e}"))
+        })?;
 
         debug!(tenant_id = %tenant_id, deleted = deleted, "Tenant cache invalidation complete");
         Ok(())

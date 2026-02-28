@@ -212,12 +212,24 @@ mod tests {
 
     #[test]
     fn test_all_error_variants() {
-        assert_eq!(ApiError::bad_request("x").status, http::StatusCode::BAD_REQUEST);
-        assert_eq!(ApiError::validation("x").status, http::StatusCode::BAD_REQUEST);
-        assert_eq!(ApiError::unauthorized("x").status, http::StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            ApiError::bad_request("x").status,
+            http::StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            ApiError::validation("x").status,
+            http::StatusCode::BAD_REQUEST
+        );
+        assert_eq!(
+            ApiError::unauthorized("x").status,
+            http::StatusCode::UNAUTHORIZED
+        );
         assert_eq!(ApiError::forbidden("x").status, http::StatusCode::FORBIDDEN);
         assert_eq!(ApiError::not_found("x").status, http::StatusCode::NOT_FOUND);
-        assert_eq!(ApiError::timeout("x").status, http::StatusCode::REQUEST_TIMEOUT);
+        assert_eq!(
+            ApiError::timeout("x").status,
+            http::StatusCode::REQUEST_TIMEOUT
+        );
         assert_eq!(
             ApiError::internal("x").status,
             http::StatusCode::INTERNAL_SERVER_ERROR

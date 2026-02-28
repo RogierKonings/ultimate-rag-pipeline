@@ -85,9 +85,8 @@ impl JwtHandler {
         let key = if config.algorithm.is_asymmetric() {
             let pem = Self::load_key_content(key_str)?;
             // Try public key first, then private key
-            DecodingKey::from_rsa_pem(pem.as_bytes()).map_err(|e| {
-                AuthError::KeyConfig(format!("Invalid RSA key: {e}"))
-            })?
+            DecodingKey::from_rsa_pem(pem.as_bytes())
+                .map_err(|e| AuthError::KeyConfig(format!("Invalid RSA key: {e}")))?
         } else {
             DecodingKey::from_secret(key_str.as_bytes())
         };
@@ -127,7 +126,11 @@ impl JwtHandler {
     ///
     /// Returns an error if token creation fails.
     pub fn create_refresh_token(&self, claims: &TokenClaims) -> Result<String> {
-        self.create_token(claims, TokenType::Refresh, self.config.refresh_token_duration)
+        self.create_token(
+            claims,
+            TokenType::Refresh,
+            self.config.refresh_token_duration,
+        )
     }
 
     /// Create an access/refresh token pair.
@@ -471,11 +474,13 @@ mod tests {
     #[test]
     fn test_create_and_verify_access_token() {
         let handler = JwtHandler::new(test_config()).unwrap();
-        let claims = TokenClaims::new(Uuid::new_v4(), Uuid::new_v4())
-            .with_roles(vec!["user".into()]);
+        let claims =
+            TokenClaims::new(Uuid::new_v4(), Uuid::new_v4()).with_roles(vec!["user".into()]);
 
         let token = handler.create_access_token(&claims).unwrap();
-        let verified = handler.verify_token(&token, Some(TokenType::Access)).unwrap();
+        let verified = handler
+            .verify_token(&token, Some(TokenType::Access))
+            .unwrap();
 
         assert_eq!(verified.sub, claims.sub);
         assert_eq!(verified.tenant_id, claims.tenant_id);
@@ -549,7 +554,10 @@ mod tests {
             .unwrap();
 
         let result = handler.verify_service_token(&token, "retrieval", Some("/admin/users"));
-        assert!(matches!(result, Err(AuthError::EndpointNotAuthorized { .. })));
+        assert!(matches!(
+            result,
+            Err(AuthError::EndpointNotAuthorized { .. })
+        ));
     }
 
     #[tokio::test]

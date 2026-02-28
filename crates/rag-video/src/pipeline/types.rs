@@ -181,9 +181,7 @@ impl PipelineResult {
     /// Get the number of chunks that were indexed.
     #[must_use]
     pub fn indexed_count(&self) -> usize {
-        self.index_result
-            .as_ref()
-            .map_or(0, |r| r.indexed_count)
+        self.index_result.as_ref().map_or(0, |r| r.indexed_count)
     }
 }
 
@@ -218,8 +216,11 @@ mod tests {
 
     #[test]
     fn test_pipeline_progress_new() {
-        let progress =
-            PipelineProgress::new(PipelineStage::KeyframeExtraction, 0.5, "Extracting frame 10/20");
+        let progress = PipelineProgress::new(
+            PipelineStage::KeyframeExtraction,
+            0.5,
+            "Extracting frame 10/20",
+        );
         assert_eq!(progress.current_stage, PipelineStage::KeyframeExtraction);
         assert_eq!(progress.stage_index, 1);
         assert_eq!(progress.total_stages, 8);

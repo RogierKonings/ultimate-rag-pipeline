@@ -8,8 +8,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 /// Container for both semantic and keyword search configurations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SearchConfig {
     /// Configuration for semantic (vector) search.
     pub semantic: SemanticSearchConfig,
@@ -17,7 +16,6 @@ pub struct SearchConfig {
     /// Configuration for keyword (BM25) search.
     pub keyword: KeywordSearchConfig,
 }
-
 
 impl SearchConfig {
     /// Create a new search config with defaults.

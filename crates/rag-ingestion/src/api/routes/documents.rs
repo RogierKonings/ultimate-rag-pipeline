@@ -646,9 +646,10 @@ pub async fn reindex_document(
     let job_id = state.job_tracker.create_job(query.tenant_id.clone());
 
     // Enqueue a real reindex job to Redis
-    let job_queue = state.job_queue.as_ref().ok_or_else(|| {
-        ApiError::internal("Job queue not configured; reindex unavailable")
-    })?;
+    let job_queue = state
+        .job_queue
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Job queue not configured; reindex unavailable"))?;
 
     let payload = json!({
         "tracker_job_id": job_id.to_string(),

@@ -499,8 +499,7 @@ mod tests {
         assert!(result.is_some());
 
         let qdrant_filter = result.unwrap();
-        let Some(ConditionOneOf::Field(field_condition)) =
-            &qdrant_filter.must[0].condition_one_of
+        let Some(ConditionOneOf::Field(field_condition)) = &qdrant_filter.must[0].condition_one_of
         else {
             panic!(
                 "Expected Field condition, got: {:?}",
@@ -575,15 +574,16 @@ mod tests {
 
     #[test]
     fn test_qdrant_builder_special_chars_in_key() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("tenant_id", "550e8400-e29b-41d4-a716-446655440000"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value(
+            "tenant_id",
+            "550e8400-e29b-41d4-a716-446655440000",
+        ));
 
         let result = QdrantFilterBuilder::build(&filter);
         assert!(result.is_some());
 
         let qdrant_filter = result.unwrap();
-        let Some(ConditionOneOf::Field(field_condition)) =
-            &qdrant_filter.must[0].condition_one_of
+        let Some(ConditionOneOf::Field(field_condition)) = &qdrant_filter.must[0].condition_one_of
         else {
             panic!(
                 "Expected Field condition, got: {:?}",
@@ -606,8 +606,10 @@ mod tests {
 
     #[test]
     fn test_opensearch_builder_special_chars_in_key() {
-        let filter = UnifiedFilter::new()
-            .must(FilterCondition::value("tenant_id", "550e8400-e29b-41d4-a716-446655440000"));
+        let filter = UnifiedFilter::new().must(FilterCondition::value(
+            "tenant_id",
+            "550e8400-e29b-41d4-a716-446655440000",
+        ));
 
         let clauses = OpenSearchFilterBuilder::build(&filter);
         assert_eq!(clauses.len(), 1);
@@ -626,8 +628,7 @@ mod tests {
         let filter = UnifiedFilter::new().must(FilterCondition::value("status", "active"));
 
         let result = QdrantFilterBuilder::build(&filter).unwrap();
-        let Some(ConditionOneOf::Field(field_condition)) = &result.must[0].condition_one_of
-        else {
+        let Some(ConditionOneOf::Field(field_condition)) = &result.must[0].condition_one_of else {
             panic!(
                 "Expected Field condition, got: {:?}",
                 result.must[0].condition_one_of
@@ -649,8 +650,7 @@ mod tests {
 
     #[test]
     fn test_opensearch_builder_only_must_not() {
-        let filter =
-            UnifiedFilter::new().must_not(FilterCondition::value("status", "deleted"));
+        let filter = UnifiedFilter::new().must_not(FilterCondition::value("status", "deleted"));
 
         let clauses = OpenSearchFilterBuilder::build(&filter);
         assert_eq!(clauses.len(), 1);

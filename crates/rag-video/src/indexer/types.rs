@@ -303,7 +303,10 @@ mod tests {
         assert_eq!(payload.chunk_index, 2);
         assert_eq!(payload.visibility, "public");
         assert_eq!(payload.allowed_groups, vec!["group1"]);
-        assert_eq!(payload.keyframe_path, Some("/path/to/frame.jpg".to_string()));
+        assert_eq!(
+            payload.keyframe_path,
+            Some("/path/to/frame.jpg".to_string())
+        );
     }
 
     #[test]

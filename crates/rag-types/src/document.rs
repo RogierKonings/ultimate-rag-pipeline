@@ -37,7 +37,10 @@ impl std::fmt::Display for SourceType {
 /// Visibility level for documents and chunks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
-#[cfg_attr(feature = "sqlx", sqlx(type_name = "VARCHAR", rename_all = "lowercase"))]
+#[cfg_attr(
+    feature = "sqlx",
+    sqlx(type_name = "VARCHAR", rename_all = "lowercase")
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Visibility {
     /// Accessible to all users in the tenant

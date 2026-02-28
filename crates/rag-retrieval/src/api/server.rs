@@ -66,7 +66,10 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
                 .on_request(DefaultOnRequest::new().level(Level::INFO))
                 .on_response(DefaultOnResponse::new().level(Level::INFO)),
         )
-        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::REQUEST_TIMEOUT, Duration::from_secs(config.timeout_secs)));
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::REQUEST_TIMEOUT,
+            Duration::from_secs(config.timeout_secs),
+        ));
 
     // Build the router
     let router = Router::new()

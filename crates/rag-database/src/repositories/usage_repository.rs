@@ -46,11 +46,7 @@ impl UsageRepository {
     }
 
     /// Get usage for a tenant and date.
-    pub async fn get_usage(
-        &self,
-        tenant_id: &str,
-        date: NaiveDate,
-    ) -> Result<Vec<TokenUsage>> {
+    pub async fn get_usage(&self, tenant_id: &str, date: NaiveDate) -> Result<Vec<TokenUsage>> {
         sqlx::query_as::<_, TokenUsage>(
             "SELECT * FROM token_usage WHERE tenant_id = $1 AND date = $2",
         )

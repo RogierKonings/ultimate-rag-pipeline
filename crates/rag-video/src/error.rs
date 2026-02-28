@@ -61,10 +61,7 @@ mod tests {
     #[test]
     fn test_file_not_found_error() {
         let err = VideoError::FileNotFound("/path/to/video.mp4".to_string());
-        assert_eq!(
-            err.to_string(),
-            "Video file not found: /path/to/video.mp4"
-        );
+        assert_eq!(err.to_string(), "Video file not found: /path/to/video.mp4");
     }
 
     #[test]
@@ -88,10 +85,7 @@ mod tests {
     #[test]
     fn test_scene_detection_error() {
         let err = VideoError::SceneDetection("threshold exceeded".to_string());
-        assert_eq!(
-            err.to_string(),
-            "Scene detection error: threshold exceeded"
-        );
+        assert_eq!(err.to_string(), "Scene detection error: threshold exceeded");
     }
 
     #[test]
@@ -103,10 +97,7 @@ mod tests {
     #[test]
     fn test_indexing_error() {
         let err = VideoError::Indexing("vector store unavailable".to_string());
-        assert_eq!(
-            err.to_string(),
-            "Indexing error: vector store unavailable"
-        );
+        assert_eq!(err.to_string(), "Indexing error: vector store unavailable");
     }
 
     #[test]

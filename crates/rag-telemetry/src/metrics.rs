@@ -35,8 +35,8 @@ impl MetricsRegistry {
     ///
     /// Returns an error if registration fails.
     pub fn register_counter(&self, name: &str, help: &str) -> Result<IntCounter> {
-        let counter = IntCounter::new(name, help)
-            .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
+        let counter =
+            IntCounter::new(name, help).map_err(|e| TelemetryError::Metrics(e.to_string()))?;
         self.registry
             .register(Box::new(counter.clone()))
             .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
@@ -68,8 +68,8 @@ impl MetricsRegistry {
     ///
     /// Returns an error if registration fails.
     pub fn register_float_counter(&self, name: &str, help: &str) -> Result<Counter> {
-        let counter = Counter::new(name, help)
-            .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
+        let counter =
+            Counter::new(name, help).map_err(|e| TelemetryError::Metrics(e.to_string()))?;
         self.registry
             .register(Box::new(counter.clone()))
             .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
@@ -101,8 +101,8 @@ impl MetricsRegistry {
     ///
     /// Returns an error if registration fails.
     pub fn register_gauge(&self, name: &str, help: &str) -> Result<IntGauge> {
-        let gauge = IntGauge::new(name, help)
-            .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
+        let gauge =
+            IntGauge::new(name, help).map_err(|e| TelemetryError::Metrics(e.to_string()))?;
         self.registry
             .register(Box::new(gauge.clone()))
             .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
@@ -192,9 +192,8 @@ impl MetricsRegistry {
         labels: &[&str],
         buckets: Vec<f64>,
     ) -> Result<HistogramVec> {
-        let histogram =
-            HistogramVec::new(HistogramOpts::new(name, help).buckets(buckets), labels)
-                .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
+        let histogram = HistogramVec::new(HistogramOpts::new(name, help).buckets(buckets), labels)
+            .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
         self.registry
             .register(Box::new(histogram.clone()))
             .map_err(|e| TelemetryError::Metrics(e.to_string()))?;
@@ -254,7 +253,9 @@ impl Metrics {
             &format!("{prefix}_request_duration_seconds"),
             "Request duration in seconds",
             &["endpoint", "method"],
-            vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+            vec![
+                0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+            ],
         )?;
 
         let requests_in_flight = registry.register_gauge(
@@ -310,15 +311,21 @@ mod tests {
     fn test_metrics_registry() {
         let registry = MetricsRegistry::new();
 
-        let counter = registry.register_counter("test_counter", "A test counter").unwrap();
+        let counter = registry
+            .register_counter("test_counter", "A test counter")
+            .unwrap();
         counter.inc();
         assert_eq!(counter.get(), 1);
 
-        let gauge = registry.register_gauge("test_gauge", "A test gauge").unwrap();
+        let gauge = registry
+            .register_gauge("test_gauge", "A test gauge")
+            .unwrap();
         gauge.set(42);
         assert_eq!(gauge.get(), 42);
 
-        let histogram = registry.register_histogram("test_histogram", "A test histogram").unwrap();
+        let histogram = registry
+            .register_histogram("test_histogram", "A test histogram")
+            .unwrap();
         histogram.observe(0.5);
 
         let encoded = registry.encode().unwrap();

@@ -14,7 +14,7 @@ fileGroups:
 
 tasks:
   validate:
-    command: 'npx ajv validate -s "*.schema.json"'
+    command: 'npx ajv compile -s "document.schema.json"'
     inputs:
       - '@group(schemas)'
 

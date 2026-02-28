@@ -42,6 +42,7 @@ async def _require_admin(
     """Require admin or service_account role for admin endpoints."""
     return await require_roles("admin", "service_account")(claims)
 
+
 AdminAuthDep = Annotated[TokenClaims, Depends(_require_admin)]
 
 

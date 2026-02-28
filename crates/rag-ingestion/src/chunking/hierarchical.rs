@@ -49,7 +49,6 @@ impl HierarchicalChunker {
     }
 
     fn push_section(
-        &self,
         text: &str,
         start: usize,
         end: usize,
@@ -87,7 +86,7 @@ impl HierarchicalChunker {
         Some((start + leading, start + trailing))
     }
 
-    fn split_sections(&self, text: &str) -> Vec<Section> {
+    fn split_sections(text: &str) -> Vec<Section> {
         if text.trim().is_empty() {
             return vec![];
         }
@@ -105,7 +104,7 @@ impl HierarchicalChunker {
             let content = line.trim_end_matches('\n').trim_end_matches('\r').trim();
             if let Some(heading) = Self::extract_heading(content) {
                 found_heading = true;
-                self.push_section(
+                Self::push_section(
                     text,
                     section_start,
                     line_start,
@@ -117,7 +116,7 @@ impl HierarchicalChunker {
             }
         }
 
-        self.push_section(
+        Self::push_section(
             text,
             section_start,
             text.len(),
@@ -129,7 +128,7 @@ impl HierarchicalChunker {
             sections
         } else {
             let mut fallback = Vec::new();
-            self.push_section(text, 0, text.len(), None, &mut fallback);
+            Self::push_section(text, 0, text.len(), None, &mut fallback);
             fallback
         }
     }
@@ -235,7 +234,7 @@ impl ChunkingStrategy for HierarchicalChunker {
         metadata: Option<HashMap<String, Value>>,
     ) -> Result<Vec<Chunk>> {
         let base_metadata = metadata.unwrap_or_default();
-        let sections = self.split_sections(text);
+        let sections = Self::split_sections(text);
 
         let mut all_chunks = Vec::new();
         let mut next_index = 0u32;
@@ -259,8 +258,8 @@ impl ChunkingStrategy for HierarchicalChunker {
 
                 chunk.start_char += section.start_char;
                 chunk.end_char += section.start_char;
-                chunk.metadata = section_metadata.clone();
-                chunk.source_section = section.heading.clone();
+                chunk.metadata.clone_from(&section_metadata);
+                chunk.source_section.clone_from(&section.heading);
 
                 all_chunks.push(chunk);
             }
@@ -366,8 +365,7 @@ This is the details section with more text.
 
     #[test]
     fn test_split_sections_detects_numbered_heading() {
-        let chunker = HierarchicalChunker::default();
-        let sections = chunker.split_sections("1.2 Scope\nDefinition text.");
+        let sections = HierarchicalChunker::split_sections("1.2 Scope\nDefinition text.");
 
         assert_eq!(sections.len(), 1);
         assert_eq!(sections[0].heading.as_deref(), Some("1.2 Scope"));

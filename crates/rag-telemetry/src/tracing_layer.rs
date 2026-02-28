@@ -10,12 +10,7 @@ impl<S> Layer<S> for RequestIdLayer
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    fn on_new_span(
-        &self,
-        attrs: &span::Attributes<'_>,
-        id: &span::Id,
-        ctx: Context<'_, S>,
-    ) {
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
         // If there's a request_id field, store it
         if let Some(span) = ctx.span(id) {
             let mut visitor = RequestIdVisitor::default();

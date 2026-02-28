@@ -162,8 +162,12 @@ mod tests {
 
     #[test]
     fn test_stage_parallel_keyframe_audio() {
-        assert!(PipelineStage::KeyframeExtraction.can_parallel_with(&PipelineStage::AudioExtraction));
-        assert!(PipelineStage::AudioExtraction.can_parallel_with(&PipelineStage::KeyframeExtraction));
+        assert!(
+            PipelineStage::KeyframeExtraction.can_parallel_with(&PipelineStage::AudioExtraction)
+        );
+        assert!(
+            PipelineStage::AudioExtraction.can_parallel_with(&PipelineStage::KeyframeExtraction)
+        );
     }
 
     #[test]

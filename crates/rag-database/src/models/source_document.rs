@@ -49,7 +49,10 @@ pub struct SourceDocument {
 impl SourceDocument {
     /// Create a new source document builder.
     #[must_use]
-    pub fn builder(tenant_id: impl Into<String>, source_uri: impl Into<String>) -> SourceDocumentBuilder {
+    pub fn builder(
+        tenant_id: impl Into<String>,
+        source_uri: impl Into<String>,
+    ) -> SourceDocumentBuilder {
         SourceDocumentBuilder::new(tenant_id, source_uri)
     }
 

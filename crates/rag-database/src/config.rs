@@ -51,8 +51,9 @@ impl DatabaseConfig {
     /// Create configuration from environment variables.
     #[must_use]
     pub fn from_env() -> Self {
-        let url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://raguser:ragpassword@localhost:5432/ragpipeline".to_string());
+        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://raguser:ragpassword@localhost:5432/ragpipeline".to_string()
+        });
 
         let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
             .ok()

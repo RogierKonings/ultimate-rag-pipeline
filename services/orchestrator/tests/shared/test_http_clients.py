@@ -1,6 +1,5 @@
 """Tests for shared HTTP client lifecycle and configuration."""
 
-
 import httpx
 import pytest
 

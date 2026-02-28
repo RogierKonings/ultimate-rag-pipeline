@@ -74,9 +74,7 @@ impl MetadataProbe {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoError::Ffmpeg(format!(
-                "ffprobe failed: {stderr}"
-            )));
+            return Err(VideoError::Ffmpeg(format!("ffprobe failed: {stderr}")));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);

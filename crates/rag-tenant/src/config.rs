@@ -172,8 +172,14 @@ mod tests {
 
     #[test]
     fn test_isolation_mode_from_str() {
-        assert_eq!(IsolationMode::from_str("shared").unwrap(), IsolationMode::Shared);
-        assert_eq!(IsolationMode::from_str("dedicated").unwrap(), IsolationMode::Dedicated);
+        assert_eq!(
+            IsolationMode::from_str("shared").unwrap(),
+            IsolationMode::Shared
+        );
+        assert_eq!(
+            IsolationMode::from_str("dedicated").unwrap(),
+            IsolationMode::Dedicated
+        );
         assert!(IsolationMode::from_str("invalid").is_err());
     }
 }

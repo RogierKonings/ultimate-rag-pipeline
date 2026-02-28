@@ -32,14 +32,14 @@
 //! ```
 
 mod config;
-mod error;
 mod encryptor;
+mod error;
 mod key_management;
 
 pub use config::EncryptionConfig;
+pub use encryptor::{EncryptedValue, FieldEncryptor};
 pub use error::{EncryptionError, Result};
-pub use encryptor::{FieldEncryptor, EncryptedValue};
-pub use key_management::{KeyManager, KeyVersion, DerivedKey};
+pub use key_management::{DerivedKey, KeyManager, KeyVersion};
 
 #[cfg(feature = "secrets-integration")]
 mod secrets_key_provider;

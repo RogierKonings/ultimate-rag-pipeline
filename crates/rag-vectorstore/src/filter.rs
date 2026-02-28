@@ -1,8 +1,8 @@
 //! Filter building utilities for Qdrant queries.
 
-use qdrant_client::qdrant::{Condition, Filter};
 use qdrant_client::qdrant::condition::ConditionOneOf;
 use qdrant_client::qdrant::r#match::MatchValue;
+use qdrant_client::qdrant::{Condition, Filter};
 use qdrant_client::qdrant::{FieldCondition, Match, Range, RepeatedStrings};
 
 /// Builder for Qdrant filter conditions.
@@ -90,12 +90,7 @@ impl FilterBuilder {
 
     /// Add a range condition.
     #[must_use]
-    pub fn range(
-        self,
-        field: impl Into<String>,
-        gte: Option<f64>,
-        lte: Option<f64>,
-    ) -> Self {
+    pub fn range(self, field: impl Into<String>, gte: Option<f64>, lte: Option<f64>) -> Self {
         let condition = Condition {
             condition_one_of: Some(ConditionOneOf::Field(FieldCondition {
                 key: field.into(),

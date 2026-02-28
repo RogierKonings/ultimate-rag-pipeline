@@ -3,10 +3,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::{
-    NewSourceDocument, SourceDocument,
-    DatabaseError, Result,
-};
+use crate::{DatabaseError, NewSourceDocument, Result, SourceDocument};
 
 /// Repository for source document operations.
 #[derive(Clone)]
@@ -239,13 +236,12 @@ impl DocumentRepository {
     ///
     /// Returns an error if the delete fails.
     pub async fn delete_by_tenant(&self, id: Uuid, tenant_id: &str) -> Result<bool> {
-        let result =
-            sqlx::query("DELETE FROM source_documents WHERE id = $1 AND tenant_id = $2")
-                .bind(id)
-                .bind(tenant_id)
-                .execute(&self.pool)
-                .await
-                .map_err(DatabaseError::from)?;
+        let result = sqlx::query("DELETE FROM source_documents WHERE id = $1 AND tenant_id = $2")
+            .bind(id)
+            .bind(tenant_id)
+            .execute(&self.pool)
+            .await
+            .map_err(DatabaseError::from)?;
         Ok(result.rows_affected() > 0)
     }
 

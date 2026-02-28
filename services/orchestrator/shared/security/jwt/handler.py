@@ -337,7 +337,8 @@ class JWTHandler:
             # Decode without verification to check issuer
             # nosemgrep: jwt-verify-disabled
             unverified = jwt.decode(
-                token, options={"verify_signature": False},
+                token,
+                options={"verify_signature": False},
             )
             return unverified.get("iss") == self.settings.idp_issuer
         except Exception:

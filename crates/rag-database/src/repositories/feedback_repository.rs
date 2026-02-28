@@ -39,13 +39,11 @@ impl FeedbackRepository {
 
     /// Find feedback by request ID.
     pub async fn find_by_request_id(&self, request_id: &str) -> Result<Option<QueryFeedback>> {
-        sqlx::query_as::<_, QueryFeedback>(
-            "SELECT * FROM query_feedback WHERE request_id = $1",
-        )
-        .bind(request_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, QueryFeedback>("SELECT * FROM query_feedback WHERE request_id = $1")
+            .bind(request_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// Find feedback by tenant with pagination.

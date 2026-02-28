@@ -194,7 +194,9 @@ impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authentication token"),
-            AuthError::InvalidToken(_) => (StatusCode::UNAUTHORIZED, "Invalid authentication token"),
+            AuthError::InvalidToken(_) => {
+                (StatusCode::UNAUTHORIZED, "Invalid authentication token")
+            }
             AuthError::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token has expired"),
             AuthError::PermissionDenied(_) => (StatusCode::FORBIDDEN, "Permission denied"),
             AuthError::InsufficientRole(_) => (StatusCode::FORBIDDEN, "Insufficient role"),

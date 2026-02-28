@@ -57,7 +57,12 @@ pub struct TranscriptSegment {
 impl TranscriptSegment {
     /// Creates a new transcript segment.
     #[must_use]
-    pub fn new(start_ms: u64, end_ms: u64, text: impl Into<String>, confidence: Option<f32>) -> Self {
+    pub fn new(
+        start_ms: u64,
+        end_ms: u64,
+        text: impl Into<String>,
+        confidence: Option<f32>,
+    ) -> Self {
         Self {
             start_ms,
             end_ms,

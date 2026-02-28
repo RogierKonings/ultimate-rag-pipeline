@@ -58,10 +58,7 @@ impl Role {
     #[must_use]
     pub fn permissions(&self) -> Vec<Permission> {
         match self {
-            Self::Anonymous => vec![
-                Permission::DocumentRead,
-                Permission::QueryExecute,
-            ],
+            Self::Anonymous => vec![Permission::DocumentRead, Permission::QueryExecute],
             Self::User => {
                 let mut perms = Self::Anonymous.permissions();
                 perms.extend([
@@ -74,9 +71,7 @@ impl Role {
             }
             Self::Analyst => {
                 let mut perms = Self::User.permissions();
-                perms.extend([
-                    Permission::AuditRead,
-                ]);
+                perms.extend([Permission::AuditRead]);
                 perms
             }
             Self::Engineer => {

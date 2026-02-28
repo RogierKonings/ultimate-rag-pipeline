@@ -167,9 +167,7 @@ class TestRetrievalClientSearch:
     async def test_search_propagates_connection_error(self):
         """Test that search() propagates connection errors."""
         failing_client = AsyncMock(spec=httpx.AsyncClient)
-        failing_client.post = AsyncMock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
+        failing_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
         with patch("retrieval.client._get_http_client", return_value=failing_client):
             client = RetrievalClient(top_k=10)
@@ -242,9 +240,7 @@ class TestRetrievalClientHealthCheck:
     async def test_health_check_returns_unhealthy_on_failure(self):
         """Test health_check returns unhealthy dict on connection failure."""
         failing_client = AsyncMock(spec=httpx.AsyncClient)
-        failing_client.get = AsyncMock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
+        failing_client.get = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
 
         with patch("retrieval.client._get_http_client", return_value=failing_client):
             client = RetrievalClient(top_k=10)

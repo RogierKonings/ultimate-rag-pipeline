@@ -161,8 +161,9 @@ where
             let semantic_score = semantic_map.get(&id).copied().unwrap_or(0.0);
             let keyword_score = keyword_map.get(&id).copied().unwrap_or(0.0);
 
-            let fused_score =
-                config.semantic_weight.mul_add(semantic_score, config.keyword_weight * keyword_score);
+            let fused_score = config
+                .semantic_weight
+                .mul_add(semantic_score, config.keyword_weight * keyword_score);
 
             ScoredItem::new(id, fused_score)
         })

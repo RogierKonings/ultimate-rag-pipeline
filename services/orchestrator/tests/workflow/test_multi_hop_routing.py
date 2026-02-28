@@ -569,9 +569,7 @@ class TestMultiplePatternConflicts:
 
     def test_aggregation_and_complex_overlap(self):
         """Aggregation patterns take priority over complex indicators."""
-        strategy, multi_hop_type = _classify_query(
-            "Summarize the relationship between all modules"
-        )
+        strategy, multi_hop_type = _classify_query("Summarize the relationship between all modules")
         assert strategy == "aggregation"
         assert multi_hop_type == "aggregation"
 

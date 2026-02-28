@@ -96,14 +96,14 @@ impl StorageConfig {
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
-        if let Ok(endpoint) = std::env::var("AWS_ENDPOINT_URL")
-            .or_else(|_| std::env::var("S3_ENDPOINT_URL"))
+        if let Ok(endpoint) =
+            std::env::var("AWS_ENDPOINT_URL").or_else(|_| std::env::var("S3_ENDPOINT_URL"))
         {
             config.endpoint_url = Some(endpoint);
         }
 
-        if let Ok(region) = std::env::var("AWS_REGION")
-            .or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
+        if let Ok(region) =
+            std::env::var("AWS_REGION").or_else(|_| std::env::var("AWS_DEFAULT_REGION"))
         {
             config.region = region;
         }

@@ -187,7 +187,6 @@ def get_llm_client() -> httpx.AsyncClient:
     """
     if _llm_client is None:
         raise RuntimeError(
-            "LLM HTTP client not initialized. "
-            "Call init_http_clients() during application startup."
+            "LLM HTTP client not initialized. Call init_http_clients() during application startup."
         )
     return _llm_client

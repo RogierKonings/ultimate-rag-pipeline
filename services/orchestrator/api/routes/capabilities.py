@@ -51,9 +51,7 @@ async def _check_llm_gateway_reachable(request: Request) -> bool:
         return any(
             (m.status if hasattr(m, "status") else m.get("status")) == "healthy"
             for m in (
-                health_result.values()
-                if isinstance(health_result, dict)
-                else [health_result]
+                health_result.values() if isinstance(health_result, dict) else [health_result]
             )
         )
     except Exception:

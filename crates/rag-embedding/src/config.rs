@@ -3,8 +3,7 @@
 use std::env;
 
 /// Supported embedding models.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ModelType {
     /// all-MiniLM-L6-v2 (384 dimensions)
     #[default]
@@ -44,7 +43,6 @@ impl ModelType {
     }
 }
 
-
 /// Configuration for the embedding service.
 #[derive(Debug, Clone)]
 pub struct EmbeddingConfig {
@@ -68,8 +66,7 @@ impl EmbeddingConfig {
     /// - `EMBEDDING_PORT`: Server port (default: 8080)
     #[must_use]
     pub fn from_env() -> Self {
-        let model_id = env::var("EMBEDDING_MODEL")
-            .unwrap_or_else(|_| "all-MiniLM-L6-v2".into());
+        let model_id = env::var("EMBEDDING_MODEL").unwrap_or_else(|_| "all-MiniLM-L6-v2".into());
 
         let model = ModelType::from_model_id(&model_id).unwrap_or_default();
 

@@ -210,7 +210,10 @@ mod tests {
     fn test_fusion_config_clone() {
         let config = FusionConfig::default();
         let cloned = config.clone();
-        assert_eq!(config.target_chunk_duration_ms, cloned.target_chunk_duration_ms);
+        assert_eq!(
+            config.target_chunk_duration_ms,
+            cloned.target_chunk_duration_ms
+        );
         assert_eq!(config.separator, cloned.separator);
     }
 

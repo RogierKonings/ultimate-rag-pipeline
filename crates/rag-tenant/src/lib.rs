@@ -31,5 +31,5 @@ mod service;
 
 pub use cache::TenantConfigCache;
 pub use config::{IsolationMode, TenantIndexConfig};
-pub use error::{TenantError, Result};
+pub use error::{Result, TenantError};
 pub use service::TenantConfigService;

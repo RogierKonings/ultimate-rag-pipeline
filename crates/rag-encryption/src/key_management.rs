@@ -129,12 +129,7 @@ impl KeyManager {
     ///
     /// Returns an error if the lock cannot be acquired.
     #[instrument(skip(self, key_bytes))]
-    pub fn add_key_version(
-        &self,
-        version: u32,
-        key_id: String,
-        key_bytes: Vec<u8>,
-    ) -> Result<()> {
+    pub fn add_key_version(&self, version: u32, key_id: String, key_bytes: Vec<u8>) -> Result<()> {
         let key_version = KeyVersion::new(version, key_id, key_bytes);
 
         let mut keys = self.keys.write().map_err(|e| {
@@ -204,7 +199,12 @@ impl KeyManager {
     ///
     /// Returns an error if the new key is invalid.
     #[instrument(skip(self, new_key_bytes))]
-    pub fn rotate_key(&mut self, new_version: u32, key_id: String, new_key_bytes: Vec<u8>) -> Result<()> {
+    pub fn rotate_key(
+        &mut self,
+        new_version: u32,
+        key_id: String,
+        new_key_bytes: Vec<u8>,
+    ) -> Result<()> {
         if new_key_bytes.len() != 32 {
             return Err(EncryptionError::InvalidKey(format!(
                 "Key must be 32 bytes, got {}",

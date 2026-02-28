@@ -18,6 +18,8 @@ paths = [
     '''tests/.*\.json''',
     # Documentation
     '''docs/.*\.md''',
+    # Workflow / user-story documentation (contains example configs with placeholder credentials)
+    '''workflow/.*\.md''',
     # Lock files
     '''.*\.lock''',
     '''.*-lock\.json''',

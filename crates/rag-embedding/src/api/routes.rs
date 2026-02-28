@@ -13,8 +13,8 @@ use tracing::{info, instrument};
 use super::error::{ApiError, ApiResult};
 use super::state::AppState;
 use super::types::{
-    EmbeddingRequest, EmbeddingResponse, HealthResponse, ModelInfo, ModelMetadata,
-    ModelsResponse, ServiceEndpoints, ServiceInfo,
+    EmbeddingRequest, EmbeddingResponse, HealthResponse, ModelInfo, ModelMetadata, ModelsResponse,
+    ServiceEndpoints, ServiceInfo,
 };
 
 /// Create the Axum router with all routes.

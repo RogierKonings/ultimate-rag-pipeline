@@ -42,9 +42,9 @@ mod models;
 
 pub use client::VectorStoreClient;
 pub use config::VectorStoreConfig;
-pub use error::{VectorStoreError, Result};
+pub use error::{Result, VectorStoreError};
 pub use filter::FilterBuilder;
-pub use models::{SearchParams, SearchRequest, SearchResult, ScoredPoint};
+pub use models::{ScoredPoint, SearchParams, SearchRequest, SearchResult};
 
 // Re-export qdrant types that users may need for filtering
 pub use qdrant_client;

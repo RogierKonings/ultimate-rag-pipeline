@@ -53,24 +53,20 @@ impl UserRepository {
 
     /// Find a tenant by ID.
     pub async fn find_tenant_by_id(&self, id: Uuid) -> Result<Option<Tenant>> {
-        sqlx::query_as::<_, Tenant>(
-            "SELECT * FROM tenants WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, Tenant>("SELECT * FROM tenants WHERE id = $1 AND deleted_at IS NULL")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// Find a tenant by slug.
     pub async fn find_tenant_by_slug(&self, slug: &str) -> Result<Option<Tenant>> {
-        sqlx::query_as::<_, Tenant>(
-            "SELECT * FROM tenants WHERE slug = $1 AND deleted_at IS NULL",
-        )
-        .bind(slug)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, Tenant>("SELECT * FROM tenants WHERE slug = $1 AND deleted_at IS NULL")
+            .bind(slug)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// List all active tenants.
@@ -112,7 +108,11 @@ impl UserRepository {
         .bind(&user.avatar_url)
         .bind(&user.password_hash)
         .bind(user.is_sso_user.unwrap_or(false))
-        .bind(user.user_metadata.as_ref().unwrap_or(&serde_json::json!({})))
+        .bind(
+            user.user_metadata
+                .as_ref()
+                .unwrap_or(&serde_json::json!({})),
+        )
         .bind(user.permissions.as_ref().unwrap_or(&vec![]))
         .fetch_one(&self.pool)
         .await
@@ -121,21 +121,15 @@ impl UserRepository {
 
     /// Find a user by ID.
     pub async fn find_user_by_id(&self, id: Uuid) -> Result<Option<User>> {
-        sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// Find a user by email within a tenant.
-    pub async fn find_user_by_email(
-        &self,
-        tenant_id: Uuid,
-        email: &str,
-    ) -> Result<Option<User>> {
+    pub async fn find_user_by_email(&self, tenant_id: Uuid, email: &str) -> Result<Option<User>> {
         sqlx::query_as::<_, User>(
             "SELECT * FROM users WHERE tenant_id = $1 AND email = $2 AND deleted_at IS NULL",
         )
@@ -158,12 +152,7 @@ impl UserRepository {
     }
 
     /// List users for a tenant.
-    pub async fn list_users(
-        &self,
-        tenant_id: Uuid,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<User>> {
+    pub async fn list_users(&self, tenant_id: Uuid, limit: i64, offset: i64) -> Result<Vec<User>> {
         sqlx::query_as::<_, User>(
             r#"
             SELECT * FROM users
@@ -182,13 +171,11 @@ impl UserRepository {
 
     /// Update user's last login timestamp.
     pub async fn update_last_login(&self, user_id: Uuid) -> Result<()> {
-        sqlx::query(
-            "UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1",
-        )
-        .bind(user_id)
-        .execute(&self.pool)
-        .await
-        .map_err(DatabaseError::from)?;
+        sqlx::query("UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(DatabaseError::from)?;
         Ok(())
     }
 
@@ -220,13 +207,11 @@ impl UserRepository {
 
     /// Find a role by ID.
     pub async fn find_role_by_id(&self, id: Uuid) -> Result<Option<Role>> {
-        sqlx::query_as::<_, Role>(
-            "SELECT * FROM roles WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, Role>("SELECT * FROM roles WHERE id = $1 AND deleted_at IS NULL")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// Find roles for a tenant (including system roles).
@@ -306,7 +291,12 @@ impl UserRepository {
         .bind(&group.name)
         .bind(&group.description)
         .bind(group.group_type.as_deref().unwrap_or("custom"))
-        .bind(group.group_metadata.as_ref().unwrap_or(&serde_json::json!({})))
+        .bind(
+            group
+                .group_metadata
+                .as_ref()
+                .unwrap_or(&serde_json::json!({})),
+        )
         .fetch_one(&self.pool)
         .await
         .map_err(DatabaseError::from)
@@ -314,13 +304,11 @@ impl UserRepository {
 
     /// Find a group by ID.
     pub async fn find_group_by_id(&self, id: Uuid) -> Result<Option<Group>> {
-        sqlx::query_as::<_, Group>(
-            "SELECT * FROM groups WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(DatabaseError::from)
+        sqlx::query_as::<_, Group>("SELECT * FROM groups WHERE id = $1 AND deleted_at IS NULL")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
     }
 
     /// Find groups for a tenant.
@@ -372,13 +360,12 @@ impl UserRepository {
 
     /// Remove a user from a group.
     pub async fn remove_user_from_group(&self, user_id: Uuid, group_id: Uuid) -> Result<bool> {
-        let result =
-            sqlx::query("DELETE FROM user_groups WHERE user_id = $1 AND group_id = $2")
-                .bind(user_id)
-                .bind(group_id)
-                .execute(&self.pool)
-                .await
-                .map_err(DatabaseError::from)?;
+        let result = sqlx::query("DELETE FROM user_groups WHERE user_id = $1 AND group_id = $2")
+            .bind(user_id)
+            .bind(group_id)
+            .execute(&self.pool)
+            .await
+            .map_err(DatabaseError::from)?;
         Ok(result.rows_affected() > 0)
     }
 

@@ -4,18 +4,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use qdrant_client::Qdrant;
 use qdrant_client::qdrant::{
-    CreateCollectionBuilder, DeletePointsBuilder, Distance, GetPointsBuilder,
-    PointId, PointStruct, SearchPointsBuilder, UpsertPointsBuilder,
+    point_id::PointIdOptions, vector_output, CreateCollectionBuilder, DeletePointsBuilder,
+    Distance, GetPointsBuilder, PointId, PointStruct, SearchPointsBuilder, UpsertPointsBuilder,
     VectorParamsBuilder,
-    point_id::PointIdOptions,
-    vector_output,
 };
+use qdrant_client::Qdrant;
 use serde_json::Value;
 use tracing::instrument;
 
-use crate::{Result, SearchRequest, SearchResult, ScoredPoint, VectorStoreConfig, VectorStoreError};
+use crate::{
+    Result, ScoredPoint, SearchRequest, SearchResult, VectorStoreConfig, VectorStoreError,
+};
 
 /// Qdrant vector store client.
 #[derive(Clone)]
@@ -64,18 +64,16 @@ impl VectorStoreClient {
     /// Returns an error if collection creation fails.
     #[instrument(skip(self))]
     pub async fn create_collection(&self, name: &str, vector_size: u64) -> Result<()> {
-        let vectors_config = VectorParamsBuilder::new(vector_size, Distance::Cosine)
-            .hnsw_config(qdrant_client::qdrant::HnswConfigDiff {
+        let vectors_config = VectorParamsBuilder::new(vector_size, Distance::Cosine).hnsw_config(
+            qdrant_client::qdrant::HnswConfigDiff {
                 m: Some(self.config.hnsw_config.m),
                 ef_construct: Some(self.config.hnsw_config.ef_construct),
                 ..Default::default()
-            });
+            },
+        );
 
         self.client
-            .create_collection(
-                CreateCollectionBuilder::new(name)
-                    .vectors_config(vectors_config),
-            )
+            .create_collection(CreateCollectionBuilder::new(name).vectors_config(vectors_config))
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
 
@@ -202,8 +200,9 @@ impl VectorStoreClient {
 
         let start = Instant::now();
 
-        let mut search_builder = SearchPointsBuilder::new(collection, request.vector, request.limit)
-            .with_payload(request.with_payload);
+        let mut search_builder =
+            SearchPointsBuilder::new(collection, request.vector, request.limit)
+                .with_payload(request.with_payload);
 
         if request.with_vector {
             search_builder = search_builder.with_vectors(true);
@@ -226,7 +225,9 @@ impl VectorStoreClient {
             search_builder = search_builder.params(params);
         }
 
-        let response = self.client.search_points(search_builder)
+        let response = self
+            .client
+            .search_points(search_builder)
             .await
             .map_err(|e| VectorStoreError::Qdrant(e.to_string()))?;
 
@@ -514,9 +515,7 @@ fn qdrant_value_to_json(value: &qdrant_client::qdrant::Value) -> Option<Value> {
         Some(Kind::NullValue(_)) => Some(Value::Null),
         Some(Kind::BoolValue(b)) => Some(Value::Bool(*b)),
         Some(Kind::IntegerValue(i)) => Some(Value::Number((*i).into())),
-        Some(Kind::DoubleValue(d)) => {
-            serde_json::Number::from_f64(*d).map(Value::Number)
-        }
+        Some(Kind::DoubleValue(d)) => serde_json::Number::from_f64(*d).map(Value::Number),
         Some(Kind::StringValue(s)) => Some(Value::String(s.clone())),
         Some(Kind::ListValue(list)) => {
             let values: Vec<Value> = list

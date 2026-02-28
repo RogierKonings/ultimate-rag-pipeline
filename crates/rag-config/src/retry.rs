@@ -90,7 +90,11 @@ impl RetryPolicy {
         for attempt in 0..=self.max_retries {
             if attempt > 0 {
                 let backoff = self.backoff_duration(attempt - 1);
-                tracing::debug!(attempt, backoff_ms = backoff.as_millis(), "Retrying operation");
+                tracing::debug!(
+                    attempt,
+                    backoff_ms = backoff.as_millis(),
+                    "Retrying operation"
+                );
                 tokio::time::sleep(backoff).await;
             }
 

@@ -43,7 +43,11 @@ impl AuditRepository {
         .bind(&log.request_id)
         .bind(&log.ip_address)
         .bind(&log.user_agent)
-        .bind(log.audit_metadata.as_ref().unwrap_or(&serde_json::json!({})))
+        .bind(
+            log.audit_metadata
+                .as_ref()
+                .unwrap_or(&serde_json::json!({})),
+        )
         .bind(&log.audit_changes)
         .fetch_one(&self.pool)
         .await

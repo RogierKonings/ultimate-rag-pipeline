@@ -78,7 +78,11 @@ impl SecretsProvider for ChainedProvider {
                     return Ok(value);
                 }
                 Err(SecretsError::NotFound(_)) => {
-                    debug!(provider_index = i, key = key, "Secret not found, trying next");
+                    debug!(
+                        provider_index = i,
+                        key = key,
+                        "Secret not found, trying next"
+                    );
                     continue;
                 }
                 Err(e) => {
@@ -114,7 +118,10 @@ mod tests {
     impl MockProvider {
         fn new(secrets: Vec<(&str, &str)>) -> Self {
             Self {
-                secrets: secrets.into_iter().map(|(k, v)| (k.into(), v.into())).collect(),
+                secrets: secrets
+                    .into_iter()
+                    .map(|(k, v)| (k.into(), v.into()))
+                    .collect(),
             }
         }
     }

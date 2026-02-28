@@ -31,7 +31,9 @@ class OrchestratorConfig(BaseSettings):
     # Retrieval Service (from centralized config)
     retrieval_url: str = Field(default_factory=get_retrieval_service_url)
     retrieval_timeout: float = get_timeout_seconds("ORCHESTRATOR_RETRIEVAL")
-    retrieval_top_k: int = 30  # Number of documents to retrieve (tuned for hybrid search + reranking)
+    retrieval_top_k: int = (
+        30  # Number of documents to retrieve (tuned for hybrid search + reranking)
+    )
 
     # LLM Gateway (from centralized config)
     llm_gateway_url: str = Field(default_factory=get_llm_gateway_url)

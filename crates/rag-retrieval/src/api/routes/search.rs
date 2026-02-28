@@ -113,7 +113,10 @@ pub async fn retrieve(
 /// Extract `tenant_id` from the `X-Tenant-Id` header or the `filters.tenant_id` field.
 ///
 /// Returns an error if neither is present or valid.
-pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json::Value>) -> Result<Uuid, ApiError> {
+pub(super) fn extract_tenant_id(
+    headers: &HeaderMap,
+    filters: Option<&serde_json::Value>,
+) -> Result<Uuid, ApiError> {
     headers
         .get("X-Tenant-Id")
         .and_then(|v| v.to_str().ok())
@@ -124,7 +127,11 @@ pub(super) fn extract_tenant_id(headers: &HeaderMap, filters: Option<&serde_json
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
         })
-        .ok_or_else(|| ApiError::bad_request("Missing or invalid tenant ID: X-Tenant-Id header or filters.tenant_id is required"))
+        .ok_or_else(|| {
+            ApiError::bad_request(
+                "Missing or invalid tenant ID: X-Tenant-Id header or filters.tenant_id is required",
+            )
+        })
 }
 
 /// Build user context from request headers plus tenant scope.
@@ -365,10 +372,7 @@ async fn execute_search(
             );
 
             if let Ok(Some(cached_results)) = cache.get(&cache_key).await {
-                debug!(
-                    result_count = cached_results.len(),
-                    "Retrieval cache hit"
-                );
+                debug!(result_count = cached_results.len(), "Retrieval cache hit");
                 metrics.total_ms = start_time.elapsed().as_secs_f64() * 1000.0;
                 metrics.cache_hit = true;
                 return Ok((cached_results, metrics, debug_info, outcome));

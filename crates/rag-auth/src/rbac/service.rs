@@ -221,7 +221,9 @@ mod tests {
         let svc = AuthorizationService::new();
         let claims = test_claims().with_permissions(vec!["document:read".into()]);
 
-        assert!(svc.check_permission(&claims, Permission::DocumentRead).is_ok());
+        assert!(svc
+            .check_permission(&claims, Permission::DocumentRead)
+            .is_ok());
         assert!(svc
             .check_permission(&claims, Permission::DocumentWrite)
             .is_err());
@@ -232,9 +234,15 @@ mod tests {
         let svc = AuthorizationService::new();
         let claims = test_claims().with_roles(vec!["engineer".into()]);
 
-        assert!(svc.check_permission(&claims, Permission::DocumentRead).is_ok());
-        assert!(svc.check_permission(&claims, Permission::DocumentWrite).is_ok());
-        assert!(svc.check_permission(&claims, Permission::AdminAccess).is_err());
+        assert!(svc
+            .check_permission(&claims, Permission::DocumentRead)
+            .is_ok());
+        assert!(svc
+            .check_permission(&claims, Permission::DocumentWrite)
+            .is_ok());
+        assert!(svc
+            .check_permission(&claims, Permission::AdminAccess)
+            .is_err());
     }
 
     #[test]
@@ -263,7 +271,9 @@ mod tests {
         let svc = AuthorizationService::new();
         let claims = test_claims().with_roles(vec!["super_admin".into()]);
 
-        assert!(svc.check_permission(&claims, Permission::AdminAccess).is_ok());
+        assert!(svc
+            .check_permission(&claims, Permission::AdminAccess)
+            .is_ok());
         assert!(svc.check_role(&claims, Role::SuperAdmin).is_ok());
         assert!(svc.check_tenant(&claims, Uuid::new_v4()).is_ok());
     }
