@@ -49,11 +49,19 @@ impl DatabaseConfig {
     }
 
     /// Create configuration from environment variables.
+    ///
+    /// Loads `.env` file automatically if present.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `DATABASE_URL` is not set.
     #[must_use]
     pub fn from_env() -> Self {
-        let url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
-            "postgres://raguser:ragpassword@localhost:5432/ragpipeline".to_string() // gitleaks:allow (dev default)
-        });
+        // Load .env file if present (ignore errors — may not exist in containers)
+        let _ = dotenvy::dotenv();
+
+        let url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set (e.g. postgres://user:pass@host:5432/db)");
 
         let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
             .ok()

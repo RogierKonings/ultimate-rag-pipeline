@@ -39,6 +39,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Load .env file if present (ignore errors — may not exist in containers)
+    let _ = dotenvy::dotenv();
+
     // Load configuration
     let config = ServerConfig::from_env();
 
@@ -52,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get Redis URL from environment
     let redis_url = std::env::var("REDIS_URL")
-        .unwrap_or_else(|_| "redis://:ragredis@localhost:6379".to_string()); // gitleaks:allow (dev default)
+        .expect("REDIS_URL must be set (e.g. redis://:password@host:6379)");
 
     tracing::info!(redis_url = %redis_url, "Connecting to Redis");
 
@@ -91,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect to PostgreSQL for document queries
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string()); // gitleaks:allow (dev default)
+        .expect("DATABASE_URL must be set (e.g. postgres://user:pass@host:5432/db)");
 
     let db_config = DatabaseConfig::new(&database_url);
     let database = match DatabasePool::connect(&db_config).await {
@@ -224,7 +227,7 @@ async fn create_index_coordinator() -> Option<IndexCoordinator> {
     let opensearch_url =
         std::env::var("OPENSEARCH_URL").unwrap_or_else(|_| "http://localhost:9200".to_string());
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://raguser:ragpass@localhost:5432/ragpipeline".to_string()); // gitleaks:allow (dev default)
+        .expect("DATABASE_URL must be set");
 
     tracing::info!(
         qdrant_url = %qdrant_url,

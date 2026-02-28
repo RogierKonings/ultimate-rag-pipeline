@@ -4987,6 +4987,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "deadpool",
+ "dotenvy",
  "rag-types",
  "serde",
  "serde_json",
@@ -5049,6 +5050,7 @@ dependencies = [
  "bytes",
  "chrono",
  "dashmap",
+ "dotenvy",
  "ego-tree",
  "futures",
  "lazy_static",

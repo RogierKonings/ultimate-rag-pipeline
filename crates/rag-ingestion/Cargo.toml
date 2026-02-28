@@ -58,6 +58,7 @@ bytes = "1.5"
 mime_guess = "2.0"
 async-trait = "0.1"
 tracing = { workspace = true }
+dotenvy = { workspace = true }
 
 # API server
 axum = { version = "0.7", features = ["macros"] }
