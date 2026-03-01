@@ -18,7 +18,8 @@ use crate::chunking::{
 use crate::connectors::{Connector, S3Config, S3Connector};
 use crate::embedding::EmbeddingClient;
 use crate::indexing::{DocumentRecord, IndexCoordinator, IndexedChunk};
-use crate::parsers::{HtmlParser, MarkdownParser, Parser, PdfParser};
+use crate::chunking::{analyze_document, select_strategy};
+use crate::parsers::{HtmlParser, MarkdownParser, ParsedDocument, Parser, PdfParser};
 
 use super::job::Job;
 use super::pool::JobHandler;
@@ -155,7 +156,7 @@ impl IngestionJobHandler {
             .update_progress(&tracker_job_id, 0, 4, "parsing");
 
         // Read and parse document content
-        let content = if storage_type == Some("s3") {
+        let parsed_doc = if storage_type == Some("s3") {
             self.read_s3_document(source_id, payload).await?
         } else {
             self.read_local_document(source_id).await?
@@ -190,8 +191,11 @@ impl IngestionJobHandler {
             })
             .unwrap_or(50) as u32;
 
-        let chunking_strategy = self.extract_chunking_strategy(payload);
-        let chunks = self.chunk_content(&content, chunking_strategy, chunk_size, chunk_overlap)?;
+        let extension = source_id.rsplit('.').next().unwrap_or("").to_lowercase();
+        let chunking_strategy =
+            self.resolve_chunking_strategy(payload, &parsed_doc, &extension, source_type);
+        let chunks =
+            self.chunk_content(&parsed_doc.text, chunking_strategy, chunk_size, chunk_overlap)?;
         let chunk_count = chunks.len();
 
         info!(chunks = chunk_count, strategy = ?chunking_strategy, "Document chunked");
@@ -664,7 +668,7 @@ impl IngestionJobHandler {
     }
 
     /// Read document from S3/MinIO storage.
-    async fn read_s3_document(&self, source_id: &str, payload: &Value) -> Result<String, String> {
+    async fn read_s3_document(&self, source_id: &str, payload: &Value) -> Result<ParsedDocument, String> {
         let source_config = payload.get("source_config");
 
         // Extract S3 connection details (support both naming conventions)
@@ -718,12 +722,12 @@ impl IngestionJobHandler {
         // Determine parser based on file extension
         let extension = source_id.rsplit('.').next().unwrap_or("").to_lowercase();
 
-        self.parse_bytes(&bytes, &extension)
+        self.parse_document(&bytes, &extension)
     }
 
     /// Read document from local filesystem.
     #[allow(clippy::unused_async)] // async for consistency with other read methods
-    async fn read_local_document(&self, source_id: &str) -> Result<String, String> {
+    async fn read_local_document(&self, source_id: &str) -> Result<ParsedDocument, String> {
         let path = std::path::Path::new(source_id);
 
         if !path.exists() {
@@ -740,58 +744,70 @@ impl IngestionJobHandler {
             .unwrap_or("")
             .to_lowercase();
 
-        self.parse_bytes(&bytes, &extension)
+        self.parse_document(&bytes, &extension)
     }
 
-    /// Parse bytes into text based on file extension.
+    /// Parse bytes into a [`ParsedDocument`] based on file extension.
     ///
-    /// Sanitizes the output by stripping null bytes (`\0`) which can appear in
-    /// PDF-extracted text and are rejected by `PostgreSQL` text columns.
-    fn parse_bytes(&self, bytes: &[u8], extension: &str) -> Result<String, String> {
-        let text = self.parse_bytes_raw(bytes, extension)?;
+    /// Sanitizes the text output by stripping null bytes (`\0`) which can
+    /// appear in PDF-extracted text and are rejected by `PostgreSQL`.
+    fn parse_document(&self, bytes: &[u8], extension: &str) -> Result<ParsedDocument, String> {
+        let mut doc = self.parse_document_raw(bytes, extension)?;
         // Strip null bytes that PDF parsers can produce — PostgreSQL text columns
         // reject them with "invalid byte sequence for encoding UTF8: 0x00".
-        Ok(text.replace('\0', ""))
+        doc.text = doc.text.replace('\0', "");
+        Ok(doc)
     }
 
-    /// Parse bytes into text without sanitization.
+    /// Parse bytes into a [`ParsedDocument`] without sanitization.
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
-    fn parse_bytes_raw(&self, bytes: &[u8], extension: &str) -> Result<String, String> {
+    fn parse_document_raw(
+        &self,
+        bytes: &[u8],
+        extension: &str,
+    ) -> Result<ParsedDocument, String> {
         match extension {
             "pdf" => {
                 let parser = PdfParser::default();
-                match parser.parse(bytes, None) {
-                    Ok(doc) => Ok(doc.text),
-                    Err(e) => Err(format!("Failed to parse PDF: {e}")),
-                }
+                parser
+                    .parse(bytes, None)
+                    .map_err(|e| format!("Failed to parse PDF: {e}"))
             }
             "html" | "htm" => {
                 let parser = HtmlParser::default();
-                match parser.parse(bytes, None) {
-                    Ok(doc) => Ok(doc.text),
-                    Err(e) => Err(format!("Failed to parse HTML: {e}")),
-                }
+                parser
+                    .parse(bytes, None)
+                    .map_err(|e| format!("Failed to parse HTML: {e}"))
             }
             "md" | "markdown" => {
                 let parser = MarkdownParser;
-                match parser.parse(bytes, None) {
-                    Ok(doc) => Ok(doc.text),
-                    Err(e) => Err(format!("Failed to parse Markdown: {e}")),
-                }
+                parser
+                    .parse(bytes, None)
+                    .map_err(|e| format!("Failed to parse Markdown: {e}"))
             }
             "txt" | "" | "docx" => {
-                // For plain text and DOCX (treated as plain text for now), convert bytes to string
-                String::from_utf8(bytes.to_vec())
-                    .map_err(|e| format!("Failed to decode file as UTF-8: {e}"))
+                let text = String::from_utf8(bytes.to_vec())
+                    .map_err(|e| format!("Failed to decode file as UTF-8: {e}"))?;
+                Ok(ParsedDocument {
+                    text,
+                    ..Default::default()
+                })
             }
             _ => {
-                // Try to read as plain text
-                String::from_utf8(bytes.to_vec())
-                    .map_err(|e| format!("Failed to decode file as UTF-8: {e}"))
+                let text = String::from_utf8(bytes.to_vec())
+                    .map_err(|e| format!("Failed to decode file as UTF-8: {e}"))?;
+                Ok(ParsedDocument {
+                    text,
+                    ..Default::default()
+                })
             }
         }
     }
 
+    /// Extract chunking strategy from the job payload.
+    ///
+    /// Falls back to `Auto` when no strategy is specified or the value is
+    /// unrecognised.
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn extract_chunking_strategy(&self, payload: &Value) -> ChunkingStrategyType {
         let strategy_value = payload.get("chunking_strategy").or_else(|| {
@@ -801,26 +817,68 @@ impl IngestionJobHandler {
         });
 
         let Some(value) = strategy_value else {
-            return ChunkingStrategyType::Recursive;
+            return ChunkingStrategyType::Auto;
         };
 
         let Some(raw) = value.as_str() else {
             return serde_json::from_value::<ChunkingStrategyType>(value.clone())
-                .unwrap_or(ChunkingStrategyType::Recursive);
+                .unwrap_or(ChunkingStrategyType::Auto);
         };
 
         match raw.to_ascii_lowercase().as_str() {
+            "auto" | "" => ChunkingStrategyType::Auto,
             "recursive" => ChunkingStrategyType::Recursive,
             "semantic" => ChunkingStrategyType::Semantic,
             "hierarchical" | "document_structure" => ChunkingStrategyType::Hierarchical,
             other => {
                 warn!(
                     strategy = other,
-                    "Unknown chunking strategy in payload; defaulting to recursive"
+                    "Unknown chunking strategy in payload; defaulting to auto"
                 );
-                ChunkingStrategyType::Recursive
+                ChunkingStrategyType::Auto
             }
         }
+    }
+
+    /// Determine the concrete chunking strategy.
+    ///
+    /// If the requested strategy is [`Auto`], analyses the document to
+    /// pick the best fit.  Any other variant is used as-is.
+    #[allow(clippy::unused_self)]
+    fn resolve_chunking_strategy(
+        &self,
+        payload: &Value,
+        parsed_doc: &ParsedDocument,
+        file_extension: &str,
+        source_type: &str,
+    ) -> ChunkingStrategyType {
+        let requested = self.extract_chunking_strategy(payload);
+
+        match requested {
+            ChunkingStrategyType::Auto => {}
+            concrete => {
+                info!(strategy = ?concrete, "Using explicitly requested chunking strategy");
+                return concrete;
+            }
+        }
+
+        // Auto-select based on document analysis
+        let profile =
+            analyze_document(&parsed_doc.text, Some(parsed_doc), file_extension, source_type);
+        let selection = select_strategy(&profile);
+
+        info!(
+            strategy = ?selection.strategy,
+            reason = %selection.reason,
+            confidence = selection.confidence,
+            heading_count = profile.heading_count,
+            heading_density = %format!("{:.2}", profile.heading_density),
+            avg_sentence_len = %format!("{:.0}", profile.avg_sentence_len),
+            char_count = profile.char_count,
+            "Auto-selected chunking strategy"
+        );
+
+        selection.strategy
     }
 
     /// Chunk content using the configured strategy.
@@ -845,7 +903,7 @@ impl IngestionJobHandler {
         let document_id = rag_types::DocumentId::new();
 
         let result = match strategy {
-            ChunkingStrategyType::Recursive => {
+            ChunkingStrategyType::Auto | ChunkingStrategyType::Recursive => {
                 let splitter = RecursiveCharacterSplitter::new(config)
                     .map_err(|e| format!("Failed to create recursive splitter: {e}"))?;
                 splitter.chunk(content, document_id, None)
@@ -981,7 +1039,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_chunking_strategy_unknown_defaults_to_recursive() {
+    fn test_extract_chunking_strategy_unknown_defaults_to_auto() {
         let tracker = Arc::new(JobTracker::new());
         let handler = IngestionJobHandler::new(tracker, None, None, None);
         let payload = json!({
@@ -991,7 +1049,92 @@ mod tests {
         });
 
         let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Auto);
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_missing_defaults_to_auto() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({});
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Auto);
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_auto_returns_auto() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({ "chunking_strategy": "auto" });
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Auto);
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_document_structure_alias() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({ "chunking_strategy": "document_structure" });
+
+        let strategy = handler.extract_chunking_strategy(&payload);
+        assert_eq!(strategy, ChunkingStrategyType::Hierarchical);
+    }
+
+    #[test]
+    fn test_resolve_strategy_honors_explicit_override() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({ "chunking_strategy": "recursive" });
+        let doc = ParsedDocument {
+            text: "# Title\n\n## Section\nText.".into(),
+            ..Default::default()
+        };
+
+        let strategy = handler.resolve_chunking_strategy(&payload, &doc, "md", "file");
         assert_eq!(strategy, ChunkingStrategyType::Recursive);
+    }
+
+    #[test]
+    fn test_resolve_strategy_auto_selects_hierarchical_for_markdown() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({});
+        let doc = ParsedDocument {
+            text: "# Report\n\nIntro text.\n\n## Methods\n\nMethod details.\n\n## Results\n\nResult details.".into(),
+            ..Default::default()
+        };
+
+        let strategy = handler.resolve_chunking_strategy(&payload, &doc, "md", "file");
+        assert_eq!(strategy, ChunkingStrategyType::Hierarchical);
+    }
+
+    #[test]
+    fn test_resolve_strategy_auto_selects_semantic_for_long_prose() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({});
+        // Build a long prose document with no headings
+        let sentence = "This is a fairly long sentence that describes something in considerable detail and provides additional context and information about the topic at hand. ";
+        let text = sentence.repeat(50);
+        let doc = ParsedDocument {
+            text,
+            ..Default::default()
+        };
+
+        let strategy = handler.resolve_chunking_strategy(&payload, &doc, "txt", "file");
+        assert_eq!(strategy, ChunkingStrategyType::Semantic);
+    }
+
+    #[test]
+    fn test_extract_explicit_strategy_document_structure_alias() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let payload = json!({ "chunking_strategy": "document_structure" });
+
+        let strategy = handler.extract_explicit_chunking_strategy(&payload);
+        assert_eq!(strategy, Some(ChunkingStrategyType::Hierarchical));
     }
 
     #[test]

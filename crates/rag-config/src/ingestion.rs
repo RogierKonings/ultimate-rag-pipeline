@@ -235,7 +235,7 @@ mod tests {
         assert_eq!(config.target_tokens, 300);
         assert_eq!(config.max_tokens, 512);
         assert_eq!(config.overlap_tokens, 50);
-        assert_eq!(config.default_strategy, ChunkingStrategy::Recursive);
+        assert_eq!(config.default_strategy, ChunkingStrategy::Auto);
     }
 
     #[test]

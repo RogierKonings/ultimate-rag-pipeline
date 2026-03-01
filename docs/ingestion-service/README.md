@@ -230,49 +230,59 @@ registry.register(Box::new(CustomParser));
 
 ## Chunking Engine
 
-Recursive character-based chunking optimized for RAG retrieval.
+Three chunking strategies with automatic selection based on document characteristics.
+
+### Strategies
+
+**Recursive** (default fallback) — splits by separator hierarchy:
+paragraphs → lines → sentences → words → characters.
+Best for: short docs, unstructured text, code-heavy content.
+
+**Semantic** — splits by Unicode sentence boundaries, groups sentences to target size.
+Best for: long prose, academic/legal text with complex sentences.
+
+**Hierarchical** — detects headings (Markdown `#`, numbered, ALL CAPS, colon-terminated),
+splits into sections, then recursive-chunks within each.
+Best for: structured documents with clear sections (reports, manuals, specs).
+
+### Automatic Strategy Selection
+
+When `chunking_strategy` is omitted or set to `"auto"` in the ingest payload, the
+worker analyzes the document to pick the best strategy. Signals used:
+
+- File extension (`.md` with headings → Hierarchical)
+- Structured blocks from parser (heading metadata → Hierarchical)
+- Heading density in text (high → Hierarchical)
+- Sentence length and prose fraction (long sentences + heavy prose → Semantic)
+- Document length (short → Recursive)
+- Default fallback → Recursive
+
+Callers can still override explicitly: `"chunking_strategy": "recursive"`.
 
 ### Configuration
 
 ```rust
-use rag_ingestion::chunking::{ChunkingEngine, ChunkingConfig};
+use rag_ingestion::chunking::{RecursiveCharacterSplitter, ChunkingConfig};
 
 let config = ChunkingConfig {
     target_tokens: 300,      // ~200-400 optimal range
     max_tokens: 512,
-    overlap_tokens: 50,      // 10-20% overlap
-    separators: vec!["\n\n", "\n", ". ", " "],
-    preserve_headings: true,
+    chunk_overlap: 50,       // 10-20% overlap
+    min_chunk_size: 50,
+    tokenizer: "cl100k_base".into(),
 };
 
-let engine = ChunkingEngine::new(config);
-let chunks = engine.chunk(&document_text, &doc_metadata)?;
+let splitter = RecursiveCharacterSplitter::new(config)?;
+let chunks = splitter.chunk(&document_text, document_id, None)?;
 ```
 
-### Recursive Chunking Strategy
-
-The default strategy splits text recursively using a hierarchy of separators:
-
-```rust
-let config = ChunkingConfig {
-    separators: vec![
-        "\n\n",  // Paragraph breaks (highest priority)
-        "\n",    // Line breaks
-        ". ",    // Sentence endings
-        " ",     // Word boundaries (last resort)
-    ],
-    target_tokens: 300,
-    max_tokens: 512,
-    overlap_tokens: 50,
-};
-```
-
-**Algorithm:**
+### Recursive Chunking Algorithm
 
 1. Try to split on the first separator (paragraph breaks)
 2. If chunks are still too large, recursively split with next separator
 3. Continue until all chunks are within `max_tokens`
-4. Apply overlap between adjacent chunks
+4. Merge small chunks up to `target_tokens`
+5. Apply overlap between adjacent chunks
 
 ### Chunk Output
 

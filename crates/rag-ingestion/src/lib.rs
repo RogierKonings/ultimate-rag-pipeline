@@ -7,8 +7,11 @@
 //!   - [`parsers::MarkdownParser`]: Parse Markdown with YAML frontmatter
 //!
 //! - **Chunking** ([`chunking`]): Split text into chunks for embedding
-//!   - [`chunking::RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words
-//!   - [`chunking::HierarchicalChunker`]: Split by detected document sections
+//!   - [`chunking::RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words (default)
+//!   - [`chunking::SemanticChunker`]: Split by sentence boundaries for prose-heavy text
+//!   - [`chunking::HierarchicalChunker`]: Split by detected document sections/headings
+//!   - Auto-selection: when no strategy is specified, the system analyzes the document
+//!     (heading density, sentence length, file type, parser blocks) to pick the best strategy
 //!
 //! - **Embedding** ([`embedding`]): Generate vector embeddings
 //!   - [`embedding::EmbeddingClient`]: HTTP client for embedding service
@@ -58,7 +61,6 @@
 //! Future additions (Phase 4):
 //! - PDF parser
 //! - DOCX parser
-//! - Semantic chunker (sentence-boundary based)
 
 pub mod api;
 pub mod cache_invalidation;

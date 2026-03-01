@@ -1219,41 +1219,52 @@ data: {"tokens": {"prompt": 1250, "completion": 120}}
 
 ## Chunking & Embedding Strategy
 
+### Chunking Strategies
+
+Three strategies are available, with **automatic selection** when not explicitly specified:
+
+| Strategy | Name | Best For | How It Works |
+| ---------- | ------ | ---------- | ------------- |
+| **Recursive** | `recursive` | Short docs, unstructured text, code | Splits by separator hierarchy: paragraphs, lines, sentences, words, characters. Merges small chunks, adds overlap. |
+| **Semantic** | `semantic` | Long prose, academic/legal text | Splits by Unicode sentence boundaries, groups sentences to target size. Preserves sentence integrity. |
+| **Hierarchical** | `hierarchical` | Structured docs, reports, manuals | Detects headings (Markdown `#`, numbered, ALL CAPS, colon-terminated), splits into sections, then recursive-chunks within each. |
+
+### Automatic Strategy Selection
+
+When `chunking_strategy` is omitted or set to `"auto"`, the ingestion worker analyzes the document to pick the best strategy. The decision tree evaluates (in order):
+
+1. **File extension**: `.md` with >= 2 headings → Hierarchical
+2. **Parser blocks**: >= 3 structured headings from HTML/Markdown parser → Hierarchical
+3. **Code-heavy content**: > 30% code blocks → Recursive
+4. **Short documents**: < 1500 chars → Recursive
+5. **High heading density**: >= 3 headings per 1000 chars → Hierarchical
+6. **Long sentences + prose**: avg sentence >= 120 chars, >= 60% prose lines → Semantic
+7. **Long unstructured prose**: > 5000 chars, >= 70% prose, <= 1 heading → Semantic
+8. **Default fallback**: Recursive
+
+Callers can override by passing `"chunking_strategy": "recursive|semantic|hierarchical"` in the ingest payload.
+
 ### Chunking Configuration
 
-```python
-from dataclasses import dataclass
-from enum import Enum
-
-class ChunkingStrategy(Enum):
-    FIXED_SIZE = "fixed_size"
-    RECURSIVE = "recursive"
-    SEMANTIC = "semantic"
-    DOCUMENT_STRUCTURE = "document_structure"
-
-@dataclass
-class ChunkingConfig:
-    strategy: ChunkingStrategy = ChunkingStrategy.RECURSIVE
-    target_tokens: int = 300  # ~200-400 tokens optimal
-    max_tokens: int = 512
-    overlap_tokens: int = 50  # 10-20% overlap
-    separators: list = None  # For recursive: ["\n\n", "\n", ". ", " "]
-    
-    # Metadata to preserve
-    preserve_headings: bool = True
-    include_document_title: bool = True
-    include_section_path: bool = True
+```rust
+pub struct ChunkingConfig {
+    pub target_tokens: u32,    // default: 412 (max - 100)
+    pub max_tokens: u32,       // default: 512
+    pub chunk_overlap: u32,    // default: 50 tokens
+    pub min_chunk_size: u32,   // default: 50 tokens
+    pub tokenizer: String,     // default: "cl100k_base"
+}
 ```
 
 ### Recommended Defaults
 
 | Document Type | Strategy | Target Tokens | Overlap |
 |--------------|----------|---------------|---------|
-| **General text** | Recursive | 300 | 50 |
-| **Technical docs** | Document structure | 400 | 80 |
-| **FAQs** | Per Q&A block | Variable | 0 |
-| **Code** | Function/class based | 200 | 20 |
-| **Legal/contracts** | Paragraph-based | 500 | 100 |
+| **General text** | Recursive (auto) | 300 | 50 |
+| **Technical docs** | Hierarchical (auto) | 400 | 80 |
+| **FAQs** | Recursive | Variable | 0 |
+| **Code** | Recursive (auto) | 200 | 20 |
+| **Legal/contracts** | Semantic (auto) | 500 | 100 |
 
 ### Embedding Pipeline
 

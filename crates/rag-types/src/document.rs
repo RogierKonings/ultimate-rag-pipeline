@@ -328,8 +328,10 @@ impl Chunk {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ChunkingStrategy {
-    /// Recursive character-based splitting
+    /// Automatically select the best strategy based on document characteristics.
     #[default]
+    Auto,
+    /// Recursive character-based splitting
     Recursive,
     /// Semantic sentence-based splitting
     Semantic,
@@ -440,7 +442,7 @@ mod tests {
     #[test]
     fn test_chunking_config_default() {
         let config = ChunkingConfig::default();
-        assert_eq!(config.strategy, ChunkingStrategy::Recursive);
+        assert_eq!(config.strategy, ChunkingStrategy::Auto);
         assert_eq!(config.chunk_size, 512);
         assert_eq!(config.chunk_overlap, 50);
         assert!(config.enable_pii_detection);

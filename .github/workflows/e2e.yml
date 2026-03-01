@@ -157,6 +157,11 @@ jobs:
             exit 1
           fi
 
+      - name: Run database migrations
+        run: |
+          docker compose exec -T orchestrator-service \
+            alembic -c shared/database/migrations/alembic.ini upgrade head
+
       - name: Run E2E tests
         run: docker compose --profile e2e --profile app run --rm e2e-tests
 

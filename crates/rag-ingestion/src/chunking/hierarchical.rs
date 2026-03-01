@@ -133,7 +133,7 @@ impl HierarchicalChunker {
         }
     }
 
-    fn extract_heading(line: &str) -> Option<String> {
+    pub(crate) fn extract_heading(line: &str) -> Option<String> {
         if line.is_empty() {
             return None;
         }
@@ -164,7 +164,7 @@ impl HierarchicalChunker {
         None
     }
 
-    fn looks_like_numbered_heading(line: &str) -> bool {
+    pub(crate) fn looks_like_numbered_heading(line: &str) -> bool {
         let words: Vec<&str> = line.split_whitespace().collect();
         if words.len() < 2 || words.len() > 12 {
             return false;
@@ -185,7 +185,7 @@ impl HierarchicalChunker {
         !line.ends_with('.') && !line.ends_with('?') && !line.ends_with('!')
     }
 
-    fn looks_like_uppercase_heading(line: &str) -> bool {
+    pub(crate) fn looks_like_uppercase_heading(line: &str) -> bool {
         if line.len() > 100 || line.ends_with('.') {
             return false;
         }
@@ -202,7 +202,7 @@ impl HierarchicalChunker {
         letters.iter().all(|c| c.is_uppercase())
     }
 
-    fn looks_like_colon_heading(line: &str) -> bool {
+    pub(crate) fn looks_like_colon_heading(line: &str) -> bool {
         if !line.ends_with(':') || line.contains("://") {
             return false;
         }

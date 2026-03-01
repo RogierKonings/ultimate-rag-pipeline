@@ -24,7 +24,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 # Mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e
@@ -83,17 +82,6 @@ def auth_headers(e2e_config):
         "X-Tenant-ID": str(e2e_config.TEST_TENANT_ID),
     }
 
-
-@pytest_asyncio.fixture
-async def http_client():
-    """Create async HTTP client."""
-    try:
-        import httpx
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            yield client
-    except ImportError:
-        pytest.skip("httpx not installed. Install with: pip install httpx")
 
 
 # ============================================================================
