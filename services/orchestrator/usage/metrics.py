@@ -15,7 +15,7 @@ from prometheus_client import Counter
 llm_tokens_total = Counter(
     "llm_tokens_total",
     "Total LLM tokens consumed",
-    ["tenant_id", "model", "type"],  # type: prompt | completion
+    ["tenant_id", "model", "type"],  # values: prompt | completion
 )
 
 embeddings_generated_total = Counter(
