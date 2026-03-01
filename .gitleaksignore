@@ -1,8 +1,120 @@
-# Gitleaks false positives - placeholder connection strings in expect() messages
-# These were example URLs in error messages, not real credentials.
-# The example strings were removed in commit 7cf76d6.
-# Comment in .gitleaksignore itself that mentioned example postgres URL format
+# Gitleaks false positives - dev/test credentials in git history
+# These are placeholder connection strings, not real production secrets.
+
+# Previously suppressed
 c83d3298f95d5fb2eebb57325ceebd1d7c67bb99:.gitleaksignore:postgres-connection:2
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-database/src/config.rs:postgres-connection:64
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-ingestion/src/bin/ingestion-api.rs:redis-password:58
 9cecefaccbaca1f905a22425779dc329989e0681:crates/rag-ingestion/src/bin/ingestion-api.rs:postgres-connection:97
+
+# docker-compose.yml - dev environment connection strings
+06c5ef9d71050da77a2e9a3d2312dabaec7d04f2:docker-compose.yml:postgres-connection:155
+06c5ef9d71050da77a2e9a3d2312dabaec7d04f2:docker-compose.yml:redis-password:158
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:postgres-connection:140
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:postgres-connection:180
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:143
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:150
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:151
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:183
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:190
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:191
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:213
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:docker-compose.yml:redis-password:239
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:postgres-connection:138
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:postgres-connection:171
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:postgres-connection:196
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:redis-password:141
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:redis-password:174
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:redis-password:199
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:docker-compose.yml:redis-password:225
+de9e8266b23c39197b6bf84989fd4fe2bcd85785:docker-compose.yml:postgres-connection:142
+de9e8266b23c39197b6bf84989fd4fe2bcd85785:docker-compose.yml:redis-password:145
+
+# Rust source - default connection string placeholders
+86e99a236cc9618f58d8ed72ad844e2420fc0dfb:crates/rag-database/src/config.rs:postgres-connection:55
+e8fa72e68659e9894b9d24737a701ece5546c48d:crates/rag-database/src/config.rs:postgres-connection:29
+e8fa72e68659e9894b9d24737a701ece5546c48d:crates/rag-database/src/config.rs:postgres-connection:8
+2772b623e6618a297bffb062cd8e55d58cabdd5c:crates/rag-config/src/common.rs:postgres-connection:519
+de9e8266b23c39197b6bf84989fd4fe2bcd85785:crates/rag-ingestion/src/bin/ingestion-api.rs:postgres-connection:199
+de9e8266b23c39197b6bf84989fd4fe2bcd85785:crates/rag-ingestion/src/bin/ingestion-api.rs:postgres-connection:91
+de9e8266b23c39197b6bf84989fd4fe2bcd85785:crates/rag-ingestion/src/bin/ingestion-api.rs:redis-password:52
+
+# k8s manifests - dev cluster placeholder secrets
+94a6d2ae45c094da1d248ae7e6f8fd69e1673ce2:k8s/ingestion/deployment.yaml:redis-password:49
+94a6d2ae45c094da1d248ae7e6f8fd69e1673ce2:k8s/orchestrator/deployment.yaml:redis-password:45
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:k8s/base/secrets.yaml:postgres-connection:42
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:k8s/opensearch/bootstrap-job.yaml:opensearch-password:48
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:k8s/overlays/prod/opensearch-bootstrap-patch.yaml:opensearch-password:36
+c8a223282d7fbe6a4f4dc3b3abadfc98ffdaf4db:k8s/overlays/prod/opensearch-bootstrap-patch.yaml:opensearch-password:53
+90591174d2080603144129d408b4036c8d2ec92b:k8s/base/database-secrets.yaml:opensearch-password:88
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/external-secrets.yaml:opensearch-password:212
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/external-secrets.yaml:redis-password:162
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/vault-agent.yaml:redis-password:104
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/vault-injection-patch.yaml:redis-password:106
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/vault-injection-patch.yaml:redis-password:158
+5bd77e9525a8c8acabde9345e353c1044167811a:k8s/vault/vault-injection-patch.yaml:redis-password:50
+
+# Python test files - test/example connection strings
+0c74454dc00bb53a42bd0a811f55b2a1248adc37:services/shared/observability/validation/tests/test_validation.py:postgres-connection:466
+0c74454dc00bb53a42bd0a811f55b2a1248adc37:tests/security/test_secrets.py:redis-password:302
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/database.py:postgres-connection:103
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/database.py:postgres-connection:72
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/tests/test_database.py:postgres-connection:260
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/tests/test_database.py:postgres-connection:27
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/tests/test_database.py:postgres-connection:304
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/tests/test_database.py:postgres-connection:327
+32b1b2eeb48b630c23eedcb62771853135304f4a:services/ingestion/connectors/tests/test_integration.py:postgres-connection:235
+5d8cd89719644b7d6a987d6c044d9a43d080bc42:services/shared/observability/phoenix/tests/test_phoenix.py:postgres-connection:531
+5d8cd89719644b7d6a987d6c044d9a43d080bc42:services/shared/observability/tests/test_logging.py:jwt:205
+5d8cd89719644b7d6a987d6c044d9a43d080bc42:services/shared/observability/tests/test_logging.py:stripe-access-token:232
+5d8cd89719644b7d6a987d6c044d9a43d080bc42:services/shared/observability/validation/tests/test_validation.py:postgres-connection:468
+66d21d136fad93a5f5514a94eb018f3323691849:services/shared/security/pii/custom_recognizers.yaml:redis-password:142
+66d21d136fad93a5f5514a94eb018f3323691849:services/shared/security/secrets/service.py:redis-password:382
+66d21d136fad93a5f5514a94eb018f3323691849:tests/security/test_secrets.py:redis-password:289
+66d21d136fad93a5f5514a94eb018f3323691849:tests/security/test_secrets.py:redis-password:292
+66d21d136fad93a5f5514a94eb018f3323691849:tests/security/test_secrets.py:redis-password:304
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/observability/logging/filters.py:postgres-connection:50
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/observability/logging/sanitizer.py:postgres-connection:126
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/observability/logging/sanitizer.py:redis-password:127
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:generic-api-key:445
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:309
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:364
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:397
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:398
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:412
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:427
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:postgres-connection:455
+90591174d2080603144129d408b4036c8d2ec92b:services/shared/security/tls/tests/test_database_security.py:redis-password:319
+bad5edd250fb2d5a3ff94ef17c4bc0a8527e8df0:services/shared/security/audit/backends/tests/test_opensearch_backend.py:opensearch-password:57
+e0d64aa686ee8849d24d96dfb1786987789c3d6e:services/orchestrator/memory/persistence.py:postgres-connection:35
+e0d64aa686ee8849d24d96dfb1786987789c3d6e:services/orchestrator/tests/memory/test_persistence.py:postgres-connection:22
+e5cdf5b03efd55965273749bf8eb8051a4a866f5:services/ingestion/api/schemas/ingest.py:postgres-connection:458
+e5cdf5b03efd55965273749bf8eb8051a4a866f5:services/ingestion/api/schemas/ingest.py:postgres-connection:488
+e5cdf5b03efd55965273749bf8eb8051a4a866f5:services/ingestion/api/schemas/ingest.py:postgres-connection:76
+e5cdf5b03efd55965273749bf8eb8051a4a866f5:services/ingestion/indexing/tests/test_postgres.py:postgres-connection:18
+e5cdf5b03efd55965273749bf8eb8051a4a866f5:services/ingestion/indexing/tests/test_postgres.py:postgres-connection:31
+
+# Python services - retriever/shared connection string examples
+6b54e61fb9bd5a33fa5851d179051aa7154a85fd:services/retrieval/video/retriever.py:opensearch-password:166
+6b54e61fb9bd5a33fa5851d179051aa7154a85fd:services/retrieval/video/retriever.py:opensearch-password:93
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:services/shared/config/urls.py:redis-password:254
+
+# .env files - local development defaults
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.base:opensearch-password:53
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:postgres-connection:16
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:postgres-connection:77
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:23
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:24
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:25
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:80
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:91
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.docker:redis-password:99
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.local:postgres-connection:16
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.local:redis-password:22
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.local:redis-password:23
+e6bc0d96d8bdad73ec762ed29a0b2633e5adc1a9:.env.local:redis-password:24
+
+# README - documentation examples
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:README.md:postgres-connection:215
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:README.md:postgres-connection:216
+1996bad80c24a59821efe5bc1ceaf8456d0529ed:README.md:postgres-connection:222

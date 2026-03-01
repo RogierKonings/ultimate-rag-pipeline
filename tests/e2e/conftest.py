@@ -9,6 +9,7 @@ import asyncio
 import os
 
 import pytest
+import pytest_asyncio
 
 
 # Mark all tests in the e2e directory as requiring the --e2e flag
@@ -18,6 +19,7 @@ def pytest_configure(config):
         "markers",
         "e2e: mark test as an end-to-end test requiring running infrastructure",
     )
+    config.addinivalue_line("markers", "asyncio: mark test as async")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -65,13 +67,13 @@ def e2e_config():
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create an event loop for the test session."""
+    """Create a session-scoped event loop for async fixtures."""
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session")
 async def http_client():
     """Create async HTTP client for the session."""
     try:

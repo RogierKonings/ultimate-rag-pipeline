@@ -24,6 +24,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 
 # Mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e
@@ -83,7 +84,7 @@ def auth_headers(e2e_config):
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def http_client():
     """Create async HTTP client."""
     try:

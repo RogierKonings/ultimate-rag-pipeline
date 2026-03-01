@@ -21,6 +21,7 @@ import time
 from typing import Any
 
 import pytest
+import pytest_asyncio
 
 # Mark all tests in this module as e2e
 pytestmark = pytest.mark.e2e
@@ -262,7 +263,7 @@ async def wait_for_job(
 class TestRagPipelineE2E:
     """End-to-end tests for the complete RAG pipeline."""
 
-    @pytest.fixture(scope="class")
+    @pytest_asyncio.fixture(scope="class")
     async def ingested_data(self, http_client, e2e_config, auth_headers):
         """
         Fixture that ingests test documents before running tests.
