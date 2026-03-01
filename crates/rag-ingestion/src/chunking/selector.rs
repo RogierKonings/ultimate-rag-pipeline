@@ -7,6 +7,7 @@
 use rag_types::ChunkingStrategy as ChunkingStrategyType;
 
 use super::hierarchical::HierarchicalChunker;
+use super::qa::QAChunker;
 use crate::parsers::{ContentType, ParsedDocument};
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,13 @@ pub struct DocumentProfile {
     pub code_block_count: usize,
     /// Number of table blocks from parser.
     pub table_block_count: usize,
+    /// Number of Q&A pairs detected in the document text.
+    pub qa_pair_count: usize,
+    /// Diversity of content block types: `distinct ContentType count / 4`.
+    ///
+    /// A value ≥ 0.3 with ≥ 10 blocks and at least one table typically
+    /// indicates a mixed-content layout.
+    pub block_type_variance: f64,
     /// Lowercase file extension (without dot).
     pub file_extension: String,
     /// Source type from the job payload.
@@ -89,12 +97,19 @@ pub fn analyze_document(
     let avg_sentence_len = estimate_avg_sentence_len(text);
     let prose_fraction = estimate_prose_fraction(text);
 
-    let (block_count, structured_heading_count, code_block_count, table_block_count) =
-        if let Some(doc) = parsed_doc {
-            analyze_blocks(&doc.blocks)
-        } else {
-            (0, 0, 0, 0)
-        };
+    let (
+        block_count,
+        structured_heading_count,
+        code_block_count,
+        table_block_count,
+        block_type_variance,
+    ) = if let Some(doc) = parsed_doc {
+        analyze_blocks(&doc.blocks)
+    } else {
+        (0, 0, 0, 0, 0.0)
+    };
+
+    let qa_pair_count = QAChunker::detect_pairs(text).len();
 
     DocumentProfile {
         char_count,
@@ -107,6 +122,8 @@ pub fn analyze_document(
         structured_heading_count,
         code_block_count,
         table_block_count,
+        qa_pair_count,
+        block_type_variance,
         file_extension: file_extension.to_lowercase(),
         source_type: source_type.to_string(),
     }
@@ -116,18 +133,65 @@ pub fn analyze_document(
 ///
 /// Decision tree (evaluated top-to-bottom, first match wins):
 ///
-/// 1. Markdown with >= 2 headings → Hierarchical
-/// 2. Parser blocks with >= 3 structured headings (>= 5% of blocks) → Hierarchical
-/// 3. Code-heavy blocks (> 30%) → Recursive
-/// 4. Short documents (< 1500 chars) → Recursive
-/// 5. High heading density (>= 3 / 1000 chars) → Hierarchical
-/// 6. Moderate heading density (>= 3 headings, >= 1 / 1000 chars) → Hierarchical
-/// 7. Long sentences (avg >= 120 chars) + prose-heavy (>= 60%) → Semantic
-/// 8. Long unstructured prose (> 5000 chars, >= 70% prose, <= 1 heading) → Semantic
-/// 9. HTML with >= 2 headings → Hierarchical
-/// 10. Default → Recursive
+/// 1.  CSV file extension                                    → Tabular
+/// 2.  Table-heavy blocks (> 20% of blocks)                 → Tabular
+/// 3.  Q&A pair count >= 3                                   → QA
+/// 4.  Mixed block types (variance ≥ 0.3, ≥ 10 blocks, has tables) → `MixedContent`
+/// 5.  Markdown with >= 2 headings                           → Hierarchical
+/// 6.  Parser blocks with >= 3 structured headings (>= 5%)  → Hierarchical
+/// 7.  Code-heavy blocks (> 30%)                             → Recursive
+/// 8.  Short documents (< 1500 chars)                        → Recursive
+/// 9.  High heading density (>= 3 / 1000 chars)              → Hierarchical
+/// 10. Moderate heading density (>= 3 headings, >= 1/1000)   → Hierarchical
+/// 11. Long sentences (avg >= 120 chars) + prose-heavy (>= 60%) → Semantic
+/// 12. Long unstructured prose (> 5000 chars, >= 70%, <= 1 heading) → Semantic
+/// 13. HTML with >= 2 headings                               → Hierarchical
+/// 14. Default fallback                                       → Recursive
+#[allow(clippy::too_many_lines)]
 pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
-    // 1. Markdown extension hint
+    // 1. CSV files are always tabular.
+    if profile.file_extension == "csv" {
+        return StrategySelection {
+            strategy: ChunkingStrategyType::Tabular,
+            reason: "CSV file extension".into(),
+            confidence: "high",
+        };
+    }
+
+    // 2. Table-heavy documents.
+    if profile.block_count > 0 {
+        let table_ratio = profile.table_block_count as f64 / profile.block_count as f64;
+        if table_ratio > 0.20 {
+            return StrategySelection {
+                strategy: ChunkingStrategyType::Tabular,
+                reason: "Table-heavy document (>20% of blocks are tables)".into(),
+                confidence: "high",
+            };
+        }
+    }
+
+    // 3. Q&A / FAQ documents.
+    if profile.qa_pair_count >= 3 {
+        return StrategySelection {
+            strategy: ChunkingStrategyType::QA,
+            reason: format!("Q&A document ({} pairs detected)", profile.qa_pair_count),
+            confidence: "high",
+        };
+    }
+
+    // 4. Mixed-content documents (multiple block types + tables).
+    if profile.block_type_variance >= 0.3
+        && profile.block_count >= 10
+        && profile.table_block_count > 0
+    {
+        return StrategySelection {
+            strategy: ChunkingStrategyType::MixedContent,
+            reason: "Mixed-content document (tables + prose/code)".into(),
+            confidence: "medium",
+        };
+    }
+
+    // 5. Markdown extension hint.
     if profile.file_extension == "md" || profile.file_extension == "markdown" {
         if profile.heading_count >= 2 || profile.structured_heading_count >= 2 {
             return StrategySelection {
@@ -143,7 +207,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 2. Parser-produced structured headings
+    // 6. Parser-produced structured headings.
     if profile.block_count > 0 && profile.structured_heading_count >= 3 {
         let heading_ratio =
             profile.structured_heading_count as f64 / profile.block_count as f64;
@@ -156,7 +220,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         }
     }
 
-    // 3. Code-heavy documents
+    // 7. Code-heavy documents.
     if profile.block_count > 0 {
         let code_ratio = profile.code_block_count as f64 / profile.block_count as f64;
         if code_ratio > 0.3 {
@@ -168,7 +232,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         }
     }
 
-    // 4. Short documents
+    // 8. Short documents.
     if profile.char_count < 1500 {
         return StrategySelection {
             strategy: ChunkingStrategyType::Recursive,
@@ -177,7 +241,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 5. High heading density
+    // 9. High heading density.
     if profile.heading_density >= 3.0 {
         return StrategySelection {
             strategy: ChunkingStrategyType::Hierarchical,
@@ -186,7 +250,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 6. Moderate heading density
+    // 10. Moderate heading density.
     if profile.heading_count >= 3 && profile.heading_density >= 1.0 {
         return StrategySelection {
             strategy: ChunkingStrategyType::Hierarchical,
@@ -195,7 +259,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 7. Long sentences in prose-heavy text
+    // 11. Long sentences in prose-heavy text.
     if profile.avg_sentence_len >= 120.0 && profile.prose_fraction >= 0.6 {
         return StrategySelection {
             strategy: ChunkingStrategyType::Semantic,
@@ -204,7 +268,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 8. Long unstructured prose
+    // 12. Long unstructured prose.
     if profile.char_count > 5000 && profile.prose_fraction >= 0.7 && profile.heading_count <= 1 {
         return StrategySelection {
             strategy: ChunkingStrategyType::Semantic,
@@ -213,7 +277,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 9. HTML with headings
+    // 13. HTML with headings.
     if (profile.file_extension == "html" || profile.file_extension == "htm")
         && profile.heading_count >= 2
     {
@@ -224,7 +288,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
         };
     }
 
-    // 10. Default fallback
+    // 14. Default fallback.
     StrategySelection {
         strategy: ChunkingStrategyType::Recursive,
         reason: "No strong signal detected".into(),
@@ -282,9 +346,12 @@ fn estimate_prose_fraction(text: &str) -> f64 {
 }
 
 /// Analyze structured content blocks from the parser.
+///
+/// Returns `(block_count, structured_heading_count, code_block_count,
+/// table_block_count, block_type_variance)`.
 fn analyze_blocks(
     blocks: &[crate::parsers::ContentBlock],
-) -> (usize, usize, usize, usize) {
+) -> (usize, usize, usize, usize, f64) {
     let block_count = blocks.len();
 
     let structured_heading_count = blocks
@@ -314,11 +381,27 @@ fn analyze_blocks(
         .filter(|b| b.content_type == ContentType::Table)
         .count();
 
+    // Block-type diversity: distinct content types / 4 (normalised to 0..1).
+    let block_type_variance = if block_count == 0 {
+        0.0
+    } else {
+        let has_text = blocks.iter().any(|b| b.content_type == ContentType::Text);
+        let has_table = blocks.iter().any(|b| b.content_type == ContentType::Table);
+        let has_code = blocks.iter().any(|b| b.content_type == ContentType::Code);
+        let has_image = blocks.iter().any(|b| b.content_type == ContentType::Image);
+        let distinct = [has_text, has_table, has_code, has_image]
+            .iter()
+            .filter(|&&v| v)
+            .count();
+        distinct as f64 / 4.0
+    };
+
     (
         block_count,
         structured_heading_count,
         code_block_count,
         table_block_count,
+        block_type_variance,
     )
 }
 
@@ -342,6 +425,8 @@ mod tests {
             structured_heading_count: 0,
             code_block_count: 0,
             table_block_count: 0,
+            qa_pair_count: 0,
+            block_type_variance: 0.0,
             file_extension: "txt".into(),
             source_type: "file".into(),
         };
@@ -370,7 +455,6 @@ mod tests {
 
     #[test]
     fn test_analyze_prose_document() {
-        // Build long prose text
         let sentence = "This is a fairly long sentence that describes something in considerable detail and provides a lot of context. ";
         let text = sentence.repeat(20);
         let profile = analyze_document(&text, None, "txt", "file");
@@ -416,7 +500,7 @@ mod tests {
         assert_eq!(profile.block_count, 2);
     }
 
-    // --- select_strategy tests ---
+    // --- select_strategy tests: existing rules ---
 
     #[test]
     fn test_short_document_returns_recursive() {
@@ -462,7 +546,7 @@ mod tests {
             p.char_count = 8000;
             p.prose_fraction = 0.75;
             p.heading_count = 0;
-            p.avg_sentence_len = 80.0; // not super long, but lots of prose
+            p.avg_sentence_len = 80.0;
         }));
         assert_eq!(sel.strategy, ChunkingStrategyType::Semantic);
     }
@@ -509,5 +593,54 @@ mod tests {
     fn test_default_fallback_is_recursive() {
         let sel = select_strategy(&make_profile(|_| {}));
         assert_eq!(sel.strategy, ChunkingStrategyType::Recursive);
+    }
+
+    // --- select_strategy tests: new rules ---
+
+    #[test]
+    fn test_csv_extension_returns_tabular() {
+        let sel = select_strategy(&make_profile(|p| {
+            p.file_extension = "csv".into();
+        }));
+        assert_eq!(sel.strategy, ChunkingStrategyType::Tabular);
+        assert_eq!(sel.confidence, "high");
+    }
+
+    #[test]
+    fn test_table_heavy_blocks_returns_tabular() {
+        let sel = select_strategy(&make_profile(|p| {
+            p.block_count = 10;
+            p.table_block_count = 3; // 30% > 20% threshold
+        }));
+        assert_eq!(sel.strategy, ChunkingStrategyType::Tabular);
+    }
+
+    #[test]
+    fn test_qa_document_returns_qa() {
+        let sel = select_strategy(&make_profile(|p| {
+            p.qa_pair_count = 5;
+        }));
+        assert_eq!(sel.strategy, ChunkingStrategyType::QA);
+        assert_eq!(sel.confidence, "high");
+    }
+
+    #[test]
+    fn test_mixed_content_returns_mixed_content() {
+        let sel = select_strategy(&make_profile(|p| {
+            p.block_count = 15;
+            p.block_type_variance = 0.5; // text + table + code = 3/4 = 0.75
+            p.table_block_count = 2;
+        }));
+        assert_eq!(sel.strategy, ChunkingStrategyType::MixedContent);
+    }
+
+    #[test]
+    fn test_qa_takes_priority_over_short_document() {
+        // Q&A rule (3) fires before short-doc rule (8).
+        let sel = select_strategy(&make_profile(|p| {
+            p.char_count = 800; // short
+            p.qa_pair_count = 4; // but has Q&A
+        }));
+        assert_eq!(sel.strategy, ChunkingStrategyType::QA);
     }
 }

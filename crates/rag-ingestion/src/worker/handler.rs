@@ -13,7 +13,8 @@ use crate::api::jobs::JobTracker;
 use crate::api::types::JobStatus;
 use crate::chunking::{
     Chunk as TextChunk, ChunkingConfig, ChunkingStrategy, HierarchicalChunker,
-    RecursiveCharacterSplitter, SemanticChunker, SemanticChunkerConfig,
+    MixedContentChunker, QAChunker, RecursiveCharacterSplitter, SemanticChunker,
+    SemanticChunkerConfig, TabularChunker,
 };
 use crate::connectors::{Connector, S3Config, S3Connector};
 use crate::embedding::EmbeddingClient;
@@ -194,8 +195,13 @@ impl IngestionJobHandler {
         let extension = source_id.rsplit('.').next().unwrap_or("").to_lowercase();
         let chunking_strategy =
             self.resolve_chunking_strategy(payload, &parsed_doc, &extension, source_type);
-        let chunks =
-            self.chunk_content(&parsed_doc.text, chunking_strategy, chunk_size, chunk_overlap)?;
+        let chunks = self.chunk_content(
+            &parsed_doc.text,
+            chunking_strategy,
+            chunk_size,
+            chunk_overlap,
+            Some(&parsed_doc),
+        )?;
         let chunk_count = chunks.len();
 
         info!(chunks = chunk_count, strategy = ?chunking_strategy, "Document chunked");
@@ -271,6 +277,9 @@ impl IngestionJobHandler {
                                 ChunkingStrategyType::Auto | ChunkingStrategyType::Recursive => "recursive",
                                 ChunkingStrategyType::Semantic => "semantic",
                                 ChunkingStrategyType::Hierarchical => "hierarchical",
+                                ChunkingStrategyType::Tabular => "tabular",
+                                ChunkingStrategyType::QA => "qa",
+                                ChunkingStrategyType::MixedContent => "mixed_content",
                             }
                             .to_string(),
                         ),
@@ -830,6 +839,9 @@ impl IngestionJobHandler {
             "recursive" => ChunkingStrategyType::Recursive,
             "semantic" => ChunkingStrategyType::Semantic,
             "hierarchical" | "document_structure" => ChunkingStrategyType::Hierarchical,
+            "tabular" => ChunkingStrategyType::Tabular,
+            "qa" => ChunkingStrategyType::QA,
+            "mixed_content" | "mixed" => ChunkingStrategyType::MixedContent,
             other => {
                 warn!(
                     strategy = other,
@@ -882,6 +894,9 @@ impl IngestionJobHandler {
     }
 
     /// Chunk content using the configured strategy.
+    ///
+    /// `parsed_doc` is optional but enables richer chunking for `Tabular` and
+    /// `MixedContent` strategies that benefit from pre-parsed structural metadata.
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
     fn chunk_content(
         &self,
@@ -889,6 +904,7 @@ impl IngestionJobHandler {
         strategy: ChunkingStrategyType,
         chunk_size: u32,
         chunk_overlap: u32,
+        parsed_doc: Option<&ParsedDocument>,
     ) -> Result<Vec<TextChunk>, String> {
         let max_tokens = chunk_size.max(1);
         let target_tokens = max_tokens.saturating_sub(100).max(1);
@@ -918,6 +934,32 @@ impl IngestionJobHandler {
                 let chunker = HierarchicalChunker::with_config(config)
                     .map_err(|e| format!("Failed to create hierarchical chunker: {e}"))?;
                 chunker.chunk(content, document_id, None)
+            }
+            ChunkingStrategyType::Tabular => {
+                let chunker = TabularChunker::new(config)
+                    .map_err(|e| format!("Failed to create tabular chunker: {e}"))?;
+                // Use pre-parsed tables when available (HTML, Markdown parser output).
+                if let Some(doc) = parsed_doc {
+                    if !doc.tables.is_empty() {
+                        return chunker
+                            .chunk_tables(&doc.tables, document_id, &HashMap::new())
+                            .map_err(|e| format!("Tabular chunking failed: {e}"));
+                    }
+                }
+                chunker.chunk(content, document_id, None)
+            }
+            ChunkingStrategyType::QA => {
+                let chunker = QAChunker::new(config);
+                chunker.chunk(content, document_id, None)
+            }
+            ChunkingStrategyType::MixedContent => {
+                let chunker = MixedContentChunker::new(config);
+                // Use structured blocks when available for better zone detection.
+                if let Some(doc) = parsed_doc {
+                    chunker.chunk_with_doc(content, document_id, doc, None)
+                } else {
+                    chunker.chunk(content, document_id, None)
+                }
             }
         };
 
@@ -1135,7 +1177,7 @@ mod tests {
         let content = "Sentence one. Sentence two. Sentence three.";
 
         let chunks = handler
-            .chunk_content(content, ChunkingStrategyType::Semantic, 128, 10)
+            .chunk_content(content, ChunkingStrategyType::Semantic, 128, 10, None)
             .unwrap();
         assert!(!chunks.is_empty());
     }
@@ -1147,10 +1189,68 @@ mod tests {
         let content = "# Overview\nFirst section.\n\n## Details\nSecond section.";
 
         let chunks = handler
-            .chunk_content(content, ChunkingStrategyType::Hierarchical, 128, 10)
+            .chunk_content(content, ChunkingStrategyType::Hierarchical, 128, 10, None)
             .unwrap();
         assert!(!chunks.is_empty());
         assert!(chunks.iter().any(|c| c.source_section.is_some()));
+    }
+
+    #[test]
+    fn test_chunk_content_supports_tabular_strategy_with_markdown_table() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let content = "| Name | Price |\n| --- | --- |\n| Item A | 10.00 |\n| Item B | 20.00 |";
+
+        let chunks = handler
+            .chunk_content(content, ChunkingStrategyType::Tabular, 128, 0, None)
+            .unwrap();
+        assert!(!chunks.is_empty());
+        assert!(chunks[0].content.contains("Name"));
+    }
+
+    #[test]
+    fn test_chunk_content_supports_qa_strategy() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let content = "Q: What is Rust?\nA: A systems language.\n\
+                       Q: Is Rust fast?\nA: Yes.\nQ: Is Rust safe?\nA: Very.";
+
+        let chunks = handler
+            .chunk_content(content, ChunkingStrategyType::QA, 300, 0, None)
+            .unwrap();
+        assert!(!chunks.is_empty());
+    }
+
+    #[test]
+    fn test_chunk_content_supports_mixed_content_strategy() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+        let content = "Intro prose.\n```rust\nfn main() {}\n```\nSummary prose.";
+
+        let chunks = handler
+            .chunk_content(content, ChunkingStrategyType::MixedContent, 200, 10, None)
+            .unwrap();
+        assert!(!chunks.is_empty());
+    }
+
+    #[test]
+    fn test_extract_chunking_strategy_recognises_new_variants() {
+        let tracker = Arc::new(JobTracker::new());
+        let handler = IngestionJobHandler::new(tracker, None, None, None);
+
+        for (name, expected) in [
+            ("tabular", ChunkingStrategyType::Tabular),
+            ("qa", ChunkingStrategyType::QA),
+            ("mixed_content", ChunkingStrategyType::MixedContent),
+            ("mixed", ChunkingStrategyType::MixedContent),
+        ] {
+            let payload = serde_json::json!({ "chunking_strategy": name });
+            assert_eq!(
+                handler.extract_chunking_strategy(&payload),
+                expected,
+                "expected {name} to map to {expected:?}"
+            );
+        }
     }
 
     #[tokio::test]

@@ -63,6 +63,11 @@ impl From<ChunkingConfig> for SemanticChunkerConfig {
 /// Semantic chunker that splits on sentence boundaries.
 pub struct SemanticChunker {
     config: SemanticChunkerConfig,
+    /// Cached `ChunkingConfig` view of the same settings.
+    ///
+    /// Stored here so [`ChunkingStrategy::config`] can return a reference
+    /// instead of leaking a heap allocation on every call.
+    base_config: ChunkingConfig,
     tokenizer: CoreBPE,
 }
 
@@ -85,7 +90,8 @@ impl SemanticChunker {
         let tokenizer = tiktoken_rs::cl100k_base()
             .map_err(|e| Error::Config(format!("Failed to load tokenizer: {e}")))?;
 
-        Ok(Self { config, tokenizer })
+        let base_config = ChunkingConfig::from(config.clone());
+        Ok(Self { config, base_config, tokenizer })
     }
 
     /// Count tokens in text.
@@ -216,11 +222,7 @@ impl ChunkingStrategy for SemanticChunker {
     }
 
     fn config(&self) -> &ChunkingConfig {
-        // Convert on the fly
-        // This is a bit inefficient but keeps the interface consistent
-        // A better approach would be to store a ChunkingConfig directly
-        // For now, we create it on demand
-        Box::leak(Box::new(ChunkingConfig::from(self.config.clone())))
+        &self.base_config
     }
 
     fn chunk(

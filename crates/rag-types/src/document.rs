@@ -331,12 +331,21 @@ pub enum ChunkingStrategy {
     /// Automatically select the best strategy based on document characteristics.
     #[default]
     Auto,
-    /// Recursive character-based splitting
+    /// Recursive character-based splitting.
     Recursive,
-    /// Semantic sentence-based splitting
+    /// Semantic sentence-based splitting.
     Semantic,
-    /// Document structure-aware splitting
+    /// Document structure-aware splitting.
     Hierarchical,
+    /// Row-per-chunk splitting for CSV, Markdown tables, and HTML tables.
+    Tabular,
+    /// Question-and-answer pair splitting for FAQ documents.
+    #[serde(rename = "qa")]
+    QA,
+    /// Zone-based splitting that applies different sub-strategies per content
+    /// type (prose, table, code) within a single mixed-content document.
+    #[serde(rename = "mixed_content")]
+    MixedContent,
 }
 
 /// Configuration for document chunking.

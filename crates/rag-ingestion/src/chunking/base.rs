@@ -91,7 +91,7 @@ pub struct ChunkingResult {
 /// Strategies split document text into chunks suitable for embedding.
 pub trait ChunkingStrategy: Send + Sync {
     /// Returns the strategy name identifier.
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// Split text into chunks.
     ///

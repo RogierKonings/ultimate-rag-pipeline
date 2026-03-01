@@ -54,7 +54,7 @@ impl Default for RecursiveCharacterSplitter {
 
 #[allow(clippy::unnecessary_literal_bound)]
 impl ChunkingStrategy for RecursiveCharacterSplitter {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "recursive_character"
     }
 
