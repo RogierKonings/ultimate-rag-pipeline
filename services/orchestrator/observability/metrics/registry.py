@@ -228,7 +228,7 @@ class RAGMetrics:
         self.llm_tokens_total = Counter(
             "rag_llm_tokens_total",
             "Total LLM tokens processed",
-            ["service", "model", "type"],  # type: input, output
+            ["service", "model", "type"],  # labels: input, output
             registry=self.registry,
         )
 

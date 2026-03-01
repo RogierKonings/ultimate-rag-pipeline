@@ -1,11 +1,11 @@
 """Pydantic models for query routing."""
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class QueryIntent(str, Enum):
+class QueryIntent(StrEnum):
     """Classification of query intent."""
 
     FACTUAL = "factual"  # Seeking specific information
@@ -15,7 +15,7 @@ class QueryIntent(str, Enum):
     CLARIFICATION = "clarification"  # Asking to explain more
 
 
-class RoutingStrategy(str, Enum):
+class RoutingStrategy(StrEnum):
     """Strategy for handling the query."""
 
     SIMPLE = "simple"  # Single retrieval pass

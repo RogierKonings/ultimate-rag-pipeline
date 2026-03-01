@@ -6,13 +6,13 @@ the SSE protocol for real-time token delivery to clients.
 
 import json
 import time
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class StreamEventType(str, Enum):
+class StreamEventType(StrEnum):
     """Types of streaming events.
 
     Attributes:

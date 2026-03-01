@@ -1,6 +1,6 @@
 """Pydantic models for answer verification."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -15,7 +15,7 @@ class Claim(BaseModel):
     )
 
 
-class VerificationStatus(str, Enum):
+class VerificationStatus(StrEnum):
     """Status of claim verification against context."""
 
     SUPPORTED = "supported"

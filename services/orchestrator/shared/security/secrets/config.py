@@ -5,12 +5,12 @@ This module defines configuration for secrets backends
 and secret access patterns.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class SecretsBackend(str, Enum):
+class SecretsBackend(StrEnum):
     """Supported secrets backends."""
 
     ENVIRONMENT = "environment"  # Environment variables (dev/test)
@@ -19,7 +19,7 @@ class SecretsBackend(str, Enum):
     FILE = "file"  # File-based (for development)
 
 
-class VaultAuthMethod(str, Enum):
+class VaultAuthMethod(StrEnum):
     """Vault authentication methods."""
 
     TOKEN = "token"  # noqa: S105  # Direct token auth

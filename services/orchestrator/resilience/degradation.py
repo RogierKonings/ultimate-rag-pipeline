@@ -9,7 +9,7 @@ Degradation Levels:
 - MINIMAL: Critical services failing, minimal functionality
 """
 
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 
@@ -19,7 +19,7 @@ from .config import CircuitBreakerConfig, ResilienceConfig
 logger = structlog.get_logger(__name__)
 
 
-class DegradationLevel(str, Enum):
+class DegradationLevel(StrEnum):
     """System degradation levels."""
 
     NORMAL = "normal"  # All services healthy

@@ -4,7 +4,7 @@ Document and Chunk models for storing document metadata and chunked content.
 
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, SoftDeleteMixin, TimestampMixin
 
 
-class IndexStatus(str, Enum):
+class IndexStatus(StrEnum):
     """Indexing status for external stores (Qdrant, OpenSearch)."""
 
     PENDING = "pending"  # Indexing not yet attempted or in progress

@@ -35,11 +35,11 @@ Override Behavior:
 from __future__ import annotations
 
 import os
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 
 
-class DeployEnv(str, Enum):
+class DeployEnv(StrEnum):
     """Deployment environment types."""
 
     LOCAL = "local"

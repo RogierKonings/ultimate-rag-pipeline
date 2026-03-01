@@ -33,7 +33,7 @@ tasks:
       - '~:install'
 
   test:
-    command: 'pytest tests/ -v'
+    command: 'pytest tests/ -v -m "not integration"'
     inputs:
       - '@group(sources)'
       - '@group(tests)'

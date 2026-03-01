@@ -6,10 +6,10 @@ for different strategies (RAG, no-context, follow-up).
 Supports multiple languages with automatic language detection.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Language(str, Enum):
+class Language(StrEnum):
     """Supported languages for prompt templates."""
 
     ENGLISH = "en"

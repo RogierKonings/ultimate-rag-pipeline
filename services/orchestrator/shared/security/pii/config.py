@@ -5,12 +5,12 @@ This module defines configuration settings for PII detection
 including handling modes, entity types, and thresholds.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class PIIHandlingMode(str, Enum):
+class PIIHandlingMode(StrEnum):
     """How to handle detected PII."""
 
     PASSTHROUGH = "passthrough"  # Do nothing, just flag
@@ -21,7 +21,7 @@ class PIIHandlingMode(str, Enum):
     ENCRYPT = "encrypt"  # Encrypt the PII values
 
 
-class PIIEntityType(str, Enum):
+class PIIEntityType(StrEnum):
     """Types of PII entities that can be detected."""
 
     # Standard Presidio entities
@@ -54,7 +54,7 @@ class PIIEntityType(str, Enum):
     CONNECTION_STRING = "CONNECTION_STRING"
 
 
-class PIISensitivity(str, Enum):
+class PIISensitivity(StrEnum):
     """Sensitivity levels for PII."""
 
     LOW = "low"  # Names, organizations

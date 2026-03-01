@@ -6,10 +6,10 @@ This module defines roles, their hierarchy, and inheritance rules.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     """
     System-defined roles with hierarchical structure.
 

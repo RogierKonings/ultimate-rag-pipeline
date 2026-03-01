@@ -15,7 +15,7 @@ States:
 import asyncio
 import time
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from typing import Any, TypeVar
 
 import structlog
@@ -25,7 +25,7 @@ from .config import CircuitBreakerConfig
 logger = structlog.get_logger(__name__)
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     """Circuit breaker states."""
 
     CLOSED = "closed"  # Normal operation

@@ -38,7 +38,7 @@ def _mock_retrieval_response():
 
 
 @pytest.fixture
-def _mock_degraded_response():
+def mock_degraded_response():
     """Return a degraded retrieval response (semantic_only)."""
     return {
         "results": [
@@ -174,12 +174,12 @@ class TestRetrievalClientSearch:
             with pytest.raises(httpx.ConnectError):
                 await client.search("test")
 
-    async def test_search_with_degraded_response(self, _mock_degraded_response):
+    async def test_search_with_degraded_response(self, mock_degraded_response):
         """Test that search() correctly parses degraded retrieval response."""
         degraded_client = AsyncMock(spec=httpx.AsyncClient)
         response = MagicMock(spec=httpx.Response)
         response.status_code = 200
-        response.json.return_value = _mock_degraded_response
+        response.json.return_value = mock_degraded_response
         response.raise_for_status = MagicMock()
         degraded_client.post = AsyncMock(return_value=response)
 

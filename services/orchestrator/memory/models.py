@@ -27,7 +27,7 @@ Indexes:
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-class MessageRole(str, Enum):
+class MessageRole(StrEnum):
     """Role of a message in the conversation."""
 
     SYSTEM = "system"

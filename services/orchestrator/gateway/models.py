@@ -5,14 +5,14 @@ following the OpenAI API format for compatibility with vLLM and other providers.
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class ModelProvider(str, Enum):
+class ModelProvider(StrEnum):
     """Supported model providers."""
 
     VLLM = "vllm"

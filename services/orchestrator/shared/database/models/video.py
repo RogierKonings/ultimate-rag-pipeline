@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 
-class VideoStatus(str, enum.Enum):
+class VideoStatus(enum.StrEnum):
     """Video processing status."""
 
     PENDING = "pending"
@@ -26,7 +26,7 @@ class VideoStatus(str, enum.Enum):
     FAILED = "failed"
 
 
-class ProcessingStage(str, enum.Enum):
+class ProcessingStage(enum.StrEnum):
     """Video processing stages."""
 
     UPLOADED = "uploaded"

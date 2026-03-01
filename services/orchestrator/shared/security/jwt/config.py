@@ -5,13 +5,13 @@ This module defines the configuration settings for JWT authentication,
 including algorithm selection, token expiration, and IdP integration.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
-class JWTAlgorithm(str, Enum):
+class JWTAlgorithm(StrEnum):
     """Supported JWT signing algorithms."""
 
     RS256 = "RS256"  # RSA with SHA-256 (production recommended)

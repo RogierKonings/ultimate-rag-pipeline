@@ -6,13 +6,13 @@ and token-related requests/responses.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
-class TokenType(str, Enum):
+class TokenType(StrEnum):
     """Token types for different use cases."""
 
     ACCESS = "access"

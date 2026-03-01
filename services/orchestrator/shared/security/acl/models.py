@@ -6,14 +6,14 @@ including visibility levels, ACL entries, and request models.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 
-class Visibility(str, Enum):
+class Visibility(StrEnum):
     """Document visibility levels.
 
     Determines the base access level for a document before

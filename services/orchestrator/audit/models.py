@@ -8,14 +8,14 @@ including actions, outcomes, and query models.
 import hashlib
 import json
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
 
-class AuditAction(str, Enum):
+class AuditAction(StrEnum):
     """Types of auditable actions."""
 
     # Authentication
@@ -82,7 +82,7 @@ class AuditAction(str, Enum):
     GENERIC_DELETE = "generic.delete"
 
 
-class AuditOutcome(str, Enum):
+class AuditOutcome(StrEnum):
     """Outcome of an audited action."""
 
     SUCCESS = "success"
@@ -93,7 +93,7 @@ class AuditOutcome(str, Enum):
     PARTIAL = "partial"  # Partially successful
 
 
-class AuditSeverity(str, Enum):
+class AuditSeverity(StrEnum):
     """Severity level of audit event."""
 
     DEBUG = "debug"

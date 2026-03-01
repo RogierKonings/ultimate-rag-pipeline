@@ -7,10 +7,10 @@ along with role-to-permission mappings.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class PermissionScope(str, Enum):
+class PermissionScope(StrEnum):
     """Scope/resource categories for permissions."""
 
     # Document operations
@@ -49,7 +49,7 @@ class PermissionScope(str, Enum):
     INTEGRATIONS = "integrations"
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """
     Fine-grained permissions for RAG pipeline operations.
 

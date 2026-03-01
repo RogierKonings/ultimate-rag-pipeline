@@ -1,12 +1,12 @@
 """Pydantic models for guardrails."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
-class ViolationType(str, Enum):
+class ViolationType(StrEnum):
     """Types of guardrail violations."""
 
     PII_DETECTED = "pii_detected"
@@ -16,7 +16,7 @@ class ViolationType(str, Enum):
     PROFANITY = "profanity"
 
 
-class PIIType(str, Enum):
+class PIIType(StrEnum):
     """Types of PII that can be detected."""
 
     EMAIL = "email"

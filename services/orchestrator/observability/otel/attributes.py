@@ -8,14 +8,14 @@ These follow OpenTelemetry semantic conventions where applicable,
 with RAG-specific extensions prefixed with "rag.".
 """
 
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.trace import Span
 
 
-class RAGOperation(str, Enum):
+class RAGOperation(StrEnum):
     """
     Enumeration of RAG pipeline operations.
 

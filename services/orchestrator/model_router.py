@@ -7,7 +7,7 @@ Reference: US-10.5.2 - LLM Model Tiering
 """
 
 import os
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ def _get_model_name(tier: str, default: str) -> str:
     return os.getenv(env_key, default)
 
 
-class ModelTier(str, Enum):
+class ModelTier(StrEnum):
     """Model tiers based on parameter count and capabilities."""
 
     SMALL = "small"  # 3-7B models (Qwen2.5-7B, Llama-3.2-3B)

@@ -4,12 +4,12 @@ This module defines the configuration models used by the PromptBuilder
 for controlling template selection, token limits, and formatting options.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class PromptStrategy(str, Enum):
+class PromptStrategy(StrEnum):
     """Enum for available prompt strategies."""
 
     RAG = "rag"

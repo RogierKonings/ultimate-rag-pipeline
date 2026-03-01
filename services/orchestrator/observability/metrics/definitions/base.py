@@ -7,10 +7,10 @@ with full documentation and semantic meaning.
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     """Prometheus metric types."""
 
     COUNTER = "counter"

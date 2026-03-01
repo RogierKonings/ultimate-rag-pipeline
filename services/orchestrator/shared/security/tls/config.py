@@ -6,7 +6,7 @@ mTLS support, and integration with various services.
 """
 
 import ssl
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 from pydantic import Field
@@ -15,7 +15,7 @@ from pydantic_settings import BaseSettings
 logger = structlog.get_logger(__name__)
 
 
-class TLSMode(str, Enum):
+class TLSMode(StrEnum):
     """TLS operation mode."""
 
     DISABLED = "disabled"  # No TLS
