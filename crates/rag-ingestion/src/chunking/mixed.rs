@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn test_zones_from_text_identifies_code_zone() {
-        let chunker = MixedContentChunker::new(default_config());
+        let _chunker = MixedContentChunker::new(default_config());
         let text = "Some prose paragraph here.\n\
                     ```rust\nfn main() { println!(\"hello\"); }\n```\n\
                     More prose after the code.";
@@ -468,7 +468,7 @@ mod tests {
 
     #[test]
     fn test_zones_from_text_identifies_table_zone() {
-        let chunker = MixedContentChunker::new(default_config());
+        let _chunker = MixedContentChunker::new(default_config());
         let text = "Intro text.\n\
                     | Name | Value |\n\
                     | --- | --- |\n\
@@ -509,8 +509,8 @@ mod tests {
 
         let chunks = chunker.chunk(text, make_doc_id(), None).unwrap();
         for (expected, chunk) in chunks.iter().enumerate() {
-            #[allow(clippy::cast_possible_truncation)]
-            assert_eq!(chunk.chunk_index, expected as u32);
+            let expected_index = expected as u32;
+            assert_eq!(chunk.chunk_index, expected_index);
         }
     }
 
