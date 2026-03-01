@@ -20,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "008_tenant_isolation"
-down_revision: str | None = "007_indexing_status_tracking"
+down_revision: str | None = "007a_create_tenants"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
