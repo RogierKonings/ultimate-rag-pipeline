@@ -21,11 +21,11 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.execute(
-        "UPDATE source_documents SET visibility = 'tenant' WHERE visibility = 'internal'"
+        "UPDATE documents SET visibility = 'tenant' WHERE visibility = 'internal'"
     )
 
 
 def downgrade() -> None:
     op.execute(
-        "UPDATE source_documents SET visibility = 'internal' WHERE visibility = 'tenant'"
+        "UPDATE documents SET visibility = 'internal' WHERE visibility = 'tenant'"
     )
