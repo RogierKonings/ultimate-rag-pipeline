@@ -509,9 +509,8 @@ class TestVideoRagPerformance:
 
 
 @pytest.fixture(scope="module", autouse=True)
-async def cleanup(e2e_config):
+def cleanup(e2e_config):
     """Clean up test data after all tests."""
-    return
-
+    yield
     # Cleanup would delete any test data created during E2E tests
     # This is skipped for safety in real environments

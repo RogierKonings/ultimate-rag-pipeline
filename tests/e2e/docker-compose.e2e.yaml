@@ -1,15 +1,47 @@
 # E2E Test Docker Compose Configuration
 #
-# This file extends the main docker-compose.yml to add an E2E test runner.
+# This file extends the main docker-compose.yml to add an E2E test runner
+# and a mock LLM service (no real LLM needed in CI).
 # Usage:
-#   docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml up --profile app -d
-#   docker-compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml run e2e-tests
+#   docker compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml up --profile app -d
+#   docker compose -f docker-compose.yml -f tests/e2e/docker-compose.e2e.yaml run e2e-tests
 
 services:
+  # Mock LLM server — lightweight OpenAI-compatible endpoint for E2E tests
+  mock-llm:
+    image: python:3.11-slim
+    container_name: rag-mock-llm
+    working_dir: /app
+    volumes:
+      - ./tests/e2e/mock_llm_server.py:/app/mock_llm_server.py:ro
+    command: ["python", "/app/mock_llm_server.py"]
+    networks:
+      - rag-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:11434/')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
   # Override retrieval-service to disable reranker (LLM Gateway not available in E2E)
   retrieval-service:
     environment:
       RERANKER_ENABLED: "false"
+
+  # Override orchestrator to point LLM calls at the mock.
+  # All three env vars are needed: LLM_GATEWAY_URL is read by get_llm_gateway_url(),
+  # LLM_SERVICE_URL is its fallback, and ORCHESTRATOR_LLM_GATEWAY_URL is read by
+  # Pydantic BaseSettings with env_prefix="ORCHESTRATOR_". The environment: directive
+  # takes precedence over the env_file values from .env.docker.
+  orchestrator-service:
+    environment:
+      LLM_SERVICE_URL: http://mock-llm:11434
+      LLM_GATEWAY_URL: http://mock-llm:11434
+      ORCHESTRATOR_LLM_GATEWAY_URL: http://mock-llm:11434
+    depends_on:
+      mock-llm:
+        condition: service_healthy
 
   e2e-tests:
     build:
@@ -23,6 +55,8 @@ services:
         condition: service_started
       ingestion-service:
         condition: service_started
+      mock-llm:
+        condition: service_healthy
     environment:
       - INGESTION_URL=http://ingestion-service:8001
       - ORCHESTRATOR_URL=http://orchestrator-service:8003

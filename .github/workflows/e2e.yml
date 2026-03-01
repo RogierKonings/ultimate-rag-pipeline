@@ -163,7 +163,7 @@ jobs:
       - name: Collect logs on failure
         if: failure()
         run: |
-          for svc in ingestion-service retrieval-service orchestrator-service embedding-service; do
+          for svc in ingestion-service retrieval-service orchestrator-service embedding-service mock-llm; do
             echo "=== $svc ==="
             docker compose logs $svc --tail=100
           done
