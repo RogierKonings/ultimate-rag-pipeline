@@ -230,11 +230,15 @@ registry.register(Box::new(CustomParser));
 
 ## Chunking Engine
 
-Three chunking strategies with automatic selection based on document characteristics.
+Four chunking strategies. **Auto** (default) analyzes the document and picks the best concrete strategy.
 
 ### Strategies
 
-**Recursive** (default fallback) — splits by separator hierarchy:
+**Auto** (default) — intelligent strategy selection based on document characteristics
+(heading density, sentence length, prose fraction, file type, parser metadata).
+This is the recommended option for most use cases.
+
+**Recursive** — splits by separator hierarchy:
 paragraphs → lines → sentences → words → characters.
 Best for: short docs, unstructured text, code-heavy content.
 
@@ -247,8 +251,8 @@ Best for: structured documents with clear sections (reports, manuals, specs).
 
 ### Automatic Strategy Selection
 
-When `chunking_strategy` is omitted or set to `"auto"` in the ingest payload, the
-worker analyzes the document to pick the best strategy. Signals used:
+The default strategy is `"auto"`. When active, the worker analyzes the document
+to pick the best concrete strategy. Signals used:
 
 - File extension (`.md` with headings → Hierarchical)
 - Structured blocks from parser (heading metadata → Hierarchical)
@@ -257,7 +261,7 @@ worker analyzes the document to pick the best strategy. Signals used:
 - Document length (short → Recursive)
 - Default fallback → Recursive
 
-Callers can still override explicitly: `"chunking_strategy": "recursive"`.
+Callers can override explicitly: `"chunking_strategy": "recursive|semantic|hierarchical"`. Omitting the field defaults to `"auto"`.
 
 ### Configuration
 
@@ -560,7 +564,7 @@ let job_id = queue.submit(IngestJob {
     },
     tenant_id,
     options: IngestOptions {
-        chunking_strategy: "recursive".into(),
+        chunking_strategy: "auto".into(),
         skip_pii_detection: false,
     },
 }, Priority::Normal).await?;
@@ -612,7 +616,7 @@ Start incremental sync from a source:
     "recursive": true
   },
   "options": {
-    "chunking_strategy": "recursive",
+    "chunking_strategy": "auto",
     "target_tokens": 300
   }
 }

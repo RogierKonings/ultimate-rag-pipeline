@@ -107,7 +107,7 @@ async function triggerIngestion(s3Key: string, title: string): Promise<string> {
 				s3_bucket: MINIO_BUCKET
 			},
 			processing: {
-				chunking_strategy: 'recursive',
+				chunking_strategy: 'auto',
 				chunk_size: 512,
 				chunk_overlap: 50
 			},

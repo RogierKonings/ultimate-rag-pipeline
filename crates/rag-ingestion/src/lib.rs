@@ -10,8 +10,8 @@
 //!   - [`chunking::RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words (default)
 //!   - [`chunking::SemanticChunker`]: Split by sentence boundaries for prose-heavy text
 //!   - [`chunking::HierarchicalChunker`]: Split by detected document sections/headings
-//!   - Auto-selection: when no strategy is specified, the system analyzes the document
-//!     (heading density, sentence length, file type, parser blocks) to pick the best strategy
+//!   - **Auto** (default): analyzes the document (heading density, sentence length,
+//!     file type, parser blocks) and picks the best strategy automatically
 //!
 //! - **Embedding** ([`embedding`]): Generate vector embeddings
 //!   - [`embedding::EmbeddingClient`]: HTTP client for embedding service

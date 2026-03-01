@@ -2,13 +2,13 @@
 //!
 //! This module provides chunking strategies for splitting documents
 //! into chunks suitable for embedding:
-//! - [`RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words (default)
+//! - **Auto** (default): analyzes the document and picks the best strategy via [`selector`]
+//! - [`RecursiveCharacterSplitter`]: Split by paragraphs, sentences, words
 //! - [`SemanticChunker`]: Split by sentence boundaries for prose-heavy text
 //! - [`HierarchicalChunker`]: Split by detected document sections/headings
 //!
-//! When no strategy is explicitly requested, the [`selector`] module
-//! auto-selects the best strategy by analyzing document characteristics
-//! (heading density, sentence length, file type, parser-produced blocks).
+//! The [`selector`] module evaluates heading density, sentence length,
+//! prose fraction, file type, and parser-produced blocks to pick the best strategy.
 
 mod base;
 mod hierarchical;

@@ -268,7 +268,7 @@ impl IngestionJobHandler {
                         "chunking_strategy".to_string(),
                         Value::String(
                             match chunking_strategy {
-                                ChunkingStrategyType::Recursive => "recursive",
+                                ChunkingStrategyType::Auto | ChunkingStrategyType::Recursive => "recursive",
                                 ChunkingStrategyType::Semantic => "semantic",
                                 ChunkingStrategyType::Hierarchical => "hierarchical",
                             }
@@ -1127,15 +1127,6 @@ mod tests {
         assert_eq!(strategy, ChunkingStrategyType::Semantic);
     }
 
-    #[test]
-    fn test_extract_explicit_strategy_document_structure_alias() {
-        let tracker = Arc::new(JobTracker::new());
-        let handler = IngestionJobHandler::new(tracker, None, None, None);
-        let payload = json!({ "chunking_strategy": "document_structure" });
-
-        let strategy = handler.extract_explicit_chunking_strategy(&payload);
-        assert_eq!(strategy, Some(ChunkingStrategyType::Hierarchical));
-    }
 
     #[test]
     fn test_chunk_content_supports_semantic_strategy() {

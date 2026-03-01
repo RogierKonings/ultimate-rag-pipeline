@@ -200,7 +200,7 @@ flowchart LR
 
 - Source connectors (filesystem, S3/MinIO)
 - Document parsing and validation (PDF, DOCX, HTML, Markdown)
-- Chunking with configurable strategies (recursive character splitting)
+- Chunking with auto-selected or explicitly chosen strategies (auto, recursive, semantic, hierarchical)
 - Embedding generation via HTTP client to embedding service
 - Multi-store indexing with status tracking (Qdrant, OpenSearch, PostgreSQL)
 - Background reconciliation for store consistency
@@ -1221,17 +1221,18 @@ data: {"tokens": {"prompt": 1250, "completion": 120}}
 
 ### Chunking Strategies
 
-Three strategies are available, with **automatic selection** when not explicitly specified:
+Four strategies are available. **Auto** (default) analyzes the document and picks the best concrete strategy:
 
 | Strategy | Name | Best For | How It Works |
 | ---------- | ------ | ---------- | ------------- |
+| **Auto** (default) | `auto` | Any document | Analyzes the document (heading density, sentence length, prose fraction, file type, parser metadata) and picks the best concrete strategy. |
 | **Recursive** | `recursive` | Short docs, unstructured text, code | Splits by separator hierarchy: paragraphs, lines, sentences, words, characters. Merges small chunks, adds overlap. |
 | **Semantic** | `semantic` | Long prose, academic/legal text | Splits by Unicode sentence boundaries, groups sentences to target size. Preserves sentence integrity. |
 | **Hierarchical** | `hierarchical` | Structured docs, reports, manuals | Detects headings (Markdown `#`, numbered, ALL CAPS, colon-terminated), splits into sections, then recursive-chunks within each. |
 
 ### Automatic Strategy Selection
 
-When `chunking_strategy` is omitted or set to `"auto"`, the ingestion worker analyzes the document to pick the best strategy. The decision tree evaluates (in order):
+The default strategy is `"auto"`. When active, the ingestion worker analyzes the document to pick the best concrete strategy. The decision tree evaluates (in order):
 
 1. **File extension**: `.md` with >= 2 headings → Hierarchical
 2. **Parser blocks**: >= 3 structured headings from HTML/Markdown parser → Hierarchical
@@ -1242,7 +1243,7 @@ When `chunking_strategy` is omitted or set to `"auto"`, the ingestion worker ana
 7. **Long unstructured prose**: > 5000 chars, >= 70% prose, <= 1 heading → Semantic
 8. **Default fallback**: Recursive
 
-Callers can override by passing `"chunking_strategy": "recursive|semantic|hierarchical"` in the ingest payload.
+Callers can override by passing `"chunking_strategy": "recursive|semantic|hierarchical"` in the ingest payload. Omitting the field or passing `"auto"` both use automatic selection.
 
 ### Chunking Configuration
 

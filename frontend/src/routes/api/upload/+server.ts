@@ -104,7 +104,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					s3_secret_key: MINIO_SECRET_KEY || 'minioadmin123'
 				},
 				processing: {
-					chunking_strategy: 'recursive',
+					chunking_strategy: 'auto',
 					chunk_size: 512,
 					chunk_overlap: 50
 				},
