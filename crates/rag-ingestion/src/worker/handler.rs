@@ -446,18 +446,36 @@ impl IngestionJobHandler {
 
         if requested_document_ids.is_empty() {
             // Fallback scope: reembed tenant documents, optionally filtered by source type.
-            let docs = document_repo
-                .list(&tenant_id, 10_000, 0)
-                .await
-                .map_err(|e| format!("Failed to list documents for reembed: {e}"))?;
+            // Load in pages so large tenants are not capped at a fixed list size.
+            let page_size = 1_000_i64;
+            let page_size_usize = 1_000_usize;
+            let mut offset = 0_i64;
 
-            requested_document_ids = docs
-                .into_iter()
-                .filter(|doc| {
-                    source_type_filters.is_empty() || source_type_filters.contains(&doc.source_type)
-                })
-                .map(|doc| doc.id)
-                .collect();
+            loop {
+                let docs = document_repo
+                    .list(&tenant_id, page_size, offset)
+                    .await
+                    .map_err(|e| format!("Failed to list documents for reembed: {e}"))?;
+
+                let docs_len = docs.len();
+                if docs_len == 0 {
+                    break;
+                }
+
+                requested_document_ids.extend(
+                    docs.into_iter()
+                        .filter(|doc| {
+                            source_type_filters.is_empty()
+                                || source_type_filters.contains(&doc.source_type)
+                        })
+                        .map(|doc| doc.id),
+                );
+
+                if docs_len < page_size_usize {
+                    break;
+                }
+                offset += page_size;
+            }
         }
 
         if requested_document_ids.is_empty() {
@@ -754,16 +772,14 @@ impl IngestionJobHandler {
     }
 
     /// Read document from local filesystem.
-    #[allow(clippy::unused_async)] // async for consistency with other read methods
     async fn read_local_document(&self, source_id: &str) -> Result<ParsedDocument, String> {
         let path = std::path::Path::new(source_id);
 
-        if !path.exists() {
-            return Err(format!("File not found: {source_id}"));
-        }
-
-        // Read file as bytes
-        let bytes = std::fs::read(path).map_err(|e| format!("Failed to read file: {e}"))?;
+        // Read file as bytes using async I/O to avoid blocking worker executors.
+        let bytes = tokio::fs::read(path).await.map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => format!("File not found: {source_id}"),
+            _ => format!("Failed to read file: {e}"),
+        })?;
 
         // Determine parser based on extension
         let extension = path
