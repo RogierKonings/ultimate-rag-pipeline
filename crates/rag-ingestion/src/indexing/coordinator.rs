@@ -315,6 +315,10 @@ impl IndexCoordinator {
                 .and_then(serde_json::Value::as_i64),
             visibility: document.acl.visibility,
             allowed_groups: document.acl.allowed_groups.clone(),
+            owner_id: document.acl.owner_id.clone(),
+            allowed_users: document.acl.allowed_users.clone(),
+            denied_groups: document.acl.denied_groups.clone(),
+            denied_users: document.acl.denied_users.clone(),
             metadata: serde_json::to_value(&document.metadata).unwrap_or(Value::Null),
         };
 

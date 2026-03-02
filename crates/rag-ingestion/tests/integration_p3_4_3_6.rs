@@ -527,6 +527,10 @@ fn test_document_record_to_new_source_document_conversion() {
                     .collect()
             })
             .unwrap_or_default(),
+        owner_id: None,
+        allowed_users: vec![],
+        denied_groups: vec![],
+        denied_users: vec![],
         metadata: serde_json::to_value(&doc_record.metadata).unwrap_or(serde_json::Value::Null),
     };
 
@@ -592,6 +596,10 @@ fn test_document_record_conversion_with_defaults() {
                     .collect()
             })
             .unwrap_or_default(),
+        owner_id: None,
+        allowed_users: vec![],
+        denied_groups: vec![],
+        denied_users: vec![],
         metadata: serde_json::to_value(&doc_record.metadata).unwrap_or(serde_json::Value::Null),
     };
 

@@ -37,6 +37,17 @@ pub struct SourceDocument {
     /// Groups allowed to access this document.
     #[sqlx(default)]
     pub allowed_groups: Vec<String>,
+    /// Document owner user ID.
+    pub owner_id: Option<String>,
+    /// Individual users allowed to access.
+    #[sqlx(default)]
+    pub allowed_users: Vec<String>,
+    /// Groups explicitly denied access.
+    #[sqlx(default)]
+    pub denied_groups: Vec<String>,
+    /// Users explicitly denied access.
+    #[sqlx(default)]
+    pub denied_users: Vec<String>,
     /// Additional metadata as JSON.
     #[sqlx(default)]
     pub metadata: serde_json::Value,
@@ -86,6 +97,10 @@ pub struct SourceDocumentBuilder {
     file_size: Option<i64>,
     visibility: Visibility,
     allowed_groups: Vec<String>,
+    owner_id: Option<String>,
+    allowed_users: Vec<String>,
+    denied_groups: Vec<String>,
+    denied_users: Vec<String>,
     metadata: serde_json::Value,
 }
 
@@ -102,6 +117,10 @@ impl SourceDocumentBuilder {
             file_size: None,
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
             metadata: serde_json::Value::Null,
         }
     }
@@ -155,6 +174,34 @@ impl SourceDocumentBuilder {
         self
     }
 
+    /// Set the owner ID.
+    #[must_use]
+    pub fn owner_id(mut self, owner_id: Option<String>) -> Self {
+        self.owner_id = owner_id;
+        self
+    }
+
+    /// Set the allowed users.
+    #[must_use]
+    pub fn allowed_users(mut self, users: Vec<String>) -> Self {
+        self.allowed_users = users;
+        self
+    }
+
+    /// Set the denied groups.
+    #[must_use]
+    pub fn denied_groups(mut self, groups: Vec<String>) -> Self {
+        self.denied_groups = groups;
+        self
+    }
+
+    /// Set the denied users.
+    #[must_use]
+    pub fn denied_users(mut self, users: Vec<String>) -> Self {
+        self.denied_users = users;
+        self
+    }
+
     /// Set additional metadata.
     #[must_use]
     pub fn metadata(mut self, metadata: serde_json::Value) -> Self {
@@ -176,6 +223,10 @@ impl SourceDocumentBuilder {
             file_size: self.file_size,
             visibility: self.visibility,
             allowed_groups: self.allowed_groups,
+            owner_id: self.owner_id,
+            allowed_users: self.allowed_users,
+            denied_groups: self.denied_groups,
+            denied_users: self.denied_users,
             metadata: self.metadata,
         }
     }
@@ -204,6 +255,14 @@ pub struct NewSourceDocument {
     pub visibility: Visibility,
     /// Allowed groups.
     pub allowed_groups: Vec<String>,
+    /// Owner user ID.
+    pub owner_id: Option<String>,
+    /// Allowed users.
+    pub allowed_users: Vec<String>,
+    /// Denied groups.
+    pub denied_groups: Vec<String>,
+    /// Denied users.
+    pub denied_users: Vec<String>,
     /// Metadata.
     pub metadata: serde_json::Value,
 }

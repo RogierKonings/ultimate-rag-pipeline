@@ -144,6 +144,10 @@ impl SearchClient {
                     "source_type": { "type": "keyword" },
                     "allowed_groups": { "type": "keyword" },
                     "visibility": { "type": "keyword" },
+                    "owner_id": { "type": "keyword" },
+                    "allowed_users": { "type": "keyword" },
+                    "denied_groups": { "type": "keyword" },
+                    "denied_users": { "type": "keyword" },
                     "chunk_index": { "type": "integer" },
                     "created_at": { "type": "date" },
                     "updated_at": { "type": "date" }

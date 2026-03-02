@@ -30,10 +30,11 @@ impl DocumentRepository {
             r#"
             INSERT INTO source_documents (
                 id, tenant_id, title, source_uri, source_type, mime_type,
-                content_hash, file_size, visibility, allowed_groups, metadata,
-                status, chunk_count
+                content_hash, file_size, visibility, allowed_groups,
+                owner_id, allowed_users, denied_groups, denied_users,
+                metadata, status, chunk_count
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', 0)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 0)
             RETURNING *
             "#,
         )
@@ -47,6 +48,10 @@ impl DocumentRepository {
         .bind(doc.file_size)
         .bind(visibility_str)
         .bind(&doc.allowed_groups)
+        .bind(&doc.owner_id)
+        .bind(&doc.allowed_users)
+        .bind(&doc.denied_groups)
+        .bind(&doc.denied_users)
         .bind(&doc.metadata)
         .fetch_one(&self.pool)
         .await
