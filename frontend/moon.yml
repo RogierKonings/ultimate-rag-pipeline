@@ -15,6 +15,7 @@ fileGroups:
     - 'vite.config.ts'
     - 'tsconfig.json'
   tests:
+    - 'src/**/*.test.ts'
     - 'tests/**/*'
   configs:
     - 'tailwind.config.js'
@@ -53,5 +54,20 @@ tasks:
     command: 'pnpm run check'
     inputs:
       - '@group(sources)'
+    deps:
+      - '~:install'
+
+  lint:
+    command: 'pnpm run lint'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - '~:install'
+
+  test:
+    command: 'pnpm run test'
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
     deps:
       - '~:install'

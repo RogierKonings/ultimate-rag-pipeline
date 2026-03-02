@@ -5,19 +5,19 @@ runs:
   using: composite
   steps:
     - name: Setup proto & Moon
-      uses: moonrepo/setup-toolchain@v0
+      uses: moonrepo/setup-toolchain@8794f0318b9df4a43a5ddc23cefd16f595b423dd # v0
       with:
         auto-install: true
 
     - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
+      uses: actions-rust-lang/setup-rust-toolchain@a0b538fa0b742a6aa35d6e2c169b4bd06d225a98 # v1
       with:
         toolchain: '1.93.0'
         components: clippy, rustfmt
         cache-workspaces: 'crates -> target'
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '22.14.0'
 
@@ -26,12 +26,12 @@ runs:
       run: npm install -g pnpm@9.15.0
 
     - name: Setup Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
         python-version: "3.11"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
 
     - name: Install Python tools
       shell: bash

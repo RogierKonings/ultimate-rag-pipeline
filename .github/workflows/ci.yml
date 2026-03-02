@@ -6,10 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   MOON_TOOLCHAIN_FORCE_GLOBALS: true
   CARGO_TERM_COLOR: always
   UV_SYSTEM_PYTHON: 'true'
+  DATABASE_URL: postgresql+asyncpg://raguser:ragpass@localhost:5432/ragpipeline
 
 jobs:
   ci:
@@ -25,9 +30,22 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: raguser
+          POSTGRES_PASSWORD: ragpass
+          POSTGRES_DB: ragpipeline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U raguser -d ragpipeline"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -42,7 +60,11 @@ jobs:
 
       - name: Install Python dependencies
         working-directory: ./services/orchestrator
-        run: uv pip install --system -r requirements.txt
+        run: uv pip install --system -r requirements.lock
+
+      - name: Run orchestrator database migrations
+        working-directory: ./services/orchestrator
+        run: alembic -c shared/database/migrations/alembic.ini upgrade head
 
       - name: Run affected checks (PR)
         if: github.event_name == 'pull_request'
@@ -70,15 +92,28 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: raguser
+          POSTGRES_PASSWORD: ragpass
+          POSTGRES_DB: ragpipeline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U raguser -d ragpipeline"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Toolchain
         uses: ./.github/actions/setup-toolchain
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@d50ec1d40c9c7a251e48a8f8810527d411553bdc # cargo-llvm-cov
 
       - name: Add llvm-tools-preview
         shell: bash
@@ -92,26 +127,29 @@ jobs:
 
       - name: Install Python dependencies
         working-directory: ./services/orchestrator
-        run: uv pip install --system -r requirements.txt pytest-cov
+        run: uv pip install --system -r requirements.lock
+
+      - name: Run orchestrator database migrations
+        working-directory: ./services/orchestrator
+        run: alembic -c shared/database/migrations/alembic.ini upgrade head
 
       - name: Generate Python coverage
         working-directory: ./services/orchestrator
         run: |
           pytest tests/ -v \
-            -m "not integration and not slow" \
             --cov=. \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing
 
       - name: Upload Rust coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           files: ./crates/lcov.info
           flags: rust
           fail_ci_if_error: false
 
       - name: Upload Python coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
         with:
           files: ./services/orchestrator/coverage.xml
           flags: python

@@ -9,6 +9,9 @@
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "pnpm run check",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"seed": "tsx scripts/seed-demo-documents.ts"
 	},
 	"devDependencies": {

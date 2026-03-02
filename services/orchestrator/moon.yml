@@ -22,8 +22,9 @@ fileGroups:
 
 tasks:
   install:
-    command: 'uv pip install --system -r requirements.txt'
+    command: 'uv pip install --system -r requirements.lock'
     inputs:
+      - 'requirements.lock'
       - 'requirements.txt'
 
   dev:
@@ -33,7 +34,7 @@ tasks:
       - '~:install'
 
   test:
-    command: 'pytest tests/ -v -m "not integration"'
+    command: 'pytest tests/ -v'
     inputs:
       - '@group(sources)'
       - '@group(tests)'
