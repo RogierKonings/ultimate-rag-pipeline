@@ -507,7 +507,6 @@ impl QueryCache {
         debug!(tenant_id = %tenant_id, deleted = deleted, "Tenant cache invalidation complete");
         Ok(())
     }
-
 }
 
 impl std::fmt::Debug for QueryCache {
