@@ -67,10 +67,15 @@ def e2e_config():
 
 @pytest.fixture(scope="session")
 def event_loop():
-    """Create a session-scoped event loop for async fixtures."""
+    """Create a session-scoped event loop for async fixtures.
+
+    Note: We intentionally do NOT close the loop here. pytest-asyncio
+    needs the loop to run async fixture finalizers (e.g. http_client
+    teardown) which execute after this fixture's teardown phase.
+    The loop is cleaned up on process exit.
+    """
     loop = asyncio.new_event_loop()
     yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
