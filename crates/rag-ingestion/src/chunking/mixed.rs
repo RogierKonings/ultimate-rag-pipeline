@@ -510,7 +510,7 @@ mod tests {
 
         let chunks = chunker.chunk(text, make_doc_id(), None).unwrap();
         for (expected, chunk) in chunks.iter().enumerate() {
-            let expected_index = expected as u32;
+            let expected_index = u32::try_from(expected).unwrap();
             assert_eq!(chunk.chunk_index, expected_index);
         }
     }

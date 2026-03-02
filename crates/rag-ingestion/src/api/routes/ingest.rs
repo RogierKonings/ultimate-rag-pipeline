@@ -355,7 +355,7 @@ pub async fn list_dlq_jobs(
     }))
 }
 
-/// POST /api/v1/admin/ingest/dlq/{worker_job_id}/replay - Replay one dead-letter queue job.
+/// POST /`api/v1/admin/ingest/dlq/{worker_job_id}/replay` - Replay one dead-letter queue job.
 pub async fn replay_dlq_job(
     State(state): State<Arc<AppState>>,
     Path(worker_job_id): Path<Uuid>,

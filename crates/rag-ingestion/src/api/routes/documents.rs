@@ -47,7 +47,7 @@ fn default_page_size() -> i32 {
 }
 
 /// Normalize optional query parameters by trimming whitespace and discarding empty values.
-fn normalize_optional_query<'a>(value: Option<&'a str>) -> Option<&'a str> {
+fn normalize_optional_query(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|v| !v.is_empty())
 }
 

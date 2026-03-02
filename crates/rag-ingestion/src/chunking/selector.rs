@@ -438,8 +438,8 @@ mod tests {
         let profile = analyze_document("", None, "txt", "file");
         assert_eq!(profile.char_count, 0);
         assert_eq!(profile.heading_count, 0);
-        assert_eq!(profile.heading_density, 0.0);
-        assert_eq!(profile.avg_sentence_len, 0.0);
+        assert!(profile.heading_density.abs() < f64::EPSILON);
+        assert!(profile.avg_sentence_len.abs() < f64::EPSILON);
     }
 
     #[test]

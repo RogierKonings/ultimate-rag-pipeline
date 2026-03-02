@@ -492,7 +492,7 @@ mod tests {
     fn test_qdrant_builder_empty_string_values() {
         let filter = UnifiedFilter::new().must(FilterCondition::any_of(
             "allowed_groups",
-            vec!["".into(), " ".into(), "engineering".into()],
+            vec![String::new(), " ".into(), "engineering".into()],
         ));
 
         let result = QdrantFilterBuilder::build(&filter);
@@ -526,7 +526,7 @@ mod tests {
     fn test_opensearch_builder_empty_string_values() {
         let filter = UnifiedFilter::new().must(FilterCondition::any_of(
             "allowed_groups",
-            vec!["".into(), " ".into(), "engineering".into()],
+            vec![String::new(), " ".into(), "engineering".into()],
         ));
 
         let clauses = OpenSearchFilterBuilder::build(&filter);

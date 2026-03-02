@@ -295,13 +295,13 @@ mod tests {
         })
         .unwrap();
 
-        let text = r#"
+        let text = r"
 # Introduction
 This is the introduction section.
 
 ## Details
 This is the details section with more text.
-"#;
+";
 
         let chunks = chunker.chunk(text, make_doc_id(), None).unwrap();
         assert!(chunks.len() >= 2);
