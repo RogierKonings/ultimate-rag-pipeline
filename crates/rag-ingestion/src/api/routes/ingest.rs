@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     Json,
 };
 use chrono::{DateTime, Utc};
@@ -94,8 +94,16 @@ fn queue_error_to_api(error: QueueError, operation: &str) -> ApiError {
 /// POST /api/v1/ingest - Start a batch ingestion job.
 pub async fn start_ingestion(
     State(state): State<Arc<AppState>>,
-    Json(request): Json<IngestRequest>,
+    headers: HeaderMap,
+    Json(mut request): Json<IngestRequest>,
 ) -> ApiResult<(StatusCode, Json<IngestResponse>)> {
+    // Set owner_id from X-User-Id header if not already provided
+    if request.acl.owner_id.is_none() {
+        if let Some(user_id) = headers.get("X-User-Id").and_then(|v| v.to_str().ok()) {
+            request.acl.owner_id = Some(user_id.to_string());
+        }
+    }
+
     // Create job in tracker
     let job_id = state.job_tracker.create_job(request.acl.tenant_id.clone());
 
@@ -125,8 +133,11 @@ pub async fn start_ingestion(
                 "acl": {
                     "tenant_id": request.acl.tenant_id,
                     "visibility": request.acl.visibility,
+                    "owner_id": request.acl.owner_id,
                     "allowed_groups": request.acl.allowed_groups,
-                    "allowed_users": request.acl.allowed_users
+                    "allowed_users": request.acl.allowed_users,
+                    "denied_groups": request.acl.denied_groups,
+                    "denied_users": request.acl.denied_users
                 }
             }),
         )
@@ -164,8 +175,16 @@ pub async fn start_ingestion(
 /// POST /api/v1/ingest/single - Ingest a single document.
 pub async fn ingest_single_document(
     State(state): State<Arc<AppState>>,
-    Json(request): Json<SingleIngestRequest>,
+    headers: HeaderMap,
+    Json(mut request): Json<SingleIngestRequest>,
 ) -> ApiResult<(StatusCode, Json<IngestResponse>)> {
+    // Set owner_id from X-User-Id header if not already provided
+    if request.acl.owner_id.is_none() {
+        if let Some(user_id) = headers.get("X-User-Id").and_then(|v| v.to_str().ok()) {
+            request.acl.owner_id = Some(user_id.to_string());
+        }
+    }
+
     let job_id = state.job_tracker.create_job(request.acl.tenant_id.clone());
 
     tracing::info!(
@@ -195,8 +214,11 @@ pub async fn ingest_single_document(
                 "acl": {
                     "tenant_id": request.acl.tenant_id,
                     "visibility": request.acl.visibility,
+                    "owner_id": request.acl.owner_id,
                     "allowed_groups": request.acl.allowed_groups,
-                    "allowed_users": request.acl.allowed_users
+                    "allowed_users": request.acl.allowed_users,
+                    "denied_groups": request.acl.denied_groups,
+                    "denied_users": request.acl.denied_users
                 }
             }),
         )
@@ -557,12 +579,15 @@ mod tests {
             acl: ACLContext {
                 tenant_id: "tenant-1".into(),
                 visibility: Visibility::Private,
+                owner_id: None,
                 allowed_groups: vec![],
                 allowed_users: vec![],
+                denied_groups: vec![],
+                denied_users: vec![],
             },
         };
 
-        let result = start_ingestion(State(state.clone()), Json(request)).await;
+        let result = start_ingestion(State(state.clone()), HeaderMap::new(), Json(request)).await;
         assert!(result.is_ok());
 
         let (status, response) = result.unwrap();

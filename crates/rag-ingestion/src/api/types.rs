@@ -92,9 +92,30 @@ pub struct ACLContext {
     #[serde(default)]
     pub visibility: Visibility,
     #[serde(default)]
+    pub owner_id: Option<String>,
+    #[serde(default)]
     pub allowed_groups: Vec<String>,
     #[serde(default)]
     pub allowed_users: Vec<String>,
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+    #[serde(default)]
+    pub denied_users: Vec<String>,
+}
+
+impl ACLContext {
+    /// Convert to the canonical `AclMetadata` type.
+    #[must_use]
+    pub fn into_acl_metadata(self) -> rag_types::AclMetadata {
+        rag_types::AclMetadata {
+            visibility: self.visibility,
+            owner_id: self.owner_id,
+            allowed_groups: self.allowed_groups,
+            allowed_users: self.allowed_users,
+            denied_groups: self.denied_groups,
+            denied_users: self.denied_users,
+        }
+    }
 }
 
 /// Request to start an ingestion job.
@@ -490,5 +511,22 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("\"job_id\""));
         assert!(json.contains("\"pending\""));
+    }
+
+    #[test]
+    fn test_acl_context_full_fields() {
+        let json = r#"{
+            "tenant_id": "test-tenant",
+            "visibility": "group",
+            "allowed_groups": ["eng"],
+            "allowed_users": ["user-1"],
+            "owner_id": "user-0",
+            "denied_groups": ["contractors"],
+            "denied_users": ["user-bad"]
+        }"#;
+        let acl: ACLContext = serde_json::from_str(json).unwrap();
+        assert_eq!(acl.owner_id, Some("user-0".to_string()));
+        assert_eq!(acl.denied_groups, vec!["contractors"]);
+        assert_eq!(acl.denied_users, vec!["user-bad"]);
     }
 }

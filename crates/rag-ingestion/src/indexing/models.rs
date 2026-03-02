@@ -1,6 +1,6 @@
 //! Data models for indexing operations.
 
-use rag_types::{ChunkId, DocumentId, TenantId};
+use rag_types::{AclMetadata, ChunkId, DocumentId, TenantId};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -17,6 +17,9 @@ pub struct DocumentRecord {
     pub source_id: String,
     /// Optional document title.
     pub title: Option<String>,
+    /// Access control metadata.
+    #[serde(default)]
+    pub acl: AclMetadata,
     /// Additional metadata.
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
@@ -30,6 +33,7 @@ impl DocumentRecord {
             tenant_id,
             source_id: source_id.into(),
             title: None,
+            acl: AclMetadata::default(),
             metadata: HashMap::new(),
         }
     }
@@ -38,6 +42,13 @@ impl DocumentRecord {
     #[must_use]
     pub fn with_title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+        self
+    }
+
+    /// Set access control metadata.
+    #[must_use]
+    pub fn with_acl(mut self, acl: AclMetadata) -> Self {
+        self.acl = acl;
         self
     }
 
@@ -64,6 +75,9 @@ pub struct IndexedChunk {
     pub embedding: Vec<f32>,
     /// Position within the document (0-indexed).
     pub chunk_index: u32,
+    /// Access control metadata (inherited from parent document).
+    #[serde(default)]
+    pub acl: AclMetadata,
     /// Additional metadata.
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
@@ -86,8 +100,16 @@ impl IndexedChunk {
             content: content.into(),
             embedding,
             chunk_index,
+            acl: AclMetadata::default(),
             metadata: HashMap::new(),
         }
+    }
+
+    /// Set access control metadata.
+    #[must_use]
+    pub fn with_acl(mut self, acl: AclMetadata) -> Self {
+        self.acl = acl;
+        self
     }
 
     /// Add metadata.
@@ -233,5 +255,43 @@ mod tests {
 
         let parsed: WriteResult = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.duration, Duration::from_millis(123));
+    }
+
+    #[test]
+    fn test_document_record_with_acl() {
+        use rag_types::{AclMetadata, Visibility};
+        let acl = AclMetadata {
+            visibility: Visibility::Group,
+            owner_id: Some("owner-1".to_string()),
+            allowed_groups: vec!["eng".to_string()],
+            ..AclMetadata::default()
+        };
+        let doc = DocumentRecord::new(
+            DocumentId::new(),
+            TenantId::new(),
+            "test.pdf".to_string(),
+        )
+        .with_acl(acl.clone());
+        assert_eq!(doc.acl, acl);
+    }
+
+    #[test]
+    fn test_indexed_chunk_inherits_acl() {
+        use rag_types::{AclMetadata, Visibility};
+        let acl = AclMetadata {
+            visibility: Visibility::Private,
+            owner_id: Some("user-1".to_string()),
+            ..AclMetadata::default()
+        };
+        let chunk = IndexedChunk::new(
+            ChunkId::new(),
+            DocumentId::new(),
+            TenantId::new(),
+            "content".to_string(),
+            vec![0.1, 0.2],
+            0,
+        )
+        .with_acl(acl.clone());
+        assert_eq!(chunk.acl, acl);
     }
 }

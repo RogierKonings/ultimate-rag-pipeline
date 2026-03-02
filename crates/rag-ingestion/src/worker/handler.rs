@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use rag_database::{ChunkRepository, DatabasePool, DocumentRepository};
-use rag_types::{ChunkId, ChunkingStrategy as ChunkingStrategyType, DocumentId, TenantId};
+use rag_types::{AclMetadata, ChunkId, ChunkingStrategy as ChunkingStrategyType, DocumentId, TenantId};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -269,6 +269,7 @@ impl IngestionJobHandler {
                 tenant_id: tenant_id_typed,
                 source_id: source_id.to_string(),
                 title: document_title,
+                acl: AclMetadata::default(),
                 metadata: doc_metadata.clone(),
             };
 
@@ -320,6 +321,7 @@ impl IngestionJobHandler {
                         tenant_id: tenant_id_typed,
                         content: chunk.content,
                         chunk_index: chunk.chunk_index,
+                        acl: AclMetadata::default(),
                         embedding,
                         metadata,
                     }
@@ -621,6 +623,7 @@ impl IngestionJobHandler {
                     content: chunk.content.clone(),
                     embedding,
                     chunk_index: u32::try_from(chunk.chunk_index).unwrap_or(0),
+                    acl: AclMetadata::default(),
                     metadata: Self::json_object_to_map(Some(&chunk.metadata)),
                 })
                 .collect();
@@ -632,6 +635,7 @@ impl IngestionJobHandler {
                         tenant_id: tenant_typed,
                         source_id: document.source_uri.clone(),
                         title: document.title.clone(),
+                        acl: AclMetadata::default(),
                         metadata: Self::json_object_to_map(Some(&document.metadata)),
                     },
                     indexed_chunks,
