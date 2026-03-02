@@ -87,6 +87,60 @@ impl TryFrom<String> for Visibility {
     }
 }
 
+/// First-class ACL metadata carried on every document and chunk.
+///
+/// This struct is the canonical representation of access control across all stores
+/// (`PostgreSQL`, Qdrant, `OpenSearch`). All stores must write these fields identically.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AclMetadata {
+    /// Visibility level (default: Private — safe by default).
+    #[serde(default)]
+    pub visibility: Visibility,
+    /// User ID of the document owner (set from X-User-Id at ingest time).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_id: Option<String>,
+    /// Groups explicitly granted access.
+    #[serde(default)]
+    pub allowed_groups: Vec<String>,
+    /// Individual users explicitly granted access.
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+    /// Groups explicitly denied access (overrides allowed).
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+    /// Individual users explicitly denied access (overrides allowed).
+    #[serde(default)]
+    pub denied_users: Vec<String>,
+}
+
+impl Default for AclMetadata {
+    fn default() -> Self {
+        Self {
+            visibility: Visibility::Private,
+            owner_id: None,
+            allowed_groups: vec![],
+            allowed_users: vec![],
+            denied_groups: vec![],
+            denied_users: vec![],
+        }
+    }
+}
+
+impl AclMetadata {
+    /// Convert to a flat JSON value suitable for Qdrant/OpenSearch payloads.
+    #[must_use]
+    pub fn to_json_value(&self) -> serde_json::Value {
+        serde_json::json!({
+            "visibility": self.visibility,
+            "owner_id": self.owner_id,
+            "allowed_groups": self.allowed_groups,
+            "allowed_users": self.allowed_users,
+            "denied_groups": self.denied_groups,
+            "denied_users": self.denied_users,
+        })
+    }
+}
+
 /// Index synchronization status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -455,5 +509,39 @@ mod tests {
         assert_eq!(config.chunk_size, 512);
         assert_eq!(config.chunk_overlap, 50);
         assert!(config.enable_pii_detection);
+    }
+
+    #[test]
+    fn test_acl_metadata_default() {
+        let acl = AclMetadata::default();
+        assert_eq!(acl.visibility, Visibility::Private);
+        assert!(acl.owner_id.is_none());
+        assert!(acl.allowed_groups.is_empty());
+        assert!(acl.allowed_users.is_empty());
+        assert!(acl.denied_groups.is_empty());
+        assert!(acl.denied_users.is_empty());
+    }
+
+    #[test]
+    fn test_acl_metadata_serde_roundtrip() {
+        let acl = AclMetadata {
+            visibility: Visibility::Group,
+            owner_id: Some("user-123".to_string()),
+            allowed_groups: vec!["eng".to_string(), "qa".to_string()],
+            allowed_users: vec!["user-456".to_string()],
+            denied_groups: vec!["contractors".to_string()],
+            denied_users: vec!["user-789".to_string()],
+        };
+        let json = serde_json::to_string(&acl).unwrap();
+        let deserialized: AclMetadata = serde_json::from_str(&json).unwrap();
+        assert_eq!(acl, deserialized);
+    }
+
+    #[test]
+    fn test_acl_metadata_to_json_value() {
+        let acl = AclMetadata::default();
+        let value = acl.to_json_value();
+        assert_eq!(value["visibility"], "private");
+        assert_eq!(value["allowed_groups"], serde_json::json!([]));
     }
 }
