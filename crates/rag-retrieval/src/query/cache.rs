@@ -6,15 +6,12 @@
 //!
 //! # Cache Key Format
 //!
-//! Keys follow the format: `{prefix}:{tenant_id}:{query_hash}:{mode}:{top_k}[:user_id]`
+//! Keys follow the format: `{prefix}:{tenant_id}:{params_hash}`
 //!
 //! Where:
 //! - `prefix`: Configurable key prefix (default: "ret:query")
 //! - `tenant_id`: UUID for tenant isolation
-//! - `query_hash`: SHA-256 hash of the normalized query string
-//! - `mode`: Search mode (semantic, keyword, hybrid)
-//! - `top_k`: Number of results requested
-//! - `user_id`: Optional user ID for user-specific caching
+//! - `params_hash`: SHA-256 hash of all fields that affect the result set
 //!
 //! # Example
 //!
@@ -32,13 +29,12 @@
 //!
 //!     let query_cache = QueryCache::new(QueryCacheConfig::default(), cache_client);
 //!
-//!     let key = QueryCacheKey {
-//!         query: "what is machine learning?".to_string(),
-//!         tenant_id: Uuid::new_v4(),
-//!         user_id: None,
-//!         search_mode: SearchMode::Hybrid,
-//!         top_k: 10,
-//!     };
+//!     let key = QueryCacheKey::new(
+//!         "what is machine learning?",
+//!         Uuid::new_v4(),
+//!         SearchMode::Hybrid,
+//!         10,
+//!     );
 //!
 //!     // Check for cached results
 //!     if let Some(results) = query_cache.get(&key).await? {
