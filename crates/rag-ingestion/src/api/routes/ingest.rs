@@ -3,24 +3,93 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::api::error::{ApiError, ApiResult};
+use crate::api::jobs::JobState;
 #[cfg(test)]
 use crate::api::jobs::JobTracker;
 use crate::api::state::AppState;
 use crate::api::types::{
-    ActiveJobsResponse, CancelJobResponse, IngestRequest, IngestResponse, JobProgress, JobStatus,
-    JobStatusResponse, ReembedRequest, ReembedResponse, SingleIngestRequest, SyncRequest,
-    SyncResponse,
+    ActiveJobsResponse, CancelJobResponse, DlqJobResponse, DlqListResponse, IngestRequest,
+    IngestResponse, JobHistoryResponse, JobProgress, JobStatus, JobStatusResponse, ReembedRequest,
+    ReembedResponse, ReplayDlqResponse, SingleIngestRequest, SyncRequest, SyncResponse,
 };
-use crate::worker::{Job, JobPriority};
+use crate::worker::{Job, JobPriority, QueueError};
+
+#[derive(Debug, Deserialize)]
+pub struct JobHistoryQuery {
+    #[serde(default = "default_history_limit")]
+    pub limit: usize,
+    #[serde(default)]
+    pub offset: usize,
+}
+
+fn default_history_limit() -> usize {
+    50
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DlqQuery {
+    #[serde(default = "default_history_limit")]
+    pub limit: usize,
+    #[serde(default)]
+    pub offset: usize,
+}
+
+fn to_status_response(job_id: Uuid, job_state: JobState) -> JobStatusResponse {
+    let progress = if job_state.progress.total > 0 {
+        Some(JobProgress {
+            current: job_state.progress.current,
+            total: job_state.progress.total,
+            stage: job_state.progress.stage.clone(),
+            percentage: job_state.progress.percentage,
+        })
+    } else {
+        None
+    };
+
+    JobStatusResponse {
+        job_id,
+        status: job_state.status,
+        progress,
+        documents_processed: job_state.documents_processed,
+        chunks_created: job_state.chunks_created,
+        started_at: job_state.started_at,
+        completed_at: job_state.completed_at,
+        duration_seconds: job_state.duration_seconds(),
+        error_message: job_state.error_message,
+        errors: job_state.errors,
+    }
+}
+
+fn extract_tracker_job_id(worker_job: &Job) -> Option<Uuid> {
+    worker_job
+        .metadata
+        .get("tracker_job_id")
+        .and_then(serde_json::Value::as_str)
+        .or_else(|| {
+            worker_job
+                .payload
+                .get("tracker_job_id")
+                .and_then(serde_json::Value::as_str)
+        })
+        .and_then(|value| Uuid::parse_str(value).ok())
+}
+
+fn queue_error_to_api(error: QueueError, operation: &str) -> ApiError {
+    match error {
+        QueueError::NotFound(job_id) => ApiError::not_found(format!("Job {job_id} not found")),
+        other => ApiError::internal(format!("Failed to {operation}: {other}")),
+    }
+}
 
 /// POST /api/v1/ingest - Start a batch ingestion job.
 pub async fn start_ingestion(
@@ -169,32 +238,11 @@ pub async fn get_job_status(
 ) -> ApiResult<Json<JobStatusResponse>> {
     let job_state = state
         .job_tracker
-        .get_job(&job_id)
+        .get_job_or_history(&job_id)
+        .await
         .ok_or_else(|| ApiError::not_found(format!("Job {job_id} not found")))?;
 
-    let progress = if job_state.progress.total > 0 {
-        Some(JobProgress {
-            current: job_state.progress.current,
-            total: job_state.progress.total,
-            stage: job_state.progress.stage.clone(),
-            percentage: job_state.progress.percentage,
-        })
-    } else {
-        None
-    };
-
-    Ok(Json(JobStatusResponse {
-        job_id,
-        status: job_state.status,
-        progress,
-        documents_processed: job_state.documents_processed,
-        chunks_created: job_state.chunks_created,
-        started_at: job_state.started_at,
-        completed_at: job_state.completed_at,
-        duration_seconds: job_state.duration_seconds(),
-        error_message: job_state.error_message,
-        errors: job_state.errors,
-    }))
+    Ok(Json(to_status_response(job_id, job_state)))
 }
 
 /// DELETE /`api/v1/ingest/{job_id`} - Cancel a job.
@@ -227,31 +275,114 @@ pub async fn list_active_jobs(
     let jobs: Vec<JobStatusResponse> = job_ids
         .iter()
         .filter_map(|job_id| {
-            state.job_tracker.get_job(job_id).map(|job_state| {
-                let progress = if job_state.progress.total > 0 {
-                    Some(job_state.progress.clone())
-                } else {
-                    None
-                };
-
-                JobStatusResponse {
-                    job_id: *job_id,
-                    status: job_state.status,
-                    progress,
-                    documents_processed: job_state.documents_processed,
-                    chunks_created: job_state.chunks_created,
-                    started_at: job_state.started_at,
-                    completed_at: job_state.completed_at,
-                    duration_seconds: job_state.duration_seconds(),
-                    error_message: job_state.error_message,
-                    errors: job_state.errors,
-                }
-            })
+            state
+                .job_tracker
+                .get_job(job_id)
+                .map(|state| (*job_id, state))
         })
+        .map(|(job_id, state)| to_status_response(job_id, state))
         .collect();
 
     let total = jobs.len();
     Ok(Json(ActiveJobsResponse { jobs, total }))
+}
+
+/// GET /api/v1/ingest/history - List durable ingestion job history.
+pub async fn list_job_history(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<JobHistoryQuery>,
+) -> ApiResult<Json<JobHistoryResponse>> {
+    let limit = query.limit.clamp(1, 200);
+    let offset = query.offset;
+
+    let (jobs, total) = state.job_tracker.list_job_history(limit, offset).await;
+    let jobs = jobs
+        .into_iter()
+        .map(|(job_id, state)| to_status_response(job_id, state))
+        .collect();
+
+    Ok(Json(JobHistoryResponse {
+        jobs,
+        total,
+        limit,
+        offset,
+    }))
+}
+
+/// GET /api/v1/admin/ingest/dlq - List dead-letter queue jobs.
+pub async fn list_dlq_jobs(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<DlqQuery>,
+) -> ApiResult<Json<DlqListResponse>> {
+    let job_queue = state
+        .job_queue
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Job queue not configured"))?;
+
+    let limit = query.limit.clamp(1, 200);
+    let offset = query.offset;
+    let total = job_queue
+        .dlq_length()
+        .await
+        .map_err(|e| queue_error_to_api(e, "list DLQ jobs"))?;
+    let jobs = job_queue
+        .list_dlq_jobs(limit, offset)
+        .await
+        .map_err(|e| queue_error_to_api(e, "list DLQ jobs"))?;
+
+    let jobs = jobs
+        .into_iter()
+        .map(|job| DlqJobResponse {
+            worker_job_id: job.id,
+            tracker_job_id: extract_tracker_job_id(&job),
+            job_type: job.job_type,
+            tenant_id: job.tenant_id,
+            priority: format!("{:?}", job.priority).to_lowercase(),
+            attempts: job.attempts,
+            max_retries: job.max_retries,
+            error: job.error,
+            completed_at: job
+                .completed_at
+                .and_then(DateTime::<Utc>::from_timestamp_millis),
+        })
+        .collect();
+
+    Ok(Json(DlqListResponse {
+        jobs,
+        total,
+        limit,
+        offset,
+    }))
+}
+
+/// POST /api/v1/admin/ingest/dlq/{worker_job_id}/replay - Replay one dead-letter queue job.
+pub async fn replay_dlq_job(
+    State(state): State<Arc<AppState>>,
+    Path(worker_job_id): Path<Uuid>,
+) -> ApiResult<Json<ReplayDlqResponse>> {
+    let job_queue = state
+        .job_queue
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Job queue not configured"))?;
+
+    let replayed_job = job_queue
+        .replay_dlq_job(worker_job_id)
+        .await
+        .map_err(|e| queue_error_to_api(e, "replay DLQ job"))?;
+
+    let tracker_job_id = extract_tracker_job_id(&replayed_job);
+    if let Some(tracker_job_id) = tracker_job_id {
+        state
+            .job_tracker
+            .replay_job(tracker_job_id, replayed_job.tenant_id.clone());
+    }
+
+    Ok(Json(ReplayDlqResponse {
+        worker_job_id,
+        tracker_job_id,
+        replayed: true,
+        message: "Job replayed from dead-letter queue".to_string(),
+    }))
 }
 
 /// POST /api/v1/ingest/sync - Start incremental sync.
@@ -493,5 +624,33 @@ mod tests {
         let response = result.unwrap();
         assert_eq!(response.total, 2);
         assert_eq!(response.jobs.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_list_job_history() {
+        let state = test_state();
+        let _job = state.job_tracker.create_job("tenant-1".into());
+
+        let query = JobHistoryQuery {
+            limit: 10,
+            offset: 0,
+        };
+        let result = list_job_history(State(state), Query(query)).await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(response.total, 1);
+        assert_eq!(response.jobs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_dlq_requires_queue() {
+        let state = test_state();
+        let query = DlqQuery {
+            limit: 10,
+            offset: 0,
+        };
+        let result = list_dlq_jobs(State(state), Query(query)).await;
+        assert!(result.is_err());
     }
 }

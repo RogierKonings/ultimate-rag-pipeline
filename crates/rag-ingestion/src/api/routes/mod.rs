@@ -10,6 +10,6 @@ pub use documents::{
 };
 pub use health::{health, liveness, readiness};
 pub use ingest::{
-    cancel_job, get_job_status, ingest_single_document, list_active_jobs, start_ingestion,
-    start_reembed, start_sync,
+    cancel_job, get_job_status, ingest_single_document, list_active_jobs, list_dlq_jobs,
+    list_job_history, replay_dlq_job, start_ingestion, start_reembed, start_sync,
 };

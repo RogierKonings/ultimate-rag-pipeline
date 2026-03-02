@@ -58,8 +58,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!(redis_url = %redis_url, "Connecting to Redis");
 
-    // Create shared job tracker
-    let job_tracker = Arc::new(JobTracker::new());
+    // Create shared job tracker with durable Redis history when available.
+    let job_tracker = match JobTracker::new_with_redis(&redis_url, "ingestion:tracker").await {
+        Ok(tracker) => {
+            tracing::info!("Initialized Redis-backed durable ingestion job history");
+            Arc::new(tracker)
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "Failed to initialize durable job history; falling back to in-memory tracking"
+            );
+            Arc::new(JobTracker::new())
+        }
+    };
 
     // Create job queue for enqueueing from API routes
     let api_job_queue = match JobQueue::new(&redis_url, "ingestion").await {

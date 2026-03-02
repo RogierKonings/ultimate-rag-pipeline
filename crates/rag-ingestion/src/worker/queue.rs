@@ -487,6 +487,77 @@ impl JobQueue {
         Ok(count)
     }
 
+    /// List dead-letter jobs ordered by most recent failure first.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Redis operations fail.
+    pub async fn list_dlq_jobs(&self, limit: usize, offset: usize) -> Result<Vec<Job>, QueueError> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+
+        let mut conn = self.conn.clone();
+        let dlq_key = self.dlq_key();
+        let end = offset.saturating_add(limit).saturating_sub(1);
+        let start = isize::try_from(offset).unwrap_or(isize::MAX);
+        let stop = isize::try_from(end).unwrap_or(isize::MAX);
+        let ids: Vec<String> = conn.zrevrange(&dlq_key, start, stop).await?;
+
+        let mut jobs = Vec::with_capacity(ids.len());
+        for id in ids {
+            let Ok(job_id) = Uuid::parse_str(&id) else {
+                warn!(job_id = %id, "Skipping invalid DLQ job ID");
+                continue;
+            };
+
+            if let Some(job) = self.get_job(job_id).await? {
+                jobs.push(job);
+            }
+        }
+
+        Ok(jobs)
+    }
+
+    /// Replay a job from the dead-letter queue back into its priority queue.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Redis operations fail or the job does not exist in DLQ.
+    pub async fn replay_dlq_job(&self, job_id: Uuid) -> Result<Job, QueueError> {
+        let mut job = self
+            .get_job(job_id)
+            .await?
+            .ok_or(QueueError::NotFound(job_id))?;
+        let mut conn = self.conn.clone();
+        let dlq_key = self.dlq_key();
+
+        let removed: usize = conn.zrem(&dlq_key, job_id.to_string()).await?;
+        if removed == 0 {
+            return Err(QueueError::NotFound(job_id));
+        }
+
+        job.status = JobStatus::Pending;
+        job.started_at = None;
+        job.completed_at = None;
+        job.error = None;
+        job.progress = 0;
+        job.attempts = 0;
+
+        let job_key = self.job_key(job.id);
+        let job_json = serde_json::to_string(&job)?;
+        let _: () = conn.set(&job_key, &job_json).await?;
+
+        let queue_key = self.queue_key(job.priority);
+        let score = chrono::Utc::now().timestamp_millis() as f64;
+        let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
+
+        let notify_key = self.notify_key();
+        let _: () = conn.lpush(&notify_key, "1").await?;
+
+        Ok(job)
+    }
+
     /// Calculate exponential backoff with jitter.
     #[allow(clippy::unused_self)] // kept as method for potential future config-based backoff
     fn calculate_backoff(&self, attempt: u32) -> u64 {

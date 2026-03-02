@@ -63,8 +63,14 @@ pub fn create_router_with_config(state: Arc<AppState>, config: &ServerConfig) ->
         )
         .route("/api/v1/ingest/sync", post(routes::start_sync))
         .route("/api/v1/ingest/reembed", post(routes::start_reembed))
+        .route("/api/v1/ingest/history", get(routes::list_job_history))
         .route("/api/v1/ingest/:job_id", get(routes::get_job_status))
         .route("/api/v1/ingest/:job_id", delete(routes::cancel_job))
+        .route("/api/v1/admin/ingest/dlq", get(routes::list_dlq_jobs))
+        .route(
+            "/api/v1/admin/ingest/dlq/:worker_job_id/replay",
+            post(routes::replay_dlq_job),
+        )
         // Document routes
         .route("/api/v1/documents", get(routes::list_documents))
         .route(

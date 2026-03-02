@@ -12,8 +12,11 @@
 //! - `POST /api/v1/ingest/single` - Ingest single document
 //! - `POST /api/v1/ingest/sync` - Start incremental sync
 //! - `POST /api/v1/ingest/reembed` - Start re-embedding job
+//! - `GET /api/v1/ingest/history` - List durable job history
 //! - `GET /api/v1/ingest/{job_id}` - Get job status
 //! - `DELETE /api/v1/ingest/{job_id}` - Cancel job
+//! - `GET /api/v1/admin/ingest/dlq` - List dead-letter jobs
+//! - `POST /api/v1/admin/ingest/dlq/{worker_job_id}/replay` - Replay dead-letter job
 //!
 //! ## Document Routes (`/api/v1/documents`)
 //!

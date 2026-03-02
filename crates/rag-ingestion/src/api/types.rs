@@ -174,11 +174,56 @@ pub struct ActiveJobsResponse {
     pub total: usize,
 }
 
+/// Response for listing durable job history.
+#[derive(Debug, Clone, Serialize)]
+pub struct JobHistoryResponse {
+    pub jobs: Vec<JobStatusResponse>,
+    pub total: usize,
+    pub limit: usize,
+    pub offset: usize,
+}
+
 /// Response for job cancellation.
 #[derive(Debug, Clone, Serialize)]
 pub struct CancelJobResponse {
     pub job_id: Uuid,
     pub cancelled: bool,
+}
+
+/// Dead-letter queue job summary.
+#[derive(Debug, Clone, Serialize)]
+pub struct DlqJobResponse {
+    pub worker_job_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracker_job_id: Option<Uuid>,
+    pub job_type: String,
+    pub tenant_id: String,
+    pub priority: String,
+    pub attempts: u32,
+    pub max_retries: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// Response for listing dead-letter queue jobs.
+#[derive(Debug, Clone, Serialize)]
+pub struct DlqListResponse {
+    pub jobs: Vec<DlqJobResponse>,
+    pub total: usize,
+    pub limit: usize,
+    pub offset: usize,
+}
+
+/// Response for replaying one dead-letter queue job.
+#[derive(Debug, Clone, Serialize)]
+pub struct ReplayDlqResponse {
+    pub worker_job_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracker_job_id: Option<Uuid>,
+    pub replayed: bool,
+    pub message: String,
 }
 
 // ============================================================================
