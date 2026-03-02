@@ -55,7 +55,7 @@ tasks:
     command: 'ruff format --check .'
 
   typecheck:
-    command: 'mypy . --ignore-missing-imports --explicit-package-bases'
+    command: 'mypy .'
     inputs:
       - '@group(sources)'
     deps:

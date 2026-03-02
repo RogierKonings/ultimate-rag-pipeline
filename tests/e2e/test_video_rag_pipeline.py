@@ -414,7 +414,7 @@ class TestVideoRagPipelineE2E:
 class TestVideoRagPerformance:
     """Performance tests for video RAG pipeline."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="session")
     async def test_retrieval_latency(
         self,
         http_client,
@@ -454,7 +454,7 @@ class TestVideoRagPerformance:
         # Target: <300ms p95
         assert p95_latency < 300, f"p95 latency {p95_latency}ms exceeds 300ms target"
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="session")
     async def test_clip_cache_hit_latency(
         self,
         http_client,
