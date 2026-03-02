@@ -50,6 +50,9 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# Upgrade npm to patch bundled vulnerabilities (minimatch, tar, glob)
+RUN npm install -g npm@latest
+
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 

@@ -70,12 +70,30 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           REDIS_URL: redis://localhost:6379
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin123
+          MINIO_BUCKET: rag-documents
+          INGESTION_URL: http://localhost:8001
+          DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          PUBLIC_DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          ORCHESTRATOR_URL: http://localhost:8003
+          RETRIEVAL_URL: http://localhost:8002
         run: moon run :format-check :lint :test --affected
 
       - name: Run full CI (main)
         if: github.event_name == 'push'
         env:
           REDIS_URL: redis://localhost:6379
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin123
+          MINIO_BUCKET: rag-documents
+          INGESTION_URL: http://localhost:8001
+          DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          PUBLIC_DEMO_TENANT_ID: 00000000-0000-0000-0000-000000000001
+          ORCHESTRATOR_URL: http://localhost:8003
+          RETRIEVAL_URL: http://localhost:8002
         run: moon ci
 
   coverage:

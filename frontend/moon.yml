@@ -34,15 +34,23 @@ tasks:
     deps:
       - '~:install'
 
+  sync:
+    command: 'pnpm exec svelte-kit sync'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - '.svelte-kit'
+    deps:
+      - '~:install'
+
   build:
     command: 'pnpm run build'
     inputs:
       - '@group(sources)'
     outputs:
-      - '.svelte-kit'
       - 'build'
     deps:
-      - '~:install'
+      - '~:sync'
 
   preview:
     command: 'pnpm run preview'
@@ -55,14 +63,14 @@ tasks:
     inputs:
       - '@group(sources)'
     deps:
-      - '~:install'
+      - '~:sync'
 
   lint:
     command: 'pnpm run lint'
     inputs:
       - '@group(sources)'
     deps:
-      - '~:install'
+      - '~:sync'
 
   test:
     command: 'pnpm run test'
@@ -70,4 +78,4 @@ tasks:
       - '@group(sources)'
       - '@group(tests)'
     deps:
-      - '~:install'
+      - '~:sync'
