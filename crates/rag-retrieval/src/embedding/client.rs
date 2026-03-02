@@ -226,6 +226,29 @@ impl EmbeddingClient {
             .await
     }
 
+    /// Perform a health check by embedding a simple text.
+    ///
+    /// Returns `true` if the embedding service is healthy, `false` otherwise.
+    /// This does not use retries to keep the health check fast.
+    pub async fn health_check(&self) -> bool {
+        let request = EmbeddingRequest {
+            input: vec!["health check".to_string()],
+            model: self.config.model.clone(),
+        };
+
+        let result = self
+            .client
+            .post(self.config.embeddings_endpoint())
+            .json(&request)
+            .send()
+            .await;
+
+        match result {
+            Ok(resp) => resp.status().is_success(),
+            Err(_) => false,
+        }
+    }
+
     /// Make a single embedding request.
     async fn make_request(&self, texts: &[String]) -> Result<EmbeddingResponse> {
         let request = EmbeddingRequest {

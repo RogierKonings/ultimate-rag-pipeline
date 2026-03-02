@@ -119,6 +119,8 @@ impl SearchConfig {
     /// - `OPENSEARCH_PASSWORD`: Password
     /// - `OPENSEARCH_INDEX`: Default index
     /// - `OPENSEARCH_TIMEOUT_SECS`: Request timeout in seconds
+    /// - `OPENSEARCH_DANGER_ACCEPT_INVALID_CERTS`: Disable TLS certificate
+    ///   verification (`true`/`false`, default `false`)
     #[must_use]
     pub fn from_env() -> Self {
         let mut config = Self::default();
@@ -143,6 +145,10 @@ impl SearchConfig {
             if let Ok(secs) = timeout.parse::<u64>() {
                 config.timeout = Duration::from_secs(secs);
             }
+        }
+
+        if let Ok(val) = std::env::var("OPENSEARCH_DANGER_ACCEPT_INVALID_CERTS") {
+            config.danger_accept_invalid_certs = val.eq_ignore_ascii_case("true");
         }
 
         config

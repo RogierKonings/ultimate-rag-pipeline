@@ -168,6 +168,102 @@ impl DocumentRepository {
         Ok(row.0)
     }
 
+    /// List documents for a tenant with pagination and optional filters.
+    ///
+    /// Filters are applied as additional WHERE clauses:
+    /// - `source_type`: exact match on `source_type` column
+    /// - `status`: exact match on `status` column
+    /// - `search`: case-insensitive substring match on `title` or `source_uri`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query fails.
+    pub async fn list_filtered(
+        &self,
+        tenant_id: &str,
+        limit: i64,
+        offset: i64,
+        source_type: Option<&str>,
+        status: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<Vec<SourceDocument>> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+            "SELECT * FROM source_documents WHERE tenant_id = ",
+        );
+        qb.push_bind(tenant_id);
+
+        if let Some(st) = source_type {
+            qb.push(" AND source_type = ");
+            qb.push_bind(st.to_owned());
+        }
+        if let Some(s) = status {
+            qb.push(" AND status = ");
+            qb.push_bind(s.to_owned());
+        }
+        if let Some(q) = search {
+            let pattern = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
+            qb.push(" AND (title ILIKE ");
+            qb.push_bind(pattern.clone());
+            qb.push(" OR source_uri ILIKE ");
+            qb.push_bind(pattern);
+            qb.push(")");
+        }
+
+        qb.push(" ORDER BY created_at DESC LIMIT ");
+        qb.push_bind(limit);
+        qb.push(" OFFSET ");
+        qb.push_bind(offset);
+
+        qb.build_query_as::<SourceDocument>()
+            .fetch_all(&self.pool)
+            .await
+            .map_err(DatabaseError::from)
+    }
+
+    /// Count documents for a tenant with optional filters.
+    ///
+    /// Applies the same filters as [`list_filtered`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the query fails.
+    pub async fn count_filtered(
+        &self,
+        tenant_id: &str,
+        source_type: Option<&str>,
+        status: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<i64> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+            "SELECT COUNT(*) FROM source_documents WHERE tenant_id = ",
+        );
+        qb.push_bind(tenant_id);
+
+        if let Some(st) = source_type {
+            qb.push(" AND source_type = ");
+            qb.push_bind(st.to_owned());
+        }
+        if let Some(s) = status {
+            qb.push(" AND status = ");
+            qb.push_bind(s.to_owned());
+        }
+        if let Some(q) = search {
+            let pattern = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
+            qb.push(" AND (title ILIKE ");
+            qb.push_bind(pattern.clone());
+            qb.push(" OR source_uri ILIKE ");
+            qb.push_bind(pattern);
+            qb.push(")");
+        }
+
+        let row: (i64,) = qb
+            .build_query_as()
+            .fetch_one(&self.pool)
+            .await
+            .map_err(DatabaseError::from)?;
+        Ok(row.0)
+    }
+
     /// Update document status.
     ///
     /// # Errors

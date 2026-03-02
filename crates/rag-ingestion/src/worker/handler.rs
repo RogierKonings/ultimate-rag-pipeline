@@ -20,7 +20,7 @@ use crate::connectors::{Connector, S3Config, S3Connector};
 use crate::embedding::EmbeddingClient;
 use crate::indexing::{DocumentRecord, IndexCoordinator, IndexedChunk};
 use crate::chunking::{analyze_document, select_strategy};
-use crate::parsers::{HtmlParser, MarkdownParser, ParsedDocument, Parser, PdfParser};
+use crate::parsers::{DocxParser, HtmlParser, MarkdownParser, ParsedDocument, Parser, PdfParser};
 
 use super::job::Job;
 use super::pool::JobHandler;
@@ -811,7 +811,13 @@ impl IngestionJobHandler {
                     .parse(bytes, None)
                     .map_err(|e| format!("Failed to parse Markdown: {e}"))
             }
-            "txt" | "" | "docx" => {
+            "docx" => {
+                let parser = DocxParser::default();
+                parser
+                    .parse(bytes, None)
+                    .map_err(|e| format!("Failed to parse DOCX: {e}"))
+            }
+            "txt" | "" => {
                 let text = String::from_utf8(bytes.to_vec())
                     .map_err(|e| format!("Failed to decode file as UTF-8: {e}"))?;
                 Ok(ParsedDocument {

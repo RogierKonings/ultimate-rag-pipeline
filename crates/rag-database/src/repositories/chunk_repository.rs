@@ -52,7 +52,11 @@ impl ChunkRepository {
         .map_err(DatabaseError::from)
     }
 
-    /// Bulk insert chunks.
+    /// Bulk insert chunks using batched multi-row INSERTs.
+    ///
+    /// Builds a single multi-row INSERT per batch instead of row-by-row inserts,
+    /// which dramatically improves throughput at high chunk counts. Batches are
+    /// sized to stay within PostgreSQL's 65 535 bind-parameter limit.
     ///
     /// # Errors
     ///
@@ -62,7 +66,12 @@ impl ChunkRepository {
             return Ok(Vec::new());
         }
 
-        // Use a transaction for bulk insert
+        // 12 columns per row; PostgreSQL supports up to 65 535 bind parameters.
+        // Use the maximum safe batch size to minimise round-trips.
+        const COLUMNS_PER_ROW: usize = 12;
+        const MAX_PARAMS: usize = 65_535;
+        const BATCH_SIZE: usize = MAX_PARAMS / COLUMNS_PER_ROW; // 5461
+
         let mut tx = self
             .pool
             .begin()
@@ -71,35 +80,40 @@ impl ChunkRepository {
 
         let mut results = Vec::with_capacity(chunks.len());
 
-        for chunk in chunks {
-            let result = sqlx::query_as::<_, Chunk>(
-                r#"
-                INSERT INTO chunks (
-                    id, document_id, tenant_id, chunk_index, content,
-                    token_count, char_count, embedding_model, embedding_generated,
-                    content_hash, start_offset, end_offset, metadata
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, $11, $12)
-                RETURNING *
-                "#,
-            )
-            .bind(chunk.id)
-            .bind(chunk.document_id)
-            .bind(&chunk.tenant_id)
-            .bind(chunk.chunk_index)
-            .bind(&chunk.content)
-            .bind(chunk.token_count)
-            .bind(chunk.char_count)
-            .bind(&chunk.embedding_model)
-            .bind(&chunk.content_hash)
-            .bind(chunk.start_offset)
-            .bind(chunk.end_offset)
-            .bind(&chunk.metadata)
-            .fetch_one(&mut *tx)
-            .await
-            .map_err(DatabaseError::from)?;
+        for batch in chunks.chunks(BATCH_SIZE) {
+            let mut qb: sqlx::QueryBuilder<'_, sqlx::Postgres> = sqlx::QueryBuilder::new(
+                "INSERT INTO chunks (\
+                    id, document_id, tenant_id, chunk_index, content, \
+                    token_count, char_count, embedding_model, embedding_generated, \
+                    content_hash, start_offset, end_offset, metadata\
+                ) ",
+            );
 
-            results.push(result);
+            qb.push_values(batch, |mut b, chunk| {
+                b.push_bind(chunk.id)
+                    .push_bind(chunk.document_id)
+                    .push_bind(&chunk.tenant_id)
+                    .push_bind(chunk.chunk_index)
+                    .push_bind(&chunk.content)
+                    .push_bind(chunk.token_count)
+                    .push_bind(chunk.char_count)
+                    .push_bind(&chunk.embedding_model)
+                    .push_bind(false) // embedding_generated
+                    .push_bind(&chunk.content_hash)
+                    .push_bind(chunk.start_offset)
+                    .push_bind(chunk.end_offset)
+                    .push_bind(&chunk.metadata);
+            });
+
+            qb.push(" RETURNING *");
+
+            let batch_results: Vec<Chunk> = qb
+                .build_query_as::<Chunk>()
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(DatabaseError::from)?;
+
+            results.extend(batch_results);
         }
 
         tx.commit()

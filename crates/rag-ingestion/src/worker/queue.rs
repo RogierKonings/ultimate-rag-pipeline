@@ -50,6 +50,19 @@ impl JobQueue {
         }
     }
 
+    /// Ping Redis to verify connectivity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Redis PING command fails.
+    pub async fn ping(&self) -> Result<(), QueueError> {
+        let mut conn = self.conn.clone();
+        redis::cmd("PING")
+            .query_async::<String>(&mut conn)
+            .await?;
+        Ok(())
+    }
+
     /// Get the queue key for a priority level.
     fn queue_key(&self, priority: JobPriority) -> String {
         format!("{}:queue:{:?}", self.prefix, priority)

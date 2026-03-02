@@ -36,13 +36,11 @@ pub async fn health(State(state): State<Arc<AppState>>) -> Json<HealthResponse> 
     let mut components: HashMap<String, bool> = HashMap::new();
     let mut component_details: Vec<ComponentHealth> = Vec::new();
 
-    // Check embedding service
-    let embedding_health = check_embedding(&state);
+    // Check embedding service and search backends in parallel
+    let (embedding_health, (qdrant_health, opensearch_health)) =
+        tokio::join!(check_embedding(&state), check_search_backends(&state));
     components.insert("embedding".into(), embedding_health.healthy);
     component_details.push(embedding_health);
-
-    // Check hybrid searcher components (Qdrant, OpenSearch)
-    let (qdrant_health, opensearch_health) = check_search_backends(&state).await;
     components.insert("qdrant".into(), qdrant_health.healthy);
     components.insert("opensearch".into(), opensearch_health.healthy);
     component_details.push(qdrant_health);
@@ -110,18 +108,29 @@ pub async fn liveness() -> Json<LivenessResponse> {
 /// Handle the GET /health/ready endpoint.
 ///
 /// Kubernetes readiness probe. Returns 200 if the service is ready to accept requests.
-/// Checks if at least one search backend is available.
+/// Checks that the embedding service is reachable and at least one search backend is available.
 ///
 /// # Errors
 ///
-/// Returns 503 Service Unavailable if all search backends are down.
+/// Returns 503 Service Unavailable if the embedding service is down or all search backends are
+/// down.
 pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<ReadinessResponse>> {
-    // Check if at least one search backend is available
-    let (qdrant_healthy, opensearch_healthy) = quick_health_check(&state).await;
+    // Check embedding and search backends in parallel
+    let (embedding_healthy, (qdrant_healthy, opensearch_healthy)) = tokio::join!(
+        state.embedding.health_check(),
+        quick_health_check(&state),
+    );
 
-    let ready = qdrant_healthy || opensearch_healthy;
+    let search_ready = qdrant_healthy || opensearch_healthy;
 
-    if !ready {
+    if !embedding_healthy {
+        warn!("Readiness check failed: embedding service unavailable");
+        return Err(ApiError::service_unavailable(
+            "Service not ready: embedding service unavailable",
+        ));
+    }
+
+    if !search_ready {
         warn!("Readiness check failed: all search backends unavailable");
         return Err(ApiError::service_unavailable(
             "Service not ready: all search backends unavailable",
@@ -143,18 +152,24 @@ pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<Rea
 }
 
 /// Check the embedding service health.
-fn check_embedding(_state: &AppState) -> ComponentHealth {
+async fn check_embedding(state: &AppState) -> ComponentHealth {
     let start = Instant::now();
 
-    // Try a simple health check
-    // For now, we consider it healthy if we have an embedding client
-    let healthy = true; // Would call state.embedding.health_check() if available
+    let healthy = state.embedding.health_check().await;
+
+    if !healthy {
+        warn!("Embedding service health check failed");
+    }
 
     ComponentHealth {
         name: "embedding".into(),
         healthy,
         latency_ms: Some(start.elapsed().as_secs_f64() * 1000.0),
-        error: None,
+        error: if healthy {
+            None
+        } else {
+            Some("Embedding service unreachable or returned error".into())
+        },
         circuit_state: None,
     }
 }

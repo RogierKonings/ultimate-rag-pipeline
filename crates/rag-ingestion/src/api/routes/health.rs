@@ -14,29 +14,70 @@ pub async fn liveness() -> Json<LivenessResponse> {
 }
 
 /// Handle the GET /health/ready endpoint (Kubernetes readiness probe).
+///
+/// Probes `PostgreSQL` and Redis connectivity to ensure the service can process requests.
+/// Returns 503 Service Unavailable when critical dependencies are down.
 pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<ReadinessResponse>> {
-    // Check if we have the required components
     let has_coordinator = state.has_index_coordinator();
     let has_embedding = state.has_embedding_client();
 
-    // For now, we're ready if we have the job tracker (which we always do)
-    // In production, you'd check actual service connectivity
-    let ready = true; // Job tracker is always available
+    // Probe PostgreSQL if a database pool is configured
+    let db_healthy = if let Some(ref db) = state.database {
+        match tokio::time::timeout(std::time::Duration::from_secs(3), db.ping()).await {
+            Ok(Ok(())) => true,
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, "Database readiness probe failed");
+                false
+            }
+            Err(_) => {
+                tracing::warn!("Database readiness probe timed out");
+                false
+            }
+        }
+    } else {
+        // No database configured — treat as not ready since it is a critical dependency
+        false
+    };
+
+    // Probe Redis if a job queue is configured
+    let redis_healthy = if let Some(ref queue) = state.job_queue {
+        match tokio::time::timeout(std::time::Duration::from_secs(2), queue.ping()).await {
+            Ok(Ok(())) => true,
+            Ok(Err(e)) => {
+                tracing::warn!(error = %e, "Redis readiness probe failed");
+                false
+            }
+            Err(_) => {
+                tracing::warn!("Redis readiness probe timed out");
+                false
+            }
+        }
+    } else {
+        // No queue configured — not critical for readiness, allow degraded operation
+        true
+    };
+
+    // Service is ready if the database is reachable (critical dependency)
+    let ready = db_healthy;
 
     if !ready {
         return Err(ApiError::service_unavailable(
-            "Service not ready: required components unavailable",
+            "Service not ready: database unreachable",
         ));
     }
 
-    let degradation_mode = if has_coordinator && has_embedding {
+    let degradation_mode = if has_coordinator && has_embedding && redis_healthy {
         None
     } else if !has_coordinator && !has_embedding {
         Some("minimal".into())
+    } else if !redis_healthy {
+        Some("no_queue".into())
     } else if !has_coordinator {
         Some("no_indexing".into())
-    } else {
+    } else if !has_embedding {
         Some("no_embedding".into())
+    } else {
+        None
     };
 
     Ok(Json(ReadinessResponse {
@@ -93,14 +134,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_readiness_minimal() {
+    async fn test_readiness_no_database_returns_unavailable() {
         let state = test_state();
         let result = readiness(State(state)).await;
-        assert!(result.is_ok());
-
-        let response = result.unwrap();
-        assert_eq!(response.status, "ready");
-        assert_eq!(response.degradation_mode, Some("minimal".into()));
+        // Without a database, the service should report not ready (503)
+        assert!(result.is_err());
     }
 
     #[tokio::test]

@@ -3,7 +3,8 @@
 use opensearch::{
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
     indices::{IndicesCreateParts, IndicesDeleteParts, IndicesExistsParts},
-    DeleteByQueryParts, DeleteParts, GetParts, IndexParts, OpenSearch, SearchParts,
+    BulkOperation, BulkParts, DeleteByQueryParts, DeleteParts, GetParts, IndexParts, OpenSearch,
+    SearchParts,
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -37,11 +38,15 @@ impl SearchClient {
 
         // Set credentials if provided
         if let (Some(user), Some(pass)) = (&config.username, &config.password) {
+            transport_builder = transport_builder.auth(opensearch::auth::Credentials::Basic(
+                user.clone(),
+                pass.clone(),
+            ));
+        }
+
+        // Disable certificate verification only when explicitly requested
+        if config.danger_accept_invalid_certs {
             transport_builder = transport_builder
-                .auth(opensearch::auth::Credentials::Basic(
-                    user.clone(),
-                    pass.clone(),
-                ))
                 .cert_validation(opensearch::cert::CertificateValidation::None);
         }
 
@@ -201,21 +206,70 @@ impl SearchClient {
         Ok(())
     }
 
-    /// Bulk index documents.
+    /// Bulk index documents using the OpenSearch `_bulk` API.
+    ///
+    /// Sends all documents in a single bulk request instead of individual
+    /// index calls, significantly reducing network overhead and latency.
     ///
     /// # Errors
     ///
-    /// Returns an error if bulk indexing fails.
+    /// Returns an error if the bulk request fails or if any individual
+    /// document within the bulk response reports an error.
     pub async fn bulk_index(&self, index: &str, documents: Vec<(String, Value)>) -> Result<usize> {
         if documents.is_empty() {
             return Ok(0);
         }
 
-        // Build body for bulk API - opensearch expects Vec<BulkOperation>
-        // We use individual index calls since the bulk API is complex
         let count = documents.len();
+
+        // Build bulk operations using the opensearch crate's native BulkOperation API
+        let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(count);
         for (id, doc) in documents {
-            self.index_document(index, &id, doc).await?;
+            ops.push(BulkOperation::index(doc).id(&id).into());
+        }
+
+        // Send a single bulk request for all documents
+        let response = self
+            .client
+            .bulk(BulkParts::Index(index))
+            .body(ops)
+            .send()
+            .await
+            .map_err(|e| SearchError::Index(format!("Bulk indexing failed: {e}")))?;
+
+        if !response.status_code().is_success() {
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SearchError::Index(format!("Bulk indexing failed: {body}")));
+        }
+
+        // Parse the bulk response and check for per-item errors
+        let body: Value = response
+            .json()
+            .await
+            .map_err(|e| SearchError::Serialization(e.to_string()))?;
+
+        if body["errors"].as_bool().unwrap_or(false) {
+            let mut error_details: Vec<String> = Vec::new();
+            if let Some(items) = body["items"].as_array() {
+                for item in items {
+                    if let Some(action) = item.get("index").or_else(|| item.get("create")) {
+                        if let Some(error) = action.get("error") {
+                            let reason =
+                                error["reason"].as_str().unwrap_or("unknown reason");
+                            let doc_id = action["_id"].as_str().unwrap_or("unknown");
+                            error_details.push(format!("doc {doc_id}: {reason}"));
+                        }
+                    }
+                }
+            }
+            return Err(SearchError::Index(format!(
+                "Bulk indexing had {} error(s): {}",
+                error_details.len(),
+                error_details.join("; ")
+            )));
         }
 
         Ok(count)

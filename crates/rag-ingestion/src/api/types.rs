@@ -217,7 +217,7 @@ pub struct SyncResponse {
 /// Target scope for re-embedding job.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReembedTargetScope {
-    pub tenant_id: Option<String>,
+    pub tenant_id: String,
     pub source_types: Option<Vec<SourceType>>,
     pub document_ids: Option<Vec<Uuid>>,
 }

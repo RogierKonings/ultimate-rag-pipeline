@@ -129,15 +129,26 @@ pub async fn list_documents(
 
     let repo = DocumentRepository::new(database.inner().clone());
 
-    // Get total count for pagination
+    let source_type = query.source_type.as_deref();
+    let status = query.status.as_deref();
+    let search = query.search.as_deref();
+
+    // Get total count for pagination (with filters)
     let total = repo
-        .count(&query.tenant_id)
+        .count_filtered(&query.tenant_id, source_type, status, search)
         .await
         .map_err(|e| ApiError::internal(format!("Failed to count documents: {e}")))?;
 
-    // Get documents for this page
+    // Get documents for this page (with filters)
     let documents = repo
-        .list(&query.tenant_id, i64::from(page_size), i64::from(offset))
+        .list_filtered(
+            &query.tenant_id,
+            i64::from(page_size),
+            i64::from(offset),
+            source_type,
+            status,
+            search,
+        )
         .await
         .map_err(|e| ApiError::internal(format!("Failed to list documents: {e}")))?;
 
@@ -157,6 +168,9 @@ pub async fn list_documents(
         total = total,
         page = page,
         page_size = page_size,
+        ?source_type,
+        ?status,
+        ?search,
         returned = document_responses.len(),
         "Listed documents"
     );
