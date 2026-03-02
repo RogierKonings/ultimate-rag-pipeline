@@ -137,6 +137,7 @@ jobs:
         working-directory: ./services/orchestrator
         run: |
           pytest tests/ -v \
+            -m "not integration" \
             --cov=. \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing

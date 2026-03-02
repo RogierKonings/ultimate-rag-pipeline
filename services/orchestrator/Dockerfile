@@ -15,10 +15,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Apply latest Debian security patches
+# Apply latest Debian security patches and upgrade vulnerable pip packages
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip wheel jaraco.context
 
 # Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
