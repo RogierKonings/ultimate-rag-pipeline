@@ -263,7 +263,7 @@ postgres-backup-manual:
 postgres-migrate:
 	@echo "Running database migrations..."
 	kubectl delete job postgres-migrate -n rag-pipeline --ignore-not-found
-	kubectl apply -f k8s/postgres/backup-cronjob.yaml
+	kubectl apply -f k8s/postgres/migration-job.yaml
 	kubectl wait --for=condition=complete job/postgres-migrate -n rag-pipeline --timeout=300s
 	@echo "Database migrations completed"
 
