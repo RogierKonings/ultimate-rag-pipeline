@@ -23,6 +23,12 @@ pub struct WorkerPoolConfig {
     pub dequeue_timeout: Duration,
     /// Timeout for job processing.
     pub job_timeout: Duration,
+    /// Interval for scanning and reclaiming stale processing jobs.
+    pub reclaim_interval: Duration,
+    /// Processing entries older than this are reclaimed and retried.
+    pub processing_stale_after: Duration,
+    /// Maximum number of stale jobs reclaimed per scan.
+    pub reclaim_batch_size: usize,
     /// Graceful shutdown timeout.
     pub shutdown_timeout: Duration,
 }
@@ -33,6 +39,9 @@ impl Default for WorkerPoolConfig {
             concurrency: 4,
             dequeue_timeout: Duration::from_secs(5),
             job_timeout: Duration::from_secs(300), // 5 minutes
+            reclaim_interval: Duration::from_secs(30),
+            processing_stale_after: Duration::from_secs(600),
+            reclaim_batch_size: 64,
             shutdown_timeout: Duration::from_secs(30),
         }
     }
@@ -94,11 +103,46 @@ impl WorkerPool {
             let mut shutdown_rx = self.shutdown_tx.subscribe();
 
             let handle = tokio::spawn(async move {
+                let mut last_reclaim: Option<std::time::Instant> = None;
+
                 loop {
                     // Check for shutdown signal
                     if shutdown_rx.try_recv().is_ok() {
                         info!(worker_id, "Worker received shutdown signal");
                         break;
+                    }
+
+                    // A single worker periodically reclaims stale processing jobs.
+                    let should_reclaim = match last_reclaim {
+                        Some(last) => last.elapsed() >= config.reclaim_interval,
+                        None => true,
+                    };
+                    if worker_id == 0 && should_reclaim {
+                        match queue
+                            .reclaim_stuck_processing(
+                                config.processing_stale_after,
+                                config.reclaim_batch_size,
+                            )
+                            .await
+                        {
+                            Ok(reclaimed) if reclaimed > 0 => {
+                                warn!(
+                                    worker_id,
+                                    reclaimed,
+                                    stale_after_secs = config.processing_stale_after.as_secs(),
+                                    "Reclaimed stale processing jobs"
+                                );
+                            }
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!(
+                                    worker_id,
+                                    error = %e,
+                                    "Failed to reclaim stale processing jobs"
+                                );
+                            }
+                        }
+                        last_reclaim = Some(std::time::Instant::now());
                     }
 
                     // Acquire semaphore permit
@@ -282,6 +326,9 @@ mod tests {
         let config = WorkerPoolConfig::default();
         assert_eq!(config.concurrency, 4);
         assert_eq!(config.job_timeout, Duration::from_secs(300));
+        assert_eq!(config.reclaim_interval, Duration::from_secs(30));
+        assert_eq!(config.processing_stale_after, Duration::from_secs(600));
+        assert_eq!(config.reclaim_batch_size, 64);
     }
 
     #[tokio::test]

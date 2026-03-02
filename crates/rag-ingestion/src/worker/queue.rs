@@ -4,9 +4,10 @@ use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, Script};
 use std::time::Duration;
 use thiserror::Error;
+use tracing::warn;
 use uuid::Uuid;
 
-use super::job::{Job, JobPriority};
+use super::job::{Job, JobPriority, JobStatus};
 
 /// Queue errors.
 #[derive(Debug, Error)]
@@ -218,11 +219,6 @@ impl JobQueue {
 
             // Peek at the earliest delayed job across all priority queues
             let queue_keys: Vec<String> = priorities.iter().map(|p| self.queue_key(*p)).collect();
-            let mut cmd = redis::cmd("EVAL");
-            cmd.arg(min_score_script.get_hash());
-            // EVALSHA is attempted automatically by the Script helper, but here
-            // we need to pass multiple KEYS so we build the command manually.
-            // Fall back to Script invocation with a dynamic key count.
             let earliest_score: Option<String> = {
                 let mut inv = min_score_script.prepare_invoke();
                 for k in &queue_keys {
@@ -264,6 +260,92 @@ impl JobQueue {
                 .query_async(&mut conn)
                 .await?;
         }
+    }
+
+    /// Reclaim jobs that have been stuck in processing beyond `stale_after`.
+    ///
+    /// This recovers jobs after worker crashes by turning stale running jobs
+    /// into retry attempts (or DLQ entries when retries are exhausted).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if Redis operations fail.
+    pub async fn reclaim_stuck_processing(
+        &self,
+        stale_after: Duration,
+        batch_size: usize,
+    ) -> Result<usize, QueueError> {
+        if batch_size == 0 {
+            return Ok(0);
+        }
+
+        let mut conn = self.conn.clone();
+        let processing_key = self.processing_key();
+
+        #[allow(clippy::cast_possible_truncation)] // bounded to i64::MAX
+        let stale_after_ms = stale_after.as_millis().min(i64::MAX as u128) as i64;
+        let cutoff_ms = chrono::Utc::now()
+            .timestamp_millis()
+            .saturating_sub(stale_after_ms);
+
+        // Atomically claim stale IDs by removing them from the processing set.
+        let reclaim_script = Script::new(
+            r"
+            local stale = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, ARGV[2])
+            local claimed = {}
+            for i = 1, #stale do
+                if redis.call('ZREM', KEYS[1], stale[i]) == 1 then
+                    table.insert(claimed, stale[i])
+                end
+            end
+            return claimed
+            ",
+        );
+
+        let claimed_ids: Vec<String> = reclaim_script
+            .key(&processing_key)
+            .arg(cutoff_ms)
+            .arg(batch_size)
+            .invoke_async(&mut conn)
+            .await?;
+
+        let mut reclaimed = 0usize;
+
+        for job_id_str in claimed_ids {
+            let Ok(job_id) = Uuid::parse_str(&job_id_str) else {
+                warn!(
+                    job_id = %job_id_str,
+                    "Skipping invalid job ID while reclaiming stuck jobs"
+                );
+                continue;
+            };
+
+            let Some(job) = self.get_job(job_id).await? else {
+                warn!(
+                    %job_id,
+                    "Stale processing entry had no job payload; skipping reclaim"
+                );
+                continue;
+            };
+
+            if job.status != JobStatus::Running {
+                warn!(
+                    %job_id,
+                    status = ?job.status,
+                    "Skipping reclaim for non-running job state"
+                );
+                continue;
+            }
+
+            self.fail(
+                job,
+                "Job reclaimed after worker crash or stale processing timeout",
+            )
+            .await?;
+            reclaimed += 1;
+        }
+
+        Ok(reclaimed)
     }
 
     /// Complete a job (remove from processing).
@@ -314,6 +396,10 @@ impl JobQueue {
             let queue_key = self.queue_key(job.priority);
             let score = chrono::Utc::now().timestamp_millis() as f64 + delay_ms as f64;
             let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
+
+            // Wake blocked workers so they can recalculate earliest ready job.
+            let notify_key = self.notify_key();
+            let _: () = conn.lpush(&notify_key, "1").await?;
         } else {
             // Move to DLQ
             let job_key = self.job_key(job.id);
@@ -433,6 +519,7 @@ fn rand_simple() -> f64 {
 mod tests {
     use super::*;
     use crate::worker::job::JobStatus;
+    use uuid::Uuid;
 
     // Note: These tests require a running Redis instance
     // They are marked as ignore by default
@@ -455,6 +542,51 @@ mod tests {
         let dequeued_job = dequeued.unwrap();
         assert_eq!(dequeued_job.id, job_id);
         assert_eq!(dequeued_job.status, JobStatus::Running);
+    }
+
+    #[tokio::test]
+    #[ignore = "requires Redis"]
+    async fn test_reclaim_stuck_processing_retries_job() {
+        let prefix = format!("test-reclaim-{}", Uuid::new_v4());
+        let queue = JobQueue::new("redis://localhost:6379", &prefix)
+            .await
+            .unwrap();
+
+        let job =
+            Job::new("test_job", "tenant1", serde_json::json!({"test": true})).with_max_retries(3);
+        let job_id = job.id;
+
+        queue.enqueue(&job).await.unwrap();
+
+        let running = queue
+            .dequeue(Duration::from_secs(1))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(running.id, job_id);
+        assert_eq!(running.status, JobStatus::Running);
+        assert_eq!(running.attempts, 1);
+
+        let reclaimed = queue
+            .reclaim_stuck_processing(Duration::from_millis(0), 10)
+            .await
+            .unwrap();
+        assert_eq!(reclaimed, 1);
+
+        tokio::time::sleep(Duration::from_secs(4)).await;
+
+        let retried = queue
+            .dequeue(Duration::from_secs(1))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(retried.id, job_id);
+        assert_eq!(retried.status, JobStatus::Running);
+        assert_eq!(retried.attempts, 2);
+
+        let mut completed = retried;
+        completed.mark_completed();
+        queue.complete(&completed).await.unwrap();
     }
 
     #[test]
