@@ -5,7 +5,6 @@ This module provides fixtures and configuration for running E2E tests
 that validate the entire pipeline from ingestion through generation.
 """
 
-import asyncio
 import os
 
 import pytest
@@ -65,22 +64,9 @@ def e2e_config():
     return E2EConfig()
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a session-scoped event loop for async fixtures.
-
-    Note: We intentionally do NOT close the loop here. pytest-asyncio
-    needs the loop to run async fixture finalizers (e.g. http_client
-    teardown) which execute after this fixture's teardown phase.
-    The loop is cleaned up on process exit.
-    """
-    loop = asyncio.new_event_loop()
-    yield loop
-
-
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def http_client():
-    """Create async HTTP client for the session."""
+    """Create async HTTP client for each test."""
     try:
         import httpx
     except ImportError:
