@@ -51,7 +51,15 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Upgrade npm to patch bundled vulnerabilities (minimatch, tar, glob)
-RUN npm install -g npm@latest
+RUN npm install -g npm@latest \
+    # Patch minimatch CVE-2026-27903/CVE-2026-27904 (npm bundles 10.2.2, need 10.2.3)
+    && cd /usr/local/lib/node_modules/npm/node_modules/minimatch \
+    && npm pack minimatch@10.2.3 2>/dev/null \
+    && rm -rf dist package.json README.md LICENSE \
+    && tar xzf minimatch-10.2.3.tgz --strip-components=1 \
+    && rm minimatch-10.2.3.tgz \
+    # Clean npm cache to reduce image size and avoid Trivy scanning cached tarballs
+    && npm cache clean --force
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate

@@ -24,7 +24,9 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 
 # Upgrade packages with known CVEs (after COPY to avoid being overwritten)
-RUN pip install --no-cache-dir --upgrade pip wheel jaraco.context
+# - setuptools: vendored copies of wheel and jaraco.context inside setuptools/_vendor/
+# - cryptography: CVE-2026-26007
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context cryptography
 
 # Copy application code
 COPY . .
