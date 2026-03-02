@@ -250,26 +250,67 @@ impl IngestionJobHandler {
                 .map(ToOwned::to_owned)
                 .or_else(|| Some(source_id.to_string()));
 
-            // Build metadata map and inject ACL fields from the "acl" section of the payload
-            let mut doc_metadata = Self::json_object_to_map(payload.get("metadata"));
-            if let Some(acl) = payload.get("acl") {
-                if let Some(visibility) = acl.get("visibility") {
-                    doc_metadata.insert("visibility".to_string(), visibility.clone());
+            // Build metadata map (no longer contains ACL fields — those live on acl_metadata)
+            let doc_metadata = Self::json_object_to_map(payload.get("metadata"));
+
+            // Build typed ACL from the "acl" section of the payload
+            let acl_metadata = if let Some(acl) = payload.get("acl") {
+                AclMetadata {
+                    visibility: acl
+                        .get("visibility")
+                        .and_then(|v| serde_json::from_value(v.clone()).ok())
+                        .unwrap_or_default(),
+                    owner_id: acl
+                        .get("owner_id")
+                        .and_then(|v| v.as_str())
+                        .map(ToString::to_string),
+                    allowed_groups: acl
+                        .get("allowed_groups")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(ToString::to_string))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    allowed_users: acl
+                        .get("allowed_users")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(ToString::to_string))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    denied_groups: acl
+                        .get("denied_groups")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(ToString::to_string))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    denied_users: acl
+                        .get("denied_users")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(ToString::to_string))
+                                .collect()
+                        })
+                        .unwrap_or_default(),
                 }
-                if let Some(allowed_groups) = acl.get("allowed_groups") {
-                    doc_metadata.insert("allowed_groups".to_string(), allowed_groups.clone());
-                }
-                if let Some(allowed_users) = acl.get("allowed_users") {
-                    doc_metadata.insert("allowed_users".to_string(), allowed_users.clone());
-                }
-            }
+            } else {
+                AclMetadata::default()
+            };
 
             let document = DocumentRecord {
                 document_id,
                 tenant_id: tenant_id_typed,
                 source_id: source_id.to_string(),
                 title: document_title,
-                acl: AclMetadata::default(),
+                acl: acl_metadata.clone(),
                 metadata: doc_metadata.clone(),
             };
 
@@ -321,7 +362,7 @@ impl IngestionJobHandler {
                         tenant_id: tenant_id_typed,
                         content: chunk.content,
                         chunk_index: chunk.chunk_index,
-                        acl: AclMetadata::default(),
+                        acl: acl_metadata.clone(),
                         embedding,
                         metadata,
                     }
@@ -613,6 +654,16 @@ impl IngestionJobHandler {
 
             let document_id_typed = DocumentId::from_uuid(*document_uuid);
 
+            // Build ACL from the existing database record's fields
+            let doc_acl = AclMetadata {
+                visibility: document.visibility,
+                owner_id: None, // Not yet stored in DB; will be added in Task 6
+                allowed_groups: document.allowed_groups.clone(),
+                allowed_users: Vec::new(),
+                denied_groups: Vec::new(),
+                denied_users: Vec::new(),
+            };
+
             let indexed_chunks: Vec<IndexedChunk> = chunks
                 .iter()
                 .zip(embeddings.into_iter())
@@ -623,7 +674,7 @@ impl IngestionJobHandler {
                     content: chunk.content.clone(),
                     embedding,
                     chunk_index: u32::try_from(chunk.chunk_index).unwrap_or(0),
-                    acl: AclMetadata::default(),
+                    acl: doc_acl.clone(),
                     metadata: Self::json_object_to_map(Some(&chunk.metadata)),
                 })
                 .collect();
@@ -635,7 +686,7 @@ impl IngestionJobHandler {
                         tenant_id: tenant_typed,
                         source_id: document.source_uri.clone(),
                         title: document.title.clone(),
-                        acl: AclMetadata::default(),
+                        acl: doc_acl,
                         metadata: Self::json_object_to_map(Some(&document.metadata)),
                     },
                     indexed_chunks,

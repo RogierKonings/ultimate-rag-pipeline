@@ -3,7 +3,7 @@
 use super::models::{DocumentRecord, IndexedChunk, WriteResult};
 use crate::error::Result;
 use rag_database::{
-    ChunkRepository, DatabasePool, DocumentRepository, NewChunk, NewSourceDocument, Visibility,
+    ChunkRepository, DatabasePool, DocumentRepository, NewChunk, NewSourceDocument,
 };
 use rag_search::SearchClient;
 use rag_types::{DocumentId, TenantId};
@@ -166,17 +166,7 @@ impl IndexCoordinator {
         let payloads: Vec<Value> = chunks
             .iter()
             .map(|c| {
-                // Extract visibility and allowed_groups from metadata, default to public/empty
-                let visibility = c
-                    .metadata
-                    .get("visibility")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("public");
-                let allowed_groups = c
-                    .metadata
-                    .get("allowed_groups")
-                    .cloned()
-                    .unwrap_or_else(|| json!([]));
+                let acl_fields = c.acl.to_json_value();
 
                 let mut payload = json!({
                     "chunk_id": c.chunk_id.to_string(),
@@ -186,12 +176,16 @@ impl IndexCoordinator {
                     "content": c.content,
                     "title": document.title,
                     "source_uri": document.source_id,
-                    "visibility": visibility,
-                    "allowed_groups": allowed_groups,
                 });
 
-                // Merge additional metadata
+                // Merge all ACL fields as top-level payload fields
                 if let Some(payload_obj) = payload.as_object_mut() {
+                    if let Some(acl_obj) = acl_fields.as_object() {
+                        for (key, value) in acl_obj {
+                            payload_obj.insert(key.clone(), value.clone());
+                        }
+                    }
+                    // Merge additional non-ACL metadata
                     for (key, value) in &c.metadata {
                         payload_obj.insert(key.clone(), value.clone());
                     }
@@ -234,19 +228,9 @@ impl IndexCoordinator {
         let documents: Vec<(String, Value)> = chunks
             .iter()
             .map(|c| {
-                // Extract visibility and allowed_groups from metadata, same source as Qdrant
-                let visibility = c
-                    .metadata
-                    .get("visibility")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("public");
-                let allowed_groups = c
-                    .metadata
-                    .get("allowed_groups")
-                    .cloned()
-                    .unwrap_or_else(|| json!([]));
+                let acl_fields = c.acl.to_json_value();
 
-                let doc = json!({
+                let mut doc = json!({
                     "chunk_id": c.chunk_id.to_string(),
                     "document_id": c.document_id.to_string(),
                     "tenant_id": c.tenant_id.to_string(),
@@ -254,11 +238,17 @@ impl IndexCoordinator {
                     "title": document.title,
                     "source_uri": document.source_id,
                     "chunk_index": c.chunk_index,
-                    "visibility": visibility,
-                    "allowed_groups": allowed_groups,
-                    // Include additional metadata
                     "metadata": c.metadata,
                 });
+
+                // Merge all ACL fields as top-level document fields
+                if let Some(doc_obj) = doc.as_object_mut() {
+                    if let Some(acl_obj) = acl_fields.as_object() {
+                        for (key, value) in acl_obj {
+                            doc_obj.insert(key.clone(), value.clone());
+                        }
+                    }
+                }
 
                 (c.chunk_id.to_string(), doc)
             })
@@ -323,22 +313,8 @@ impl IndexCoordinator {
                 .metadata
                 .get("file_size")
                 .and_then(serde_json::Value::as_i64),
-            visibility: document
-                .metadata
-                .get("visibility")
-                .and_then(|v| v.as_str())
-                .and_then(|s| Visibility::try_from(s.to_string()).ok())
-                .unwrap_or(Visibility::Private),
-            allowed_groups: document
-                .metadata
-                .get("allowed_groups")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(String::from))
-                        .collect()
-                })
-                .unwrap_or_default(),
+            visibility: document.acl.visibility,
+            allowed_groups: document.acl.allowed_groups.clone(),
             metadata: serde_json::to_value(&document.metadata).unwrap_or(Value::Null),
         };
 
