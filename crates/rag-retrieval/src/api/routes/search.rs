@@ -361,7 +361,7 @@ async fn execute_search(
         None => None,
     };
 
-    // Check retrieval cache
+    // Check retrieval cache (key includes user identity, filters, and all request knobs)
     if let Some(ref cache) = state.retrieval_cache {
         if cache.is_enabled() {
             let cache_key = QueryCacheKey::new(
@@ -369,9 +369,17 @@ async fn execute_search(
                 user_context.tenant_id,
                 request.mode,
                 request.top_k,
-            );
+            )
+            .with_user_id(user_context.user_id)
+            .with_groups(user_context.groups.clone())
+            .with_filters(request.filters.as_ref())
+            .with_rerank(request.rerank, request.rerank_top_k)
+            .with_min_score(request.min_score)
+            .with_weights(request.semantic_weight, request.keyword_weight);
 
-            if let Ok(Some(cached_results)) = cache.get(&cache_key).await {
+            if let Ok(Some(mut cached_results)) = cache.get(&cache_key).await {
+                // Re-apply ACL filter on cache hits as a defense-in-depth measure
+                cached_results.retain(|r| user_context.can_access(r.visibility, &r.allowed_groups));
                 debug!(result_count = cached_results.len(), "Retrieval cache hit");
                 metrics.total_ms = start_time.elapsed().as_secs_f64() * 1000.0;
                 metrics.cache_hit = true;
@@ -596,7 +604,7 @@ async fn execute_search(
 
     debug_info.total_latency_ms = start_time.elapsed().as_secs_f64() * 1000.0;
 
-    // Cache the results
+    // Cache the results (key must match the read-side construction exactly)
     if let Some(ref cache) = state.retrieval_cache {
         if cache.is_enabled() {
             let cache_key = QueryCacheKey::new(
@@ -604,7 +612,13 @@ async fn execute_search(
                 user_context.tenant_id,
                 request.mode,
                 request.top_k,
-            );
+            )
+            .with_user_id(user_context.user_id)
+            .with_groups(user_context.groups.clone())
+            .with_filters(request.filters.as_ref())
+            .with_rerank(request.rerank, request.rerank_top_k)
+            .with_min_score(request.min_score)
+            .with_weights(request.semantic_weight, request.keyword_weight);
 
             if let Err(e) = cache.set(&cache_key, &results).await {
                 warn!("Failed to cache retrieval results: {}", e);

@@ -156,6 +156,9 @@ impl QueryCacheConfig {
 }
 
 /// Cache key components for a query.
+///
+/// All fields that affect the result set MUST be included so that different
+/// users, filter combinations, or request knobs never share a cache entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryCacheKey {
     /// Query string (normalized).
@@ -164,18 +167,46 @@ pub struct QueryCacheKey {
     /// Tenant ID for isolation.
     pub tenant_id: Uuid,
 
-    /// Optional user ID (if `include_user_context` is enabled).
+    /// User ID for user-specific caching (ACL may differ per user).
     pub user_id: Option<Uuid>,
+
+    /// Groups the user belongs to (affects ACL filtering of results).
+    #[serde(default)]
+    pub groups: Vec<String>,
 
     /// Search mode used for the query.
     pub search_mode: SearchMode,
 
     /// Number of results requested.
     pub top_k: usize,
+
+    /// Serialized request filters (affects which documents are searched).
+    #[serde(default)]
+    pub filters: Option<String>,
+
+    /// Whether reranking is enabled.
+    #[serde(default)]
+    pub rerank: bool,
+
+    /// Number of candidates to rerank.
+    #[serde(default)]
+    pub rerank_top_k: usize,
+
+    /// Minimum score threshold.
+    #[serde(default)]
+    pub min_score: f32,
+
+    /// Weight for semantic search results.
+    #[serde(default)]
+    pub semantic_weight: f32,
+
+    /// Weight for keyword search results.
+    #[serde(default)]
+    pub keyword_weight: f32,
 }
 
 impl QueryCacheKey {
-    /// Create a new query cache key.
+    /// Create a new query cache key with all parameters that affect the result set.
     #[must_use]
     pub fn new(
         query: impl Into<String>,
@@ -187,8 +218,15 @@ impl QueryCacheKey {
             query: query.into(),
             tenant_id,
             user_id: None,
+            groups: Vec::new(),
             search_mode,
             top_k,
+            filters: None,
+            rerank: false,
+            rerank_top_k: 0,
+            min_score: 0.0,
+            semantic_weight: 0.0,
+            keyword_weight: 0.0,
         }
     }
 
@@ -196,6 +234,43 @@ impl QueryCacheKey {
     #[must_use]
     pub const fn with_user_id(mut self, user_id: Uuid) -> Self {
         self.user_id = Some(user_id);
+        self
+    }
+
+    /// Set the user's groups (for ACL-aware caching).
+    #[must_use]
+    pub fn with_groups(mut self, groups: Vec<String>) -> Self {
+        self.groups = groups;
+        self
+    }
+
+    /// Set the request filters (serialized as a stable string).
+    #[must_use]
+    pub fn with_filters(mut self, filters: Option<&serde_json::Value>) -> Self {
+        self.filters = filters.map(std::string::ToString::to_string);
+        self
+    }
+
+    /// Set rerank parameters.
+    #[must_use]
+    pub const fn with_rerank(mut self, rerank: bool, rerank_top_k: usize) -> Self {
+        self.rerank = rerank;
+        self.rerank_top_k = rerank_top_k;
+        self
+    }
+
+    /// Set score threshold.
+    #[must_use]
+    pub const fn with_min_score(mut self, min_score: f32) -> Self {
+        self.min_score = min_score;
+        self
+    }
+
+    /// Set search weights.
+    #[must_use]
+    pub const fn with_weights(mut self, semantic_weight: f32, keyword_weight: f32) -> Self {
+        self.semantic_weight = semantic_weight;
+        self.keyword_weight = keyword_weight;
         self
     }
 }
@@ -233,29 +308,74 @@ impl QueryCache {
 
     /// Build the cache key string from key components.
     ///
-    /// Format: `{prefix}:{tenant_id}:{query_hash}:{mode}:{top_k}[:user_id]`
+    /// All fields that affect the result set are hashed into a single
+    /// deterministic key so that different users, filters, or request knobs
+    /// never collide.
+    ///
+    /// Format: `{prefix}:{tenant_id}:{params_hash}`
     #[must_use]
     pub fn build_key(&self, key: &QueryCacheKey) -> String {
-        let query_hash = Self::hash_query(&key.query);
         let mode_str = match key.search_mode {
             SearchMode::Semantic => "sem",
             SearchMode::Keyword => "kw",
             SearchMode::Hybrid => "hyb",
         };
 
-        let base_key = format!(
-            "{}:{}:{}:{}:{}",
-            self.config.key_prefix, key.tenant_id, query_hash, mode_str, key.top_k
-        );
+        // Build a deterministic string from all fields that affect results
+        let mut hasher = Sha256::new();
 
-        // Include user_id if configured and present
+        // Query (normalized)
+        let normalized_query = crate::utils::normalize_query(&key.query);
+        hasher.update(normalized_query.as_bytes());
+        hasher.update(b"|");
+
+        // Mode and top_k
+        hasher.update(mode_str.as_bytes());
+        hasher.update(b"|");
+        hasher.update(key.top_k.to_string().as_bytes());
+        hasher.update(b"|");
+
+        // User identity (user_id + groups)
         if self.config.include_user_context {
             if let Some(user_id) = key.user_id {
-                return format!("{base_key}:{user_id}");
+                hasher.update(user_id.to_string().as_bytes());
+            }
+            hasher.update(b"|");
+            // Sort groups for deterministic hashing
+            let mut sorted_groups = key.groups.clone();
+            sorted_groups.sort();
+            for group in &sorted_groups {
+                hasher.update(group.as_bytes());
+                hasher.update(b",");
             }
         }
+        hasher.update(b"|");
 
-        base_key
+        // Filters
+        if let Some(ref filters) = key.filters {
+            hasher.update(filters.as_bytes());
+        }
+        hasher.update(b"|");
+
+        // Rerank settings
+        hasher.update(if key.rerank { b"1" } else { b"0" } as &[u8]);
+        hasher.update(b"|");
+        hasher.update(key.rerank_top_k.to_string().as_bytes());
+        hasher.update(b"|");
+
+        // Score and weight settings (use bit representation for deterministic floats)
+        hasher.update(key.min_score.to_bits().to_string().as_bytes());
+        hasher.update(b"|");
+        hasher.update(key.semantic_weight.to_bits().to_string().as_bytes());
+        hasher.update(b"|");
+        hasher.update(key.keyword_weight.to_bits().to_string().as_bytes());
+
+        let params_hash = hex::encode(hasher.finalize());
+
+        format!(
+            "{}:{}:{}",
+            self.config.key_prefix, key.tenant_id, params_hash
+        )
     }
 
     /// Get cached results for a query.
@@ -392,13 +512,6 @@ impl QueryCache {
         Ok(())
     }
 
-    /// Compute SHA-256 hash of the normalized query string.
-    fn hash_query(query: &str) -> String {
-        let normalized = crate::utils::normalize_query(query);
-        let mut hasher = Sha256::new();
-        hasher.update(normalized.as_bytes());
-        hex::encode(hasher.finalize())
-    }
 }
 
 impl std::fmt::Debug for QueryCache {

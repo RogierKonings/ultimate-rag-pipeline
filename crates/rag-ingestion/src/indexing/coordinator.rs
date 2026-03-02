@@ -234,6 +234,18 @@ impl IndexCoordinator {
         let documents: Vec<(String, Value)> = chunks
             .iter()
             .map(|c| {
+                // Extract visibility and allowed_groups from metadata, same source as Qdrant
+                let visibility = c
+                    .metadata
+                    .get("visibility")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("public");
+                let allowed_groups = c
+                    .metadata
+                    .get("allowed_groups")
+                    .cloned()
+                    .unwrap_or_else(|| json!([]));
+
                 let doc = json!({
                     "chunk_id": c.chunk_id.to_string(),
                     "document_id": c.document_id.to_string(),
@@ -242,6 +254,8 @@ impl IndexCoordinator {
                     "title": document.title,
                     "source_uri": document.source_id,
                     "chunk_index": c.chunk_index,
+                    "visibility": visibility,
+                    "allowed_groups": allowed_groups,
                     // Include additional metadata
                     "metadata": c.metadata,
                 });
@@ -309,7 +323,12 @@ impl IndexCoordinator {
                 .metadata
                 .get("file_size")
                 .and_then(serde_json::Value::as_i64),
-            visibility: Visibility::Private,
+            visibility: document
+                .metadata
+                .get("visibility")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Visibility::try_from(s.to_string()).ok())
+                .unwrap_or(Visibility::Private),
             allowed_groups: document
                 .metadata
                 .get("allowed_groups")

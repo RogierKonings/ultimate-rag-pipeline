@@ -240,9 +240,10 @@ impl IngestionJobHandler {
                 .and_then(|s| Uuid::parse_str(s).ok())
                 .unwrap_or_else(Uuid::new_v4);
             let document_id = DocumentId::from_uuid(document_uuid);
-
-            // Parse tenant_id as UUID, or generate a new one
-            let tenant_uuid = Uuid::parse_str(tenant_id).unwrap_or_else(|_| Uuid::new_v4());
+            // Parse tenant_id as UUID — reject invalid values instead of silently generating one
+            let tenant_uuid = Uuid::parse_str(tenant_id).map_err(|_| {
+                format!("tenant_id is not a valid UUID: '{tenant_id}'")
+            })?;
             let tenant_id_typed = TenantId::from_uuid(tenant_uuid);
 
             let document_title = payload
@@ -251,15 +252,29 @@ impl IngestionJobHandler {
                 .map(ToOwned::to_owned)
                 .or_else(|| Some(source_id.to_string()));
 
+            // Build metadata map and inject ACL fields from the "acl" section of the payload
+            let mut doc_metadata = Self::json_object_to_map(payload.get("metadata"));
+            if let Some(acl) = payload.get("acl") {
+                if let Some(visibility) = acl.get("visibility") {
+                    doc_metadata.insert("visibility".to_string(), visibility.clone());
+                }
+                if let Some(allowed_groups) = acl.get("allowed_groups") {
+                    doc_metadata.insert("allowed_groups".to_string(), allowed_groups.clone());
+                }
+                if let Some(allowed_users) = acl.get("allowed_users") {
+                    doc_metadata.insert("allowed_users".to_string(), allowed_users.clone());
+                }
+            }
+
             let document = DocumentRecord {
                 document_id,
                 tenant_id: tenant_id_typed,
                 source_id: source_id.to_string(),
                 title: document_title,
-                metadata: Self::json_object_to_map(payload.get("metadata")),
+                metadata: doc_metadata.clone(),
             };
 
-            let base_chunk_metadata = Self::json_object_to_map(payload.get("metadata"));
+            let base_chunk_metadata = doc_metadata;
             let indexed_chunks: Vec<IndexedChunk> = chunks
                 .iter()
                 .enumerate()
@@ -460,7 +475,9 @@ impl IngestionJobHandler {
         self.job_tracker
             .update_progress(&tracker_job_id, 0, total_docs, "reembedding");
 
-        let tenant_uuid = Uuid::parse_str(&tenant_id).unwrap_or_else(|_| Uuid::new_v4());
+        let tenant_uuid = Uuid::parse_str(&tenant_id).map_err(|_| {
+            format!("tenant_id is not a valid UUID: '{tenant_id}'")
+        })?;
         let tenant_typed = TenantId::from_uuid(tenant_uuid);
 
         let mut processed_docs = 0u32;

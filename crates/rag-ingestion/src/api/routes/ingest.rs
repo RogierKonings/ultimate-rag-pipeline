@@ -329,7 +329,7 @@ pub async fn start_reembed(
         .target_scope
         .tenant_id
         .clone()
-        .unwrap_or_else(|| "default".into());
+        .ok_or_else(|| ApiError::bad_request("target_scope.tenant_id is required"))?;
 
     let job_id = state.job_tracker.create_job(tenant_id.clone());
     let embedding_job_id = Uuid::new_v4();

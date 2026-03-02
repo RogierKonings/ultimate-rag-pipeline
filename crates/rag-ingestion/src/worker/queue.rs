@@ -1,7 +1,7 @@
 //! Redis-backed job queue.
 
 use redis::aio::ConnectionManager;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, Script};
 use std::time::Duration;
 use thiserror::Error;
 use uuid::Uuid;
@@ -107,41 +107,59 @@ impl JobQueue {
             JobPriority::Low,
         ];
 
+        // Lua script that atomically peeks and pops only if the lowest-scored
+        // member has a score <= the current timestamp. This respects the backoff
+        // delay set by `fail` which uses a future timestamp as the score.
+        let dequeue_script = Script::new(
+            r"
+            local result = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1], 'LIMIT', 0, 1)
+            if #result > 0 then
+                redis.call('ZREM', KEYS[1], result[1])
+                return result[1]
+            end
+            return nil
+            ",
+        );
+
+        let now_ms = chrono::Utc::now().timestamp_millis();
+
         for priority in priorities {
             let queue_key = self.queue_key(priority);
 
-            // Try to get the oldest job (lowest score)
-            let result: Option<Vec<(String, f64)>> = conn.zpopmin(&queue_key, 1).await?;
+            // Atomically pop oldest job only if its score (timestamp) <= now
+            let result: Option<String> = dequeue_script
+                .key(&queue_key)
+                .arg(now_ms)
+                .invoke_async(&mut conn)
+                .await?;
 
-            if let Some(items) = result {
-                if let Some((job_id_str, _score)) = items.into_iter().next() {
-                    let job_id = Uuid::parse_str(&job_id_str).map_err(|e| {
-                        QueueError::Redis(redis::RedisError::from((
-                            redis::ErrorKind::UnexpectedReturnType,
-                            "Invalid UUID",
-                            e.to_string(),
-                        )))
-                    })?;
+            if let Some(job_id_str) = result {
+                let job_id = Uuid::parse_str(&job_id_str).map_err(|e| {
+                    QueueError::Redis(redis::RedisError::from((
+                        redis::ErrorKind::UnexpectedReturnType,
+                        "Invalid UUID",
+                        e.to_string(),
+                    )))
+                })?;
 
-                    // Get job data
-                    let job_key = self.job_key(job_id);
-                    let job_json: Option<String> = conn.get(&job_key).await?;
+                // Get job data
+                let job_key = self.job_key(job_id);
+                let job_json: Option<String> = conn.get(&job_key).await?;
 
-                    if let Some(json) = job_json {
-                        let mut job: Job = serde_json::from_str(&json)?;
+                if let Some(json) = job_json {
+                    let mut job: Job = serde_json::from_str(&json)?;
 
-                        // Move to processing set
-                        let processing_key = self.processing_key();
-                        let now = chrono::Utc::now().timestamp_millis() as f64;
-                        let _: () = conn.zadd(&processing_key, job_id.to_string(), now).await?;
+                    // Move to processing set
+                    let processing_key = self.processing_key();
+                    let now = chrono::Utc::now().timestamp_millis() as f64;
+                    let _: () = conn.zadd(&processing_key, job_id.to_string(), now).await?;
 
-                        // Update job status
-                        job.mark_started();
-                        let updated_json = serde_json::to_string(&job)?;
-                        let _: () = conn.set(&job_key, updated_json).await?;
+                    // Update job status
+                    job.mark_started();
+                    let updated_json = serde_json::to_string(&job)?;
+                    let _: () = conn.set(&job_key, updated_json).await?;
 
-                        return Ok(Some(job));
-                    }
+                    return Ok(Some(job));
                 }
             }
         }
