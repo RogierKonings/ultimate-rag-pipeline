@@ -203,6 +203,10 @@ impl HybridSearcher {
                     chunk_index,
                     visibility,
                     allowed_groups,
+                    owner_id,
+                    allowed_users,
+                    denied_groups,
+                    denied_users,
                     highlights,
                     metadata,
                 ) = if let Some(semantic) = semantic_content_map.get(&fused.id) {
@@ -214,6 +218,10 @@ impl HybridSearcher {
                         semantic.chunk_index,
                         semantic.visibility,
                         semantic.allowed_groups.clone(),
+                        semantic.owner_id.clone(),
+                        semantic.allowed_users.clone(),
+                        semantic.denied_groups.clone(),
+                        semantic.denied_users.clone(),
                         Vec::new(),
                         semantic.metadata.clone(),
                     )
@@ -226,6 +234,10 @@ impl HybridSearcher {
                         keyword.chunk_index,
                         keyword.visibility,
                         keyword.allowed_groups.clone(),
+                        keyword.owner_id.clone(),
+                        keyword.allowed_users.clone(),
+                        keyword.denied_groups.clone(),
+                        keyword.denied_users.clone(),
                         keyword.highlights.clone(),
                         keyword.metadata.clone(),
                     )
@@ -240,6 +252,10 @@ impl HybridSearcher {
                         .with_chunk_index(chunk_index)
                         .with_visibility(visibility)
                         .with_allowed_groups(allowed_groups)
+                        .with_owner_id(owner_id)
+                        .with_allowed_users(allowed_users)
+                        .with_denied_groups(denied_groups)
+                        .with_denied_users(denied_users)
                         .with_highlights(highlights)
                         .with_metadata(metadata);
 
@@ -341,6 +357,10 @@ impl HybridSearcher {
                         .with_chunk_index(r.chunk_index)
                         .with_visibility(r.visibility)
                         .with_allowed_groups(r.allowed_groups)
+                        .with_owner_id(r.owner_id)
+                        .with_allowed_users(r.allowed_users)
+                        .with_denied_groups(r.denied_groups)
+                        .with_denied_users(r.denied_users)
                         .with_metadata(r.metadata);
 
                 if let Some(title) = r.title {
@@ -408,6 +428,10 @@ impl HybridSearcher {
                         .with_chunk_index(r.chunk_index)
                         .with_visibility(r.visibility)
                         .with_allowed_groups(r.allowed_groups)
+                        .with_owner_id(r.owner_id)
+                        .with_allowed_users(r.allowed_users)
+                        .with_denied_groups(r.denied_groups)
+                        .with_denied_users(r.denied_users)
                         .with_highlights(r.highlights)
                         .with_metadata(r.metadata);
 

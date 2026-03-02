@@ -58,6 +58,22 @@ pub struct KeywordResult {
     #[serde(default)]
     pub allowed_groups: Vec<String>,
 
+    /// Document owner ID.
+    #[serde(default)]
+    pub owner_id: Option<String>,
+
+    /// Individual users with access.
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+
+    /// Groups explicitly denied.
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+
+    /// Users explicitly denied.
+    #[serde(default)]
+    pub denied_users: Vec<String>,
+
     /// Highlighted text fragments from the search.
     #[serde(default)]
     pub highlights: Vec<String>,
@@ -88,6 +104,10 @@ impl KeywordResult {
             chunk_index: 0,
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
             highlights: Vec::new(),
             metadata: HashMap::new(),
         }
@@ -394,7 +414,7 @@ impl KeywordSearcher {
     }
 
     /// Convert an `OpenSearch` hit to a `KeywordResult`.
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::too_many_lines)]
     fn convert_hit(hit: &SearchHit, min_score: f32, range: f32) -> Result<KeywordResult> {
         let raw_score = hit.score as f32;
 
@@ -443,6 +463,45 @@ impl KeywordSearcher {
             })
             .unwrap_or_default();
 
+        // Extract owner_id
+        let owner_id = hit.get_string("owner_id").map(String::from);
+
+        // Extract allowed_users
+        let allowed_users = hit
+            .get_field("allowed_users")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Extract denied_groups
+        let denied_groups = hit
+            .get_field("denied_groups")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Extract denied_users
+        let denied_users = hit
+            .get_field("denied_users")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
         // Extract highlights (flatten all field highlights into a single list)
         let highlights: Vec<String> = hit.highlights.values().flatten().cloned().collect();
 
@@ -456,6 +515,10 @@ impl KeywordSearcher {
             "chunk_index",
             "visibility",
             "allowed_groups",
+            "owner_id",
+            "allowed_users",
+            "denied_groups",
+            "denied_users",
             "tenant_id",
         ];
         let metadata: HashMap<String, Value> = hit
@@ -480,6 +543,10 @@ impl KeywordSearcher {
             chunk_index,
             visibility,
             allowed_groups,
+            owner_id,
+            allowed_users,
+            denied_groups,
+            denied_users,
             highlights,
             metadata,
         })

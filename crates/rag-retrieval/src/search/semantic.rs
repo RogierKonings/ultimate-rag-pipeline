@@ -58,6 +58,22 @@ pub struct SemanticResult {
     #[serde(default)]
     pub allowed_groups: Vec<String>,
 
+    /// Document owner ID.
+    #[serde(default)]
+    pub owner_id: Option<String>,
+
+    /// Individual users with access.
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+
+    /// Groups explicitly denied.
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+
+    /// Users explicitly denied.
+    #[serde(default)]
+    pub denied_users: Vec<String>,
+
     /// Additional metadata from the document.
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
@@ -77,6 +93,10 @@ impl SemanticResult {
             chunk_index: 0,
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
             metadata: HashMap::new(),
         }
     }
@@ -429,6 +449,45 @@ impl SemanticSearcher {
             })
             .unwrap_or_default();
 
+        // Extract owner_id
+        let owner_id = point.get_string("owner_id").map(String::from);
+
+        // Extract allowed_users
+        let allowed_users = point
+            .get_payload("allowed_users")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Extract denied_groups
+        let denied_groups = point
+            .get_payload("denied_groups")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Extract denied_users
+        let denied_users = point
+            .get_payload("denied_users")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
         // Build metadata from remaining payload fields
         let excluded_keys = [
             "document_id",
@@ -438,6 +497,10 @@ impl SemanticSearcher {
             "chunk_index",
             "visibility",
             "allowed_groups",
+            "owner_id",
+            "allowed_users",
+            "denied_groups",
+            "denied_users",
             "tenant_id",
         ];
         let metadata: HashMap<String, Value> = point
@@ -456,6 +519,10 @@ impl SemanticSearcher {
             chunk_index,
             visibility,
             allowed_groups,
+            owner_id,
+            allowed_users,
+            denied_groups,
+            denied_users,
             metadata,
         })
     }

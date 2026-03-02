@@ -379,7 +379,7 @@ async fn execute_search(
 
             if let Ok(Some(mut cached_results)) = cache.get(&cache_key).await {
                 // Re-apply ACL filter on cache hits as a defense-in-depth measure
-                cached_results.retain(|r| user_context.can_access(r.visibility, &r.allowed_groups));
+                cached_results.retain(|r| user_context.can_access_full(&r.to_full_acl()));
                 debug!(result_count = cached_results.len(), "Retrieval cache hit");
                 metrics.total_ms = start_time.elapsed().as_secs_f64() * 1000.0;
                 metrics.cache_hit = true;
@@ -540,6 +540,10 @@ async fn execute_search(
             result.metadata = r.metadata;
             result.visibility = r.visibility;
             result.allowed_groups = r.allowed_groups;
+            result.owner_id = r.owner_id;
+            result.allowed_users = r.allowed_users;
+            result.denied_groups = r.denied_groups;
+            result.denied_users = r.denied_users;
             result
         })
         .collect();
@@ -580,7 +584,7 @@ async fn execute_search(
     let acl_start = Instant::now();
     let before_acl = results.len();
 
-    results.retain(|r| user_context.can_access(r.visibility, &r.allowed_groups));
+    results.retain(|r| user_context.can_access_full(&r.to_full_acl()));
 
     debug_info.acl_filter_latency_ms = acl_start.elapsed().as_secs_f64() * 1000.0;
     debug_info.after_acl = results.len();

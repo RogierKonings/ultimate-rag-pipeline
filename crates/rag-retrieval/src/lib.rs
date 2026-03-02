@@ -206,7 +206,7 @@ pub use error::{Result, RetrievalError};
 
 // Re-export core types
 pub use types::{
-    QueryType, RetrievalDebug, RetrievalMetrics, RetrievalResult, UserContext, Visibility,
+    FullAcl, QueryType, RetrievalDebug, RetrievalMetrics, RetrievalResult, UserContext, Visibility,
 };
 
 // Re-export search types

@@ -55,6 +55,18 @@ pub struct UserContext {
     pub is_admin: bool,
 }
 
+/// Full ACL fields for post-search safety-net filtering.
+/// Used by the post-rerank retain filter and cache-hit revalidation.
+#[derive(Debug, Clone, Default)]
+pub struct FullAcl {
+    pub visibility: Visibility,
+    pub owner_id: Option<String>,
+    pub allowed_groups: Vec<String>,
+    pub allowed_users: Vec<String>,
+    pub denied_groups: Vec<String>,
+    pub denied_users: Vec<String>,
+}
+
 impl UserContext {
     /// Create a new user context.
     #[must_use]
@@ -123,6 +135,42 @@ impl UserContext {
             }
         }
     }
+
+    /// Full ACL check including owner, `allowed_users`, and deny lists.
+    ///
+    /// Unlike `can_access()`, this method handles:
+    /// - Private document ownership via `owner_id`
+    /// - Individual user allow lists
+    /// - Group and user deny lists (deny takes precedence)
+    #[must_use]
+    pub fn can_access_full(&self, acl: &FullAcl) -> bool {
+        if self.is_admin {
+            return true;
+        }
+
+        // Deny lists take precedence
+        let user_id_str = self.user_id.to_string();
+        if acl.denied_users.iter().any(|u| u == &user_id_str) {
+            return false;
+        }
+        if acl.denied_groups.iter().any(|dg| self.groups.contains(dg)) {
+            return false;
+        }
+
+        match acl.visibility {
+            Visibility::Public | Visibility::Tenant => true,
+            Visibility::Private => {
+                // Owner check or explicit user allowlist
+                acl.owner_id.as_deref() == Some(&user_id_str)
+                    || acl.allowed_users.iter().any(|u| u == &user_id_str)
+            }
+            Visibility::Group => {
+                self.groups.iter().any(|g| acl.allowed_groups.contains(g))
+                    || acl.allowed_users.iter().any(|u| u == &user_id_str)
+                    || acl.owner_id.as_deref() == Some(&user_id_str)
+            }
+        }
+    }
 }
 
 /// A single retrieval result with all associated metadata.
@@ -176,6 +224,18 @@ pub struct RetrievalResult {
     /// Groups that can access this document.
     #[serde(default)]
     pub allowed_groups: Vec<String>,
+    /// Document owner ID.
+    #[serde(default)]
+    pub owner_id: Option<String>,
+    /// Individual users with access.
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+    /// Groups explicitly denied.
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+    /// Users explicitly denied.
+    #[serde(default)]
+    pub denied_users: Vec<String>,
 }
 
 impl RetrievalResult {
@@ -198,6 +258,10 @@ impl RetrievalResult {
             highlights: Vec::new(),
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
         }
     }
 
@@ -234,6 +298,19 @@ impl RetrievalResult {
     pub const fn with_rerank_score(mut self, score: f32) -> Self {
         self.rerank_score = Some(score);
         self
+    }
+
+    /// Extract the full ACL fields for post-search filtering.
+    #[must_use]
+    pub fn to_full_acl(&self) -> FullAcl {
+        FullAcl {
+            visibility: self.visibility,
+            owner_id: self.owner_id.clone(),
+            allowed_groups: self.allowed_groups.clone(),
+            allowed_users: self.allowed_users.clone(),
+            denied_groups: self.denied_groups.clone(),
+            denied_users: self.denied_users.clone(),
+        }
     }
 }
 
@@ -559,5 +636,57 @@ mod tests {
 
         let deserialized: Visibility = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized, Visibility::Group);
+    }
+
+    #[test]
+    fn test_can_access_full_allowed_users() {
+        let ctx = UserContext::new(
+            Uuid::parse_str("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").unwrap(),
+            Uuid::new_v4(),
+        );
+        let acl = FullAcl {
+            visibility: Visibility::Private,
+            allowed_users: vec!["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa".to_string()],
+            ..FullAcl::default()
+        };
+        assert!(ctx.can_access_full(&acl));
+    }
+
+    #[test]
+    fn test_can_access_full_denied_user() {
+        let ctx = UserContext::new(
+            Uuid::parse_str("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").unwrap(),
+            Uuid::new_v4(),
+        );
+        let acl = FullAcl {
+            visibility: Visibility::Public,
+            denied_users: vec!["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa".to_string()],
+            ..FullAcl::default()
+        };
+        assert!(!ctx.can_access_full(&acl));
+    }
+
+    #[test]
+    fn test_can_access_full_owner() {
+        let user_id = Uuid::parse_str("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").unwrap();
+        let ctx = UserContext::new(user_id, Uuid::new_v4());
+        let acl = FullAcl {
+            visibility: Visibility::Private,
+            owner_id: Some("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa".to_string()),
+            ..FullAcl::default()
+        };
+        assert!(ctx.can_access_full(&acl));
+    }
+
+    #[test]
+    fn test_can_access_full_denied_group() {
+        let ctx = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
+            .with_groups(vec!["eng".to_string()]);
+        let acl = FullAcl {
+            visibility: Visibility::Public,
+            denied_groups: vec!["eng".to_string()],
+            ..FullAcl::default()
+        };
+        assert!(!ctx.can_access_full(&acl));
     }
 }

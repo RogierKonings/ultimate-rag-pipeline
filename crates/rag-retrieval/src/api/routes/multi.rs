@@ -202,6 +202,10 @@ pub async fn retrieve_multi(
                     result.metadata.clone_from(&r.metadata);
                     result.visibility = r.visibility;
                     result.allowed_groups.clone_from(&r.allowed_groups);
+                    result.owner_id.clone_from(&r.owner_id);
+                    result.allowed_users.clone_from(&r.allowed_users);
+                    result.denied_groups.clone_from(&r.denied_groups);
+                    result.denied_users.clone_from(&r.denied_users);
                     result
                 })
                 .collect();
@@ -251,7 +255,7 @@ pub async fn retrieve_multi(
     // Apply ACL filter and top_k limit
     let final_results: Vec<_> = results_for_acl
         .into_iter()
-        .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+        .filter(|r| user_context.can_access_full(&r.to_full_acl()))
         .take(request.top_k)
         .collect();
 
@@ -678,7 +682,7 @@ mod tests {
 
         let filtered: Vec<_> = aggregated
             .into_iter()
-            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+            .filter(|r| user_context.can_access_full(&r.to_full_acl()))
             .collect();
 
         // chunk2 should be filtered out (group restriction, user not in group)
@@ -708,7 +712,7 @@ mod tests {
         assert_eq!(
             aggregated
                 .into_iter()
-                .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+                .filter(|r| user_context.can_access_full(&r.to_full_acl()))
                 .count(),
             2
         );
@@ -735,7 +739,7 @@ mod tests {
 
         let filtered: Vec<_> = aggregated
             .into_iter()
-            .filter(|r| user_context.can_access(r.visibility, &r.allowed_groups))
+            .filter(|r| user_context.can_access_full(&r.to_full_acl()))
             .collect();
 
         // Only engineering doc should pass

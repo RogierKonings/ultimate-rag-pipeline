@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::fusion::{FusedResult, FusionMethod};
-use crate::types::Visibility;
+use crate::types::{FullAcl, Visibility};
 
 /// A hybrid search result with enriched content data.
 ///
@@ -64,6 +64,22 @@ pub struct HybridSearchResult {
     #[serde(default)]
     pub allowed_groups: Vec<String>,
 
+    /// Document owner ID.
+    #[serde(default)]
+    pub owner_id: Option<String>,
+
+    /// Individual users with access.
+    #[serde(default)]
+    pub allowed_users: Vec<String>,
+
+    /// Groups explicitly denied.
+    #[serde(default)]
+    pub denied_groups: Vec<String>,
+
+    /// Users explicitly denied.
+    #[serde(default)]
+    pub denied_users: Vec<String>,
+
     /// Highlighted text fragments from keyword search.
     #[serde(default)]
     pub highlights: Vec<String>,
@@ -91,6 +107,10 @@ impl HybridSearchResult {
             chunk_index: 0,
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
             highlights: Vec::new(),
             metadata: HashMap::new(),
         }
@@ -147,6 +167,34 @@ impl HybridSearchResult {
         self
     }
 
+    /// Set the owner ID.
+    #[must_use]
+    pub fn with_owner_id(mut self, owner_id: Option<String>) -> Self {
+        self.owner_id = owner_id;
+        self
+    }
+
+    /// Set the allowed users.
+    #[must_use]
+    pub fn with_allowed_users(mut self, users: Vec<String>) -> Self {
+        self.allowed_users = users;
+        self
+    }
+
+    /// Set the denied groups.
+    #[must_use]
+    pub fn with_denied_groups(mut self, groups: Vec<String>) -> Self {
+        self.denied_groups = groups;
+        self
+    }
+
+    /// Set the denied users.
+    #[must_use]
+    pub fn with_denied_users(mut self, users: Vec<String>) -> Self {
+        self.denied_users = users;
+        self
+    }
+
     /// Set the highlights.
     #[must_use]
     pub fn with_highlights(mut self, highlights: Vec<String>) -> Self {
@@ -177,6 +225,19 @@ impl HybridSearchResult {
             (None, None) => None,
         }
     }
+
+    /// Extract the full ACL fields for post-search filtering.
+    #[must_use]
+    pub fn to_full_acl(&self) -> FullAcl {
+        FullAcl {
+            visibility: self.visibility,
+            owner_id: self.owner_id.clone(),
+            allowed_groups: self.allowed_groups.clone(),
+            allowed_users: self.allowed_users.clone(),
+            denied_groups: self.denied_groups.clone(),
+            denied_users: self.denied_users.clone(),
+        }
+    }
 }
 
 impl From<FusedResult<Uuid>> for HybridSearchResult {
@@ -195,6 +256,10 @@ impl From<FusedResult<Uuid>> for HybridSearchResult {
             chunk_index: 0,
             visibility: Visibility::default(),
             allowed_groups: Vec::new(),
+            owner_id: None,
+            allowed_users: Vec::new(),
+            denied_groups: Vec::new(),
+            denied_users: Vec::new(),
             highlights: Vec::new(),
             metadata: HashMap::new(),
         }
