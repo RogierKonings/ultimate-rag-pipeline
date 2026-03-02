@@ -81,6 +81,11 @@ impl JobQueue {
         format!("{}:dlq", self.prefix)
     }
 
+    /// Get the notification list key used to wake blocking dequeue callers.
+    fn notify_key(&self) -> String {
+        format!("{}:notify", self.prefix)
+    }
+
     /// Enqueue a job.
     ///
     /// # Errors
@@ -99,18 +104,28 @@ impl JobQueue {
         let score = job.created_at as f64;
         let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
 
+        // Wake any workers that are blocking on dequeue
+        let notify_key = self.notify_key();
+        let _: () = conn.lpush(&notify_key, "1").await?;
+
         Ok(())
     }
 
-    /// Dequeue a job (non-blocking).
+    /// Dequeue a job, blocking up to `timeout`.
+    ///
+    /// Checks all priority queues for ready jobs (those with score <= now).
+    /// If no ready jobs exist, blocks efficiently using Redis `BLPOP` on a
+    /// notification list, waking either when a new job is enqueued or when
+    /// the next delayed job becomes ready (whichever comes first).
     ///
     /// # Errors
     ///
     /// Returns an error if Redis operations fail.
+    #[allow(clippy::too_many_lines)]
     pub async fn dequeue(&self, timeout: Duration) -> Result<Option<Job>, QueueError> {
         let mut conn = self.conn.clone();
+        let deadline = std::time::Instant::now() + timeout;
 
-        // Check queues in priority order (highest first)
         let priorities = [
             JobPriority::Critical,
             JobPriority::High,
@@ -132,55 +147,123 @@ impl JobQueue {
             ",
         );
 
-        let now_ms = chrono::Utc::now().timestamp_millis();
+        // Lua script that returns the minimum score across the given sorted-set
+        // keys. Returns nil when all sets are empty.
+        let min_score_script = Script::new(
+            r"
+            local min = nil
+            for i = 1, #KEYS do
+                local members = redis.call('ZRANGE', KEYS[i], 0, 0, 'WITHSCORES')
+                if #members == 2 then
+                    local score = tonumber(members[2])
+                    if min == nil or score < min then
+                        min = score
+                    end
+                end
+            end
+            if min then
+                return tostring(min)
+            end
+            return nil
+            ",
+        );
 
-        for priority in priorities {
-            let queue_key = self.queue_key(priority);
+        loop {
+            let now_ms = chrono::Utc::now().timestamp_millis();
 
-            // Atomically pop oldest job only if its score (timestamp) <= now
-            let result: Option<String> = dequeue_script
-                .key(&queue_key)
-                .arg(now_ms)
-                .invoke_async(&mut conn)
-                .await?;
+            // Check all priority queues for a ready job
+            for priority in priorities {
+                let queue_key = self.queue_key(priority);
 
-            if let Some(job_id_str) = result {
-                let job_id = Uuid::parse_str(&job_id_str).map_err(|e| {
-                    QueueError::Redis(redis::RedisError::from((
-                        redis::ErrorKind::UnexpectedReturnType,
-                        "Invalid UUID",
-                        e.to_string(),
-                    )))
-                })?;
+                let result: Option<String> = dequeue_script
+                    .key(&queue_key)
+                    .arg(now_ms)
+                    .invoke_async(&mut conn)
+                    .await?;
 
-                // Get job data
-                let job_key = self.job_key(job_id);
-                let job_json: Option<String> = conn.get(&job_key).await?;
+                if let Some(job_id_str) = result {
+                    let job_id = Uuid::parse_str(&job_id_str).map_err(|e| {
+                        QueueError::Redis(redis::RedisError::from((
+                            redis::ErrorKind::UnexpectedReturnType,
+                            "Invalid UUID",
+                            e.to_string(),
+                        )))
+                    })?;
 
-                if let Some(json) = job_json {
-                    let mut job: Job = serde_json::from_str(&json)?;
+                    let job_key = self.job_key(job_id);
+                    let job_json: Option<String> = conn.get(&job_key).await?;
 
-                    // Move to processing set
-                    let processing_key = self.processing_key();
-                    let now = chrono::Utc::now().timestamp_millis() as f64;
-                    let _: () = conn.zadd(&processing_key, job_id.to_string(), now).await?;
+                    if let Some(json) = job_json {
+                        let mut job: Job = serde_json::from_str(&json)?;
 
-                    // Update job status
-                    job.mark_started();
-                    let updated_json = serde_json::to_string(&job)?;
-                    let _: () = conn.set(&job_key, updated_json).await?;
+                        let processing_key = self.processing_key();
+                        let now = chrono::Utc::now().timestamp_millis() as f64;
+                        let _: () = conn.zadd(&processing_key, job_id.to_string(), now).await?;
 
-                    return Ok(Some(job));
+                        job.mark_started();
+                        let updated_json = serde_json::to_string(&job)?;
+                        let _: () = conn.set(&job_key, updated_json).await?;
+
+                        return Ok(Some(job));
+                    }
                 }
             }
-        }
 
-        // No jobs available, wait a bit if timeout specified
-        if !timeout.is_zero() {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
+            // No ready jobs — check remaining timeout
+            let now_instant = std::time::Instant::now();
+            if now_instant >= deadline {
+                return Ok(None);
+            }
+            let remaining = deadline - now_instant;
 
-        Ok(None)
+            // Peek at the earliest delayed job across all priority queues
+            let queue_keys: Vec<String> = priorities.iter().map(|p| self.queue_key(*p)).collect();
+            let mut cmd = redis::cmd("EVAL");
+            cmd.arg(min_score_script.get_hash());
+            // EVALSHA is attempted automatically by the Script helper, but here
+            // we need to pass multiple KEYS so we build the command manually.
+            // Fall back to Script invocation with a dynamic key count.
+            let earliest_score: Option<String> = {
+                let mut inv = min_score_script.prepare_invoke();
+                for k in &queue_keys {
+                    inv.key(k);
+                }
+                inv.invoke_async(&mut conn).await?
+            };
+
+            // Calculate how long to wait
+            let wait_duration = if let Some(score_str) = earliest_score {
+                if let Ok(score) = score_str.parse::<f64>() {
+                    let now_ms_f = chrono::Utc::now().timestamp_millis() as f64;
+                    let delay_ms = (score - now_ms_f).max(0.0);
+                    #[allow(clippy::cast_possible_truncation)]
+                    // delay_ms is non-negative and bounded
+                    let delay = Duration::from_millis(delay_ms as u64);
+                    remaining.min(delay)
+                } else {
+                    remaining
+                }
+            } else {
+                // Queues are completely empty — wait the full remaining timeout
+                remaining
+            };
+
+            // Block-wait on the notification list. A new enqueue will wake us
+            // via LPUSH, or we'll time out and re-check for delayed jobs.
+            if wait_duration.is_zero() {
+                // Delayed job is now ready — loop immediately
+                continue;
+            }
+
+            let notify_key = self.notify_key();
+            // BLPOP timeout is in seconds (fractional since Redis 6.0)
+            let wait_secs = wait_duration.as_secs_f64();
+            let _: Option<(String, String)> = redis::cmd("BLPOP")
+                .arg(&notify_key)
+                .arg(wait_secs)
+                .query_async(&mut conn)
+                .await?;
+        }
     }
 
     /// Complete a job (remove from processing).

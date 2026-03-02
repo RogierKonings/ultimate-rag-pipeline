@@ -101,7 +101,7 @@ async fn test_full_ingestion_pipeline() {
     let embedding_config = EmbeddingClientConfig::new(mock_server.uri());
     let embedding_client = EmbeddingClient::new(embedding_config).unwrap();
 
-    let texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
+    let texts: Vec<&str> = chunks.iter().map(|c| c.content.as_str()).collect();
     let (embeddings, tokens) = embedding_client.embed_batch(&texts).await.unwrap();
 
     assert_eq!(embeddings.len(), chunks.len());
@@ -142,7 +142,7 @@ async fn test_embedding_client_retries_on_server_error() {
         .with_retry_delay_ms(10); // Fast for tests
     let client = EmbeddingClient::new(config).unwrap();
 
-    let result = client.embed_batch(&["test text".to_string()]).await;
+    let result = client.embed_batch(&["test text"]).await;
     assert!(result.is_ok());
 }
 

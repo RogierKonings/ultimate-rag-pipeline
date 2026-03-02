@@ -588,7 +588,10 @@ impl VideoPipeline {
         );
 
         for (batch_idx, batch) in chunks.chunks(batch_size).enumerate() {
-            let texts: Vec<String> = batch.iter().map(|chunk| chunk.fused_text.clone()).collect();
+            let texts: Vec<&str> = batch
+                .iter()
+                .map(|chunk| chunk.fused_text.as_str())
+                .collect();
 
             match client.embed_batch(&texts).await {
                 Ok((batch_embeddings, token_count)) => {

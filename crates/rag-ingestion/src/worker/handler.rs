@@ -211,7 +211,7 @@ impl IngestionJobHandler {
 
         // Generate embeddings if client is available
         let embeddings = if let Some(ref client) = self.embedding_client {
-            let texts: Vec<String> = chunks.iter().map(|c| c.content.clone()).collect();
+            let texts: Vec<&str> = chunks.iter().map(|c| c.content.as_str()).collect();
             match client.embed_batch(&texts).await {
                 Ok((embeddings, _tokens)) => {
                     info!(embeddings = embeddings.len(), "Embeddings generated");
@@ -274,7 +274,7 @@ impl IngestionJobHandler {
 
             let base_chunk_metadata = doc_metadata;
             let indexed_chunks: Vec<IndexedChunk> = chunks
-                .iter()
+                .into_iter()
                 .enumerate()
                 .map(|(i, chunk)| {
                     let embedding = embeddings
@@ -318,7 +318,7 @@ impl IngestionJobHandler {
                         chunk_id: ChunkId::new(),
                         document_id,
                         tenant_id: tenant_id_typed,
-                        content: chunk.content.clone(),
+                        content: chunk.content,
                         chunk_index: chunk.chunk_index,
                         embedding,
                         metadata,
@@ -549,20 +549,19 @@ impl IngestionJobHandler {
                 continue;
             }
 
-            let texts: Vec<String> = chunks.iter().map(|chunk| chunk.content.clone()).collect();
+            let texts: Vec<&str> = chunks.iter().map(|chunk| chunk.content.as_str()).collect();
             let mut embeddings: Vec<Vec<f32>> = Vec::with_capacity(texts.len());
 
             for text_batch in texts.chunks(batch_size) {
-                let batch_texts: Vec<String> = text_batch.to_vec();
-                match embedding_client.embed_batch(&batch_texts).await {
+                match embedding_client.embed_batch(text_batch).await {
                     Ok((batch_embeddings, _tokens)) => {
-                        if batch_embeddings.len() != batch_texts.len() {
+                        if batch_embeddings.len() != text_batch.len() {
                             self.job_tracker.add_error(
                                 &tracker_job_id,
                                 format!(
                                     "Embedding size mismatch for {}: expected {}, got {}",
                                     document_uuid,
-                                    batch_texts.len(),
+                                    text_batch.len(),
                                     batch_embeddings.len()
                                 ),
                             );

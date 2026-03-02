@@ -33,7 +33,7 @@ struct Usage {
 /// Request to the embedding service.
 #[derive(Debug, Serialize)]
 struct EmbeddingRequest<'a> {
-    input: &'a [String],
+    input: &'a [&'a str],
     model: &'a str,
 }
 
@@ -70,7 +70,7 @@ impl EmbeddingClient {
     ///
     /// Returns an error if the embedding request fails after all retries.
     #[instrument(skip(self, texts), fields(batch_size = texts.len()))]
-    pub async fn embed_batch(&self, texts: &[String]) -> Result<(Vec<Vec<f32>>, u32)> {
+    pub async fn embed_batch(&self, texts: &[&str]) -> Result<(Vec<Vec<f32>>, u32)> {
         if texts.is_empty() {
             return Ok((vec![], 0));
         }
@@ -88,7 +88,7 @@ impl EmbeddingClient {
     }
 
     /// Send the actual HTTP request to the embedding service.
-    async fn send_request(&self, texts: &[String]) -> Result<(Vec<Vec<f32>>, u32)> {
+    async fn send_request(&self, texts: &[&str]) -> Result<(Vec<Vec<f32>>, u32)> {
         let request = EmbeddingRequest {
             input: texts,
             model: &self.config.model,
@@ -154,7 +154,7 @@ impl EmbeddingClient {
     ///
     /// This method does not return errors; failures are mapped to `false`.
     pub async fn health_check(&self) -> Result<bool> {
-        match self.embed_batch(&["health check".to_string()]).await {
+        match self.embed_batch(&["health check"]).await {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
@@ -191,7 +191,7 @@ mod tests {
         let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
-        let texts = vec!["hello".to_string(), "world".to_string()];
+        let texts: Vec<&str> = vec!["hello", "world"];
         let (embeddings, tokens) = client.embed_batch(&texts).await.unwrap();
 
         assert_eq!(embeddings.len(), 2);
@@ -226,7 +226,7 @@ mod tests {
             .with_retry_delay_ms(10); // Fast for tests
         let client = EmbeddingClient::new(config).unwrap();
 
-        let result = client.embed_batch(&["test".to_string()]).await;
+        let result = client.embed_batch(&["test"]).await;
         assert!(result.is_err());
     }
 
@@ -244,7 +244,7 @@ mod tests {
         let config = EmbeddingClientConfig::new(mock_server.uri()).with_max_retries(3);
         let client = EmbeddingClient::new(config).unwrap();
 
-        let result = client.embed_batch(&["test".to_string()]).await;
+        let result = client.embed_batch(&["test"]).await;
         assert!(result.is_err());
     }
 
@@ -269,7 +269,7 @@ mod tests {
         let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
-        let texts = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let texts: Vec<&str> = vec!["a", "b", "c"];
         let (embeddings, tokens) = client.embed_batch(&texts).await.unwrap();
 
         assert_eq!(embeddings.len(), 3);
@@ -297,7 +297,7 @@ mod tests {
         let config = EmbeddingClientConfig::new(mock_server.uri());
         let client = EmbeddingClient::new(config).unwrap();
 
-        let texts = vec!["hello".to_string()];
+        let texts: Vec<&str> = vec!["hello"];
         let (embeddings, tokens) = client.embed_batch(&texts).await.unwrap();
 
         assert_eq!(embeddings.len(), 1);
