@@ -17,7 +17,9 @@ pub mod video;
 
 // Re-export commonly used types at crate root
 pub use api_error::{ApiError, ApiResult, ErrorBody, ErrorResponse};
-pub use document::{AclMetadata, Chunk, ChunkingStrategy, Document, IndexStatus, SourceType, Visibility};
+pub use document::{
+    AclMetadata, Chunk, ChunkingStrategy, Document, IndexStatus, SourceType, Visibility,
+};
 pub use embedding::Embedding;
 pub use error::{Error, Result};
 pub use health::{ComponentHealth, HealthResponse, LivenessResponse, ReadinessResponse};

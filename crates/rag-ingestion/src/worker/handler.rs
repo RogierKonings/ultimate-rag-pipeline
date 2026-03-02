@@ -2,7 +2,9 @@
 
 use async_trait::async_trait;
 use rag_database::{ChunkRepository, DatabasePool, DocumentRepository};
-use rag_types::{AclMetadata, ChunkId, ChunkingStrategy as ChunkingStrategyType, DocumentId, TenantId};
+use rag_types::{
+    AclMetadata, ChunkId, ChunkingStrategy as ChunkingStrategyType, DocumentId, TenantId,
+};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;

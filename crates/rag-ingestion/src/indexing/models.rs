@@ -266,12 +266,8 @@ mod tests {
             allowed_groups: vec!["eng".to_string()],
             ..AclMetadata::default()
         };
-        let doc = DocumentRecord::new(
-            DocumentId::new(),
-            TenantId::new(),
-            "test.pdf".to_string(),
-        )
-        .with_acl(acl.clone());
+        let doc = DocumentRecord::new(DocumentId::new(), TenantId::new(), "test.pdf".to_string())
+            .with_acl(acl.clone());
         assert_eq!(doc.acl, acl);
     }
 

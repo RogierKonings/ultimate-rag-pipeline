@@ -680,8 +680,8 @@ mod tests {
 
     #[test]
     fn test_can_access_full_denied_group() {
-        let ctx = UserContext::new(Uuid::new_v4(), Uuid::new_v4())
-            .with_groups(vec!["eng".to_string()]);
+        let ctx =
+            UserContext::new(Uuid::new_v4(), Uuid::new_v4()).with_groups(vec!["eng".to_string()]);
         let acl = FullAcl {
             visibility: Visibility::Public,
             denied_groups: vec!["eng".to_string()],
