@@ -46,8 +46,8 @@ impl SearchClient {
 
         // Disable certificate verification only when explicitly requested
         if config.danger_accept_invalid_certs {
-            transport_builder = transport_builder
-                .cert_validation(opensearch::cert::CertificateValidation::None);
+            transport_builder =
+                transport_builder.cert_validation(opensearch::cert::CertificateValidation::None);
         }
 
         let transport = transport_builder
@@ -257,8 +257,7 @@ impl SearchClient {
                 for item in items {
                     if let Some(action) = item.get("index").or_else(|| item.get("create")) {
                         if let Some(error) = action.get("error") {
-                            let reason =
-                                error["reason"].as_str().unwrap_or("unknown reason");
+                            let reason = error["reason"].as_str().unwrap_or("unknown reason");
                             let doc_id = action["_id"].as_str().unwrap_or("unknown");
                             error_details.push(format!("doc {doc_id}: {reason}"));
                         }

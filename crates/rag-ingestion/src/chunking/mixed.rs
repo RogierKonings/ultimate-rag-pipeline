@@ -174,7 +174,11 @@ impl MixedContentChunker {
         let mut in_code_fence = false;
 
         let flush = |kind: ZoneKind, lines: &[&str]| -> Zone {
-            Zone { kind, text: lines.join("\n"), table: None }
+            Zone {
+                kind,
+                text: lines.join("\n"),
+                table: None,
+            }
         };
 
         for line in text.lines() {
@@ -250,9 +254,7 @@ impl MixedContentChunker {
         zones
             .into_iter()
             .map(|mut z| {
-                if z.kind == ZoneKind::Prose
-                    && QAChunker::detect_pairs(&z.text).len() >= 2
-                {
+                if z.kind == ZoneKind::Prose && QAChunker::detect_pairs(&z.text).len() >= 2 {
                     z.kind = ZoneKind::QA;
                 }
                 z
@@ -273,8 +275,7 @@ impl MixedContentChunker {
         let mut all_chunks: Vec<Chunk> = Vec::new();
 
         for (zone_idx, zone) in zones.into_iter().enumerate() {
-            let zone_chunks =
-                self.chunk_zone(&zone, zone_idx, document_id, base_metadata)?;
+            let zone_chunks = self.chunk_zone(&zone, zone_idx, document_id, base_metadata)?;
             all_chunks.extend(zone_chunks);
         }
 

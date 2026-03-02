@@ -116,10 +116,8 @@ pub async fn liveness() -> Json<LivenessResponse> {
 /// down.
 pub async fn readiness(State(state): State<Arc<AppState>>) -> ApiResult<Json<ReadinessResponse>> {
     // Check embedding and search backends in parallel
-    let (embedding_healthy, (qdrant_healthy, opensearch_healthy)) = tokio::join!(
-        state.embedding.health_check(),
-        quick_health_check(&state),
-    );
+    let (embedding_healthy, (qdrant_healthy, opensearch_healthy)) =
+        tokio::join!(state.embedding.health_check(), quick_health_check(&state),);
 
     let search_ready = qdrant_healthy || opensearch_healthy;
 

@@ -91,7 +91,11 @@ impl SemanticChunker {
             .map_err(|e| Error::Config(format!("Failed to load tokenizer: {e}")))?;
 
         let base_config = ChunkingConfig::from(config.clone());
-        Ok(Self { config, base_config, tokenizer })
+        Ok(Self {
+            config,
+            base_config,
+            tokenizer,
+        })
     }
 
     /// Count tokens in text.

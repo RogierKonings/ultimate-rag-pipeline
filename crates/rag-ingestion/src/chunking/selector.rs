@@ -209,8 +209,7 @@ pub fn select_strategy(profile: &DocumentProfile) -> StrategySelection {
 
     // 6. Parser-produced structured headings.
     if profile.block_count > 0 && profile.structured_heading_count >= 3 {
-        let heading_ratio =
-            profile.structured_heading_count as f64 / profile.block_count as f64;
+        let heading_ratio = profile.structured_heading_count as f64 / profile.block_count as f64;
         if heading_ratio >= 0.05 {
             return StrategySelection {
                 strategy: ChunkingStrategyType::Hierarchical,
@@ -349,9 +348,7 @@ fn estimate_prose_fraction(text: &str) -> f64 {
 ///
 /// Returns `(block_count, structured_heading_count, code_block_count,
 /// table_block_count, block_type_variance)`.
-fn analyze_blocks(
-    blocks: &[crate::parsers::ContentBlock],
-) -> (usize, usize, usize, usize, f64) {
+fn analyze_blocks(blocks: &[crate::parsers::ContentBlock]) -> (usize, usize, usize, usize, f64) {
     let block_count = blocks.len();
 
     let structured_heading_count = blocks

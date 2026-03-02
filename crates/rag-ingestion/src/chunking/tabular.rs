@@ -286,7 +286,11 @@ impl TabularChunker {
             return None;
         }
 
-        Some(TableContent { headers, rows, caption: None })
+        Some(TableContent {
+            headers,
+            rows,
+            caption: None,
+        })
     }
 
     /// Parse cells from a `| cell | cell |` Markdown row.
@@ -477,10 +481,17 @@ mod tests {
             .unwrap();
 
         // Must produce multiple chunks.
-        assert!(chunks.len() > 1, "expected multiple chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() > 1,
+            "expected multiple chunks, got {}",
+            chunks.len()
+        );
         // Every chunk must carry the header.
         for chunk in &chunks {
-            assert!(chunk.content.contains("Item | Value"), "chunk missing header");
+            assert!(
+                chunk.content.contains("Item | Value"),
+                "chunk missing header"
+            );
         }
     }
 

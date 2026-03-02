@@ -11,15 +11,14 @@ use uuid::Uuid;
 
 use crate::api::jobs::JobTracker;
 use crate::api::types::JobStatus;
+use crate::chunking::{analyze_document, select_strategy};
 use crate::chunking::{
-    Chunk as TextChunk, ChunkingConfig, ChunkingStrategy, HierarchicalChunker,
-    MixedContentChunker, QAChunker, RecursiveCharacterSplitter, SemanticChunker,
-    SemanticChunkerConfig, TabularChunker,
+    Chunk as TextChunk, ChunkingConfig, ChunkingStrategy, HierarchicalChunker, MixedContentChunker,
+    QAChunker, RecursiveCharacterSplitter, SemanticChunker, SemanticChunkerConfig, TabularChunker,
 };
 use crate::connectors::{Connector, S3Config, S3Connector};
 use crate::embedding::EmbeddingClient;
 use crate::indexing::{DocumentRecord, IndexCoordinator, IndexedChunk};
-use crate::chunking::{analyze_document, select_strategy};
 use crate::parsers::{DocxParser, HtmlParser, MarkdownParser, ParsedDocument, Parser, PdfParser};
 
 use super::job::Job;
@@ -241,9 +240,8 @@ impl IngestionJobHandler {
                 .unwrap_or_else(Uuid::new_v4);
             let document_id = DocumentId::from_uuid(document_uuid);
             // Parse tenant_id as UUID — reject invalid values instead of silently generating one
-            let tenant_uuid = Uuid::parse_str(tenant_id).map_err(|_| {
-                format!("tenant_id is not a valid UUID: '{tenant_id}'")
-            })?;
+            let tenant_uuid = Uuid::parse_str(tenant_id)
+                .map_err(|_| format!("tenant_id is not a valid UUID: '{tenant_id}'"))?;
             let tenant_id_typed = TenantId::from_uuid(tenant_uuid);
 
             let document_title = payload
@@ -289,7 +287,9 @@ impl IngestionJobHandler {
                         "chunking_strategy".to_string(),
                         Value::String(
                             match chunking_strategy {
-                                ChunkingStrategyType::Auto | ChunkingStrategyType::Recursive => "recursive",
+                                ChunkingStrategyType::Auto | ChunkingStrategyType::Recursive => {
+                                    "recursive"
+                                }
                                 ChunkingStrategyType::Semantic => "semantic",
                                 ChunkingStrategyType::Hierarchical => "hierarchical",
                                 ChunkingStrategyType::Tabular => "tabular",
@@ -475,9 +475,8 @@ impl IngestionJobHandler {
         self.job_tracker
             .update_progress(&tracker_job_id, 0, total_docs, "reembedding");
 
-        let tenant_uuid = Uuid::parse_str(&tenant_id).map_err(|_| {
-            format!("tenant_id is not a valid UUID: '{tenant_id}'")
-        })?;
+        let tenant_uuid = Uuid::parse_str(&tenant_id)
+            .map_err(|_| format!("tenant_id is not a valid UUID: '{tenant_id}'"))?;
         let tenant_typed = TenantId::from_uuid(tenant_uuid);
 
         let mut processed_docs = 0u32;
@@ -694,7 +693,11 @@ impl IngestionJobHandler {
     }
 
     /// Read document from S3/MinIO storage.
-    async fn read_s3_document(&self, source_id: &str, payload: &Value) -> Result<ParsedDocument, String> {
+    async fn read_s3_document(
+        &self,
+        source_id: &str,
+        payload: &Value,
+    ) -> Result<ParsedDocument, String> {
         let source_config = payload.get("source_config");
 
         // Extract S3 connection details (support both naming conventions)
@@ -787,11 +790,7 @@ impl IngestionJobHandler {
 
     /// Parse bytes into a [`ParsedDocument`] without sanitization.
     #[allow(clippy::unused_self)] // kept as method for handler API consistency
-    fn parse_document_raw(
-        &self,
-        bytes: &[u8],
-        extension: &str,
-    ) -> Result<ParsedDocument, String> {
+    fn parse_document_raw(&self, bytes: &[u8], extension: &str) -> Result<ParsedDocument, String> {
         match extension {
             "pdf" => {
                 let parser = PdfParser::default();
@@ -898,8 +897,12 @@ impl IngestionJobHandler {
         }
 
         // Auto-select based on document analysis
-        let profile =
-            analyze_document(&parsed_doc.text, Some(parsed_doc), file_extension, source_type);
+        let profile = analyze_document(
+            &parsed_doc.text,
+            Some(parsed_doc),
+            file_extension,
+            source_type,
+        );
         let selection = select_strategy(&profile);
 
         info!(
@@ -1191,7 +1194,6 @@ mod tests {
         let strategy = handler.resolve_chunking_strategy(&payload, &doc, "txt", "file");
         assert_eq!(strategy, ChunkingStrategyType::Semantic);
     }
-
 
     #[test]
     fn test_chunk_content_supports_semantic_strategy() {

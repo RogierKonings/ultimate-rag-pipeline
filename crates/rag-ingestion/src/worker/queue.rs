@@ -57,9 +57,7 @@ impl JobQueue {
     /// Returns an error if the Redis PING command fails.
     pub async fn ping(&self) -> Result<(), QueueError> {
         let mut conn = self.conn.clone();
-        redis::cmd("PING")
-            .query_async::<String>(&mut conn)
-            .await?;
+        redis::cmd("PING").query_async::<String>(&mut conn).await?;
         Ok(())
     }
 

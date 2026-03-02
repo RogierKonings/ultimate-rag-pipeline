@@ -327,7 +327,9 @@ pub async fn start_reembed(
 ) -> ApiResult<(StatusCode, Json<ReembedResponse>)> {
     let tenant_id = request.target_scope.tenant_id.clone();
     if tenant_id.is_empty() {
-        return Err(ApiError::bad_request("target_scope.tenant_id must not be empty"));
+        return Err(ApiError::bad_request(
+            "target_scope.tenant_id must not be empty",
+        ));
     }
 
     let job_id = state.job_tracker.create_job(tenant_id.clone());

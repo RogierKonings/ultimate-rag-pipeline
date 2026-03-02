@@ -122,10 +122,7 @@ impl QAChunker {
                     let content = if i == 0 {
                         format!("{}\n{}", pair.question, answer_chunk.content)
                     } else {
-                        format!(
-                            "{} (continued)\n{}",
-                            pair.question, answer_chunk.content
-                        )
+                        format!("{} (continued)\n{}", pair.question, answer_chunk.content)
                     };
                     let mut meta = base_metadata.clone();
                     meta.extend(answer_chunk.metadata);
@@ -248,7 +245,10 @@ fn detect_explicit_qa(text: &str) -> Vec<QAPair> {
             if let Some(q) = current_question.take() {
                 let answer = answer_lines.join(" ").trim().to_string();
                 if !answer.is_empty() {
-                    pairs.push(QAPair { question: q, answer });
+                    pairs.push(QAPair {
+                        question: q,
+                        answer,
+                    });
                 }
                 answer_lines.clear();
             }
@@ -272,7 +272,10 @@ fn detect_explicit_qa(text: &str) -> Vec<QAPair> {
     if let Some(q) = current_question {
         let answer = answer_lines.join(" ").trim().to_string();
         if !answer.is_empty() {
-            pairs.push(QAPair { question: q, answer });
+            pairs.push(QAPair {
+                question: q,
+                answer,
+            });
         }
     }
 
@@ -294,7 +297,10 @@ fn detect_heading_questions(text: &str) -> Vec<QAPair> {
                 if let Some(q) = current_question.take() {
                     let answer = answer_lines.join(" ").trim().to_string();
                     if !answer.is_empty() {
-                        pairs.push(QAPair { question: q, answer });
+                        pairs.push(QAPair {
+                            question: q,
+                            answer,
+                        });
                     }
                     answer_lines.clear();
                 }
@@ -304,7 +310,10 @@ fn detect_heading_questions(text: &str) -> Vec<QAPair> {
                 if let Some(q) = current_question.take() {
                     let answer = answer_lines.join(" ").trim().to_string();
                     if !answer.is_empty() {
-                        pairs.push(QAPair { question: q, answer });
+                        pairs.push(QAPair {
+                            question: q,
+                            answer,
+                        });
                     }
                     answer_lines.clear();
                 }
@@ -318,7 +327,10 @@ fn detect_heading_questions(text: &str) -> Vec<QAPair> {
     if let Some(q) = current_question {
         let answer = answer_lines.join(" ").trim().to_string();
         if !answer.is_empty() {
-            pairs.push(QAPair { question: q, answer });
+            pairs.push(QAPair {
+                question: q,
+                answer,
+            });
         }
     }
 
@@ -491,7 +503,8 @@ mod tests {
 
     #[test]
     fn test_detect_pairs_uses_heading_fallback() {
-        let text = "## Is Rust fast?\nYes, it is.\n## Is Rust safe?\nYes.\n## Is Rust popular?\nGrowing.";
+        let text =
+            "## Is Rust fast?\nYes, it is.\n## Is Rust safe?\nYes.\n## Is Rust popular?\nGrowing.";
         let pairs = QAChunker::detect_pairs(text);
         assert_eq!(pairs.len(), 3);
     }
