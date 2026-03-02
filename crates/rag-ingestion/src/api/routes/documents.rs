@@ -46,6 +46,11 @@ fn default_page_size() -> i32 {
     20
 }
 
+/// Normalize optional query parameters by trimming whitespace and discarding empty values.
+fn normalize_optional_query<'a>(value: Option<&'a str>) -> Option<&'a str> {
+    value.map(str::trim).filter(|v| !v.is_empty())
+}
+
 /// Query parameters for `sync_status`.
 #[derive(Debug, Deserialize)]
 pub struct SyncStatusQuery {
@@ -129,9 +134,9 @@ pub async fn list_documents(
 
     let repo = DocumentRepository::new(database.inner().clone());
 
-    let source_type = query.source_type.as_deref();
-    let status = query.status.as_deref();
-    let search = query.search.as_deref();
+    let source_type = normalize_optional_query(query.source_type.as_deref());
+    let status = normalize_optional_query(query.status.as_deref());
+    let search = normalize_optional_query(query.search.as_deref());
 
     // Get total count for pagination (with filters)
     let total = repo
@@ -786,6 +791,14 @@ mod tests {
         let result = reindex_document(State(state), Path(doc_id), Query(query), Json(None)).await;
         // Should fail because database is not configured in test state
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_normalize_optional_query() {
+        assert_eq!(normalize_optional_query(None), None);
+        assert_eq!(normalize_optional_query(Some("")), None);
+        assert_eq!(normalize_optional_query(Some("   ")), None);
+        assert_eq!(normalize_optional_query(Some(" pending ")), Some("pending"));
     }
 
     #[tokio::test]
