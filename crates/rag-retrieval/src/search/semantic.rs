@@ -371,8 +371,9 @@ impl SemanticSearcher {
         // Add visibility/ACL filter if not admin
         if !user_context.is_admin {
             // For non-admin users, we need to filter by visibility and groups
-            // This creates a filter: (visibility = public) OR (user in allowed_groups)
+            // This creates a filter: (visibility = public) OR (visibility = tenant) OR (user in allowed_groups)
             builder = builder.should(create_visibility_condition("public"));
+            builder = builder.should(create_visibility_condition("tenant"));
 
             if !user_context.groups.is_empty() {
                 // Allow documents where user is in allowed_groups

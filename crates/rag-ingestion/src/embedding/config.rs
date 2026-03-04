@@ -32,6 +32,10 @@ pub struct EmbeddingClientConfig {
     /// Base delay between retries in milliseconds (default: 1000).
     #[serde(default = "default_retry_delay_ms")]
     pub retry_delay_ms: u64,
+
+    /// Maximum number of texts per embedding request (default: 32).
+    #[serde(default = "default_max_batch_size")]
+    pub max_batch_size: usize,
 }
 
 fn default_url() -> String {
@@ -58,6 +62,10 @@ const fn default_retry_delay_ms() -> u64 {
     1000
 }
 
+const fn default_max_batch_size() -> usize {
+    32
+}
+
 impl Default for EmbeddingClientConfig {
     fn default() -> Self {
         Self {
@@ -67,6 +75,7 @@ impl Default for EmbeddingClientConfig {
             timeout_ms: default_timeout_ms(),
             max_retries: default_max_retries(),
             retry_delay_ms: default_retry_delay_ms(),
+            max_batch_size: default_max_batch_size(),
         }
     }
 }
@@ -142,6 +151,13 @@ impl EmbeddingClientConfig {
     #[must_use]
     pub const fn retry_delay(&self) -> Duration {
         Duration::from_millis(self.retry_delay_ms)
+    }
+
+    /// Set the maximum batch size per embedding request.
+    #[must_use]
+    pub const fn with_max_batch_size(mut self, max_batch_size: usize) -> Self {
+        self.max_batch_size = max_batch_size;
+        self
     }
 
     /// Get the full URL for the embeddings endpoint.

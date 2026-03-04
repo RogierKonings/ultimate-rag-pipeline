@@ -21,25 +21,27 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "documents", sa.Column("owner_id", sa.Text(), nullable=True)
-    )
-    op.add_column(
-        "documents",
-        sa.Column("allowed_users", sa.ARRAY(sa.Text()), server_default="{}"),
-    )
-    op.add_column(
-        "documents",
-        sa.Column("denied_groups", sa.ARRAY(sa.Text()), server_default="{}"),
-    )
-    op.add_column(
-        "documents",
-        sa.Column("denied_users", sa.ARRAY(sa.Text()), server_default="{}"),
-    )
+    for table in ("documents", "source_documents"):
+        op.add_column(
+            table, sa.Column("owner_id", sa.Text(), nullable=True)
+        )
+        op.add_column(
+            table,
+            sa.Column("allowed_users", sa.ARRAY(sa.Text()), server_default="{}"),
+        )
+        op.add_column(
+            table,
+            sa.Column("denied_groups", sa.ARRAY(sa.Text()), server_default="{}"),
+        )
+        op.add_column(
+            table,
+            sa.Column("denied_users", sa.ARRAY(sa.Text()), server_default="{}"),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("documents", "denied_users")
-    op.drop_column("documents", "denied_groups")
-    op.drop_column("documents", "allowed_users")
-    op.drop_column("documents", "owner_id")
+    for table in ("documents", "source_documents"):
+        op.drop_column(table, "denied_users")
+        op.drop_column(table, "denied_groups")
+        op.drop_column(table, "allowed_users")
+        op.drop_column(table, "owner_id")

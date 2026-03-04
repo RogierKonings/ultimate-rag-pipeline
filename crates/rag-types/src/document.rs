@@ -46,11 +46,11 @@ pub enum Visibility {
     /// Accessible to all users in the tenant
     Public,
     /// Accessible only to the owner
-    #[default]
     Private,
     /// Accessible to specific groups
     Group,
     /// Accessible to all users in the tenant
+    #[default]
     Tenant,
 }
 

@@ -75,6 +75,28 @@ impl EmbeddingClient {
             return Ok((vec![], 0));
         }
 
+        let max = self.config.max_batch_size;
+
+        // Fast path: single batch fits within the limit.
+        if texts.len() <= max {
+            return self.send_with_retry(texts).await;
+        }
+
+        // Split into sub-batches of max_batch_size.
+        let mut all_embeddings = Vec::with_capacity(texts.len());
+        let mut total_tokens: u32 = 0;
+
+        for chunk in texts.chunks(max) {
+            let (embeddings, tokens) = self.send_with_retry(chunk).await?;
+            all_embeddings.extend(embeddings);
+            total_tokens = total_tokens.saturating_add(tokens);
+        }
+
+        Ok((all_embeddings, total_tokens))
+    }
+
+    /// Send a single batch with retry logic.
+    async fn send_with_retry(&self, texts: &[&str]) -> Result<(Vec<Vec<f32>>, u32)> {
         #[allow(clippy::cast_possible_truncation)] // retry delay millis fits in u64
         let retry_delay_ms = self.config.retry_delay().as_millis() as u64;
         let retry_policy = RetryPolicy::new(self.config.max_retries, retry_delay_ms, 30_000);
@@ -302,6 +324,36 @@ mod tests {
 
         assert_eq!(embeddings.len(), 1);
         assert_eq!(tokens, 0); // No usage provided, defaults to 0
+    }
+
+    #[tokio::test]
+    async fn test_embed_batch_splits_large_input() {
+        let mock_server = setup_mock_server().await;
+
+        // Track call count via expect
+        Mock::given(method("POST"))
+            .and(path("/v1/embeddings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "data": [
+                    {"embedding": [0.1, 0.2], "index": 0},
+                    {"embedding": [0.3, 0.4], "index": 1}
+                ],
+                "usage": {"total_tokens": 5}
+            })))
+            .expect(2) // 3 texts with max_batch_size=2 → 2 requests
+            .mount(&mock_server)
+            .await;
+
+        let config = EmbeddingClientConfig::new(mock_server.uri())
+            .with_max_batch_size(2);
+        let client = EmbeddingClient::new(config).unwrap();
+
+        let texts: Vec<&str> = vec!["a", "b", "c"];
+        let (embeddings, tokens) = client.embed_batch(&texts).await.unwrap();
+
+        // 2 from first batch + 2 from second batch (mock returns 2 per call)
+        assert_eq!(embeddings.len(), 4);
+        assert_eq!(tokens, 10); // 5 + 5
     }
 
     #[tokio::test]

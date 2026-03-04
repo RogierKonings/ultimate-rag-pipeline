@@ -82,11 +82,6 @@ impl JobQueue {
         format!("{}:dlq", self.prefix)
     }
 
-    /// Get the notification list key used to wake blocking dequeue callers.
-    fn notify_key(&self) -> String {
-        format!("{}:notify", self.prefix)
-    }
-
     /// Enqueue a job.
     ///
     /// # Errors
@@ -104,10 +99,6 @@ impl JobQueue {
         // Add to queue (sorted by created_at for FIFO within priority)
         let score = job.created_at as f64;
         let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
-
-        // Wake any workers that are blocking on dequeue
-        let notify_key = self.notify_key();
-        let _: () = conn.lpush(&notify_key, "1").await?;
 
         Ok(())
     }
@@ -244,21 +235,17 @@ impl JobQueue {
                 remaining
             };
 
-            // Block-wait on the notification list. A new enqueue will wake us
-            // via LPUSH, or we'll time out and re-check for delayed jobs.
+            // Sleep before re-checking queues. We use tokio::time::sleep
+            // instead of Redis BLPOP because ConnectionManager uses a
+            // multiplexed connection that cannot support blocking commands.
             if wait_duration.is_zero() {
                 // Delayed job is now ready — loop immediately
                 continue;
             }
 
-            let notify_key = self.notify_key();
-            // BLPOP timeout is in seconds (fractional since Redis 6.0)
-            let wait_secs = wait_duration.as_secs_f64();
-            let _: Option<(String, String)> = redis::cmd("BLPOP")
-                .arg(&notify_key)
-                .arg(wait_secs)
-                .query_async(&mut conn)
-                .await?;
+            // Cap poll interval at 1 second for responsiveness
+            let poll_interval = wait_duration.min(Duration::from_secs(1));
+            tokio::time::sleep(poll_interval).await;
         }
     }
 
@@ -396,10 +383,6 @@ impl JobQueue {
             let queue_key = self.queue_key(job.priority);
             let score = chrono::Utc::now().timestamp_millis() as f64 + delay_ms as f64;
             let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
-
-            // Wake blocked workers so they can recalculate earliest ready job.
-            let notify_key = self.notify_key();
-            let _: () = conn.lpush(&notify_key, "1").await?;
         } else {
             // Move to DLQ
             let job_key = self.job_key(job.id);
@@ -551,9 +534,6 @@ impl JobQueue {
         let queue_key = self.queue_key(job.priority);
         let score = chrono::Utc::now().timestamp_millis() as f64;
         let _: () = conn.zadd(&queue_key, job.id.to_string(), score).await?;
-
-        let notify_key = self.notify_key();
-        let _: () = conn.lpush(&notify_key, "1").await?;
 
         Ok(job)
     }
